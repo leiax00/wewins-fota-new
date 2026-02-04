@@ -1,37 +1,51 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
 # IDE
 .idea/
-.vscode/
+*.iws
 *.iml
 *.ipr
-*.iws
-.eclipse/
-.metadata/
+.vscode/
 .settings/
-.project
 .classpath
+.project
+.factorypath
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Build
-target/
-build/
-out/
+# Logs
 logs/
-runtime/
+*.log
 
 # Temporary files
 *.tmp
-*.bak
+*.temp
 *.swp
+*.swo
 *~
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Docker
+.docker/
 
-# AI
-.claude
-.cursor
+# Agent
+.agent/
