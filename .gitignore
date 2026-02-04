@@ -31,3 +31,7 @@ runtime/
 .env
 .env.local
 .env.*.local
+
+# AI
+.claude
+.cursor
