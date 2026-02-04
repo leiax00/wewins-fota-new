@@ -1,0 +1,29 @@
+{
+    "name": "fota-coding",
+    "version": "1.0.0",
+    "description": "A curated marketplace of practical Claude Skills for enhancing productivity across Claude.ai, Claude Code, and the Claude API",
+    "owner": {
+        "name": "wewins",
+        "email": "leiaox@we-wins.com"
+    },
+    "plugins": [
+        {
+            "name": "fota-code-bundles",
+            "description": "Applies Anthropic's official brand colors and typography to artifacts for consistent visual identity and professional design standards.",
+            "source": "./agent",
+            "category": "code",
+            "keywords": [
+                "agents",
+                "skills",
+                "tdd",
+                "best-practices"
+            ],
+            "tags": [
+                "agents",
+                "skills",
+                "tdd",
+                "best-practices"
+            ]
+        }
+    ]
+}

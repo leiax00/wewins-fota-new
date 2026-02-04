@@ -1,6 +1,5 @@
 ---
 name: smart-commit
-type: workflow
 version: 2026-01-29
 description: 智能检查修改并自动提交（使用中文提交信息）
 ---
