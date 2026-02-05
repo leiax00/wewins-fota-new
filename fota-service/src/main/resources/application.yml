@@ -28,18 +28,20 @@ spring:
       minimum-idle: 5
       connection-timeout: 30000
 
-  # JPA 配置
-  jpa:
-    hibernate:
-      ddl-auto: none  # 禁止自动建表，使用 Flyway 管理数据库结构
-    open-in-view: false  # 避免懒加载问题
-    properties:
-      hibernate:
-        format_sql: false  # 生产环境关闭 SQL 格式化
-        jdbc:
-          time_zone: UTC  # 统一使用 UTC 时区
-        dialect:
-          storage_engine: org.hibernate.storage.engine.spi.StorageEngine
+  # MyBatis-Plus 配置
+  mybatis-plus:
+    mapper-locations: classpath:mapper/**/*.xml  # Mapper XML 文件位置
+    type-aliases-package: com.wewins.fota.database.entity  # 实体类包路径
+    configuration:
+      map-underscore-to-camel-case: true  # 开启驼峰命名转换
+      log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl  # 使用 SLF4J 日志
+
+  # Liquibase 数据库迁移配置
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+    contexts: ${LIQUIBASE_CONTEXTS:default}
 
   # Redis 配置
   data:
