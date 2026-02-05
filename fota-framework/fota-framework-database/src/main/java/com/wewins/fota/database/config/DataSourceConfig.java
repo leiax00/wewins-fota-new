@@ -1,20 +1,22 @@
 package com.wewins.fota.database.config;
 
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
 import javax.sql.DataSource;
 
 /**
  * 数据源配置类
  * <p>
- * 配置 PostgreSQL 主数据源
- * 支持多数据源扩展（PostgreSQL + ClickHouse）
+ * 配置 PostgreSQL 主数据源和 ClickHouse 分析数据源
+ * 所有连接信息从 application.yml 读取，支持环境变量覆盖
  * </p>
  *
  * @author FOTA Team
@@ -23,11 +25,16 @@ import javax.sql.DataSource;
 @Configuration
 public class DataSourceConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(DataSourceConfig.class);
+
     /**
      * 配置 PostgreSQL 主数据源
      * <p>
-     * 使用 HikariCP 连接池，Spring Boot 默认提供
-     * 通过 @Primary 标记为主数据源
+     * 使用 Spring Boot 自动配置，从 application.yml 读取：
+     * - spring.datasource.url
+     * - spring.datasource.username
+     * - spring.datasource.password
+     * - spring.datasource.hikari.*
      * </p>
      *
      * @return PostgreSQL 数据源
@@ -36,54 +43,40 @@ public class DataSourceConfig {
     @Primary
     @ConfigurationProperties(prefix = "spring.datasource.hikari")
     public DataSource primaryDataSource() {
-        System.out.println("[DataSource] 初始化 PostgreSQL 主数据源");
+        log.info("[DataSource] 初始化 PostgreSQL 主数据源");
 
-        HikariDataSource dataSource = new HikariDataSource();
+        HikariDataSource dataSource = DataSourceBuilder.create()
+            .type(HikariDataSource.class)
+            .build();
 
-        // 从 application.yml 读取配置
-        dataSource.setJdbcUrl("jdbc:postgresql://localhost:5432/fota");
-        dataSource.setUsername("fota");
-        dataSource.setPassword("fota");
-        dataSource.setDriverClassName("org.postgresql.Driver");
-
-        // HikariCP 连接池配置
-        dataSource.setMaximumPoolSize(20);
-        dataSource.setMinimumIdle(5);
-        dataSource.setConnectionTimeout(30000);
-        dataSource.setIdleTimeout(600000);
-        dataSource.setMaxLifetime(1800000);
-        dataSource.setConnectionTestQuery("SELECT 1");
-
-        System.out.println("[DataSource] PostgreSQL 主数据源初始化完成: " + dataSource.getJdbcUrl());
-        return new TransactionAwareDataSourceProxy(dataSource);
+        log.info("[DataSource] PostgreSQL 主数据源初始化完成: {}", dataSource.getJdbcUrl());
+        return dataSource;
     }
 
     /**
      * 配置 ClickHouse 分析数据源（可选）
      * <p>
-     * 仅当配置了 ClickHouse 连接信息时才创建
-     * 用于事件日志存储和分析查询
+     * 仅当配置了 spring.datasource.clickhouse.jdbc-url 时才创建
+     * 从 application.yml 读取：
+     * - spring.datasource.clickhouse.jdbc-url
+     * - spring.datasource.clickhouse.username
+     * - spring.datasource.clickhouse.password
+     * - spring.datasource.clickhouse.hikari.*
      * </p>
      *
      * @return ClickHouse 数据源
      */
     @Bean
     @ConditionalOnProperty(name = "spring.datasource.clickhouse.jdbc-url")
+    @ConfigurationProperties(prefix = "spring.datasource.clickhouse.hikari")
     public DataSource clickhouseDataSource() {
-        System.out.println("[DataSource] 初始化 ClickHouse 分析数据源");
+        log.info("[DataSource] 初始化 ClickHouse 分析数据源");
 
-        HikariDataSource dataSource = new HikariDataSource();
-        dataSource.setJdbcUrl("jdbc:clickhouse://localhost:8123/fota_events");
-        dataSource.setUsername("default");
-        dataSource.setPassword("");
-        dataSource.setDriverClassName("com.clickhouse.jdbc.ClickHouseDriver");
+        HikariDataSource dataSource = DataSourceBuilder.create()
+            .type(HikariDataSource.class)
+            .build();
 
-        // ClickHouse 连接池配置（相对较小，因为主要用于分析查询）
-        dataSource.setMaximumPoolSize(5);
-        dataSource.setMinimumIdle(1);
-        dataSource.setConnectionTimeout(30000);
-
-        System.out.println("[DataSource] ClickHouse 分析数据源初始化完成: " + dataSource.getJdbcUrl());
-        return new TransactionAwareDataSourceProxy(dataSource);
+        log.info("[DataSource] ClickHouse 分析数据源初始化完成: {}", dataSource.getJdbcUrl());
+        return dataSource;
     }
 }

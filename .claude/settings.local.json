@@ -4,7 +4,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "mcp__codex__codex",
-      "Bash(mvn:*)"
+      "Bash(mvn:*)",
+      "Bash(TaskList)"
     ]
   },
   "enabledPlugins": {

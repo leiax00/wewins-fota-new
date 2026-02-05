@@ -3,8 +3,7 @@
     "version": "1.0.0",
     "description": "Complete collection of battle-tested Claude Code configs from an Anthropic hackathon winner - agents, skills, hooks, and rules evolved over 10+ months of intensive daily use",
     "author": {
-        "name": "leiax00",
-        "url": "https://leiax00.cn"
+        "name": "leiax00"
     },
     "homepage": "https://gitea.wewins.wolaie.com/wewins/wewins-fota-new",
     "repository": "https://gitea.wewins.wolaie.com/wewins/wewins-fota-new",
@@ -19,8 +18,8 @@
         "best-practices"
     ],
     "skills": [
-        "./skills/",
-        "./commands/"
+        "./agents/skills/",
+        "./agents/commands/"
     ],
     "agents": [
         "./agents/code-reviewer.md",

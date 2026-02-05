@@ -1,5 +1,6 @@
 package com.wewins.fota;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -18,6 +19,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 0.1.0
  */
 @SpringBootApplication
+@MapperScan("com.wewins.fota.mapper")
 public class FotaApplication {
 
     /**
