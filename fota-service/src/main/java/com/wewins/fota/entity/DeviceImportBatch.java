@@ -6,14 +6,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 产品实体类
+ * 设备导入批次实体类
  * <p>
- * 对应数据库表：products
- * 存储产品的基本信息，每个产品代表一类设备
+ * 对应数据库表：device_import_batches
+ * 支持批次状态管理和导入统计
  * </p>
  *
  * @author FOTA Team
@@ -23,36 +24,73 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("products")
-public class Product implements Serializable {
+@TableName("device_import_batches")
+public class DeviceImportBatch implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * 产品唯一标识
+     * 批次唯一标识
      */
     @TableId(type = IdType.AUTO)
     private Long id;
 
     /**
-     * 产品名称
+     * 批次名称（用户自定义或自动生成）
+     * <p>
+     * 示例：
+     * - 用户自定义：20250205_首批测试设备
+     * - 自动生成：20250205143000
+     * </p>
      */
-    private String name;
+    private String batchName;
 
     /**
-     * 制造商
+     * 批次状态
+     * <p>
+     * 可选值：
+     * - IMPORTING：导入中
+     * - SUCCESS：全部成功
+     * - FAILED：全部失败
+     * - PARTIAL：部分成功
+     * </p>
      */
-    private String manufacturer;
+    private String status;
 
     /**
-     * 产品型号
+     * 导入文件路径或标识
      */
-    private String model;
+    private String sourceFile;
 
     /**
-     * 产品备注
+     * 导入总数量
      */
-    private String remark;
+    private Integer totalCount;
+
+    /**
+     * 成功数量
+     */
+    private Integer successCount;
+
+    /**
+     * 失败数量
+     */
+    private Integer failedCount;
+
+    /**
+     * 失败原因
+     */
+    private String errorMessage;
+
+    /**
+     * 开始导入时间
+     */
+    private LocalDateTime startedAt;
+
+    /**
+     * 结束导入时间
+     */
+    private LocalDateTime finishedAt;
 
     /**
      * 创建时间（自动填充）
