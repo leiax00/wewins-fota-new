@@ -15,6 +15,14 @@
     <name>fota-bom</name>
     <description>FOTA dependency management BOM</description>
 
+    <properties>
+        <!-- Third-party dependency versions -->
+        <jjwt.version>0.12.6</jjwt.version>
+        <clickhouse.version>0.7.2</clickhouse.version>
+        <mybatis.plus.version>3.5.15</mybatis.plus.version>
+        <awssdk.version>2.25.43</awssdk.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

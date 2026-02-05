@@ -19,10 +19,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <spring.boot.version>3.5.9</spring.boot.version>
-        <jjwt.version>0.12.6</jjwt.version>
-        <clickhouse.version>0.7.2</clickhouse.version>
-        <mybatis.plus.version>3.5.15</mybatis.plus.version>
-        <awssdk.version>2.25.43</awssdk.version>
     </properties>
 
     <modules>
