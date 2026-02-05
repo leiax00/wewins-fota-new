@@ -18,11 +18,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <spring.boot.version>3.2.8</spring.boot.version>
+        <spring.boot.version>3.5.9</spring.boot.version>
         <jjwt.version>0.12.6</jjwt.version>
         <clickhouse.version>0.7.2</clickhouse.version>
-        <liquibase.version>4.28.0</liquibase.version>
-        <mybatis.plus.version>3.5.7</mybatis.plus.version>
+        <mybatis.plus.version>3.5.15</mybatis.plus.version>
         <awssdk.version>2.25.43</awssdk.version>
     </properties>
 
