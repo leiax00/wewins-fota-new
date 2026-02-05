@@ -17,7 +17,7 @@ spring:
   profiles:
     active: ${MODE:main}
 
-  # PostgreSQL 数据源配置
+  # PostgreSQL 主数据源配置
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/fota}
     username: ${DB_USER:fota}
@@ -27,18 +27,27 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+    # ClickHouse 分析数据源配置（可选）
+    clickhouse:
+      jdbc-url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:8123/fota_events}
+      username: ${CLICKHOUSE_USER:default}
+      password: ${CLICKHOUSE_PASSWORD:}
+      driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
 
   # MyBatis-Plus 配置
   mybatis-plus:
-    mapper-locations: classpath:mapper/**/*.xml  # Mapper XML 文件位置
-    type-aliases-package: com.wewins.fota.database.entity  # 实体类包路径
+    mapper-locations: classpath:mapper/**/*.xml
+    type-aliases-package: com.wewins.fota.database.entity
     configuration:
-      map-underscore-to-camel-case: true  # 开启驼峰命名转换
-      log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl  # 使用 SLF4J 日志
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
 
   # Liquibase 数据库迁移配置
   liquibase:
-    enabled: true
+    enabled: ${LIQUIBASE_ENABLED:true}
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: public
     contexts: ${LIQUIBASE_CONTEXTS:default}
@@ -67,12 +76,6 @@ spring:
       simple:
         acknowledge-mode: manual
         prefetch: 10
-
-  # Flyway 数据库迁移配置
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
 
 # 监控端点配置
 management:
