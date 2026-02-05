@@ -1,9 +1,8 @@
 package com.wewins.fota.database.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -19,10 +18,9 @@ import java.time.LocalDateTime;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@Slf4j
 @Component
 public class CustomMetaObjectHandler implements MetaObjectHandler {
-
-    private static final Logger log = LoggerFactory.getLogger(CustomMetaObjectHandler.class);
 
     /**
      * 插入时自动填充

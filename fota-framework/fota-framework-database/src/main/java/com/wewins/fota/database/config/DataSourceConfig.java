@@ -1,8 +1,7 @@
 package com.wewins.fota.database.config;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
@@ -22,10 +21,9 @@ import javax.sql.DataSource;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@Slf4j
 @Configuration
 public class DataSourceConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(DataSourceConfig.class);
 
     /**
      * 配置 PostgreSQL 主数据源
