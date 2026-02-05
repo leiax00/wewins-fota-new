@@ -11,20 +11,21 @@ WORKDIR /workspace
 
 # 1) 复制父 POM 和所有模块 POM（利用 Docker 缓存层）
 COPY pom.xml .
+COPY fota-bom/pom.xml fota-bom/
 COPY fota-framework/pom.xml fota-framework/
-COPY fota-common/pom.xml fota-common/
-COPY fota-storage/pom.xml fota-storage/
-COPY fota-security/pom.xml fota-security/
+COPY fota-framework/fota-framework-common/pom.xml fota-framework/fota-framework-common/
+COPY fota-framework/fota-framework-storage/pom.xml fota-framework/fota-framework-storage/
+COPY fota-framework/fota-framework-security/pom.xml fota-framework/fota-framework-security/
 COPY fota-service/pom.xml fota-service/
 
 # 下载依赖
 RUN mvn -q -DskipTests dependency:go-offline
 
 # 2) 复制源代码
-COPY fota-framework/src fota-framework/src
-COPY fota-common/src fota-common/src
-COPY fota-storage/src fota-storage/src
-COPY fota-security/src fota-security/src
+COPY fota-bom/src fota-bom/src
+COPY fota-framework/fota-framework-common/src fota-framework/fota-framework-common/src
+COPY fota-framework/fota-framework-storage/src fota-framework/fota-framework-storage/src
+COPY fota-framework/fota-framework-security/src fota-framework/fota-framework-security/src
 COPY fota-service/src fota-service/src
 
 # 3) 仅构建 fota-service 模块
