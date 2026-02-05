@@ -299,6 +299,35 @@ spring:
 - Liquibase changelog 路径: `classpath:db/changelog/db.changelog-master.yaml`
 - 主数据源: `spring.datasource.primary`
 
+### 架构演进方向
+
+**当前架构（Day 2）**：
+- 传统三层架构：Controller → Service → Mapper
+- 贫血模型：Entity 只有 getter/setter
+- 数据库驱动设计
+
+**目标架构（Day 3+）**：
+- DDD 四层架构：interfaces → application → domain → infrastructure
+- 富领域模型：聚合根封装业务规则
+- 领域驱动设计
+
+**演进计划**：
+- ✅ Day 2：建立数据访问层基础（MyBatis-Plus + Liquibase）
+- ⏳ Day 3：创建 DDD 分层骨架（domain/application/infrastructure）
+- ⏳ Day 4：定义 DDD 基础类型（AggregateRoot, Entity, ValueObject）
+- ⏳ Day 5+：逐步提取聚合根和领域服务
+
+**重要说明**：
+当前的 Entity/Maper 是临时性的数据访问层，后续会重构为：
+- **聚合根**（Product, Device, UpgradePolicy）
+- **值对象**（FirmwareVersion, Checksum, GrayRate 等）
+- **领域服务**（UpgradeDecisionService, PolicyMatchService）
+- **仓储接口**（ProductRepository, DeviceRepository）
+
+详见 DDD 架构设计：
+- [DDD 架构设计文档](../../02-architecture/ddd-architecture.md)
+- [DDD 实施指南](../../02-architecture/ddd-implementation-guide.md)
+
 ---
 
 ## 📊 当前进度
