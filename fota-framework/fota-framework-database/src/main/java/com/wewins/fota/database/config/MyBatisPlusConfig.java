@@ -1,11 +1,8 @@
 package com.wewins.fota.database.config;
 
-import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.MybatisMapWrapperFactory;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidouplusplus.extension.plugins.inner.PaginationInnerInterceptor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.annotation.MapperScan;
@@ -20,7 +17,6 @@ import javax.sql.DataSource;
  * <p>
  * 配置 MyBatis-Plus 的核心功能：
  * - Mapper 扫描
- * - 分页插件
  * - 驼峰命名转换
  * - 自动填充
  * </p>
@@ -28,7 +24,6 @@ import javax.sql.DataSource;
  * @author FOTA Team
  * @since 2026-02-05
  */
-@Slf4j
 @Configuration
 @MapperScan("com.wewins.fota.database.mapper")
 public class MyBatisPlusConfig {
@@ -36,25 +31,21 @@ public class MyBatisPlusConfig {
     /**
      * 配置 MyBatis-Plus 拦截器
      * <p>
-     * 添加分页插件和其他插件
+     * 基础配置，可后续添加分页插件等
      * </p>
      *
      * @return MyBatis-Plus 拦截器
      */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
-        log.info("初始化 MyBatis-Plus 拦截器");
+        System.out.println("[MyBatis-Plus] 初始化 MyBatis-Plus 拦截器");
 
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
-        // 添加分页插件
-        PaginationInnerInterceptor paginationInterceptor = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
-        paginationInterceptor.setMaxLimit(1000L); // 最大单页限制数量
-        paginationInterceptor.setOverflow(false); // 溢出总页数后是否进行处理
+        // 可在此处添加分页插件、乐观锁插件等
+        // PaginationInnerInterceptor 将在后续添加
 
-        interceptor.addInnerInterceptor(paginationInterceptor);
-
-        log.info("MyBatis-Plus 拦截器初始化完成");
+        System.out.println("[MyBatis-Plus] MyBatis-Plus 拦截器初始化完成");
         return interceptor;
     }
 
@@ -70,7 +61,7 @@ public class MyBatisPlusConfig {
      */
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-        log.info("初始化 SqlSessionFactory");
+        System.out.println("[MyBatis-Plus] 初始化 SqlSessionFactory");
 
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
@@ -100,7 +91,7 @@ public class MyBatisPlusConfig {
         // 添加 MyBatis-Plus 插件
         factoryBean.setPlugins(mybatisPlusInterceptor());
 
-        log.info("SqlSessionFactory 初始化完成");
+        System.out.println("[MyBatis-Plus] SqlSessionFactory 初始化完成");
         return factoryBean.getObject();
     }
 }

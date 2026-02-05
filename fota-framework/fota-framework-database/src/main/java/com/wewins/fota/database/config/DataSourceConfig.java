@@ -1,7 +1,6 @@
 package com.wewins.fota.database.config;
 
 import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -21,7 +20,6 @@ import javax.sql.DataSource;
  * @author FOTA Team
  * @since 2026-02-05
  */
-@Slf4j
 @Configuration
 public class DataSourceConfig {
 
@@ -38,7 +36,8 @@ public class DataSourceConfig {
     @Primary
     @ConfigurationProperties(prefix = "spring.datasource.hikari")
     public DataSource primaryDataSource() {
-        log.info("初始化 PostgreSQL 主数据源");
+        System.out.println("[DataSource] 初始化 PostgreSQL 主数据源");
+
         HikariDataSource dataSource = new HikariDataSource();
 
         // 从 application.yml 读取配置
@@ -55,7 +54,7 @@ public class DataSourceConfig {
         dataSource.setMaxLifetime(1800000);
         dataSource.setConnectionTestQuery("SELECT 1");
 
-        log.info("PostgreSQL 主数据源初始化完成: {}", dataSource.getJdbcUrl());
+        System.out.println("[DataSource] PostgreSQL 主数据源初始化完成: " + dataSource.getJdbcUrl());
         return new TransactionAwareDataSourceProxy(dataSource);
     }
 
@@ -71,7 +70,7 @@ public class DataSourceConfig {
     @Bean
     @ConditionalOnProperty(name = "spring.datasource.clickhouse.jdbc-url")
     public DataSource clickhouseDataSource() {
-        log.info("初始化 ClickHouse 分析数据源");
+        System.out.println("[DataSource] 初始化 ClickHouse 分析数据源");
 
         HikariDataSource dataSource = new HikariDataSource();
         dataSource.setJdbcUrl("jdbc:clickhouse://localhost:8123/fota_events");
@@ -84,7 +83,7 @@ public class DataSourceConfig {
         dataSource.setMinimumIdle(1);
         dataSource.setConnectionTimeout(30000);
 
-        log.info("ClickHouse 分析数据源初始化完成: {}", dataSource.getJdbcUrl());
+        System.out.println("[DataSource] ClickHouse 分析数据源初始化完成: " + dataSource.getJdbcUrl());
         return new TransactionAwareDataSourceProxy(dataSource);
     }
 }

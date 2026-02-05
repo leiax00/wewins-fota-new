@@ -1,7 +1,6 @@
 package com.wewins.fota.database.config;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +17,6 @@ import java.time.LocalDateTime;
  * @author FOTA Team
  * @since 2026-02-05
  */
-@Slf4j
 @Component
 public class CustomMetaObjectHandler implements MetaObjectHandler {
 
@@ -34,7 +32,7 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
      */
     @Override
     public void insertFill(MetaObject metaObject) {
-        log.debug("开始插入填充...");
+        System.out.println("[MetaObjectHandler] 开始插入填充...");
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -44,7 +42,7 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
         // 填充更新时间
         this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
 
-        log.debug("插入填充完成：createdAt={}, updatedAt={}", now, now);
+        System.out.println("[MetaObjectHandler] 插入填充完成：createdAt=" + now + ", updatedAt=" + now);
     }
 
     /**
@@ -58,13 +56,13 @@ public class CustomMetaObjectHandler implements MetaObjectHandler {
      */
     @Override
     public void updateFill(MetaObject metaObject) {
-        log.debug("开始更新填充...");
+        System.out.println("[MetaObjectHandler] 开始更新填充...");
 
         LocalDateTime now = LocalDateTime.now();
 
         // 填充更新时间
         this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, now);
 
-        log.debug("更新填充完成：updatedAt={}", now);
+        System.out.println("[MetaObjectHandler] 更新填充完成：updatedAt=" + now);
     }
 }
