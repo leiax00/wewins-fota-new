@@ -12,7 +12,7 @@
 
     <artifactId>fota-framework-database</artifactId>
     <name>fota-framework-database</name>
-    <description>FOTA framework database module (PostgreSQL + Flyway + ClickHouse)</description>
+    <description>FOTA framework database module (MyBatis-Plus + Liquibase + ClickHouse)</description>
 
     <dependencies>
         <dependency>
@@ -20,19 +20,19 @@
             <artifactId>fota-framework-common</artifactId>
         </dependency>
 
-        <!-- PostgreSQL + JPA -->
+        <!-- MyBatis-Plus -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
         </dependency>
+
+        <!-- Liquibase -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
+
+        <!-- PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -43,6 +43,12 @@
         <dependency>
             <groupId>com.clickhouse</groupId>
             <artifactId>clickhouse-jdbc</artifactId>
+        </dependency>
+
+        <!-- Spring JDBC (for ClickHouse) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
     </dependencies>
 </project>

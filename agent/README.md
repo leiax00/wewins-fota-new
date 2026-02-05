@@ -17,4 +17,7 @@
 # 卸载插件市场
 /plugin marketplace remove we-coding
 
+# 规则安装 （必须手动安装）
+mkdir ~/.claude/rules/
+cp -r ./agent/rules/* ~/.claude/rules/
 ```
