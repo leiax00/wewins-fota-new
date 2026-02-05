@@ -25,7 +25,7 @@ import javax.sql.DataSource;
  * @since 2026-02-05
  */
 @Configuration
-@MapperScan("com.wewins.fota.database.mapper")
+@MapperScan("com.wewins.fota.mapper")
 public class MyBatisPlusConfig {
 
     /**
@@ -86,7 +86,7 @@ public class MyBatisPlusConfig {
         );
 
         // 类型别名包
-        factoryBean.setTypeAliasesPackage("com.wewins.fota.database.entity");
+        factoryBean.setTypeAliasesPackage("com.wewins.fota.entity");
 
         // 添加 MyBatis-Plus 插件
         factoryBean.setPlugins(mybatisPlusInterceptor());
