@@ -1,0 +1,29 @@
+{
+    "name": "fota-code-bundles",
+    "version": "1.0.0",
+    "description": "Complete collection of battle-tested Claude Code configs from an Anthropic hackathon winner - agents, skills, hooks, and rules evolved over 10+ months of intensive daily use",
+    "author": {
+        "name": "leiax00",
+        "url": "https://leiax00.cn"
+    },
+    "homepage": "https://gitea.wewins.wolaie.com/wewins/wewins-fota-new",
+    "repository": "https://gitea.wewins.wolaie.com/wewins/wewins-fota-new",
+    "license": "MIT",
+    "keywords": [
+        "claude-code",
+        "agents",
+        "skills",
+        "rules",
+        "code-review",
+        "workflow",
+        "best-practices"
+    ],
+    "skills": [
+        "./skills/",
+        "./commands/"
+    ],
+    "agents": [
+        "./agents/code-reviewer.md",
+        "./agents/tdd-guide.md"
+    ]
+}

@@ -1,0 +1,125 @@
+# FOTA 项目文档导航
+
+> 本项目文档采用分类管理，便于查找、维护和归档。
+
+**最后更新**: 2026-02-05
+**文档版本**: v1.0
+
+---
+
+## 📚 文档分类
+
+### 1️⃣ 产品与需求 (`01-product/`)
+产品需求、业务范围、验收标准
+
+- [产品需求文档 (PRD)](01-product/prd.md)
+
+---
+
+### 2️⃣ 架构与设计 (`02-architecture/`)
+系统架构、技术选型、设计决策
+
+- [FOTA 系统架构及技术说明书](02-architecture/fota-architecture.md)
+
+---
+
+### 3️⃣ 规范与标准 (`03-standards/`)
+团队约定、编码规范、流程规范
+
+- [Git Flow 工作流规范](03-standards/git-workflow.md)
+- [Lombok 使用规范](03-standards/lombok-standards.md)
+- [Jackson 配置指南](03-standards/jackson-config.md)
+
+---
+
+### 4️⃣ 指南与知识 (`04-guides/`)
+技术指南、知识沉淀、最佳实践
+
+- [时区语义设计](04-guides/time-semantics.md)
+
+---
+
+### 5️⃣ 计划与里程碑 (`05-plans/`)
+Sprint 计划、里程碑、风险评估
+
+- [Sprint 1 计划](05-plans/sprint-1.md)
+
+---
+
+### 6️⃣ 任务执行 (`tasks/`)
+任务文档、进度跟踪、验收清单
+
+#### Sprint 1 (2026-02)
+
+**Day 1: 项目基础架构搭建** ✅ 已完成
+- [任务文档](tasks/2026-02-sprint-1/day-01-project-setup.md)
+- [进度跟踪](tasks/2026-02-sprint-1/day-01-progress.md)
+
+**Day 2: PostgreSQL 数据库架构** ⏳ 进行中
+- [任务文档](tasks/2026-02-sprint-1/day-02-database.md)
+- [进度跟踪](tasks/2026-02-sprint-1/day-02-progress.md)
+
+**Day 3-5: 待开始**
+- Day 3: Redis 缓存架构
+- Day 4: 简化认证与授权
+- Day 5: 集成测试与验收
+
+---
+
+## 🎯 快速导航
+
+### 按角色查找
+
+**产品经理**:
+- [产品需求文档](01-product/prd.md)
+- [Sprint 计划](05-plans/sprint-1.md)
+
+**架构师/技术负责人**:
+- [系统架构文档](02-architecture/fota-architecture.md)
+- [时区语义设计](04-guides/time-semantics.md)
+
+**开发工程师**:
+- [Git Flow 工作流](03-standards/git-workflow.md)
+- [Lombok 规范](03-standards/lombok-standards.md)
+- [Jackson 配置](03-standards/jackson-config.md)
+- [当前任务](#️⃣-任务执行)
+
+**测试工程师**:
+- [任务文档](tasks/2026-02-sprint-1/)
+- [验收清单](tasks/2026-02-sprint-1/day-05-progress.md)
+
+---
+
+## 📊 项目进度
+
+```
+Sprint 1: 基础平台搭建 [████░░░░░░░░░░░] 10% (Day 1/5 完成)
+
+Day 1: ✅ 项目基础架构搭建 (已完成)
+Day 2: ⏳ PostgreSQL 数据库架构 (进行中)
+Day 3: ⏸️ Redis 缓存架构 (待开始)
+Day 4: ⏸️ 简化认证与授权 (待开始)
+Day 5: ⏸️ 集成测试与验收 (待开始)
+```
+
+---
+
+## 📝 文档更新日志
+
+### 2026-02-05
+- ✅ 重新组织文档结构
+- ✅ 创建文档导航首页
+- ✅ 创建任务模板
+- 🔄 迁移现有文档到新结构
+
+---
+
+## 🔗 相关链接
+
+- [项目 README](../README.md)
+- [Git 仓库](../)
+- [任务列表](../docs/tasks.md)
+
+---
+
+**文档维护**: 本文档应在每次新增文档或结构调整时更新。
