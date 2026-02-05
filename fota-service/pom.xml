@@ -27,18 +27,10 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Framework modules -->
+        <!-- Framework starter (includes all framework modules) -->
         <dependency>
             <groupId>com.wewins</groupId>
-            <artifactId>fota-framework-common</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.wewins</groupId>
-            <artifactId>fota-framework-storage</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.wewins</groupId>
-            <artifactId>fota-framework-security</artifactId>
+            <artifactId>fota-framework-starter</artifactId>
         </dependency>
 
         <!-- Spring Boot Starters -->

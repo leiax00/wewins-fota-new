@@ -17,8 +17,12 @@
 
     <modules>
         <module>fota-framework-common</module>
+        <module>fota-framework-database</module>
+        <module>fota-framework-cache</module>
+        <module>fota-framework-mq</module>
         <module>fota-framework-storage</module>
         <module>fota-framework-security</module>
+        <module>fota-framework-starter</module>
     </modules>
 
     <dependencyManagement>

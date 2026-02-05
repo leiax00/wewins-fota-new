@@ -1,7 +1,7 @@
 package com.wewins.fota.storage;
 
 /**
- * 存储模块标记类
+ * 对象存储模块标记类
  *
  * <p>用于模块识别和依赖管理。
  *

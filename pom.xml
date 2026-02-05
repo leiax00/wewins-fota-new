@@ -22,6 +22,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <clickhouse.version>0.7.2</clickhouse.version>
         <flyway.version>10.18.2</flyway.version>
+        <awssdk.version>2.25.43</awssdk.version>
     </properties>
 
     <modules>

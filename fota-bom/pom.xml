@@ -25,10 +25,34 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- AWS SDK BOM (for S3-compatible storage) -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Framework modules -->
             <dependency>
                 <groupId>com.wewins</groupId>
                 <artifactId>fota-framework-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-database</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-cache</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-mq</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -39,6 +63,11 @@
             <dependency>
                 <groupId>com.wewins</groupId>
                 <artifactId>fota-framework-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

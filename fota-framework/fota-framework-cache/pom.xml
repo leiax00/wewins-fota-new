@@ -10,20 +10,18 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>fota-framework-storage</artifactId>
-    <name>fota-framework-storage</name>
-    <description>FOTA framework object storage module (S3/Local/OSS)</description>
+    <artifactId>fota-framework-cache</artifactId>
+    <name>fota-framework-cache</name>
+    <description>FOTA framework cache module (Redis)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-common</artifactId>
         </dependency>
-
-        <!-- AWS S3 SDK (compatible with MinIO, Aliyun OSS) -->
         <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
     </dependencies>
 </project>

@@ -14,8 +14,12 @@ COPY pom.xml .
 COPY fota-bom/pom.xml fota-bom/
 COPY fota-framework/pom.xml fota-framework/
 COPY fota-framework/fota-framework-common/pom.xml fota-framework/fota-framework-common/
+COPY fota-framework/fota-framework-database/pom.xml fota-framework/fota-framework-database/
+COPY fota-framework/fota-framework-cache/pom.xml fota-framework/fota-framework-cache/
+COPY fota-framework/fota-framework-mq/pom.xml fota-framework/fota-framework-mq/
 COPY fota-framework/fota-framework-storage/pom.xml fota-framework/fota-framework-storage/
 COPY fota-framework/fota-framework-security/pom.xml fota-framework/fota-framework-security/
+COPY fota-framework/fota-framework-starter/pom.xml fota-framework/fota-framework-starter/
 COPY fota-service/pom.xml fota-service/
 
 # 下载依赖
@@ -24,8 +28,12 @@ RUN mvn -q -DskipTests dependency:go-offline
 # 2) 复制源代码
 COPY fota-bom/src fota-bom/src
 COPY fota-framework/fota-framework-common/src fota-framework/fota-framework-common/src
+COPY fota-framework/fota-framework-database/src fota-framework/fota-framework-database/src
+COPY fota-framework/fota-framework-cache/src fota-framework/fota-framework-cache/src
+COPY fota-framework/fota-framework-mq/src fota-framework/fota-framework-mq/src
 COPY fota-framework/fota-framework-storage/src fota-framework/fota-framework-storage/src
 COPY fota-framework/fota-framework-security/src fota-framework/fota-framework-security/src
+COPY fota-framework/fota-framework-starter/src fota-framework/fota-framework-starter/src
 COPY fota-service/src fota-service/src
 
 # 3) 仅构建 fota-service 模块
