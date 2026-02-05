@@ -1,0 +1,24 @@
+# 区域模式配置（MODE=region）
+#
+# 区域职责：
+# - 设备 API（check/report）
+# - 配置同步（从主区域轮询配置）
+# - 数据转发（Forwarder 转发聚合数据到主区域）
+
+spring:
+  config:
+    activate:
+      on-profile: region
+
+# 区域模式标识
+app:
+  mode: region
+
+# 功能开关（区域模式）
+feature:
+  admin:
+    enabled: false # 管理后台仅在 main 启用
+  ingest:
+    enabled: false # Ingest API 仅在 main 启用
+  forwarder:
+    enabled: true  # Forwarder 在 region 启用

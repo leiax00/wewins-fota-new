@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wewins</groupId>
+        <artifactId>wewins-fota-new</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fota-framework</artifactId>
+    <packaging>pom</packaging>
+    <name>fota-framework</name>
+    <description>Framework aggregator module</description>
+
+    <modules>
+        <module>fota-framework-common</module>
+        <module>fota-framework-database</module>
+        <module>fota-framework-cache</module>
+        <module>fota-framework-mq</module>
+        <module>fota-framework-storage</module>
+        <module>fota-framework-security</module>
+        <module>fota-framework-starter</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

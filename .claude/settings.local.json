@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__codex__codex",
+      "Bash(mvn:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "fota-code-bundles@fota-coding": true
+  }
+}

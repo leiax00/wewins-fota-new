@@ -1,0 +1,24 @@
+# 主区域模式配置（MODE=main）
+#
+# 主区域职责：
+# - 管理后台（产品、策略、固件、设备管理）
+# - 配置中心（版本查询、快照拉取）
+# - 数据汇聚（跨区域汇总数据接入）
+
+spring:
+  config:
+    activate:
+      on-profile: main
+
+# 主区域模式标识
+app:
+  mode: main
+
+# 功能开关（主区域）
+feature:
+  admin:
+    enabled: true  # 管理后台
+  ingest:
+    enabled: true  # 跨区域数据接入
+  forwarder:
+    enabled: false # Forwarder 仅在 region 启用

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.wewins</groupId>
+        <artifactId>fota-framework</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>fota-framework-storage</artifactId>
+    <name>fota-framework-storage</name>
+    <description>FOTA framework object storage module (S3/Local/OSS)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-common</artifactId>
+        </dependency>
+
+        <!-- AWS S3 SDK (compatible with MinIO, Aliyun OSS) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+    </dependencies>
+</project>

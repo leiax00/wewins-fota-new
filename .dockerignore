@@ -1,0 +1,31 @@
+# Git
+.git/
+.gitignore
+
+# Maven
+target/
+!target/*.jar
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# Agent
+.agent/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
