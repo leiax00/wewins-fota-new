@@ -6,19 +6,18 @@
 
     <parent>
         <groupId>com.wewins</groupId>
-        <artifactId>wewins-fota-new</artifactId>
+        <artifactId>fota-framework</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>fota-security</artifactId>
-    <name>fota-security</name>
-    <description>Security module: authentication/authorization</description>
+    <artifactId>fota-framework-security</artifactId>
+    <name>fota-framework-security</name>
+    <description>FOTA framework security module</description>
 
     <dependencies>
         <dependency>
             <groupId>com.wewins</groupId>
-            <artifactId>fota-common</artifactId>
-            <version>${project.version}</version>
+            <artifactId>fota-framework-common</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
