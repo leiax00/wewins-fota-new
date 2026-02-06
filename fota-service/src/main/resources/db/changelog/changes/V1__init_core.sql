@@ -60,15 +60,13 @@ CREATE TABLE IF NOT EXISTS devices (
     created_by BIGINT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by BIGINT,
-    deleted_at TIMESTAMP,
-    CONSTRAINT fk_devices_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
-    CONSTRAINT fk_devices_import_batch FOREIGN KEY (import_batch_id) REFERENCES device_import_batches(id) ON DELETE SET NULL
+    deleted_at TIMESTAMP
 );
 
 COMMENT ON TABLE devices IS '设备表：存储所有设备的基本信息和当前状态';
 COMMENT ON COLUMN devices.id IS '设备唯一标识';
 COMMENT ON COLUMN devices.imei IS '设备 IMEI 号（唯一）';
-COMMENT ON COLUMN devices.product_id IS '关联的产品 ID';
+COMMENT ON COLUMN devices.product_id IS '关联的产品 ID（无外键约束，由应用层保证一致性）';
 COMMENT ON COLUMN devices.current_version_id IS '当前固件版本 ID';
 COMMENT ON COLUMN devices.status IS '设备状态（ACTIVE, INACTIVE, LOST, etc.）';
 COMMENT ON COLUMN devices.last_seen_at IS '最后一次在线时间';
@@ -83,6 +81,7 @@ COMMENT ON COLUMN devices.deleted_at IS '软删除时间';
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_devices_imei ON devices(imei);
 CREATE INDEX IF NOT EXISTS idx_devices_product_id ON devices(product_id);
+CREATE INDEX IF NOT EXISTS idx_devices_current_version_id ON devices(current_version_id);
 CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
 CREATE INDEX IF NOT EXISTS idx_devices_last_seen_at ON devices(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_devices_tags_gin ON devices USING GIN (tags);
@@ -108,13 +107,12 @@ CREATE TABLE IF NOT EXISTS firmware_versions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by BIGINT,
     deleted_at TIMESTAMP,
-    CONSTRAINT fk_fv_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     CONSTRAINT uk_fv_product_version UNIQUE (product_id, version)
 );
 
 COMMENT ON TABLE firmware_versions IS '固件版本表：存储所有固件版本的信息和文件元数据';
 COMMENT ON COLUMN firmware_versions.id IS '固件版本唯一标识';
-COMMENT ON COLUMN firmware_versions.product_id IS '关联的产品 ID';
+COMMENT ON COLUMN firmware_versions.product_id IS '关联的产品 ID（无外键约束，由应用层保证一致性）';
 COMMENT ON COLUMN firmware_versions.version IS '版本号（如 1.0.0）';
 COMMENT ON COLUMN firmware_versions.file_url IS '固件文件下载地址';
 COMMENT ON COLUMN firmware_versions.file_size IS '固件文件大小（字节）';
@@ -156,17 +154,15 @@ CREATE TABLE IF NOT EXISTS upgrade_policies (
     created_by BIGINT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by BIGINT,
-    deleted_at TIMESTAMP,
-    CONSTRAINT fk_up_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    CONSTRAINT fk_up_target_version FOREIGN KEY (target_version_id) REFERENCES firmware_versions(id) ON DELETE CASCADE
+    deleted_at TIMESTAMP
 );
 
 COMMENT ON TABLE upgrade_policies IS '升级策略表：存储固件升级策略和配置';
 COMMENT ON COLUMN upgrade_policies.id IS '策略唯一标识';
-COMMENT ON COLUMN upgrade_policies.product_id IS '关联的产品 ID';
+COMMENT ON COLUMN upgrade_policies.product_id IS '关联的产品 ID（无外键约束，由应用层保证一致性）';
 COMMENT ON COLUMN upgrade_policies.name IS '策略名称';
 COMMENT ON COLUMN upgrade_policies.remark IS '策略备注';
-COMMENT ON COLUMN upgrade_policies.target_version_id IS '目标固件版本 ID';
+COMMENT ON COLUMN upgrade_policies.target_version_id IS '目标固件版本 ID（无外键约束，由应用层保证一致性）';
 COMMENT ON COLUMN upgrade_policies.source_versions IS '允许升级的源版本列表（JSONB 数组，如 ["1.0.0", "1.1.0"]）';
 COMMENT ON COLUMN upgrade_policies.priority IS '优先级（数值越大优先级越高）';
 COMMENT ON COLUMN upgrade_policies.gray_rate IS '灰度比例（0-100）';

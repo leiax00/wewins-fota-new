@@ -1,8 +1,9 @@
-package com.wewins.fota.config;
+package com.wewins.fota.database.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;
@@ -15,7 +16,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * PostgreSQL JSONB 类型处理器（List<String>）
+ * PostgreSQL JSONB 类型处理器（List&lt;String&gt;）
  * <p>
  * 用于在 PostgreSQL JSONB 字段与 Java List&lt;String&gt; 之间进行序列化/反序列化。
  * 通过 Jackson ObjectMapper 将 List&lt;String&gt; 转为 JSON 数组字符串。
@@ -45,9 +46,12 @@ import java.util.List;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@Slf4j
 @MappedTypes(List.class)
 @MappedJdbcTypes(JdbcType.VARCHAR)
 public class JsonbListStringTypeHandler extends BaseTypeHandler<List<String>> {
+
+    private static final String JSON_NULL_SUMMARY = "null";
 
     /**
      * Jackson ObjectMapper，线程安全
@@ -66,6 +70,7 @@ public class JsonbListStringTypeHandler extends BaseTypeHandler<List<String>> {
         try {
             ps.setString(i, OBJECT_MAPPER.writeValueAsString(parameter));
         } catch (JsonProcessingException e) {
+            log.error("List<String> 序列化失败: message={}, size={}", e.getMessage(), summarizeListSize(parameter), e);
             throw new SQLException("Failed to serialize List<String> to JSON string", e);
         }
     }
@@ -86,10 +91,10 @@ public class JsonbListStringTypeHandler extends BaseTypeHandler<List<String>> {
     }
 
     /**
-     * 将 JSON 字符串解析为 List<String>
+     * 将 JSON 字符串解析为 List&lt;String&gt;
      *
      * @param json JSON 字符串
-     * @return List<String> 对象，如果 json 为空则返回 null
+     * @return List&lt;String&gt; 对象，如果 json 为空则返回 null
      * @throws SQLException 解析失败时抛出
      */
     private List<String> parseJson(String json) throws SQLException {
@@ -99,7 +104,32 @@ public class JsonbListStringTypeHandler extends BaseTypeHandler<List<String>> {
         try {
             return OBJECT_MAPPER.readValue(json, LIST_STRING_TYPE);
         } catch (JsonProcessingException e) {
+            log.error("JSON 反序列化失败: message={}, summary={}", e.getMessage(), summarizeJson(json), e);
             throw new SQLException("Failed to deserialize JSON string to List<String>", e);
         }
+    }
+
+    /**
+     * 生成 JSON 字符串的摘要信息（避免日志泄露敏感数据）
+     *
+     * @param json JSON 字符串
+     * @return 摘要信息，包含长度
+     */
+    private String summarizeJson(String json) {
+        if (json == null) {
+            return JSON_NULL_SUMMARY;
+        }
+        int len = json.length();
+        return "len=" + len;
+    }
+
+    /**
+     * 获取列表大小（用于日志，避免泄露数据）
+     *
+     * @param list 列表
+     * @return 列表大小，如果为 null 则返回 -1
+     */
+    private int summarizeListSize(List<String> list) {
+        return list == null ? -1 : list.size();
     }
 }

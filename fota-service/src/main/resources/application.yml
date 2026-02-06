@@ -14,8 +14,7 @@ mybatis-plus:
   global-config:
     db-config:
       # 逻辑删除配置
-      # 注意：由于使用 deletedAt 作为逻辑删除字段，MP 不会自动处理 IS NULL 查询
-      # 需要在业务代码中使用 @TableLogic 注解或显式查询
+      # 使用 deletedAt 字段作为逻辑删除标记
       logic-delete-field: deletedAt
       logic-not-delete-value: "NULL"
       logic-delete-value: "now()"
@@ -35,9 +34,9 @@ spring:
 
   # PostgreSQL 主数据源配置
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota}
-    username: ${DB_USER:fota}
-    password: ${DB_PASSWORD:fota}
+    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:5432/fota}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:wewins@2025}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -48,9 +47,9 @@ spring:
 
     # ClickHouse 分析数据源配置（可选）
     clickhouse:
-      jdbc-url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:8123/fota_events}
-      username: ${CLICKHOUSE_USER:default}
-      password: ${CLICKHOUSE_PASSWORD:}
+      url: ${CLICKHOUSE_URL:jdbc:clickhouse://chouse.wewins.wolaie.com:28123/ww-fota}
+      username: ${CLICKHOUSE_USER:wewins}
+      password: ${CLICKHOUSE_PASSWORD:wewins@2025}
       driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
       hikari:
         maximum-pool-size: 5
@@ -67,7 +66,7 @@ spring:
   # Redis 配置
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis.wewins.wolaie.com}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 3s
@@ -76,13 +75,14 @@ spring:
           max-active: 20
           max-idle: 10
           min-idle: 5
+      database: 10
 
   # RabbitMQ 配置
   rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
+    host: ${RABBITMQ_HOST:mq.wewins.wolaie.com}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:admin@123456}
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
@@ -100,9 +100,9 @@ management:
       probes:
         enabled: true
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 # 日志配置

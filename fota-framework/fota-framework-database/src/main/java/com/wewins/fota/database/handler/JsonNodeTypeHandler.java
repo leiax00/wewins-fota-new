@@ -1,8 +1,9 @@
-package com.wewins.fota.config;
+package com.wewins.fota.database.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;
@@ -23,7 +24,7 @@ import java.sql.SQLException;
  * <p>
  * 使用方式：
  * <pre>
- * &#64;TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
+ * &#64;TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
  * private JsonNode meta;
  * </pre>
  * </p>
@@ -37,9 +38,12 @@ import java.sql.SQLException;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@Slf4j
 @MappedTypes(JsonNode.class)
 @MappedJdbcTypes(JdbcType.VARCHAR)
 public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
+
+    private static final String JSON_NULL_SUMMARY = "null";
 
     /**
      * Jackson ObjectMapper，线程安全
@@ -52,6 +56,7 @@ public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
         try {
             ps.setString(i, OBJECT_MAPPER.writeValueAsString(parameter));
         } catch (JsonProcessingException e) {
+            log.error("JsonNode 序列化失败: message={}", e.getMessage(), e);
             throw new SQLException("Failed to serialize JsonNode to JSON string: " + e.getMessage(), e);
         }
     }
@@ -85,7 +90,22 @@ public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
         try {
             return OBJECT_MAPPER.readTree(json);
         } catch (JsonProcessingException e) {
+            log.error("JSON 反序列化失败: message={}, summary={}", e.getMessage(), summarizeJson(json), e);
             throw new SQLException("Failed to deserialize JSON string to JsonNode: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 生成 JSON 字符串的摘要信息（避免日志泄露敏感数据）
+     *
+     * @param json JSON 字符串
+     * @return 摘要信息，包含长度
+     */
+    private String summarizeJson(String json) {
+        if (json == null) {
+            return JSON_NULL_SUMMARY;
+        }
+        int len = json.length();
+        return "len=" + len;
     }
 }

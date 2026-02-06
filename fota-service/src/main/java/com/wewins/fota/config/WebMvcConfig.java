@@ -1,7 +1,7 @@
 package com.wewins.fota.config;
 
+import com.wewins.fota.security.web.UserContextCleanupInterceptor;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -19,7 +19,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @AllArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private UserContextCleanupInterceptor userContextCleanupInterceptor;
+    private final UserContextCleanupInterceptor userContextCleanupInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

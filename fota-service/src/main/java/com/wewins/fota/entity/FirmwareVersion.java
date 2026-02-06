@@ -91,7 +91,7 @@ public class FirmwareVersion implements Serializable {
      * 通过 JsonNodeTypeHandler 自动处理 JsonNode 与 JSONB 之间的转换
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode tags;
 
     /**
@@ -121,7 +121,7 @@ public class FirmwareVersion implements Serializable {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode meta;
 
     /**

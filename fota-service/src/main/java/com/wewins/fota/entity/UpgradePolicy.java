@@ -71,7 +71,7 @@ public class UpgradePolicy implements Serializable {
      * 如果为空，表示不限制源版本
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode sourceVersions;
 
     /**
@@ -111,7 +111,7 @@ public class UpgradePolicy implements Serializable {
      * 如果为空，表示不限制设备ID
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode targetDeviceIds;
 
     /**
@@ -133,7 +133,7 @@ public class UpgradePolicy implements Serializable {
      * 如果为空，表示不限制设备标签
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode targetDeviceTags;
 
     /**
@@ -167,7 +167,7 @@ public class UpgradePolicy implements Serializable {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.config.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode timeWindow;
 
     /**

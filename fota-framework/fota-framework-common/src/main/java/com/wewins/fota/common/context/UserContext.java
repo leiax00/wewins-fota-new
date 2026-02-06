@@ -1,7 +1,6 @@
-package com.wewins.fota.config;
+package com.wewins.fota.common.context;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 用户上下文
@@ -38,9 +37,8 @@ import org.slf4j.LoggerFactory;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@Slf4j
 public class UserContext {
-
-    private static final Logger log = LoggerFactory.getLogger(UserContext.class);
 
     /**
      * 使用 ThreadLocal 存储用户ID，确保线程安全
