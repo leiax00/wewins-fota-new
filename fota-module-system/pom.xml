@@ -38,7 +38,7 @@
         </dependency>
         <dependency>
             <groupId>com.wewins</groupId>
-            <artifactId>fota-framework-security</artifactId>
+            <artifactId>fota-framework-web</artifactId>
         </dependency>
 
         <!-- Spring Boot -->

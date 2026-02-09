@@ -1,7 +1,9 @@
-package com.wewins.fota.security.jwt;
+package com.wewins.fota.web.jwt;
 
 import com.wewins.fota.common.context.UserContext;
 import com.wewins.fota.security.exception.TokenExpiredException;
+import com.wewins.fota.security.jwt.JwtUtil;
+import com.wewins.fota.security.jwt.SysUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +22,15 @@ import java.io.IOException;
 /**
  * JWT 认证过滤器
  * <p>
- * 从请求头中提取 JWT Token，验证并设置认证信息
+ * 从请求头中提取 JWT Token，验证并设置认证信息，并管理用户上下文生命周期。
+ * </p>
+ * <p>
+ * <b>重要说明：</b>
+ * <ul>
+ *   <li>本过滤器在 finally 块中清理 UserContext，适用于同步请求</li>
+ *   <li>如需支持异步请求（@Async、DeferredResult 等），需额外配置 AsyncListener 进行清理</li>
+ *   <li>当前项目未使用 Servlet 异步特性，因此无需额外配置</li>
+ * </ul>
  * </p>
  *
  * @author FOTA Team

@@ -31,13 +31,16 @@ import lombok.extern.slf4j.Slf4j;
  * 与 Spring Security 集成：
  * </p>
  * <p>
- * 如果项目集成了 Spring Security，建议使用 {@code SecurityUserContext} 工具类，
- * 它会从 {@code SecurityContextHolder} 中获取用户信息，并自动回退到 ThreadLocal。
+ * 在 Web 应用中，{@link com.wewins.fota.web.jwt.JwtAuthenticationFilter} 会自动从 JWT Token
+ * 中解析用户ID并设置到 UserContext，并在请求结束时自动清理。
+ * </p>
+ * <p>
+ * 在业务代码中，直接使用 {@code UserContext.getCurrentUserId()} 即可获取当前用户ID。
  * </p>
  *
  * @author FOTA Team
  * @since 2026-02-05
- * @see com.wewins.fota.security.context.SecurityUserContext
+ * @see com.wewins.fota.web.jwt.JwtAuthenticationFilter
  */
 @Slf4j
 public class UserContext {

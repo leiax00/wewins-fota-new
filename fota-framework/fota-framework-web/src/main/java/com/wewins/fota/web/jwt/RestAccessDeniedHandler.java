@@ -1,4 +1,4 @@
-package com.wewins.fota.security.jwt;
+package com.wewins.fota.web.jwt;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

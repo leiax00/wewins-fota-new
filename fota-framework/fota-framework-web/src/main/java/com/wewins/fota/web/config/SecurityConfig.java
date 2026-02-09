@@ -1,8 +1,8 @@
-package com.wewins.fota.system.config;
+package com.wewins.fota.web.config;
 
-import com.wewins.fota.security.jwt.JwtAuthenticationFilter;
-import com.wewins.fota.security.jwt.RestAccessDeniedHandler;
-import com.wewins.fota.security.jwt.RestAuthenticationEntryPoint;
+import com.wewins.fota.web.jwt.JwtAuthenticationFilter;
+import com.wewins.fota.web.jwt.RestAccessDeniedHandler;
+import com.wewins.fota.web.jwt.RestAuthenticationEntryPoint;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
