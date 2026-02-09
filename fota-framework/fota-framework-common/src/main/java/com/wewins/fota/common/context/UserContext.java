@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>在拦截器或过滤器中，从 JWT Token 或 Session 中解析用户ID并设置到上下文</li>
  *   <li>在业务代码中，通过 UserContext.getCurrentUserId() 获取当前用户ID</li>
+ *   <li>在异步线程中，通过 runWithUser() 方法设置用户上下文</li>
  *   <li>在请求结束后，清理 ThreadLocal 防止内存泄漏</li>
  * </ul>
  * </p>
@@ -21,21 +22,22 @@ import lombok.extern.slf4j.Slf4j;
  * 注意事项：
  * <ul>
  *   <li>必须在请求结束时调用 clear() 方法清理 ThreadLocal</li>
- *   <li>建议在拦截器的 afterCompletion 中调用 clear()</li>
+ *   <li>建议在过滤器的 finally 块中调用 clear()</li>
  *   <li>如果没有设置用户ID，getCurrentUserId() 返回 null</li>
  * </ul>
  * </p>
  *
  * <p>
- * 未来改进：
- * <ul>
- *   <li>集成 Spring Security，从 SecurityContextHolder 获取</li>
- *   <li>扩展支持更多用户信息（用户名、角色等）</li>
- * </ul>
+ * 与 Spring Security 集成：
+ * </p>
+ * <p>
+ * 如果项目集成了 Spring Security，建议使用 {@code SecurityUserContext} 工具类，
+ * 它会从 {@code SecurityContextHolder} 中获取用户信息，并自动回退到 ThreadLocal。
  * </p>
  *
  * @author FOTA Team
  * @since 2026-02-05
+ * @see com.wewins.fota.security.context.SecurityUserContext
  */
 @Slf4j
 public class UserContext {
