@@ -1,0 +1,7 @@
+# Security 配置
+security:
+  jwt:
+    # JWT 密钥（生产环境必须修改为随机字符串，至少 32 字符）
+    secret: "wewins-fota-jwt-secret-key-change-in-production-2026"
+    # Token 过期时间（秒），默认 2 小时
+    expire-seconds: 7200
