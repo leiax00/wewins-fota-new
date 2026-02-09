@@ -3,8 +3,8 @@ databaseChangeLog:
   # 用于管理 FOTA 系统的数据库迁移脚本
   #
   # 命名规范:
-  # - 文件名格式: V{version}__{description}.sql
-  # - 示例: V1__init_core.sql, V2__add_user_table.sql
+  # - 文件名格式: yyyyMMdd_{version}__{description}.sql  (version按每日的序号，两位数字)
+  # - 示例: 0260209-01_init_core.sql, 20260209-02_init_system_tables.sql
   #
   # 执行顺序:
   # 1. 按照 changesets 定义的顺序执行
@@ -12,22 +12,23 @@ databaseChangeLog:
   # 3. 执行记录保存在 databasechangelog 表中
 
   - changeSet:
-      id: V1__init_core
+      id: 20260209-01_init_core
       author: fota-team
-      comments: 初始化核心表结构（products, devices, firmware_versions, upgrade_policies）
+      comment: 初始化核心表结构（products, devices, firmware_versions, upgrade_policies）
       changes:
         - sqlFile:
-            path: changes/V1__init_core.sql
+            path: changes/20260209-01_init_core.sql
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
 
-  # 预留后续 changeset 位置
-  # 示例:
-  # - changeSet:
-  #     id: V2__add_user_table
-  #     author: fota-team
-  #     changes:
-  #       - sqlFile:
-  #           path: changes/V2__add_user_table.sql
-  #           relativeToChangelogFile: true
+  - changeSet:
+      id: 20260209-02_init_system_tables
+      author: fota-team
+      comment: 初始化系统管理模块核心表结构（users, roles, permissions, dict）
+      changes:
+        - sqlFile:
+            path: changes/20260209-02_init_system_tables.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

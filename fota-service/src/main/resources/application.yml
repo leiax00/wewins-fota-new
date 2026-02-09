@@ -7,7 +7,7 @@
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.wewins.fota.entity
+  type-aliases-package: com.wewins.fota.entity,com.wewins.fota.system.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
