@@ -217,7 +217,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .distinct()
                 .collect(Collectors.toList());
 
-        return roleMapper.selectBatchIds(roleIds);
+        return roleMapper.selectByIds(roleIds);
     }
 
     @Override

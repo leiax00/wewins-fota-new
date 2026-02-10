@@ -19,7 +19,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 0.1.0
  */
 @SpringBootApplication
-@MapperScan("com.wewins.fota.mapper")
+@MapperScan("com.wewins.fota.**.mapper")
 public class FotaApplication {
 
     /**

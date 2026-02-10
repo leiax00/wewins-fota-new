@@ -16,7 +16,7 @@
 -- 1. sys_users (系统用户表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_users (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     username VARCHAR(64) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(128),
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_users_deleted_at ON sys_users(deleted_at) WHER
 -- 2. sys_roles (系统角色表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_roles (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     code VARCHAR(64) NOT NULL,
     name VARCHAR(128) NOT NULL,
     description VARCHAR(256),
@@ -86,7 +86,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_roles_deleted_at ON sys_roles(deleted_at) WHER
 -- 3. sys_permissions (系统权限表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_permissions (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     code VARCHAR(128) NOT NULL,
     name VARCHAR(128) NOT NULL,
     type VARCHAR(16) NOT NULL,
@@ -123,7 +123,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_permissions_deleted_at ON sys_permissions(dele
 -- 4. sys_user_role (用户-角色关联表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_user_role (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_user_role_deleted_at ON sys_user_role(deleted_
 -- 5. sys_role_permission (角色-权限关联表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_role_permission (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     role_id BIGINT NOT NULL,
     permission_id BIGINT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -177,7 +177,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_role_permission_deleted_at ON sys_role_permiss
 -- 6. sys_dict_type (字典类型表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_dict_type (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     code VARCHAR(64) NOT NULL,
     name VARCHAR(128) NOT NULL,
     i18n_key VARCHAR(128),
@@ -209,7 +209,7 @@ CREATE INDEX IF NOT EXISTS ix_sys_dict_type_deleted_at ON sys_dict_type(deleted_
 -- 7. sys_dict_item (字典项表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_dict_item (
-    id BIGINT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     dict_type_id BIGINT NOT NULL,
     label VARCHAR(128) NOT NULL,
     value VARCHAR(128) NOT NULL,

@@ -35,7 +35,7 @@ spring:
 
   # PostgreSQL 主数据源配置
   datasource:
-    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:5432/fota}
+    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:wewins@2025}
     driver-class-name: org.postgresql.Driver
