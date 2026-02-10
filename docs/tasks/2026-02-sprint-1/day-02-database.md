@@ -3,7 +3,7 @@
 > **任务编号**: T02
 > **所属 Sprint**: Sprint 1
 > **所属 Day**: Day 2
-> **状态**: ⏳ In Progress
+> **状态**: ✅ Completed
 
 ---
 
@@ -45,96 +45,96 @@
 ## 📦 交付物
 
 ### 数据库脚本
-- [ ] `db/changelog/db.changelog-master.yaml`
-- [ ] `db/changelog/changes/V1__init_core.sql`
-- [ ] `docs/schema-overview.md`
+- [x] `db/changelog/db.changelog-master.yaml`
+- [x] `db/changelog/changes/V1__init_core.sql`
+- [x] `docs/schema-overview.md`
 
 ### 代码
-- [ ] 实体类（4个）
-- [ ] Mapper 接口（4个）
-- [ ] 数据源配置类
+- [x] 实体类（4个）
+- [x] Mapper 接口（4个）
+- [x] 数据源配置类
 
 ### 配置文件
-- [ ] `application.yml` 数据源配置
-- [ ] Liquibase 配置
+- [x] `application.yml` 数据源配置
+- [x] Liquibase 配置
 
 ---
 
 ## 🔨 任务拆解
 
 ### 任务 2-1: 创建 Liquibase changelog 结构 (30分钟)
-- [ ] 创建 `db/changelog/` 目录
-- [ ] 创建 `db.changelog-master.yaml`
-- [ ] 配置 Spring Boot 集成
+- [x] 创建 `db/changelog/` 目录
+- [x] 创建 `db.changelog-master.yaml`
+- [x] 配置 Spring Boot 集成
 
 **验收标准**:
-- [ ] 目录结构正确
-- [ ] Spring Boot 能识别 changelog
+- [x] 目录结构正确
+- [x] Spring Boot 能识别 changelog
 
 ### 任务 2-2: 设计核心表结构 (2小时)
-- [ ] 设计 products 表
-- [ ] 设计 devices 表
-- [ ] 设计 firmware_versions 表
-- [ ] 设计 upgrade_policies 表
+- [x] 设计 products 表
+- [x] 设计 devices 表
+- [x] 设计 firmware_versions 表
+- [x] 设计 upgrade_policies 表
 
 **验收标准**:
-- [ ] 表结构符合业务需求
-- [ ] 主键、外键设计合理
-- [ ] 索引设计正确
+- [x] 表结构符合业务需求
+- [x] 主键、外键设计合理
+- [x] 索引设计正确
 
 ### 任务 2-3: 创建 MyBatis-Plus 实体和 Mapper (2小时)
-- [ ] 创建 Product.java
-- [ ] 创建 Device.java
-- [ ] 创建 FirmwareVersion.java
-- [ ] 创建 UpgradePolicy.java
-- [ ] 创建对应的 Mapper 接口
+- [x] 创建 Product.java
+- [x] 创建 Device.java
+- [x] 创建 FirmwareVersion.java
+- [x] 创建 UpgradePolicy.java
+- [x] 创建对应的 Mapper 接口
 
 **验收标准**:
-- [ ] 实体使用 Lombok 注解
-- [ ] Mapper 继承 BaseMapper
-- [ ] MyBatis-Plus 扫描配置正确
+- [x] 实体使用 Lombok 注解
+- [x] Mapper 继承 BaseMapper
+- [x] MyBatis-Plus 扫描配置正确
 
 ### 任务 2-4: 配置多数据源 (2小时)
-- [ ] 配置 PostgreSQL 主数据源
-- [ ] 配置 ClickHouse 分析数据源
-- [ ] 创建 DataSourceConfig.java
-- [ ] 创建 MyBatisPlusConfig.java
+- [x] 配置 PostgreSQL 主数据源
+- [x] 配置 ClickHouse 分析数据源
+- [x] 创建 DataSourceConfig.java
+- [x] 创建 MyBatisPlusConfig.java
 
 **验收标准**:
-- [ ] PostgreSQL 连接正常
-- [ ] ClickHouse 连接正常
-- [ ] 两个数据源独立工作
+- [x] PostgreSQL 连接正常
+- [x] ClickHouse 连接正常
+- [x] 两个数据源独立工作
 
 ### 任务 2-5: 验证数据库集成 (1.5小时)
-- [ ] Liquibase 迁移测试
-- [ ] MyBatis-Plus CRUD 测试
-- [ ] 编译验证
-- [ ] 合并到 develop
+- [x] Liquibase 迁移测试
+- [x] MyBatis-Plus CRUD 测试
+- [x] 编译验证
+- [x] 合并到 develop
 
 **验收标准**:
-- [ ] 表创建成功
-- [ ] CRUD 操作正常
-- [ ] 编译通过
-- [ ] 成功合并
+- [x] 表创建成功
+- [x] CRUD 操作正常
+- [x] 编译通过
+- [x] 成功合并
 
 ---
 
 ## ✅ 测试清单
 
 ### Liquibase 测试
-- [ ] 执行 changelog 成功
-- [ ] 表结构正确创建
-- [ ] 索引和约束生效
+- [x] 执行 changelog 成功
+- [x] 表结构正确创建
+- [x] 索引和约束生效
 
 ### MyBatis-Plus 测试
-- [ ] 插入数据成功
-- [ ] 查询数据成功
-- [ ] 更新数据成功
-- [ ] 删除数据成功
+- [x] 插入数据成功
+- [x] 查询数据成功
+- [x] 更新数据成功
+- [x] 删除数据成功
 
 ### 多数据源测试
-- [ ] PostgreSQL 操作正常
-- [ ] ClickHouse 查询正常
+- [x] PostgreSQL 操作正常
+- [x] ClickHouse 查询正常
 
 ---
 
@@ -333,13 +333,13 @@ spring:
 ## 📊 当前进度
 
 ```
-Day 2 进度: [░░░░░░░░░░░░░░░░░] 0%
+Day 2 进度: [████████████████████] 100% ✅
 
-任务 2-1: 创建 Liquibase changelog 结构        [░░░░░░░░░░░░░░░░░░░░] 0%
-任务 2-2: 设计核心表结构                     [░░░░░░░░░░░░░░░░░░░░] 0%
-任务 2-3: 创建 MyBatis-Plus 实体和 Mapper        [░░░░░░░░░░░░░░░░░░░░░] 0%
-任务 2-4: 配置多数据源                       [░░░░░░░░░░░░░░░░░░░░░] 0%
-任务 2-5: 验证数据库集成                     [░░░░░░░░░░░░░░░░░░░░] 0%
+任务 2-1: 创建 Liquibase changelog 结构        [████████████████████] 100% ✅
+任务 2-2: 设计核心表结构                     [████████████████████] 100% ✅
+任务 2-3: 创建 MyBatis-Plus 实体和 Mapper        [████████████████████] 100% ✅
+任务 2-4: 配置多数据源                       [████████████████████] 100% ✅
+任务 2-5: 验证数据库集成                     [████████████████████] 100% ✅
 ```
 
 ---
@@ -358,4 +358,5 @@ Day 2 进度: [░░░░░░░░░░░░░░░░░] 0%
 ---
 
 **任务开始时间**: 2026-02-05 19:00
-**当前状态**: ⏳ In Progress
+**任务完成时间**: 2026-02-06 18:00
+**当前状态**: ✅ Completed
