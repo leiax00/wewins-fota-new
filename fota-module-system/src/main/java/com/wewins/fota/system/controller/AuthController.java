@@ -1,17 +1,20 @@
 package com.wewins.fota.system.controller;
 
+import com.wewins.fota.common.context.UserContext;
+import com.wewins.fota.security.jwt.JwtUtil;
+import com.wewins.fota.security.jwt.SysUserDetails;
 import com.wewins.fota.system.dto.LoginRequest;
 import com.wewins.fota.system.dto.LoginResponse;
 import com.wewins.fota.system.dto.Response;
 import com.wewins.fota.system.entity.User;
-import com.wewins.fota.security.jwt.JwtUtil;
-import com.wewins.fota.security.jwt.SysUserDetails;
+import com.wewins.fota.system.exception.ErrorCode;
 import com.wewins.fota.system.service.IUserService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -90,5 +93,56 @@ public class AuthController {
         log.info("用户登录成功: username={}, userId={}", username, user.getId());
 
         return Response.success(response);
+    }
+
+    /**
+     * 登出
+     *
+     * @return 登出响应
+     */
+    @PostMapping("/logout")
+    public Response<Void> logout() {
+        Long userId = UserContext.getCurrentUserId();
+
+        if (userId == null) {
+            log.warn("登出请求未携带有效用户信息");
+            return Response.error(ErrorCode.UNAUTHORIZED.getCode(), ErrorCode.UNAUTHORIZED.getMessage());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("用户登出请求: userId={}", userId);
+        }
+
+        log.info("用户登出请求已处理: userId={}", userId);
+
+        return Response.success();
+    }
+
+    /**
+     * 当前用户信息
+     *
+     * @return 当前用户信息
+     */
+    @GetMapping("/current")
+    public Response<User> current() {
+        Long userId = UserContext.getCurrentUserId();
+
+        if (userId == null) {
+            log.warn("获取当前用户信息：未登录");
+            return Response.error(ErrorCode.UNAUTHORIZED.getCode(), ErrorCode.UNAUTHORIZED.getMessage());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("获取当前用户信息: userId={}", userId);
+        }
+
+        User user = userService.getUserById(userId);
+
+        if (user == null) {
+            log.warn("获取当前用户信息：用户不存在, userId={}", userId);
+            return Response.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
+        }
+
+        return Response.success(user);
     }
 }
