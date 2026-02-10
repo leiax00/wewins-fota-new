@@ -23,10 +23,10 @@
 
 ### 验收标准
 - [x] 项目编译打包成功
-- [ ] 数据库表创建成功
-- [ ] MyBatis-Plus CRUD 正常工作
+- [x] 数据库表创建成功
+- [x] MyBatis-Plus CRUD 正常工作
 - [ ] Redis 缓存正常工作
-- [ ] 基础 API 可用
+- [x] 基础 API 可用（系统管理模块）
 - [ ] 单元测试覆盖率 ≥ 60%
 
 ---
@@ -75,60 +75,87 @@
 
 ---
 
-## 📅 Day 2: PostgreSQL 数据库架构 ⏳
+## 📅 Day 2: PostgreSQL 数据库架构 ✅
 
-**状态**: ⏳ 进行中
+**状态**: ✅ 已完成 (2026-02-06)
 **分支**: `feature/database-schema`
-**预计时间**: 1天
+**完成时间**: 1天
 
-### 任务列表
+### 完成内容
 
-#### 2-1: 创建 Liquibase changelog 结构
-- [ ] 创建 `db/changelog/db.changelog-master.yaml`
-- [ ] 创建 `db/changelog/changes/` 目录
-- [ ] 配置 Spring Boot 集成
+#### 核心表结构
+- [x] products 表（产品表）
+- [x] devices 表（设备表）
+- [x] firmware_versions 表（固件版本表）
+- [x] upgrade_policies 表（升级策略表）
 
-#### 2-2: 设计核心表结构
-- [ ] products 表（产品表）
-- [ ] devices 表（设备表）
-- [ ] firmware_versions 表（固件版本表）
-- [ ] upgrade_policies 表（升级策略表）
+#### 增强功能
+- [x] 审计字段（created_by, updated_by）
+- [x] 软删除（deleted_at）
+- [x] 设备标签（JSONB）
+- [x] 设备导入批次
+- [x] 固件版本元数据
+- [x] 键值对标签（KV tags）
+- [x] 升级策略时间窗口
 
-#### 2-3: 创建 MyBatis-Plus 实体和 Mapper
-- [ ] Product.java
-- [ ] Device.java
-- [ ] FirmwareVersion.java
-- [ ] UpgradePolicy.java
-
-#### 2-4: 配置多数据源
-- [ ] PostgreSQL 主数据源配置
-- [ ] ClickHouse 分析数据源配置
-- [ ] MyBatis-Plus 配置
-
-#### 2-5: 验证数据库集成
-- [ ] Liquibase 迁移测试
-- [ ] MyBatis-Plus CRUD 测试
-- [ ] 编译验证
+#### MyBatis-Plus 集成
+- [x] Product.java, Device.java, FirmwareVersion.java, UpgradePolicy.java
+- [x] 对应 Mapper 接口
+- [x] 多数据源配置（PostgreSQL + ClickHouse）
+- [x] Liquibase changelog 结构
+- [x] 审计字段自动填充（AuditMetaObjectHandler）
 
 ### 验收标准
-- [ ] Liquibase 脚本执行成功
-- [ ] 表结构创建成功
-- [ ] MyBatis-Plus 插入查询测试通过
-- [ ] 多数据源配置正确
+- [x] Liquibase 脚本执行成功
+- [x] 表结构创建成功
+- [x] MyBatis-Plus 插入查询测试通过
+- [x] 多数据源配置正确
 
 ---
 
-## 📅 Day 3: Redis 缓存架构 ⏸️
+## 📅 Day 3: 系统管理与安全认证 ✅
 
-**状态**: ⏸️ 待开始
-**预计时间**: 1天
+**状态**: ✅ 已完成 (2026-02-10)
+**分支**: `feature/database-schema`
+**完成时间**: 4天（含 Day 2）
 
-### 任务列表
-- [ ] Redis 配置
-- [ ] 缓存键设计规范
-- [ ] 设备活跃度 Bitmap 实现
-- [ ] 策略缓存实现
-- [ ] 限流功能
+### 完成内容
+
+#### 系统管理模块（RBAC）
+- [x] 用户管理（sys_users）
+- [x] 角色管理（sys_roles）
+- [x] 权限管理（sys_permissions）
+- [x] 用户-角色关联（sys_user_role）
+- [x] 角色-权限关联（sys_role_permission）
+- [x] 字典管理（sys_dict_type, sys_dict_item）
+
+#### JWT 认证模块
+- [x] JwtUtil（Token 生成和验证）
+- [x] SysUserDetails（Spring Security 集成）
+- [x] JwtAuthenticationFilter（JWT 过滤器）
+- [x] RestAuthenticationEntryPoint（401 处理）
+- [x] RestAccessDeniedHandler（403 处理）
+- [x] SecurityConfig（Spring Security 配置）
+
+#### 用户上下文管理
+- [x] UserContext（ThreadLocal 用户上下文）
+- [x] AuditMetaObjectHandler（审计字段自动填充）
+- [x] 请求结束自动清理
+
+#### 模块架构优化
+- [x] 拆分 fota-framework-web 模块
+- [x] 删除 SecurityUserContext（简化架构）
+- [x] 统一用户上下文清理策略
+- [x] 系统表 ID 改用 BIGSERIAL
+
+### API 接口
+- [x] `/api/sys/auth/login` - 用户登录
+- [x] `/api/sys/auth/logout` - 用户登出
+- [x] `/api/sys/auth/current` - 当前用户信息
+- [x] `/api/sys/users/*` - 用户管理 CRUD
+- [x] `/api/sys/roles/*` - 角色管理 CRUD
+- [x] `/api/sys/permissions/*` - 权限管理 CRUD
+- [x] `/api/sys/dict-*` - 字典管理 CRUD
 
 ---
 
@@ -180,12 +207,12 @@
 ## 📊 Sprint 进度
 
 ```
-Sprint 1: [████░░░░░░░░░░░░] 10% (Day 1/5)
+Sprint 1: [██████████░░░░░░] 60% (Day 1-3/5)
 
-Day 1: ✅ 项目基础架构搭建
-Day 2: ⏳ PostgreSQL 数据库架构
-Day 3: ⏸️ Redis 缓存架构
-Day 4: ⏸️ 简化认证与授权
+Day 1: ✅ 项目基础架构搭建 (2026-02-05)
+Day 2: ✅ PostgreSQL 数据库架构 (2026-02-06)
+Day 3: ✅ 系统管理与安全认证 (2026-02-10)
+Day 4: ⏸️ Redis 缓存架构
 Day 5: ⏸️ 集成测试与验收
 ```
 
@@ -203,9 +230,22 @@ Day 5: ⏸️ 集成测试与验收
 
 ## 📝 变更日志
 
+### 2026-02-10
+- ✅ Day 3 完成（系统管理与安全认证）
+- ✅ 用户、角色、权限、字典管理模块
+- ✅ JWT 认证和 Spring Security 集成
+- ✅ Web 安全模块重构
+- ✅ 系统表 BIGSERIAL 主键优化
+
+### 2026-02-06
+- ✅ Day 2 完成（PostgreSQL 数据库架构）
+- ✅ 核心业务表结构（products, devices, firmware_versions, upgrade_policies）
+- ✅ 审计字段和软删除
+- ✅ 设备标签和导入批次功能
+- ✅ MyBatis-Plus 集成
+
 ### 2026-02-05
-- ✅ Day 1 完成
-- 🔄 Day 2 进行中
+- ✅ Day 1 完成（项目基础架构搭建）
 - ✅ 文档重组（创建分类目录结构）
 
 ---
