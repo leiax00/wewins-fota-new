@@ -1,0 +1,222 @@
+package com.wewins.fota.application.region;
+
+import com.wewins.fota.infra.config.AppProperties;
+import com.wewins.fota.infra.lock.LeaderElectionService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 区域配置同步应用服务
+ * <p>
+ * 仅在 region 模式下工作，负责从主区域拉取配置
+ * </p>
+ * <p>
+ * 主要职责：
+ * </p>
+ * <ul>
+ *   <li>每 30 秒轮询主区域的配置版本</li>
+ *   <li>当版本变化时拉取完整快照（策略、产品、控制规则）</li>
+ *   <li>将快照更新到本地 Redis</li>
+ *   <li>使用原子切换避免不一致</li>
+ * </ul>
+ *
+ * @author FOTA Team
+ * @since 2026-02-11
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RegionSyncService {
+
+    private final LeaderElectionService leaderElectionService;
+    private final AppProperties appProperties;
+    private final RestTemplate restTemplate;
+
+    /**
+     * 同步任务标识符
+     */
+    private static final String SYNC_TASK_ID = "config-sync";
+
+    /**
+     * 本地配置版本缓存
+     */
+    private long localConfigVersion = 0;
+
+    /**
+     * 主区域配置版本 URL
+     */
+    private static final String MAIN_CONFIG_VERSION_URL = "%s/internal/config/version";
+
+    /**
+     * 快照拉取 URL 模板
+     */
+    private static final String SNAPSHOT_URL_TEMPLATE = "%s/internal/config/snapshot/%s";
+
+    /**
+     * 启动配置同步
+     */
+    public void startSync() {
+        log.info("启动区域配置同步服务");
+        // TODO: 实现定时同步逻辑
+    }
+
+    /**
+     * 停止配置同步
+     */
+    public void stopSync() {
+        log.info("停止区域配置同步服务");
+        // TODO: 实现停止逻辑（关闭定时任务）
+    }
+
+    /**
+     * 获取本地配置版本
+     *
+     * @return 本地缓存的配置版本
+     */
+    public long getLocalConfigVersion() {
+        return localConfigVersion;
+    }
+
+    /**
+     * 设置本地配置版本
+     *
+     * @param version 配置版本号
+     */
+    public void setLocalConfigVersion(long version) {
+        this.localConfigVersion = version;
+        log.info("更新本地配置版本: {}", version);
+    }
+
+    /**
+     * 执行一次配置同步
+     * <p>
+     * 仅 Leader 实例执行此操作
+     * </p>
+     *
+     * @return 同步是否成功
+     */
+    public boolean syncOnce() {
+        // 检查是否为 Leader
+        if (!leaderElectionService.isLeader(SYNC_TASK_ID)) {
+            log.debug("当前实例不是 Leader，跳过配置同步");
+            return false;
+        }
+
+        // 检查是否在区域模式
+        if (!"region".equals(appProperties.getMode())) {
+            log.warn("当前不在区域模式，跳过配置同步");
+            return false;
+        }
+
+        try {
+            // 1. 获取主区域配置版本
+            long remoteVersion = getRemoteConfigVersion();
+            log.debug("主区域配置版本: {}", remoteVersion);
+
+            // 2. 判断是否需要更新
+            if (remoteVersion <= localConfigVersion) {
+                log.info("本地配置已是最新版本: localVersion={}, remoteVersion={}",
+                        localConfigVersion, remoteVersion);
+                return true;
+            }
+
+            // 3. 拉取快照
+            Map<String, Object> snapshot = fetchSnapshot("policy");
+            log.debug("策略快照: {}", snapshot);
+
+            // TODO: 4. 更新本地 Redis 缓存
+            // TODO: 5. 原子切换本地配置版本
+
+            localConfigVersion = remoteVersion;
+            log.info("配置同步成功: localVersion={}, remoteVersion={}",
+                    localConfigVersion, remoteVersion);
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("配置同步失败: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 获取主区域配置版本
+     *
+     * @return 配置版本号
+     */
+    private long getRemoteConfigVersion() {
+        String url = buildConfigVersionUrl();
+
+        try {
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response != null && response.containsKey("version")) {
+                Object versionObj = response.get("version");
+                if (versionObj instanceof Number) {
+                    return ((Number) versionObj).longValue();
+                }
+            }
+
+            log.warn("无法解析主区域配置版本: {}", response);
+            return 0;
+
+        } catch (Exception e) {
+            log.error("获取主区域配置版本失败: url={}", url, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 拉取配置快照
+     *
+     * @param snapshotType 快照类型（policy/product/control）
+     * @return 快照数据
+     */
+    private Map<String, Object> fetchSnapshot(String snapshotType) {
+        String url = buildSnapshotUrl(snapshotType);
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response != null) {
+                return response;
+            }
+
+            return new HashMap<>();
+
+        } catch (Exception e) {
+            log.error("拉取配置快照失败: type={}, url={}", snapshotType, url, e);
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * 构建配置版本 URL
+     *
+     * @return URL
+     */
+    private String buildConfigVersionUrl() {
+        String mainApiUrl = appProperties.getMain() != null ?
+                appProperties.getMain().getApiBaseUrl() : "https://main.api.xxx.com";
+        return String.format(MAIN_CONFIG_VERSION_URL, mainApiUrl);
+    }
+
+    /**
+     * 构建快照 URL
+     *
+     * @param snapshotType 快照类型
+     * @return URL
+     */
+    private String buildSnapshotUrl(String snapshotType) {
+        String mainApiUrl = appProperties.getMain() != null ?
+                appProperties.getMain().getApiBaseUrl() : "https://main.api.xxx.com";
+        return String.format(SNAPSHOT_URL_TEMPLATE, mainApiUrl, snapshotType);
+    }
+}

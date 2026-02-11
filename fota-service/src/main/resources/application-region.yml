@@ -4,15 +4,30 @@
 # - 设备 API（check/report）
 # - 配置同步（从主区域轮询配置）
 # - 数据转发（Forwarder 转发聚合数据到主区域）
-
-spring:
-  config:
-    activate:
-      on-profile: region
+#
+# 使用说明：通过 spring.profiles.active=region 加载此配置文件
 
 # 区域模式标识
 app:
   mode: region
+
+  # 区域配置
+  region:
+    code: ${REGION_CODE:us-east}
+    timeZone: ${TIME_ZONE:America/New_York}
+    defaultQuota: 100000
+    apiBaseUrl: ${REGION_API_URL:https://region-us-east.api.xxx.com}
+    syncEndpoint: ${MAIN_SYNC_ENDPOINT:https://main.api.xxx.com/internal/config}
+
+  # 集群配置
+  cluster:
+    enabled: true
+    lock:
+      prefix: fota:lock:
+      leaseTime: 30
+    leader:
+      enabled: true
+      renewInterval: 10
 
 # 功能开关（区域模式）
 feature:

@@ -1,13 +1,13 @@
 # FOTA 平台主配置文件
 #
-# 支持两种运行模式：
-# - MODE=main：主区域模式（管理后台、配置中心、数据汇聚）
-# - MODE=region：区域模式（设备 API、配置同步、数据转发）
+# 支持两种运行模式（通过 app.mode 配置）：
+# - app.mode=main：主区域模式（管理后台、配置中心、数据汇聚）
+# - app.mode=region：区域模式（设备 API、配置同步、数据转发）
 
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.wewins.fota.entity,com.wewins.fota.system.entity
+  type-aliases-package: com.wewins.fota.domain.device.entity,com.wewins.fota.domain.product.entity,com.wewins.fota.domain.firmware.entity,com.wewins.fota.domain.policy.entity,com.wewins.fota.system.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
@@ -26,11 +26,10 @@ spring:
   application:
     name: wewins-fota-new
 
-  # 激活的 Profile（通过 MODE 环境变量映射）
-  # MODE=main → spring.profiles.active=main
-  # MODE=region → spring.profiles.active=region
+  # 激活的 Profile
+  # 使用 spring.profiles.active 控制环境（dev/test/prod）
   profiles:
-    active: ${MODE:main}
+    active: ${SPRING_PROFILES_ACTIVE:dev}
     include: security
 
   # PostgreSQL 主数据源配置
@@ -121,7 +120,7 @@ logging:
 app:
   # 运行模式：main 或 region
   # 用于条件装配 @ConditionalOnProperty(name = "app.mode", havingValue = "main/region")
-  mode: ${MODE:main}
+  mode: ${APP_MODE:main}
 
   # 区域标识：main, jp, sg, eu 等
   region: ${REGION:main}

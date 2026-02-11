@@ -27,7 +27,10 @@ import javax.sql.DataSource;
 @Configuration
 @MapperScan(
         basePackages = {
-                "com.wewins.fota.mapper",
+                "com.wewins.fota.domain.device.mapper",
+                "com.wewins.fota.domain.product.mapper",
+                "com.wewins.fota.domain.firmware.mapper",
+                "com.wewins.fota.domain.policy.mapper",
                 "com.wewins.fota.system.mapper"
         },
         sqlSessionFactoryRef = "primarySqlSessionFactory",

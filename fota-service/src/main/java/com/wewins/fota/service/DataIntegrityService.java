@@ -1,9 +1,9 @@
 package com.wewins.fota.service;
 
-import com.wewins.fota.entity.Product;
-import com.wewins.fota.mapper.FirmwareVersionMapper;
-import com.wewins.fota.mapper.ProductMapper;
-import com.wewins.fota.mapper.UpgradePolicyMapper;
+import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.firmware.mapper.FirmwareVersionMapper;
+import com.wewins.fota.domain.product.mapper.ProductMapper;
+import com.wewins.fota.domain.policy.mapper.UpgradePolicyMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

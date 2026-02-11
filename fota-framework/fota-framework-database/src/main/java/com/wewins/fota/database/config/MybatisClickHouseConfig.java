@@ -28,7 +28,7 @@ import javax.sql.DataSource;
 @Configuration
 @ConditionalOnProperty(name = "spring.datasource.clickhouse.url")
 @MapperScan(
-        basePackages = "com.wewins.fota.clickhouse.mapper",
+        basePackages = "com.wewins.fota.analytics.mapper",
         sqlSessionFactoryRef = "clickhouseSqlSessionFactory",
         sqlSessionTemplateRef = "clickhouseSqlSessionTemplate"
 )
@@ -53,7 +53,7 @@ public class MybatisClickHouseConfig {
         factory.setConfiguration(configuration);
         factory.setMapperLocations(
                 new PathMatchingResourcePatternResolver()
-                        .getResources("classpath*:mapper/clickhouse/**/*.xml")
+                        .getResources("classpath*:mapper/analytics/**/*.xml")
         );
         return factory.getObject();
     }
