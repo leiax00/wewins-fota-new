@@ -1,10 +1,9 @@
 package com.wewins.fota.system.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.common.dto.SortingField;
 import com.wewins.fota.system.dto.PageResponse;
 import com.wewins.fota.system.dto.Response;
+import com.wewins.fota.system.dto.UserPageReqVO;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.User;
 import com.wewins.fota.system.exception.BizException;
@@ -13,17 +12,13 @@ import com.wewins.fota.system.service.IUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import java.util.List;
 
@@ -50,38 +45,21 @@ public class UserController {
     /**
      * 分页查询用户
      *
-     * @param keyword 关键词
-     * @param status  状态
-     * @param page    页码
-     * @param size    每页大小
+     * @param reqVO 分页查询参数
      * @return 分页用户列表
      */
     @GetMapping
-    public Response<PageResponse<User>> listUsers(@RequestParam(required = false) String keyword,
-                                                  @RequestParam(required = false) String status,
-                                                  @RequestParam(required = false) String sort,
-                                                  @RequestParam(defaultValue = "1") Integer page,
-                                                  @RequestParam(defaultValue = "20") Integer size) {
+    public Response<PageResponse<User>> listUsers(@ModelAttribute UserPageReqVO reqVO) {
+        if (reqVO == null) {
+            reqVO = new UserPageReqVO();
+        }
+
         if (log.isDebugEnabled()) {
-            log.debug("分页查询用户: keyword={}, status={}, page={}, size={}, sort={}",
-                    keyword, status, page, size, sort);
+            log.debug("分页查询用户: status={}, page={}, size={}",
+                    reqVO.getStatus(), reqVO.getPage(), reqVO.getSize());
         }
 
-        BaseRequestVo param = new BaseRequestVo();
-        param.setKeyword(keyword);
-        param.setFilterValue("status", status);
-        param.setPage(page != null ? page : 1);
-        param.setSize(size != null ? size : 20);
-
-        // 解析排序参数：格式为 "field:order,field:order" 或 "field,field"（默认 DESC）
-        if (sort != null && !sort.isBlank()) {
-            List<SortingField> sortingFields = parseSortingFields(sort);
-            param.setSortingFields(sortingFields);
-        } else {
-            param.setSortingFields(new ArrayList<>());
-        }
-
-        Page<User> pageResult = userService.pageUsers(param);
+        Page<User> pageResult = userService.pageUsers(reqVO);
 
         // 清空密码哈希，避免暴露给前端
         pageResult.getRecords().forEach(user -> user.setPasswordHash(null));
@@ -314,36 +292,5 @@ public class UserController {
             log.warn("分配角色参数错误: userId={}, message={}", id, e.getMessage());
             return Response.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
-    }
-
-    /**
-     * 解析排序字段
-     * <p>
-     * 支持格式：
-     * <ul>
-     *   <li>"name" → 按姓名降序（默认 DESC）</li>
-     *   <li>"name:ASC" → 按姓名升序</li>
-     *   <li>"name:ASC,createdAt:DESC" → 多字段排序</li>
-     * </ul>
-     * </p>
-     *
-     * @param sort 排序字符串
-     * @return 排序字段列表
-     */
-    private List<SortingField> parseSortingFields(String sort) {
-        if (sort == null || sort.isBlank()) {
-            return new ArrayList<>();
-        }
-
-        return Arrays.stream(sort.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .map(s -> {
-                    String[] parts = s.split(":");
-                    String field = parts[0].trim();
-                    String order = parts.length > 1 ? parts[1].trim() : "DESC";
-                    return new SortingField(field, order);
-                })
-                .toList();
     }
 }

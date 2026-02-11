@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
+import com.wewins.fota.database.wrapper.QueryWrapperX;
 import com.wewins.fota.system.entity.DictItem;
 import com.wewins.fota.system.entity.DictType;
 import com.wewins.fota.system.mapper.DictItemMapper;
@@ -139,9 +139,7 @@ public class DictTypeServiceImpl extends ServiceImpl<DictTypeMapper, DictType> i
         }
         param.validate();
 
-        LambdaQueryWrapperX<DictType> wrapper = new LambdaQueryWrapperX<>(DictType.class)
-                .likeAnyIfPresent(param.getKeyword(),
-                        "code", "name", "description")
+        QueryWrapperX<DictType> wrapper = new QueryWrapperX<>(DictType.class)
                 .applyFiltersIfPresent(param.getFilters())
                 .applySortingIfPresent(param.getSortingFields());
 

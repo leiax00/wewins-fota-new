@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 基础分页参数
  * <p>
- * 提供通用的分页查询参数，包含页码、每页大小和关键词搜索
+ * 提供通用的分页查询参数，包含页码和每页大小
  * </p>
  *
  * @author FOTA Team
@@ -23,11 +23,6 @@ public class PageParam {
      * 每页大小
      */
     private int size = 20;
-
-    /**
-     * 关键词搜索
-     */
-    private String keyword;
 
     /**
      * 校验并修正分页参数

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
+import com.wewins.fota.database.wrapper.QueryWrapperX;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.RolePermission;
 import com.wewins.fota.system.mapper.PermissionMapper;
@@ -147,9 +147,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
         }
         param.validate();
 
-        LambdaQueryWrapperX<Permission> wrapper = new LambdaQueryWrapperX<>(Permission.class)
-                .likeAnyIfPresent(param.getKeyword(),
-                        "code", "name", "path")
+        QueryWrapperX<Permission> wrapper = new QueryWrapperX<>(Permission.class)
                 .applyFiltersIfPresent(param.getFilters())
                 .applySortingIfPresent(param.getSortingFields());
 

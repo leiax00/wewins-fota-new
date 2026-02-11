@@ -2,7 +2,7 @@ package com.wewins.fota.system.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.system.dto.UserPageReqVO;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.User;
@@ -73,11 +73,14 @@ public interface IUserService extends IService<User> {
 
     /**
      * 分页查询用户
+     * <p>
+     * 使用类型安全的 ReqVO 进行查询，支持状态过滤、时间范围查询、排序
+     * </p>
      *
-     * @param param 分页参数（含关键词、状态、排序）
+     * @param reqVO 分页查询参数
      * @return 分页结果
      */
-    Page<User> pageUsers(BaseRequestVo param);
+    Page<User> pageUsers(UserPageReqVO reqVO);
 
     /**
      * 为用户分配角色

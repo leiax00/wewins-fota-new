@@ -1,4 +1,4 @@
-package com.wewins.fota.database.resolver;
+package com.wewins.fota.database.support;
 
 import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;

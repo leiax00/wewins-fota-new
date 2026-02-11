@@ -3,8 +3,8 @@ package com.wewins.fota.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.wewins.fota.common.dto.BaseRequestVo;
 import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
+import com.wewins.fota.system.dto.UserPageReqVO;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.RolePermission;
@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -157,21 +158,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public Page<User> pageUsers(BaseRequestVo param) {
-        if (param == null) {
-            param = new BaseRequestVo();
+    public Page<User> pageUsers(UserPageReqVO reqVO) {
+        if (reqVO == null) {
+            reqVO = new UserPageReqVO();
         }
-        param.validate();
+        reqVO.validate();
 
-        LambdaQueryWrapperX<User> wrapper = new LambdaQueryWrapperX<>(User.class)
-                .likeAnyIfPresent(
-                        param.getKeyword(),
-                        "username", "displayName", "email", "phone"
-                )
-                .applyFiltersIfPresent(param.getFilters())
-                .applySortingIfPresent(param.getSortingFields());
+        // 使用 ReqVO 的 toWrapper() 方法构建查询
+        LambdaQueryWrapperX<User> wrapper = reqVO.toWrapper();
 
-        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
+        return page(new Page<>(reqVO.getPage(), reqVO.getSize()), wrapper);
     }
 
     @Override
