@@ -37,55 +37,55 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
     private final DeviceCacheService deviceCacheService;
 
     @Override
-    public void recordCheckLog(DeviceCheckLog log) {
-        if (log == null) {
+    public void recordCheckLog(DeviceCheckLog checkLog) {
+        if (checkLog == null) {
             return;
         }
 
         try {
             // 自动生成 request_id
-            if (log.getRequestId() == null) {
-                log.setRequestId(UUID.randomUUID());
+            if (checkLog.getRequestId() == null) {
+                checkLog.setRequestId(UUID.randomUUID());
             }
 
             // 自动填充 event_time（UTC 时区）
-            if (log.getEventTime() == null) {
-                log.setEventTime(LocalDateTime.now(ZoneOffset.UTC));
+            if (checkLog.getEventTime() == null) {
+                checkLog.setEventTime(LocalDateTime.now(ZoneOffset.UTC));
             }
 
-            deviceCheckLogMapper.insert(log);
-            log.debug("设备检查日志记录成功: requestId={}, deviceId={}", log.getRequestId(), log.getDeviceId());
+            deviceCheckLogMapper.insert(checkLog);
+            log.debug("设备检查日志记录成功: requestId={}, deviceId={}", checkLog.getRequestId(), checkLog.getDeviceId());
         } catch (Exception e) {
-            log.error("设备检查日志记录失败: deviceId={}, imei={}", log.getDeviceId(), log.getImei(), e);
+            log.error("设备检查日志记录失败: deviceId={}, imei={}", checkLog.getDeviceId(), checkLog.getImei(), e);
             throw e;
         }
     }
 
     @Override
-    public void recordCheckLogs(List<DeviceCheckLog> logs) {
-        if (logs == null || logs.isEmpty()) {
+    public void recordCheckLogs(List<DeviceCheckLog> checkLogs) {
+        if (checkLogs == null || checkLogs.isEmpty()) {
             return;
         }
 
         try {
             List<DeviceCheckLog> validLogs = new ArrayList<>();
 
-            for (DeviceCheckLog log : logs) {
-                if (log == null) {
+            for (DeviceCheckLog checkLog : checkLogs) {
+                if (checkLog == null) {
                     continue;
                 }
 
                 // 自动生成 request_id
-                if (log.getRequestId() == null) {
-                    log.setRequestId(UUID.randomUUID());
+                if (checkLog.getRequestId() == null) {
+                    checkLog.setRequestId(UUID.randomUUID());
                 }
 
                 // 自动填充 event_time（UTC 时区）
-                if (log.getEventTime() == null) {
-                    log.setEventTime(LocalDateTime.now(ZoneOffset.UTC));
+                if (checkLog.getEventTime() == null) {
+                    checkLog.setEventTime(LocalDateTime.now(ZoneOffset.UTC));
                 }
 
-                validLogs.add(log);
+                validLogs.add(checkLog);
             }
 
             if (!validLogs.isEmpty()) {
@@ -99,7 +99,7 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
                 log.info("设备检查日志批量记录成功: count={}", validLogs.size());
             }
         } catch (Exception e) {
-            log.error("设备检查日志批量记录失败: count={}", logs.size(), e);
+            log.error("设备检查日志批量记录失败: count={}", checkLogs.size(), e);
             throw e;
         }
     }

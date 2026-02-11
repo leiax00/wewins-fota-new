@@ -4,8 +4,10 @@ import com.wewins.fota.infra.config.ClusterProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -35,17 +37,6 @@ public class RedisDistributedLockService implements DistributedLockService {
     private final ClusterProperties clusterProperties;
 
     private static final String LOCK_SUCCESS = "OK";
-    private static final String LOCK_LUA_SCRIPT =
-            "if redis.call('set', KEYS[1], ARGV[1], 'NX', 'PX', ARGV[2] * 1000) then " +
-            "  redis.call('get', KEYS[1]) " +
-            "else " +
-            "  return 0 " +
-            "end " +
-            "if redis.call('get', KEYS[1]) == ARGV[1] then " +
-            "  return redis.call('del', KEYS[1]) " +
-            "else " +
-            "  return 0 " +
-            "end";
 
     @Override
     public boolean tryLock(String key, long leaseTime, TimeUnit unit) {
@@ -61,18 +52,15 @@ public class RedisDistributedLockService implements DistributedLockService {
         }
 
         String lockKey = buildLockKey(key);
+        String lockValue = LOCK_SUCCESS;
         long leaseTimeMs = unit.toMillis(leaseTime);
 
         try {
-            // 使用 Lua 脚本确保原子性：SET + GET + DELETE
-            String result = redisTemplate.execute(
-                    LOCK_LUA_SCRIPT,
-                    java.util.Collections.singletonList(lockKey),
-                    java.util.Collections.singletonList(LOCK_SUCCESS),
-                    leaseTimeMs
-            );
+            // 使用 SET NX EX 命令获取锁
+            Boolean result = redisTemplate.opsForValue()
+                    .setIfAbsent(lockKey, lockValue, leaseTimeMs, TimeUnit.MILLISECONDS);
 
-            boolean acquired = LOCK_SUCCESS.equals(result);
+            boolean acquired = Boolean.TRUE.equals(result);
             if (acquired) {
                 log.debug("成功获取分布式锁: key={}, leaseTime={}ms", lockKey, leaseTimeMs);
             } else {

@@ -1,5 +1,6 @@
 package com.wewins.fota.adapter.api.device;
 
+import com.wewins.fota.analytics.entity.DeviceUpgradeEvent;
 import com.wewins.fota.analytics.service.DeviceUpgradeEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

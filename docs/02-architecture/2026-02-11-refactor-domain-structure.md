@@ -206,6 +206,8 @@ Controller → Application Service → Domain Repository/Infrastructure
 
 ### 3.5 分布式协调
 
+> **重要说明**：对于负载均衡场景（多实例平等提供服务），大部分分布式协调功能并非必需。
+
 #### 3.5.1 分布式锁
 
 **用途**：配额扣减、灰度分桶、版本更新等需要原子操作
@@ -213,11 +215,17 @@ Controller → Application Service → Domain Repository/Infrastructure
 **实现**：基于 Redis SETNX + TTL
 
 **关键特性**：
-- Lua 脚本保证原子性（SET + GET + DELETE）
+- SET NX EX 命令保证原子性
 - TTL 自动过期，防止死锁
 - 支持可配置的锁前缀和租约时间
 
-#### 3.5.2 Leader 选举
+**负载均衡场景的替代方案**：
+```java
+// 推荐使用 Redis 原子操作，无需分布式锁
+redisTemplate.opsForValue().increment("quota:" + policyId, -count);
+```
+
+#### 3.5.2 Leader 选举（⚠️ 负载均衡场景不需要）
 
 **用途**：确保定时任务（配置同步、数据聚合）只在 Leader 实例执行
 
@@ -229,6 +237,11 @@ Controller → Application Service → Domain Repository/Infrastructure
 **关键特性**：
 - TTL 自动过期，防止 Leader 崩溃后身份永久持有
 - 实例 ID 区分（hostname + PID）
+
+**负载均衡场景的适用性**：
+- **配置同步任务**：多个实例都执行也无妨（版本号未变则不拉取）
+- **MQ 消费者**：RabbitMQ 天然支持多实例并发消费
+- **结论**：负载均衡场景不需要 Leader 选举
 
 ---
 
@@ -268,6 +281,69 @@ Controller → Application Service → Domain Repository/Infrastructure
 | 启用功能 | 设备 API、配置同步、数据转发、Forwarder |
 | 启用配置 | app.mode=region, 集群、分布式锁、Leader 选举 |
 | 禁用配置 | Liquibase（由主区域管理） |
+
+### 5.1 负载均衡场景分析
+
+#### 部署目标
+
+**主要目标**：负载均衡 + 共享多台服务器带宽
+
+```
+                    负载均衡器 (Nginx/ELB/SLB)
+                           |
+            +--------------+--------------+--------------+
+            |              |              |              |
+       Region 实例 1   Region 实例 2   Region 实例 3   Region 实例 N
+            |              |              |              |
+            +--------------+--------------+--------------+
+                           |
+              共享 Redis + 共享 ClickHouse + 共享 PostgreSQL
+```
+
+#### 集群功能必要性分析
+
+| 功能 | 必要性 | 说明 | 推荐方案 |
+|---------|--------|--------|----------|
+| **Leader 选举** | ❌ 不需要 | 多实例平等提供服务，无需选主 | **移除** |
+| **分布式锁** | ⚠️ 部分需要 | 配额扣减需要，但可用 Redis 原子操作替代 | **简化** |
+| **负载均衡** | ✅ 必需 | 通过 Nginx/ELB 实现 | Nginx 上游配置 |
+| **会话共享** | ❌ 不需要 | 设备 API 是无状态的 | - |
+
+#### 推荐的简化方案
+
+**保留**：
+- `app.cluster.enabled = true` - 标记这是集群部署
+- Redis 原子操作（`INCRBY`、`DECRBY`）用于配额控制
+
+**移除**：
+- Leader 选举机制（`LeaderElectionService`）
+- 复杂的分布式锁实现（`RedisDistributedLockService`）
+- 定时任务的 Leader 检查逻辑
+
+**理由**：
+1. **负载均衡场景下，所有实例都是平等的**
+   - 不需要选出一个 Leader
+   - 每个实例都可以处理设备请求
+   - 配置同步可以每个实例独立执行（幂等操作）
+
+2. **Redis 原子操作足以应对并发问题**
+   - 配额扣减：`redisTemplate.opsForValue().increment("quota:" + policyId, -count)`
+   - 灰度计数：`redisTemplate.opsForValue().increment("gray:count:" + policyId, 1)`
+   - 这些操作本身就是原子的，无需额外的锁
+
+3. **定时任务的重复执行问题**
+   - 配置同步（30 秒轮询）：多个实例都执行也无妨，版本号未变就不会拉取
+   - MQ 消费者：天然支持多实例并发消费（RabbitMQ 的负载均衡）
+   - 因此不需要 Leader 选举来避免重复执行
+
+#### 适用的集群场景
+
+| 场景 | 是否需要 Leader 选举 | 说明 |
+|---------|--------|--------|
+| 负载均衡 | ❌ 不需要 | 多实例平等提供服务 |
+| 定时任务 | ❌ 不需要 | 任务幂等，重复执行无害 |
+| 配额控制 | ❌ 不需要 | 用 Redis 原子操作 |
+| 数据聚合 | ✅ 需要 | 如果任务非幂等，需要避免重复 |
 
 ---
 

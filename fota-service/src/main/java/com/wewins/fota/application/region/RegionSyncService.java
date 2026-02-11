@@ -1,13 +1,11 @@
 package com.wewins.fota.application.region;
 
 import com.wewins.fota.infra.config.AppProperties;
-import com.wewins.fota.infra.lock.LeaderElectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,6 +23,14 @@ import java.util.Map;
  *   <li>将快照更新到本地 Redis</li>
  *   <li>使用原子切换避免不一致</li>
  * </ul>
+ * <p>
+ * <strong>负载均衡场景说明</strong>：
+ * <ul>
+ *   <li>多实例部署时，每个实例都会独立执行配置同步</li>
+ *   <li>通过版本号判断是否需要更新，避免重复拉取</li>
+ *   <li>无需 Leader 选举，重复执行无害（幂等操作）</li>
+ * </ul>
+ * </p>
  *
  * @author FOTA Team
  * @since 2026-02-11
@@ -34,14 +40,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class RegionSyncService {
 
-    private final LeaderElectionService leaderElectionService;
     private final AppProperties appProperties;
     private final RestTemplate restTemplate;
-
-    /**
-     * 同步任务标识符
-     */
-    private static final String SYNC_TASK_ID = "config-sync";
 
     /**
      * 本地配置版本缓存
@@ -96,18 +96,13 @@ public class RegionSyncService {
     /**
      * 执行一次配置同步
      * <p>
-     * 仅 Leader 实例执行此操作
+     * 负载均衡场景下，每个实例都可以执行此操作
+     * 通过版本号判断是否需要更新，避免重复拉取
      * </p>
      *
      * @return 同步是否成功
      */
     public boolean syncOnce() {
-        // 检查是否为 Leader
-        if (!leaderElectionService.isLeader(SYNC_TASK_ID)) {
-            log.debug("当前实例不是 Leader，跳过配置同步");
-            return false;
-        }
-
         // 检查是否在区域模式
         if (!"region".equals(appProperties.getMode())) {
             log.warn("当前不在区域模式，跳过配置同步");
@@ -178,7 +173,7 @@ public class RegionSyncService {
      * @param snapshotType 快照类型（policy/product/control）
      * @return 快照数据
      */
-    private Map<String, Object> fetchSnapshot(String snapshotType) {
+    public Map<String, Object> fetchSnapshot(String snapshotType) {
         String url = buildSnapshotUrl(snapshotType);
 
         try {

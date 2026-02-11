@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheService;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.mapper.DeviceMapper;

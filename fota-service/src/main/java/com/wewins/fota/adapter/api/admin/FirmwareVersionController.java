@@ -1,6 +1,7 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
+import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

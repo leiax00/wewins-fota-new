@@ -19,15 +19,13 @@ app:
     apiBaseUrl: ${REGION_API_URL:https://region-us-east.api.xxx.com}
     syncEndpoint: ${MAIN_SYNC_ENDPOINT:https://main.api.xxx.com/internal/config}
 
-  # 集群配置
+  # 集群配置（负载均衡场景）
   cluster:
-    enabled: true
+    enabled: true  # 标记这是集群部署（多实例负载均衡）
     lock:
+      enabled: false  # 推荐使用 Redis 原子操作（increment）替代分布式锁
       prefix: fota:lock:
       leaseTime: 30
-    leader:
-      enabled: true
-      renewInterval: 10
 
 # 功能开关（区域模式）
 feature:
