@@ -1,6 +1,5 @@
 package com.wewins.fota;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -15,11 +14,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * <p>运行模式通过环境变量 {@code MODE} 或 JVM 参数 {@code -Dspring.profiles.active} 指定。
  *
+ * <p>MyBatis Mapper 扫描配置已拆分到：
+ * <ul>
+ *   <li>{@link com.wewins.fota.database.config.MybatisPrimaryConfig} - 主数据源（PostgreSQL）</li>
+ *   <li>{@link com.wewins.fota.database.config.MybatisClickHouseConfig} - 分析数据源（ClickHouse）</li>
+ * </ul>
+ *
  * @see <a href="https://github.com/wewins/wewins-fota-new">项目文档</a>
  * @since 0.1.0
  */
 @SpringBootApplication
-@MapperScan("com.wewins.fota.**.mapper")
 public class FotaApplication {
 
     /**

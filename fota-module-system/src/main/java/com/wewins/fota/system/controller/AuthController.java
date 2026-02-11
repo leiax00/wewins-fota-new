@@ -143,6 +143,9 @@ public class AuthController {
             return Response.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
         }
 
+        // 安全处理：返回前清空密码哈希
+        user.setPasswordHash(null);
+
         return Response.success(user);
     }
 }
