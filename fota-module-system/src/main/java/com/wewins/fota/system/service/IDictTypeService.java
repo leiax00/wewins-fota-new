@@ -2,10 +2,8 @@ package com.wewins.fota.system.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.system.dto.DictTypePageReqVO;
 import com.wewins.fota.system.entity.DictType;
-
-import java.util.List;
 
 /**
  * 字典类型服务接口
@@ -51,19 +49,10 @@ public interface IDictTypeService extends IService<DictType> {
     DictType getByCode(String code);
 
     /**
-     * 查询字典类型列表
-     *
-     * @param keyword 关键词（搜索编码、名称、描述）
-     * @param status 状态（可选）
-     * @return 字典类型列表
-     */
-    List<DictType> listTypes(String keyword, String status);
-
-    /**
      * 分页查询字典类型
      *
-     * @param param 分页参数（含排序）
+     * @param reqVO 分页查询参数
      * @return 分页结果
      */
-    Page<DictType> pageTypes(BaseRequestVo param);
+    Page<DictType> pageTypes(DictTypePageReqVO reqVO);
 }

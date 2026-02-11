@@ -2,7 +2,7 @@ package com.wewins.fota.system.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.system.dto.DictItemPageReqVO;
 import com.wewins.fota.system.entity.DictItem;
 
 import java.util.List;
@@ -61,8 +61,8 @@ public interface IDictItemService extends IService<DictItem> {
     /**
      * 分页查询字典项
      *
-     * @param param 分页参数（含排序）
+     * @param reqVO 分页查询参数
      * @return 分页结果
      */
-    Page<DictItem> pageItems(BaseRequestVo param);
+    Page<DictItem> pageItems(DictItemPageReqVO reqVO);
 }

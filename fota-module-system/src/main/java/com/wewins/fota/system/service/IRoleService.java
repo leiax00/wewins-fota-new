@@ -2,7 +2,7 @@ package com.wewins.fota.system.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.system.dto.RolePageReqVO;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 
@@ -54,21 +54,12 @@ public interface IRoleService extends IService<Role> {
     Role getRoleById(Long roleId);
 
     /**
-     * 查询角色列表
-     *
-     * @param keyword 关键词（搜索编码、名称、描述）
-     * @param status 状态（可选）
-     * @return 角色列表
-     */
-    List<Role> listRoles(String keyword, String status);
-
-    /**
      * 分页查询角色
      *
-     * @param param 分页参数（含排序）
+     * @param reqVO 分页查询参数
      * @return 分页结果
      */
-    Page<Role> pageRoles(BaseRequestVo param);
+    Page<Role> pageRoles(RolePageReqVO reqVO);
 
     /**
      * 为角色分配权限

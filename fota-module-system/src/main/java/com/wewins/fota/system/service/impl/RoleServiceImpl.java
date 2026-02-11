@@ -3,8 +3,7 @@ package com.wewins.fota.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.database.wrapper.QueryWrapperX;
+import com.wewins.fota.system.dto.RolePageReqVO;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.RolePermission;
@@ -126,37 +125,13 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
     }
 
     @Override
-    public List<Role> listRoles(String keyword, String status) {
-        LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-
-        if (keyword != null && !keyword.isBlank()) {
-            wrapper.and(w -> w.like(Role::getCode, keyword)
-                    .or()
-                    .like(Role::getName, keyword)
-                    .or()
-                    .like(Role::getDescription, keyword));
+    public Page<Role> pageRoles(RolePageReqVO reqVO) {
+        if (reqVO == null) {
+            reqVO = new RolePageReqVO();
         }
+        reqVO.validate();
 
-        if (status != null && !status.isBlank()) {
-            wrapper.eq(Role::getStatus, status);
-        }
-
-        wrapper.orderByDesc(Role::getId);
-        return list(wrapper);
-    }
-
-    @Override
-    public Page<Role> pageRoles(BaseRequestVo param) {
-        if (param == null) {
-            param = new BaseRequestVo();
-        }
-        param.validate();
-
-        QueryWrapperX<Role> wrapper = new QueryWrapperX<>(Role.class)
-                .applyFiltersIfPresent(param.getFilters())
-                .applySortingIfPresent(param.getSortingFields());
-
-        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
+        return page(new Page<>(reqVO.getPage(), reqVO.getSize()), reqVO.toWrapper());
     }
 
     @Override
@@ -196,7 +171,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
                         .roleId(roleId)
                         .permissionId(permissionId)
                         .build())
-                .collect(Collectors.toList());
+                .toList();
 
         for (RolePermission rolePermission : rolePermissions) {
             rolePermissionMapper.insert(rolePermission);
@@ -223,7 +198,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
                 .distinct()
                 .collect(Collectors.toList());
 
-        return permissionMapper.selectBatchIds(permissionIds);
+        return permissionMapper.selectByIds(permissionIds);
     }
 
     /**

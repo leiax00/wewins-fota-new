@@ -3,8 +3,7 @@ package com.wewins.fota.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.database.wrapper.QueryWrapperX;
+import com.wewins.fota.system.dto.DictTypePageReqVO;
 import com.wewins.fota.system.entity.DictItem;
 import com.wewins.fota.system.entity.DictType;
 import com.wewins.fota.system.mapper.DictItemMapper;
@@ -13,8 +12,6 @@ import com.wewins.fota.system.service.IDictTypeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * 字典类型服务实现
@@ -113,43 +110,19 @@ public class DictTypeServiceImpl extends ServiceImpl<DictTypeMapper, DictType> i
     }
 
     @Override
-    public List<DictType> listTypes(String keyword, String status) {
-        LambdaQueryWrapper<DictType> wrapper = new LambdaQueryWrapper<>();
-
-        if (keyword != null && !keyword.isBlank()) {
-            wrapper.and(w -> w.like(DictType::getCode, keyword)
-                    .or()
-                    .like(DictType::getName, keyword)
-                    .or()
-                    .like(DictType::getDescription, keyword));
+    public Page<DictType> pageTypes(DictTypePageReqVO reqVO) {
+        if (reqVO == null) {
+            reqVO = new DictTypePageReqVO();
         }
+        reqVO.validate();
 
-        if (status != null && !status.isBlank()) {
-            wrapper.eq(DictType::getStatus, status);
-        }
-
-        wrapper.orderByDesc(DictType::getId);
-        return list(wrapper);
-    }
-
-    @Override
-    public Page<DictType> pageTypes(BaseRequestVo param) {
-        if (param == null) {
-            param = new BaseRequestVo();
-        }
-        param.validate();
-
-        QueryWrapperX<DictType> wrapper = new QueryWrapperX<>(DictType.class)
-                .applyFiltersIfPresent(param.getFilters())
-                .applySortingIfPresent(param.getSortingFields());
-
-        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
+        return page(new Page<>(reqVO.getPage(), reqVO.getSize()), reqVO.toWrapper());
     }
 
     /**
      * 验证字典类型编码唯一性
      *
-     * @param code 字典类型编码
+     * @param code      字典类型编码
      * @param excludeId 排除的字典类型ID
      */
     private void validateTypeCodeUnique(String code, Long excludeId) {

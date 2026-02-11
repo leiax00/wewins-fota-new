@@ -3,8 +3,7 @@ package com.wewins.fota.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.wewins.fota.common.dto.BaseRequestVo;
-import com.wewins.fota.database.wrapper.QueryWrapperX;
+import com.wewins.fota.system.dto.PermissionPageReqVO;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.RolePermission;
 import com.wewins.fota.system.mapper.PermissionMapper;
@@ -117,41 +116,13 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
     }
 
     @Override
-    public List<Permission> listPermissions(String keyword, String type, String status) {
-        LambdaQueryWrapper<Permission> wrapper = new LambdaQueryWrapper<>();
-
-        if (keyword != null && !keyword.isBlank()) {
-            wrapper.and(w -> w.like(Permission::getCode, keyword)
-                    .or()
-                    .like(Permission::getName, keyword)
-                    .or()
-                    .like(Permission::getPath, keyword));
+    public Page<Permission> pagePermissions(PermissionPageReqVO reqVO) {
+        if (reqVO == null) {
+            reqVO = new PermissionPageReqVO();
         }
+        reqVO.validate();
 
-        if (type != null && !type.isBlank()) {
-            wrapper.eq(Permission::getType, type);
-        }
-
-        if (status != null && !status.isBlank()) {
-            wrapper.eq(Permission::getStatus, status);
-        }
-
-        wrapper.orderByAsc(Permission::getParentId, Permission::getId);
-        return list(wrapper);
-    }
-
-    @Override
-    public Page<Permission> pagePermissions(BaseRequestVo param) {
-        if (param == null) {
-            param = new BaseRequestVo();
-        }
-        param.validate();
-
-        QueryWrapperX<Permission> wrapper = new QueryWrapperX<>(Permission.class)
-                .applyFiltersIfPresent(param.getFilters())
-                .applySortingIfPresent(param.getSortingFields());
-
-        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
+        return page(new Page<>(reqVO.getPage(), reqVO.getSize()), reqVO.toWrapper());
     }
 
     @Override
@@ -239,7 +210,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
         }
 
         // 不能将自身设为父权限
-        if (selfId != null && parentId.equals(selfId)) {
+        if (parentId.equals(selfId)) {
             throw new IllegalArgumentException("父权限不能是自身");
         }
 

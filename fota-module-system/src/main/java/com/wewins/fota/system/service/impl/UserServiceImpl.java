@@ -5,27 +5,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.system.dto.UserPageReqVO;
-import com.wewins.fota.system.entity.Permission;
-import com.wewins.fota.system.entity.Role;
-import com.wewins.fota.system.entity.RolePermission;
-import com.wewins.fota.system.entity.User;
-import com.wewins.fota.system.entity.UserRole;
-import com.wewins.fota.system.mapper.PermissionMapper;
-import com.wewins.fota.system.mapper.RoleMapper;
-import com.wewins.fota.system.mapper.RolePermissionMapper;
-import com.wewins.fota.system.mapper.UserMapper;
-import com.wewins.fota.system.mapper.UserRoleMapper;
+import com.wewins.fota.system.entity.*;
+import com.wewins.fota.system.mapper.*;
 import com.wewins.fota.system.service.IUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -207,7 +194,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                         .userId(userId)
                         .roleId(roleId)
                         .build())
-                .collect(Collectors.toList());
+                .toList();
 
         for (UserRole userRole : userRoles) {
             userRoleMapper.insert(userRole);
@@ -218,44 +205,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public List<Role> getUserRoles(Long userId) {
-        if (userId == null) {
-            throw new IllegalArgumentException("用户ID不能为空");
-        }
+        List<Long> roleIds = getRoleIds(userId);
 
-        List<UserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<UserRole>()
-                .eq(UserRole::getUserId, userId));
-
-        if (userRoles.isEmpty()) {
+        if (roleIds.isEmpty()) {
             return Collections.emptyList();
         }
-
-        List<Long> roleIds = userRoles.stream()
-                .map(UserRole::getRoleId)
-                .distinct()
-                .collect(Collectors.toList());
 
         return roleMapper.selectByIds(roleIds);
     }
 
     @Override
     public List<Permission> getUserPermissions(Long userId) {
-        if (userId == null) {
-            throw new IllegalArgumentException("用户ID不能为空");
-        }
+        // 获取角色的ID列表
+        List<Long> roleIds = getRoleIds(userId);
 
-        // 获取用户的角色
-        List<UserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<UserRole>()
-                .eq(UserRole::getUserId, userId));
-
-        if (userRoles.isEmpty()) {
+        if (roleIds.isEmpty()) {
             return Collections.emptyList();
         }
-
-        // 获取角色的ID列表
-        List<Long> roleIds = userRoles.stream()
-                .map(UserRole::getRoleId)
-                .distinct()
-                .collect(Collectors.toList());
 
         // 获取角色权限关联
         List<RolePermission> rolePermissions = rolePermissionMapper.selectList(
@@ -271,13 +237,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             permissionIds.add(rolePermission.getPermissionId());
         }
 
-        return permissionMapper.selectBatchIds(new ArrayList<>(permissionIds));
+        return permissionMapper.selectByIds(new ArrayList<>(permissionIds));
     }
 
     /**
      * 验证用户名唯一性
      *
-     * @param username 用户名
+     * @param username  用户名
      * @param excludeId 排除的用户ID
      */
     private void validateUsernameUnique(String username, Long excludeId) {
@@ -317,5 +283,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (count == null || count != roleIds.size()) {
             throw new IllegalArgumentException("部分角色不存在或已被删除");
         }
+    }
+
+    private List<Long> getRoleIds(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+
+        // 获取用户的角色
+        List<UserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<UserRole>()
+                .eq(UserRole::getUserId, userId));
+
+        return userRoles.stream()
+                .map(UserRole::getRoleId)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }
