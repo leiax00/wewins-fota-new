@@ -1,7 +1,10 @@
 package com.wewins.fota.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.RolePermission;
@@ -140,6 +143,22 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
 
         wrapper.orderByDesc(Role::getId);
         return list(wrapper);
+    }
+
+    @Override
+    public Page<Role> pageRoles(BaseRequestVo param) {
+        if (param == null) {
+            param = new BaseRequestVo();
+        }
+        param.validate();
+
+        LambdaQueryWrapperX<Role> wrapper = new LambdaQueryWrapperX<>(Role.class)
+                .likeAnyIfPresent(param.getKeyword(),
+                        "code", "name", "description")
+                .applyFiltersIfPresent(param.getFilters())
+                .applySortingIfPresent(param.getSortingFields());
+
+        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
     }
 
     @Override

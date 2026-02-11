@@ -1,7 +1,10 @@
 package com.wewins.fota.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.RolePermission;
 import com.wewins.fota.system.mapper.PermissionMapper;
@@ -133,8 +136,24 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
             wrapper.eq(Permission::getStatus, status);
         }
 
-        wrapper.orderByAsc(Permission::getParentId).orderByAsc(Permission::getId);
+        wrapper.orderByAsc(Permission::getParentId, Permission::getId);
         return list(wrapper);
+    }
+
+    @Override
+    public Page<Permission> pagePermissions(BaseRequestVo param) {
+        if (param == null) {
+            param = new BaseRequestVo();
+        }
+        param.validate();
+
+        LambdaQueryWrapperX<Permission> wrapper = new LambdaQueryWrapperX<>(Permission.class)
+                .likeAnyIfPresent(param.getKeyword(),
+                        "code", "name", "path")
+                .applyFiltersIfPresent(param.getFilters())
+                .applySortingIfPresent(param.getSortingFields());
+
+        return page(new Page<>(param.getPage(), param.getSize()), wrapper);
     }
 
     @Override

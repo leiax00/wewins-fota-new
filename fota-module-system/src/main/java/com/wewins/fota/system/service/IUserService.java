@@ -1,6 +1,8 @@
 package com.wewins.fota.system.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.wewins.fota.common.dto.BaseRequestVo;
 import com.wewins.fota.system.entity.Permission;
 import com.wewins.fota.system.entity.Role;
 import com.wewins.fota.system.entity.User;
@@ -68,6 +70,14 @@ public interface IUserService extends IService<User> {
      * @return 用户列表
      */
     List<User> listUsers(String keyword, String status);
+
+    /**
+     * 分页查询用户
+     *
+     * @param param 分页参数（含关键词、状态、排序）
+     * @return 分页结果
+     */
+    Page<User> pageUsers(BaseRequestVo param);
 
     /**
      * 为用户分配角色

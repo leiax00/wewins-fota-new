@@ -1,7 +1,8 @@
 package com.wewins.fota.system.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.common.dto.BaseRequestVo;
+import com.wewins.fota.common.dto.SortingField;
 import com.wewins.fota.system.dto.PageResponse;
 import com.wewins.fota.system.dto.Response;
 import com.wewins.fota.system.entity.Role;
@@ -19,6 +20,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import java.util.List;
 
@@ -54,33 +59,29 @@ public class UserController {
     @GetMapping
     public Response<PageResponse<User>> listUsers(@RequestParam(required = false) String keyword,
                                                   @RequestParam(required = false) String status,
+                                                  @RequestParam(required = false) String sort,
                                                   @RequestParam(defaultValue = "1") Integer page,
                                                   @RequestParam(defaultValue = "20") Integer size) {
-        if (page == null || page <= 0 || size == null || size <= 0) {
-            return Response.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
-        }
-
         if (log.isDebugEnabled()) {
-            log.debug("分页查询用户: keyword={}, status={}, page={}, size={}", keyword, status, page, size);
+            log.debug("分页查询用户: keyword={}, status={}, page={}, size={}, sort={}",
+                    keyword, status, page, size, sort);
         }
 
-        // TODO: IUserService.listUsers 当前不支持分页，建议下沉分页查询到 Service 层
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        if (keyword != null && !keyword.isBlank()) {
-            wrapper.and(w -> w.like(User::getUsername, keyword)
-                    .or()
-                    .like(User::getDisplayName, keyword)
-                    .or()
-                    .like(User::getEmail, keyword)
-                    .or()
-                    .like(User::getPhone, keyword));
-        }
-        if (status != null && !status.isBlank()) {
-            wrapper.eq(User::getStatus, status);
-        }
-        wrapper.orderByDesc(User::getId);
+        BaseRequestVo param = new BaseRequestVo();
+        param.setKeyword(keyword);
+        param.setFilterValue("status", status);
+        param.setPage(page != null ? page : 1);
+        param.setSize(size != null ? size : 20);
 
-        Page<User> pageResult = userService.page(new Page<>(page, size), wrapper);
+        // 解析排序参数：格式为 "field:order,field:order" 或 "field,field"（默认 DESC）
+        if (sort != null && !sort.isBlank()) {
+            List<SortingField> sortingFields = parseSortingFields(sort);
+            param.setSortingFields(sortingFields);
+        } else {
+            param.setSortingFields(new ArrayList<>());
+        }
+
+        Page<User> pageResult = userService.pageUsers(param);
 
         // 清空密码哈希，避免暴露给前端
         pageResult.getRecords().forEach(user -> user.setPasswordHash(null));
@@ -313,5 +314,36 @@ public class UserController {
             log.warn("分配角色参数错误: userId={}, message={}", id, e.getMessage());
             return Response.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
+    }
+
+    /**
+     * 解析排序字段
+     * <p>
+     * 支持格式：
+     * <ul>
+     *   <li>"name" → 按姓名降序（默认 DESC）</li>
+     *   <li>"name:ASC" → 按姓名升序</li>
+     *   <li>"name:ASC,createdAt:DESC" → 多字段排序</li>
+     * </ul>
+     * </p>
+     *
+     * @param sort 排序字符串
+     * @return 排序字段列表
+     */
+    private List<SortingField> parseSortingFields(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        return Arrays.stream(sort.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(s -> {
+                    String[] parts = s.split(":");
+                    String field = parts[0].trim();
+                    String order = parts.length > 1 ? parts[1].trim() : "DESC";
+                    return new SortingField(field, order);
+                })
+                .toList();
     }
 }
