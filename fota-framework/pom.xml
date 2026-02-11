@@ -22,6 +22,7 @@
         <module>fota-framework-mq</module>
         <module>fota-framework-storage</module>
         <module>fota-framework-security</module>
+        <module>fota-framework-web</module>
         <module>fota-framework-starter</module>
     </modules>
 

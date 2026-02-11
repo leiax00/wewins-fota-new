@@ -36,5 +36,9 @@
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-web</artifactId>
+        </dependency>
     </dependencies>
 </project>

@@ -220,7 +220,7 @@ curl "http://localhost:8080/v1/upgrade/check?product=test&imei=123456789012345&v
 | 文档 | 说明 | 链接 |
 |------|------|------|
 | **Agent 指南** | Claude Code Agent 使用说明 | [agent/README.md](agent/README.md) |
-| **编码规范** | Java/TypeScript 编码标准 | [agent/rules/coding-style.md](agent/rules/coding-style.md) |
+| **编码规范** | Java/TypeScript 编码标准 | [agent/rules/coding-style.md](.claude/rules/coding-style.md) |
 
 ---
 
@@ -236,7 +236,7 @@ curl "http://localhost:8080/v1/upgrade/check?product=test&imei=123456789012345&v
 
 ### 代码规范
 
-- **Java 规范**：参考 [agent/rules/coding-style.md](agent/rules/coding-style.md)
+- **Java 规范**：参考 [agent/rules/coding-style.md](.claude/rules/coding-style.md)
 - **提交信息**：使用 Conventional Commits 格式
 - **分支策略**：feature/* 功能分支，develop 开发分支，main 主干分支
 

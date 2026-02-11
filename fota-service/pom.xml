@@ -27,10 +27,16 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Framework starter (includes all framework modules) -->
+        <!-- Framework modules -->
         <dependency>
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-starter</artifactId>
+        </dependency>
+
+        <!-- Business modules -->
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-module-system</artifactId>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -51,6 +57,13 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Lombok for entity annotations -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -69,6 +82,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.wewins.fota.FotaApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

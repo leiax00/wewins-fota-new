@@ -25,6 +25,7 @@
     <modules>
         <module>fota-bom</module>
         <module>fota-framework</module>
+        <module>fota-module-system</module>
         <module>fota-service</module>
     </modules>
 

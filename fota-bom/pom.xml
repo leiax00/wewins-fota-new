@@ -76,7 +76,19 @@
             </dependency>
             <dependency>
                 <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
                 <artifactId>fota-framework-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Business modules -->
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-module-system</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

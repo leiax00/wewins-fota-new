@@ -1,0 +1,362 @@
+# Day 2: PostgreSQL 数据库架构
+
+> **任务编号**: T02
+> **所属 Sprint**: Sprint 1
+> **所属 Day**: Day 2
+> **状态**: ✅ Completed
+
+---
+
+## 📋 基本信息
+
+**负责人**: FOTA 团队
+**开始日期**: 2026-02-05
+**预计完成**: 2026-02-06
+**预计工时**: 8 小时
+
+---
+
+## 🎯 背景与目标
+
+### 背景
+需要搭建 PostgreSQL 数据库架构，创建核心业务表结构，并集成 MyBatis-Plus 实现数据访问层。
+
+### 目标
+- 搭建 Liquibase 数据库迁移框架
+- 设计并创建核心表结构
+- 集成 MyBatis-Plus ORM 框架
+- 配置多数据源（PostgreSQL + ClickHouse）
+
+### 范围
+- ✅ Liquibase changelog 配置
+- ✅ 核心表结构（4张表）
+- ✅ MyBatis-Plus 实体和 Mapper
+- ✅ 多数据源配置
+- ❌ 不包含业务逻辑实现
+- ❌ 不包含复杂查询优化
+
+### 非目标
+- ❌ 完整的业务逻辑
+- ❌ 性能优化
+- ❌ 分库分表
+
+---
+
+## 📦 交付物
+
+### 数据库脚本
+- [x] `db/changelog/db.changelog-master.yaml`
+- [x] `db/changelog/changes/V1__init_core.sql`
+- [x] `docs/schema-overview.md`
+
+### 代码
+- [x] 实体类（4个）
+- [x] Mapper 接口（4个）
+- [x] 数据源配置类
+
+### 配置文件
+- [x] `application.yml` 数据源配置
+- [x] Liquibase 配置
+
+---
+
+## 🔨 任务拆解
+
+### 任务 2-1: 创建 Liquibase changelog 结构 (30分钟)
+- [x] 创建 `db/changelog/` 目录
+- [x] 创建 `db.changelog-master.yaml`
+- [x] 配置 Spring Boot 集成
+
+**验收标准**:
+- [x] 目录结构正确
+- [x] Spring Boot 能识别 changelog
+
+### 任务 2-2: 设计核心表结构 (2小时)
+- [x] 设计 products 表
+- [x] 设计 devices 表
+- [x] 设计 firmware_versions 表
+- [x] 设计 upgrade_policies 表
+
+**验收标准**:
+- [x] 表结构符合业务需求
+- [x] 主键、外键设计合理
+- [x] 索引设计正确
+
+### 任务 2-3: 创建 MyBatis-Plus 实体和 Mapper (2小时)
+- [x] 创建 Product.java
+- [x] 创建 Device.java
+- [x] 创建 FirmwareVersion.java
+- [x] 创建 UpgradePolicy.java
+- [x] 创建对应的 Mapper 接口
+
+**验收标准**:
+- [x] 实体使用 Lombok 注解
+- [x] Mapper 继承 BaseMapper
+- [x] MyBatis-Plus 扫描配置正确
+
+### 任务 2-4: 配置多数据源 (2小时)
+- [x] 配置 PostgreSQL 主数据源
+- [x] 配置 ClickHouse 分析数据源
+- [x] 创建 DataSourceConfig.java
+- [x] 创建 MyBatisPlusConfig.java
+
+**验收标准**:
+- [x] PostgreSQL 连接正常
+- [x] ClickHouse 连接正常
+- [x] 两个数据源独立工作
+
+### 任务 2-5: 验证数据库集成 (1.5小时)
+- [x] Liquibase 迁移测试
+- [x] MyBatis-Plus CRUD 测试
+- [x] 编译验证
+- [x] 合并到 develop
+
+**验收标准**:
+- [x] 表创建成功
+- [x] CRUD 操作正常
+- [x] 编译通过
+- [x] 成功合并
+
+---
+
+## ✅ 测试清单
+
+### Liquibase 测试
+- [x] 执行 changelog 成功
+- [x] 表结构正确创建
+- [x] 索引和约束生效
+
+### MyBatis-Plus 测试
+- [x] 插入数据成功
+- [x] 查询数据成功
+- [x] 更新数据成功
+- [x] 删除数据成功
+
+### 多数据源测试
+- [x] PostgreSQL 操作正常
+- [x] ClickHouse 查询正常
+
+---
+
+## 🚧 技术要点
+
+### Liquibase 配置
+
+#### application.yml
+```yaml
+spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+```
+
+#### db.changelog-master.yaml
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: V1__init_core
+      author: fota-team
+      changes:
+        - sqlFile:
+            path: changes/V1__init_core.sql
+            relativeToChangelogFile: true
+```
+
+### 核心表结构
+
+#### products (产品表)
+```sql
+CREATE TABLE products (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    manufacturer VARCHAR(255),
+    model VARCHAR(255),
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_manufacturer ON products(manufacturer);
+```
+
+#### devices (设备表)
+```sql
+CREATE TABLE devices (
+    id BIGSERIAL PRIMARY KEY,
+    imei VARCHAR(255) UNIQUE NOT NULL,
+    product_id BIGINT REFERENCES products(id),
+    current_version_id BIGINT,
+    status VARCHAR(50) NOT NULL,
+    last_seen_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_devices_imei ON devices(imei);
+CREATE INDEX idx_devices_product_id ON devices(product_id);
+CREATE INDEX idx_devices_status ON devices(status);
+```
+
+#### firmware_versions (固件版本表)
+```sql
+CREATE TABLE firmware_versions (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT REFERENCES products(id),
+    version VARCHAR(50) NOT NULL,
+    file_url VARCHAR(1024) NOT NULL,
+    file_size BIGINT NOT NULL,
+    md5 VARCHAR(32) NOT NULL,
+    sha256 VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_fv_product_version ON firmware_versions(product_id, version);
+CREATE INDEX idx_fv_product_id ON firmware_versions(product_id);
+```
+
+#### upgrade_policies (升级策略表)
+```sql
+CREATE TABLE upgrade_policies (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT REFERENCES products(id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    target_version_id BIGINT REFERENCES firmware_versions(id),
+    priority INTEGER DEFAULT 0,
+    gray_rate INTEGER DEFAULT 0,
+    time_window JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_up_product_id ON upgrade_policies(product_id);
+CREATE INDEX idx_up_priority ON upgrade_policies(priority);
+```
+
+### MyBatis-Plus 实体示例
+
+```java
+@Data
+@TableName("products")
+public class Product {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private String name;
+    private String manufacturer;
+    private String model;
+    private String description;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
+}
+```
+
+### 多数据源配置
+
+#### application.yml
+```yaml
+spring:
+  datasource:
+    primary:
+      jdbc-url: jdbc:postgresql://localhost:5432/fota
+      username: fota
+      password: fota
+    clickhouse:
+      jdbc-url: jdbc:clickhouse://localhost:8123/fota_events
+```
+
+---
+
+## ⚠️ 风险与依赖
+
+### 依赖任务
+- 前置: Day 1 项目基础架构搭建 ✅
+
+### 风险点
+| 风险 | 影响 | 概率 | 缓解措施 | 状态 |
+|------|------|------|----------|------|
+| PostgreSQL 不熟悉 | 中 | 中 | 提前学习，参考 playbooks | ⏸️ |
+| 多数据源配置复杂 | 中 | 中 | 参考官方文档，先配置 PostgreSQL | ⏸️ |
+| 时间不够 | 高 | 低 | Must-have 优先，Nice-to-have 砍删 | ⏸️ |
+
+---
+
+## 📝 实施笔记
+
+### 学习资源
+- [PostgreSQL 官方文档](https://www.postgresql.org/docs/)
+- [MyBatis-Plus 官方文档](https://baomidou.com/)
+- [Liquibase 官方文档](https://docs.liquibase.com/)
+
+### 关键配置
+- MyBatis-Plus 扫描包: `com.wewins.fota.database`
+- Liquibase changelog 路径: `classpath:db/changelog/db.changelog-master.yaml`
+- 主数据源: `spring.datasource.primary`
+
+### 架构演进方向
+
+**当前架构（Day 2）**：
+- 传统三层架构：Controller → Service → Mapper
+- 贫血模型：Entity 只有 getter/setter
+- 数据库驱动设计
+
+**目标架构（Day 3+）**：
+- DDD 四层架构：interfaces → application → domain → infrastructure
+- 富领域模型：聚合根封装业务规则
+- 领域驱动设计
+
+**演进计划**：
+- ✅ Day 2：建立数据访问层基础（MyBatis-Plus + Liquibase）
+- ⏳ Day 3：创建 DDD 分层骨架（domain/application/infrastructure）
+- ⏳ Day 4：定义 DDD 基础类型（AggregateRoot, Entity, ValueObject）
+- ⏳ Day 5+：逐步提取聚合根和领域服务
+
+**重要说明**：
+当前的 Entity/Maper 是临时性的数据访问层，后续会重构为：
+- **聚合根**（Product, Device, UpgradePolicy）
+- **值对象**（FirmwareVersion, Checksum, GrayRate 等）
+- **领域服务**（UpgradeDecisionService, PolicyMatchService）
+- **仓储接口**（ProductRepository, DeviceRepository）
+
+详见 DDD 架构设计：
+- [DDD 架构设计文档](../../02-architecture/ddd-architecture.md)
+- [DDD 实施指南](../../02-architecture/ddd-implementation-guide.md)
+
+---
+
+## 📊 当前进度
+
+```
+Day 2 进度: [████████████████████] 100% ✅
+
+任务 2-1: 创建 Liquibase changelog 结构        [████████████████████] 100% ✅
+任务 2-2: 设计核心表结构                     [████████████████████] 100% ✅
+任务 2-3: 创建 MyBatis-Plus 实体和 Mapper        [████████████████████] 100% ✅
+任务 2-4: 配置多数据源                       [████████████████████] 100% ✅
+任务 2-5: 验证数据库集成                     [████████████████████] 100% ✅
+```
+
+---
+
+## 🔗 相关资源
+
+### 设计文档
+- [Sprint 1 计划](../../05-plans/sprint-1.md)
+- [任务进度](day-02-progress.md)
+
+### 技术文档
+- [MyBatis-Plus 官方文档](https://baomidou.com/)
+- [Liquibase 官方文档](https://docs.liquibase.com/)
+- [PostgreSQL 官方文档](https://www.postgresql.org/docs/)
+
+---
+
+**任务开始时间**: 2026-02-05 19:00
+**任务完成时间**: 2026-02-06 18:00
+**当前状态**: ✅ Completed

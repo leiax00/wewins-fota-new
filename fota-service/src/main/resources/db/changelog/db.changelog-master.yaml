@@ -1,0 +1,45 @@
+databaseChangeLog:
+  # Liquibase 主 changelog 配置文件
+  # 用于管理 FOTA 系统的数据库迁移脚本
+  #
+  # 命名规范:
+  # - 文件名格式: yyyyMMdd_{version}__{description}.sql  (version按每日的序号，两位数字)
+  # - 示例: 0260209_01_init_core.sql, 20260209_02_init_system_tables.sql
+  #
+  # 执行顺序:
+  # 1. 按照 changesets 定义的顺序执行
+  # 2. 每个 changeset 有唯一的 id 和 author
+  # 3. 执行记录保存在 databasechangelog 表中
+
+  - changeSet:
+      id: 20260209_01_init_core
+      author: fota-team
+      comment: 初始化核心表结构（products, devices, firmware_versions, upgrade_policies）
+      changes:
+        - sqlFile:
+            path: changes/20260209_01_init_core.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260209_02_init_system_tables
+      author: fota-team
+      comment: 初始化系统管理模块核心表结构（users, roles, permissions, dict）
+      changes:
+        - sqlFile:
+            path: changes/20260209_02_init_system_tables.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260209_03_init_data
+      author: fota-team
+      comment: 初始化系统管理模块数据（权限、角色、管理员、字典）
+      changes:
+        - sqlFile:
+            path: changes/20260209_03_init_data.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

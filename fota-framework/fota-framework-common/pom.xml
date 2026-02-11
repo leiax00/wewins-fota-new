@@ -37,6 +37,12 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- SLF4J (for @Slf4j annotation) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

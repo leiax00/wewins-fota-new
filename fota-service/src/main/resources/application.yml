@@ -4,6 +4,21 @@
 # - MODE=main：主区域模式（管理后台、配置中心、数据汇聚）
 # - MODE=region：区域模式（设备 API、配置同步、数据转发）
 
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.wewins.fota.entity,com.wewins.fota.system.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      # 逻辑删除配置
+      # 使用 deletedAt 字段作为逻辑删除标记
+      logic-delete-field: deletedAt
+      logic-not-delete-value: "NULL"
+      logic-delete-value: "now()"
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -16,35 +31,43 @@ spring:
   # MODE=region → spring.profiles.active=region
   profiles:
     active: ${MODE:main}
+    include: security
 
-  # PostgreSQL 数据源配置
+  # PostgreSQL 主数据源配置
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota}
-    username: ${DB_USER:fota}
-    password: ${DB_PASSWORD:fota}
+    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:wewins@2025}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
-  # JPA 配置
-  jpa:
-    hibernate:
-      ddl-auto: none  # 禁止自动建表，使用 Flyway 管理数据库结构
-    open-in-view: false  # 避免懒加载问题
-    properties:
-      hibernate:
-        format_sql: false  # 生产环境关闭 SQL 格式化
-        jdbc:
-          time_zone: UTC  # 统一使用 UTC 时区
-        dialect:
-          storage_engine: org.hibernate.storage.engine.spi.StorageEngine
+    # ClickHouse 分析数据源配置（可选）
+    clickhouse:
+      url: ${CLICKHOUSE_URL:jdbc:clickhouse://chouse.wewins.wolaie.com:28123/ww-fota}
+      username: ${CLICKHOUSE_USER:wewins}
+      password: ${CLICKHOUSE_PASSWORD:wewins@2025}
+      driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 1
+        connection-timeout: 30000
+
+  # Liquibase 数据库迁移配置
+  liquibase:
+    enabled: ${LIQUIBASE_ENABLED:true}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+    contexts: ${LIQUIBASE_CONTEXTS:default}
 
   # Redis 配置
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis.wewins.wolaie.com}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 3s
@@ -53,24 +76,19 @@ spring:
           max-active: 20
           max-idle: 10
           min-idle: 5
+      database: 10
 
   # RabbitMQ 配置
   rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
+    host: ${RABBITMQ_HOST:mq.wewins.wolaie.com}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    username: ${RABBITMQ_USER:admin}
+    password: ${RABBITMQ_PASSWORD:admin@123456}
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
         acknowledge-mode: manual
         prefetch: 10
-
-  # Flyway 数据库迁移配置
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
 
 # 监控端点配置
 management:
@@ -83,9 +101,9 @@ management:
       probes:
         enabled: true
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 # 日志配置

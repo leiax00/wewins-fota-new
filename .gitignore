@@ -49,3 +49,4 @@ logs/
 
 # Agent
 .agent/
+.claude/
