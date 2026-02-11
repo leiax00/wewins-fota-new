@@ -2,10 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit:*)",
       "mcp__codex__codex",
-      "Bash(mvn:*)",
-      "Bash(TaskList)"
+      "Bash(mvn:*)"
     ]
   },
   "enabledPlugins": {
