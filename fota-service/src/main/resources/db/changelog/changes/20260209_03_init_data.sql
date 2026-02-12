@@ -112,7 +112,8 @@ INSERT INTO sys_dict_type (code, name, status, description, created_at, updated_
 VALUES
   ('user_status', '用户状态', 'active', '用户账户状态', now(), now()),
   ('role_status', '角色状态', 'active', '角色状态', now(), now()),
-  ('perm_status', '权限状态', 'active', '权限状态', now(), now())
+  ('perm_status', '权限状态', 'active', '权限状态', now(), now()),
+  ('region_bootstrap_secret', '分区初始密钥', 'active', '分区首次握手使用的初始密钥', now(), now())
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================================
@@ -157,6 +158,12 @@ SELECT t.id, '禁用', 'disabled', 2, 'active', now(), now()
 FROM sys_dict_type t WHERE t.code = 'perm_status'
 ON CONFLICT (dict_type_id, value) DO NOTHING;
 
+-- 分区初始密钥字典项（示例，实际请按环境调整）
+INSERT INTO sys_dict_item (dict_type_id, label, value, sort_order, status, extra, created_at, updated_at)
+SELECT t.id, 'us-east', 'us-east', 1, 'active', '{"secret":"your-secret-1"}'::jsonb, now(), now()
+FROM sys_dict_type t WHERE t.code = 'region_bootstrap_secret'
+ON CONFLICT (dict_type_id, value) DO NOTHING;
+
 -- ============================================================================
 -- 初始化完成
 -- ============================================================================
@@ -165,5 +172,5 @@ DO $$
 BEGIN
     RAISE NOTICE '系统管理模块初始化数据完成';
     RAISE NOTICE '默认管理员账户: wewins / wewins@2026';
-    RAISE NOTICE '已初始化 23 个权限、2 个角色、1 个管理员、3 个字典类型';
+    RAISE NOTICE '已初始化 23 个权限、2 个角色、1 个管理员、4 个字典类型';
 END $$;

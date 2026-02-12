@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 设备检查日志实体
@@ -28,12 +27,13 @@ public class DeviceCheckLog implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 请求唯一标识（UUID）
+     * 请求唯一标识（UUID 字符串）
      * <p>
      * 用于关联设备检查和后续的升级事件
+     * 使用 String 类型存储 UUID，避免 MyBatis 类型处理器问题
      * </p>
      */
-    private UUID requestId;
+    private String requestId;
 
     /**
      * 设备 ID

@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 设备升级事件实体
@@ -36,12 +35,13 @@ public class DeviceUpgradeEvent implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 事件唯一标识（UUID）
+     * 事件唯一标识（UUID 字符串）
      * <p>
      * 用于幂等写入，防止重复插入
+     * 使用 String 类型存储 UUID，避免 MyBatis 类型处理器问题
      * </p>
      */
-    private UUID eventId;
+    private String eventId;
 
     /**
      * 设备 IMEI
@@ -52,13 +52,14 @@ public class DeviceUpgradeEvent implements Serializable {
     private String imei;
 
     /**
-     * 请求唯一标识（UUID）
+     * 请求唯一标识（UUID 字符串）
      * <p>
      * 从下载 URL 中解析，关联 device_check_logs.request_id
      * 可能为空（如果 URL 中没有 rid 参数）
+     * 使用 String 类型存储 UUID，避免 MyBatis 类型处理器问题
      * </p>
      */
-    private UUID requestId;
+    private String requestId;
 
     /**
      * 策略 ID

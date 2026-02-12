@@ -3,35 +3,33 @@
 # 区域职责：
 # - 设备 API（check/report）
 # - 配置同步（从主区域轮询配置）
-# - 数据转发（Forwarder 转发聚合数据到主区域）
+# - 数据转发（Forwarder 转发数据到主区域）
 #
 # 使用说明：通过 spring.profiles.active=region 加载此配置文件
 
-# 区域模式标识
+# 应用配置
 app:
   mode: region
 
-  # 区域配置
-  region:
-    code: ${REGION_CODE:us-east}
-    timeZone: ${TIME_ZONE:America/New_York}
-    defaultQuota: 100000
-    apiBaseUrl: ${REGION_API_URL:https://region-us-east.api.xxx.com}
-    syncEndpoint: ${MAIN_SYNC_ENDPOINT:https://main.api.xxx.com/internal/config}
+  # 节点配置（区域模式）
+  node:
+    code: ${NODE_CODE:us-east}
+    name: ${NODE_NAME:美东区域}
+    baseUrl: ${NODE_BASE_URL:https://us-east.api.xxx.com}
+    timeZone: ${NODE_TIME_ZONE:America/New_York}
 
-  # 集群配置（负载均衡场景）
-  cluster:
-    enabled: true  # 标记这是集群部署（多实例负载均衡）
-    lock:
-      enabled: false  # 推荐使用 Redis 原子操作（increment）替代分布式锁
-      prefix: fota:lock:
-      leaseTime: 30
+  # 主区域入口（region 模式必须配置）
+  main:
+    baseUrl: ${APP_MAIN_BASE_URL:https://main.api.xxx.com}
+    bootstrapSecret: ${APP_MAIN_BOOTSTRAP_SECRET:change-me}
 
-# 功能开关（区域模式）
-feature:
-  admin:
-    enabled: false # 管理后台仅在 main 启用
-  ingest:
-    enabled: false # Ingest API 仅在 main 启用
-  forwarder:
-    enabled: true  # Forwarder 在 region 启用
+  features:
+    admin: false
+    device-api: true
+    data-ingest: false
+    data-forward: true
+
+# 区域模式禁用 Liquibase（由主区域管理迁移）
+spring:
+  liquibase:
+    enabled: false

@@ -45,7 +45,7 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
         try {
             // 自动生成 request_id
             if (checkLog.getRequestId() == null) {
-                checkLog.setRequestId(UUID.randomUUID());
+                checkLog.setRequestId(UUID.randomUUID().toString());
             }
 
             // 自动填充 event_time（UTC 时区）
@@ -77,7 +77,7 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
 
                 // 自动生成 request_id
                 if (checkLog.getRequestId() == null) {
-                    checkLog.setRequestId(UUID.randomUUID());
+                    checkLog.setRequestId(UUID.randomUUID().toString());
                 }
 
                 // 自动填充 event_time（UTC 时区）
@@ -113,7 +113,7 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
         try {
             // 自动生成 event_id
             if (event.getEventId() == null) {
-                event.setEventId(UUID.randomUUID());
+                event.setEventId(UUID.randomUUID().toString());
             }
 
             // 如果没有 request_id，记录警告但不生成新的（破坏关联性）
@@ -157,7 +157,7 @@ public class DeviceUpgradeEventServiceImpl implements DeviceUpgradeEventService 
 
                 // 自动生成 event_id
                 if (event.getEventId() == null) {
-                    event.setEventId(UUID.randomUUID());
+                    event.setEventId(UUID.randomUUID().toString());
                 }
 
                 // 如果没有 request_id，记录警告但不生成新的

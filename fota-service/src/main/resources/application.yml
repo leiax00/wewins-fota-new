@@ -29,7 +29,7 @@ spring:
   # 激活的 Profile
   # 使用 spring.profiles.active 控制环境（dev/test/prod）
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    active: ${SPRING_PROFILES_ACTIVE:main}
     include: security
 
   # PostgreSQL 主数据源配置
@@ -122,5 +122,46 @@ app:
   # 用于条件装配 @ConditionalOnProperty(name = "app.mode", havingValue = "main/region")
   mode: ${APP_MODE:main}
 
-  # 区域标识：main, jp, sg, eu 等
-  region: ${REGION:main}
+  # 节点配置（main 和 region 共用）
+  node:
+    code: ${NODE_CODE:main}
+    name: ${NODE_NAME:主区域}
+    baseUrl: ${NODE_BASE_URL:https://main.api.xxx.com}
+    timeZone: ${NODE_TIME_ZONE:Asia/Shanghai}
+
+  # 功能开关
+  features:
+    admin: ${FEATURE_ADMIN:true}
+    device-api: ${FEATURE_DEVICE_API:false}
+    data-ingest: ${FEATURE_DATA_INGEST:false}
+    data-forward: ${FEATURE_DATA_FORWARD:false}
+
+  # 服务注册
+  registry:
+    enabled: ${REGISTRY_ENABLED:true}
+    ttlSeconds: ${REGISTRY_TTL_SECONDS:90}
+    heartbeatIntervalMs: ${REGISTRY_HEARTBEAT_INTERVAL_MS:20000}
+    instanceId: ${INSTANCE_ID:1}
+
+  # 分区主节点选举
+  leader:
+    enabled: ${LEADER_ENABLED:true}
+    ttlSeconds: ${LEADER_TTL_SECONDS:30}
+    renewIntervalMs: ${LEADER_RENEW_INTERVAL_MS:10000}
+
+  # 内部接口鉴权
+  internal-auth:
+    enabled: ${INTERNAL_AUTH_ENABLED:true}
+    skewSeconds: ${INTERNAL_AUTH_SKEW_SECONDS:300}
+    nonceTtlSeconds: ${INTERNAL_AUTH_NONCE_TTL_SECONDS:300}
+
+  # 消息队列配置
+  mq:
+    enabled: ${MQ_ENABLED:true}
+    queues:
+      upgrade-events:
+        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events}
+        durable: true
+      check-logs:
+        name: ${MQ_CHECK_LOG_QUEUE:fota.device.check.logs}
+        durable: true

@@ -124,4 +124,66 @@ public final class RedisKeyConstants {
      * 限流窗口 TTL（60 秒）
      */
     public static final long RATE_LIMIT_TTL_SECONDS = 60;
+
+    // ========== 服务注册常量 ==========
+
+    /**
+     * 服务注册节点 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.REGISTRY_NODE_KEY_TEMPLATE, nodeCode)
+     * </p>
+     * <p>
+     * 示例：fota:registry:node:standalone-1
+     * </p>
+     */
+    public static final String REGISTRY_NODE_KEY_TEMPLATE = "fota:registry:node:%s";
+
+    /**
+     * 在线节点集合 Key
+     */
+    public static final String REGISTRY_NODE_SET_KEY = "fota:registry:nodes";
+
+    /**
+     * 分区主节点 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.REGION_LEADER_KEY_TEMPLATE, regionCode)
+     * </p>
+     * <p>
+     * 示例：fota:region:leader:us-east
+     * </p>
+     */
+    public static final String REGION_LEADER_KEY_TEMPLATE = "fota:region:leader:%s";
+
+    /**
+     * 分区密钥 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.REGION_SECRET_KEY_TEMPLATE, regionCode)
+     * </p>
+     * <p>
+     * 示例：fota:region:secret:us-east
+     * </p>
+     */
+    public static final String REGION_SECRET_KEY_TEMPLATE = "fota:region:secret:%s";
+
+    /**
+     * 分区 nonce Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.REGION_NONCE_KEY_TEMPLATE, regionCode, nonce)
+     * </p>
+     * <p>
+     * 示例：fota:region:nonce:us-east:abc123
+     * </p>
+     */
+    public static final String REGION_NONCE_KEY_TEMPLATE = "fota:region:nonce:%s:%s";
+
+    /**
+     * 分区密钥轮换待下发 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.REGION_ROTATE_KEY_TEMPLATE, regionCode)
+     * </p>
+     * <p>
+     * 示例：fota:region:rotate:us-east
+     * </p>
+     */
+    public static final String REGION_ROTATE_KEY_TEMPLATE = "fota:region:rotate:%s";
 }

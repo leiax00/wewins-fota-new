@@ -1,13 +1,25 @@
 package com.wewins.fota.application.region;
 
 import com.wewins.fota.infra.config.AppProperties;
+import com.wewins.fota.infra.leader.RegionLeaderService;
+import com.wewins.fota.infra.region.RegionCodeResolver;
+import com.wewins.fota.infra.security.HmacSigner;
+import com.wewins.fota.infra.security.RegionRotateKey;
+import com.wewins.fota.infra.security.RegionSecretService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 区域配置同步应用服务
@@ -42,6 +54,9 @@ public class RegionSyncService {
 
     private final AppProperties appProperties;
     private final RestTemplate restTemplate;
+    private final ObjectProvider<RegionLeaderService> leaderServiceProvider;
+    private final RegionSecretService regionSecretService;
+    private String pendingAckKeyId;
 
     /**
      * 本地配置版本缓存
@@ -109,6 +124,12 @@ public class RegionSyncService {
             return false;
         }
 
+        RegionLeaderService leaderService = leaderServiceProvider.getIfAvailable();
+        if (leaderService != null && !leaderService.isLeader()) {
+            log.debug("当前实例不是分区主节点，跳过配置同步");
+            return false;
+        }
+
         try {
             // 1. 获取主区域配置版本
             long remoteVersion = getRemoteConfigVersion();
@@ -149,9 +170,12 @@ public class RegionSyncService {
         String url = buildConfigVersionUrl();
 
         try {
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            HttpHeaders headers = buildInternalAuthHeaders(url, HttpMethod.GET.name());
+            ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            Map<String, Object> response = responseEntity.getBody();
 
             if (response != null && response.containsKey("version")) {
+                handleRotateKeyIfPresent(response);
                 Object versionObj = response.get("version");
                 if (versionObj instanceof Number) {
                     return ((Number) versionObj).longValue();
@@ -177,10 +201,13 @@ public class RegionSyncService {
         String url = buildSnapshotUrl(snapshotType);
 
         try {
+            HttpHeaders headers = buildInternalAuthHeaders(url, HttpMethod.GET.name());
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            Map<String, Object> response = responseEntity.getBody();
 
             if (response != null) {
+                handleRotateKeyIfPresent(response);
                 return response;
             }
 
@@ -198,8 +225,7 @@ public class RegionSyncService {
      * @return URL
      */
     private String buildConfigVersionUrl() {
-        String mainApiUrl = appProperties.getMain() != null ?
-                appProperties.getMain().getApiBaseUrl() : "https://main.api.xxx.com";
+        String mainApiUrl = resolveMainBaseUrl();
         return String.format(MAIN_CONFIG_VERSION_URL, mainApiUrl);
     }
 
@@ -210,8 +236,82 @@ public class RegionSyncService {
      * @return URL
      */
     private String buildSnapshotUrl(String snapshotType) {
-        String mainApiUrl = appProperties.getMain() != null ?
-                appProperties.getMain().getApiBaseUrl() : "https://main.api.xxx.com";
+        String mainApiUrl = resolveMainBaseUrl();
         return String.format(SNAPSHOT_URL_TEMPLATE, mainApiUrl, snapshotType);
+    }
+
+    private String resolveMainBaseUrl() {
+        String mainBaseUrl = null;
+        if (appProperties.getMain() != null) {
+            mainBaseUrl = appProperties.getMain().getBaseUrl();
+        }
+        if (mainBaseUrl == null || mainBaseUrl.isBlank()) {
+            String fallback = appProperties.getNode().getBaseUrl();
+            log.warn("未配置 app.main.baseUrl，回退使用 app.node.baseUrl={}", fallback);
+            return fallback;
+        }
+        return mainBaseUrl;
+    }
+
+    private HttpHeaders buildInternalAuthHeaders(String url, String method) {
+        HttpHeaders headers = new HttpHeaders();
+        String regionCode = RegionCodeResolver.resolveRegionCode(appProperties.getNode().getCode());
+        String secret = regionSecretService.getSecret(regionCode);
+        if (secret == null || secret.isBlank()) {
+            secret = appProperties.getMain() != null ? appProperties.getMain().getBootstrapSecret() : null;
+        }
+        if (secret == null || secret.isBlank()) {
+            log.warn("未配置 app.main.bootstrapSecret，内部请求不携带签名: url={}", url);
+            return headers;
+        }
+
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String nonce = UUID.randomUUID().toString();
+        String pathWithQuery = buildPathWithQuery(url);
+        String payload = HmacSigner.buildPayload(regionCode, timestamp, nonce, method, pathWithQuery);
+        String signature = HmacSigner.sign(secret, payload);
+
+        headers.add("X-Region-Code", regionCode);
+        headers.add("X-Timestamp", timestamp);
+        headers.add("X-Nonce", nonce);
+        headers.add("X-Signature", signature);
+        if (pendingAckKeyId != null && !pendingAckKeyId.isBlank()) {
+            headers.add("X-Secret-Ack", pendingAckKeyId);
+            pendingAckKeyId = null;
+        }
+        return headers;
+    }
+
+    private String buildPathWithQuery(String url) {
+        URI uri = URI.create(url);
+        String path = uri.getRawPath();
+        String query = uri.getRawQuery();
+        if (query == null || query.isBlank()) {
+            return path;
+        }
+        return path + "?" + query;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handleRotateKeyIfPresent(Map<String, Object> response) {
+        Object rotateKeyObj = response.get("rotateKey");
+        if (!(rotateKeyObj instanceof Map)) {
+            return;
+        }
+        Map<String, Object> rotateKeyMap = (Map<String, Object>) rotateKeyObj;
+        Object keyIdObj = rotateKeyMap.get("keyId");
+        Object secretObj = rotateKeyMap.get("secret");
+        if (!(keyIdObj instanceof String) || !(secretObj instanceof String)) {
+            return;
+        }
+        String keyId = (String) keyIdObj;
+        String secret = (String) secretObj;
+        if (secret.isBlank()) {
+            return;
+        }
+        String regionCode = RegionCodeResolver.resolveRegionCode(appProperties.getNode().getCode());
+        regionSecretService.setSecret(regionCode, secret);
+        pendingAckKeyId = keyId;
+        log.info("已应用分区新密钥: keyId={}", keyId);
     }
 }
