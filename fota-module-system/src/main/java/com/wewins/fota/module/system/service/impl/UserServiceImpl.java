@@ -7,8 +7,6 @@ import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.module.system.dto.UserPageReqVO;
 import com.wewins.fota.module.system.entity.*;
 import com.wewins.fota.module.system.mapper.*;
-import com.wewins.fota.system.entity.*;
-import com.wewins.fota.system.mapper.*;
 import com.wewins.fota.module.system.service.IUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
