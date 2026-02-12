@@ -1,6 +1,7 @@
 package com.wewins.fota.infra.security;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.system.entity.DictItem;
 import com.wewins.fota.system.service.IDictItemService;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 
 /**
  * 内部鉴权密钥引导写入（仅首次）
@@ -22,7 +22,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.mode", havingValue = "main")
+@ConditionalOnAppMode("main")
 @ConditionalOnProperty(prefix = "app.internal-auth", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InternalAuthBootstrapService {
 

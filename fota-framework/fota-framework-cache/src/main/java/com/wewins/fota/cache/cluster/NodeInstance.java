@@ -1,12 +1,9 @@
-package com.wewins.fota.infra.registry;
+package com.wewins.fota.cache.cluster;
 
 import lombok.Data;
 
 /**
- * 节点实例注册信息
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Node registry instance metadata.
  */
 @Data
 public class NodeInstance {

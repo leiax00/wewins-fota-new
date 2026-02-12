@@ -1,15 +1,11 @@
-package com.wewins.fota.infra.region;
+package com.wewins.fota.common.region;
 
 /**
- * 分区编码解析工具
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Resolver for region code from node code.
  */
 public final class RegionCodeResolver {
 
     private RegionCodeResolver() {
-        // utility class
     }
 
     public static String resolveRegionCode(String nodeCode) {

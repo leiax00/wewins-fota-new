@@ -1,4 +1,4 @@
-package com.wewins.fota.infra.security;
+package com.wewins.fota.common.security;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -6,17 +6,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 /**
- * HMAC 签名工具
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * HMAC signing helper.
  */
 public final class HmacSigner {
 
     private static final String HMAC_ALGO = "HmacSHA256";
 
     private HmacSigner() {
-        // utility class
     }
 
     public static String sign(String secret, String payload) {
@@ -27,7 +23,7 @@ public final class HmacSigner {
             byte[] raw = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(raw);
         } catch (Exception ex) {
-            throw new IllegalStateException("HMAC 签名失败", ex);
+            throw new IllegalStateException("HMAC sign failed", ex);
         }
     }
 

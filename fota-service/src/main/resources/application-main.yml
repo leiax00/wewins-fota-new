@@ -17,10 +17,3 @@ app:
     name: 主区域
     baseUrl: https://main.api.xxx.com
     timeZone: Asia/Shanghai
-
-  # 功能开关
-  features:
-    admin: true      # 管理后台
-    device-api: false
-    data-ingest: true
-    data-forward: false

@@ -1,12 +1,11 @@
-package com.wewins.fota.infra.security;
+package com.wewins.fota.security.internal;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
-import com.wewins.fota.infra.config.AppProperties;
-import com.wewins.fota.infra.region.RegionCodeResolver;
+import com.wewins.fota.common.security.HmacSigner;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -15,12 +14,8 @@ import java.time.Duration;
 import java.util.UUID;
 
 /**
- * 内部接口 HMAC 鉴权拦截器
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Internal API HMAC auth interceptor.
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class InternalHmacInterceptor implements HandlerInterceptor {
@@ -30,14 +25,17 @@ public class InternalHmacInterceptor implements HandlerInterceptor {
     private static final String HEADER_NONCE = "X-Nonce";
     private static final String HEADER_SIGNATURE = "X-Signature";
 
-    private final AppProperties appProperties;
+    @Value("${app.mode:main}")
+    private String mode;
+
+    private final InternalAuthProperties internalAuthProperties;
     private final RegionSecretService regionSecretService;
     private final RegionRotateKeyService rotateKeyService;
     private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        if (!"main".equals(appProperties.getMode())) {
+        if (!"main".equals(mode)) {
             return true;
         }
 
@@ -58,8 +56,7 @@ public class InternalHmacInterceptor implements HandlerInterceptor {
         }
 
         long now = System.currentTimeMillis() / 1000;
-        long skew = Math.abs(now - ts);
-        if (skew > appProperties.getInternalAuth().getSkewSeconds()) {
+        if (Math.abs(now - ts) > internalAuthProperties.getSkewSeconds()) {
             return reject(response, "timestamp_skew");
         }
 
@@ -67,21 +64,18 @@ public class InternalHmacInterceptor implements HandlerInterceptor {
             return reject(response, "nonce_replay");
         }
 
-        String pathWithQuery = buildPathWithQuery(request);
-        String payload = HmacSigner.buildPayload(regionCode, timestamp, nonce, request.getMethod(), pathWithQuery);
+        String payload = HmacSigner.buildPayload(regionCode, timestamp, nonce, request.getMethod(), buildPathWithQuery(request));
 
         String secret = regionSecretService.getSecret(regionCode);
         boolean matched = false;
         if (!isBlank(secret)) {
-            String expected = HmacSigner.sign(secret, payload);
-            matched = HmacSigner.constantTimeEquals(expected, signature);
+            matched = HmacSigner.constantTimeEquals(HmacSigner.sign(secret, payload), signature);
         }
 
         if (!matched) {
             RegionRotateKey rotateKey = rotateKeyService.getPendingRotateKey(regionCode);
             if (rotateKey != null && !isBlank(rotateKey.getSecret())) {
-                String expected = HmacSigner.sign(rotateKey.getSecret(), payload);
-                matched = HmacSigner.constantTimeEquals(expected, signature);
+                matched = HmacSigner.constantTimeEquals(HmacSigner.sign(rotateKey.getSecret(), payload), signature);
             }
         }
 
@@ -94,7 +88,7 @@ public class InternalHmacInterceptor implements HandlerInterceptor {
 
     private boolean reserveNonce(String regionCode, String nonce) {
         String key = String.format(RedisKeyConstants.REGION_NONCE_KEY_TEMPLATE, regionCode, nonce);
-        Duration ttl = Duration.ofSeconds(appProperties.getInternalAuth().getNonceTtlSeconds());
+        Duration ttl = Duration.ofSeconds(internalAuthProperties.getNonceTtlSeconds());
         Boolean success = redisTemplate.opsForValue().setIfAbsent(key, UUID.randomUUID().toString(), ttl);
         return Boolean.TRUE.equals(success);
     }
@@ -102,10 +96,7 @@ public class InternalHmacInterceptor implements HandlerInterceptor {
     private String buildPathWithQuery(HttpServletRequest request) {
         String uri = request.getRequestURI();
         String query = request.getQueryString();
-        if (query == null || query.isBlank()) {
-            return uri;
-        }
-        return uri + "?" + query;
+        return (query == null || query.isBlank()) ? uri : uri + "?" + query;
     }
 
     private boolean reject(HttpServletResponse response, String reason) {

@@ -1,9 +1,9 @@
-package com.wewins.fota.adapter.api.admin;
+package com.wewins.fota.adapter.api.internal;
 
-import com.wewins.fota.application.region.RegionSyncService;
+import com.wewins.fota.application.config.InternalConfigQueryService;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,12 +28,11 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/internal/config")
-@ConditionalOnProperty(name = "app.mode", havingValue = "main")
-@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RequiredArgsConstructor
 public class ConfigSnapshotController {
 
-    private final RegionSyncService regionSyncService;
+    private final InternalConfigQueryService internalConfigQueryService;
 
     /**
      * 获取配置快照
@@ -50,7 +49,7 @@ public class ConfigSnapshotController {
 
         log.debug("拉取配置快照: type={}", snapshotType);
 
-        Map<String, Object> snapshot = regionSyncService.fetchSnapshot(snapshotType);
+        Map<String, Object> snapshot = internalConfigQueryService.getSnapshot(snapshotType);
 
         return ResponseEntity.ok(snapshot);
     }

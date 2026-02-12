@@ -22,6 +22,7 @@
 - [FOTA 系统架构及技术说明书](02-architecture/fota-architecture.md)
 - [DDD 架构设计文档](02-architecture/ddd-architecture.md) 🆕
 - [DDD 实施指南](02-architecture/ddd-implementation-guide.md) 🆕
+- [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md) 🆕
 
 ---
 

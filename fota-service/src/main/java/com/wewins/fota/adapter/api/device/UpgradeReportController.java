@@ -2,9 +2,9 @@ package com.wewins.fota.adapter.api.device;
 
 import com.wewins.fota.analytics.entity.DeviceUpgradeEvent;
 import com.wewins.fota.analytics.service.DeviceUpgradeEventService;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/v1/upgrade")
-@ConditionalOnProperty(name = "app.features.device-api", havingValue = "true")
+@ConditionalOnAppMode({"main", "region"})
 @RequiredArgsConstructor
 public class UpgradeReportController {
 

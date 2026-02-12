@@ -129,13 +129,6 @@ app:
     baseUrl: ${NODE_BASE_URL:https://main.api.xxx.com}
     timeZone: ${NODE_TIME_ZONE:Asia/Shanghai}
 
-  # 功能开关
-  features:
-    admin: ${FEATURE_ADMIN:true}
-    device-api: ${FEATURE_DEVICE_API:false}
-    data-ingest: ${FEATURE_DATA_INGEST:false}
-    data-forward: ${FEATURE_DATA_FORWARD:false}
-
   # 服务注册
   registry:
     enabled: ${REGISTRY_ENABLED:true}

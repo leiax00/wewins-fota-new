@@ -1,11 +1,10 @@
 package com.wewins.fota.application.region;
 
-import com.wewins.fota.infra.config.AppProperties;
-import com.wewins.fota.infra.leader.RegionLeaderService;
-import com.wewins.fota.infra.region.RegionCodeResolver;
-import com.wewins.fota.infra.security.HmacSigner;
-import com.wewins.fota.infra.security.RegionRotateKey;
-import com.wewins.fota.infra.security.RegionSecretService;
+import com.wewins.fota.cache.cluster.RegionLeaderService;
+import com.wewins.fota.common.region.RegionCodeResolver;
+import com.wewins.fota.common.security.HmacSigner;
+import com.wewins.fota.security.internal.RegionRotateKey;
+import com.wewins.fota.security.internal.RegionSecretService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -52,7 +51,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RegionSyncService {
 
-    private final AppProperties appProperties;
+    private final RegionSyncProperties regionSyncProperties;
     private final RestTemplate restTemplate;
     private final ObjectProvider<RegionLeaderService> leaderServiceProvider;
     private final RegionSecretService regionSecretService;
@@ -90,25 +89,6 @@ public class RegionSyncService {
     }
 
     /**
-     * 获取本地配置版本
-     *
-     * @return 本地缓存的配置版本
-     */
-    public long getLocalConfigVersion() {
-        return localConfigVersion;
-    }
-
-    /**
-     * 设置本地配置版本
-     *
-     * @param version 配置版本号
-     */
-    public void setLocalConfigVersion(long version) {
-        this.localConfigVersion = version;
-        log.info("更新本地配置版本: {}", version);
-    }
-
-    /**
      * 执行一次配置同步
      * <p>
      * 负载均衡场景下，每个实例都可以执行此操作
@@ -119,7 +99,7 @@ public class RegionSyncService {
      */
     public boolean syncOnce() {
         // 检查是否在区域模式
-        if (!"region".equals(appProperties.getMode())) {
+        if (!"region".equals(regionSyncProperties.getMode())) {
             log.warn("当前不在区域模式，跳过配置同步");
             return false;
         }
@@ -242,11 +222,11 @@ public class RegionSyncService {
 
     private String resolveMainBaseUrl() {
         String mainBaseUrl = null;
-        if (appProperties.getMain() != null) {
-            mainBaseUrl = appProperties.getMain().getBaseUrl();
+        if (regionSyncProperties.getMain() != null) {
+            mainBaseUrl = regionSyncProperties.getMain().getBaseUrl();
         }
         if (mainBaseUrl == null || mainBaseUrl.isBlank()) {
-            String fallback = appProperties.getNode().getBaseUrl();
+            String fallback = regionSyncProperties.getNode().getBaseUrl();
             log.warn("未配置 app.main.baseUrl，回退使用 app.node.baseUrl={}", fallback);
             return fallback;
         }
@@ -255,10 +235,10 @@ public class RegionSyncService {
 
     private HttpHeaders buildInternalAuthHeaders(String url, String method) {
         HttpHeaders headers = new HttpHeaders();
-        String regionCode = RegionCodeResolver.resolveRegionCode(appProperties.getNode().getCode());
+        String regionCode = RegionCodeResolver.resolveRegionCode(regionSyncProperties.getNode().getCode());
         String secret = regionSecretService.getSecret(regionCode);
         if (secret == null || secret.isBlank()) {
-            secret = appProperties.getMain() != null ? appProperties.getMain().getBootstrapSecret() : null;
+            secret = regionSyncProperties.getMain() != null ? regionSyncProperties.getMain().getBootstrapSecret() : null;
         }
         if (secret == null || secret.isBlank()) {
             log.warn("未配置 app.main.bootstrapSecret，内部请求不携带签名: url={}", url);
@@ -309,7 +289,7 @@ public class RegionSyncService {
         if (secret.isBlank()) {
             return;
         }
-        String regionCode = RegionCodeResolver.resolveRegionCode(appProperties.getNode().getCode());
+        String regionCode = RegionCodeResolver.resolveRegionCode(regionSyncProperties.getNode().getCode());
         regionSecretService.setSecret(regionCode, secret);
         pendingAckKeyId = keyId;
         log.info("已应用分区新密钥: keyId={}", keyId);

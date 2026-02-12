@@ -1,9 +1,9 @@
 package com.wewins.fota.adapter.api.internal;
 
-import com.wewins.fota.infra.registry.NodeInstance;
-import com.wewins.fota.infra.registry.NodeRegistryService;
+import com.wewins.fota.cache.cluster.NodeInstance;
+import com.wewins.fota.cache.cluster.NodeRegistryService;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,7 +21,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/internal/registry")
-@ConditionalOnProperty(name = "app.mode", havingValue = "main")
+@ConditionalOnAppMode("main")
 @RequiredArgsConstructor
 public class NodeRegistryController {
 

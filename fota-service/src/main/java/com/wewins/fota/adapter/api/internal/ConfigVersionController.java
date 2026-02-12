@@ -1,11 +1,11 @@
-package com.wewins.fota.adapter.api.admin;
+package com.wewins.fota.adapter.api.internal;
 
-import com.wewins.fota.application.region.RegionSyncService;
-import com.wewins.fota.infra.security.RegionRotateKey;
-import com.wewins.fota.infra.security.RegionRotateKeyService;
+import com.wewins.fota.application.config.InternalConfigQueryService;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
+import com.wewins.fota.security.internal.RegionRotateKey;
+import com.wewins.fota.security.internal.RegionRotateKeyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +25,11 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/internal/config")
-@ConditionalOnProperty(name = "app.mode", havingValue = "main")
-@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RequiredArgsConstructor
 public class ConfigVersionController {
 
-    private final RegionSyncService regionSyncService;
+    private final InternalConfigQueryService internalConfigQueryService;
     private final RegionRotateKeyService rotateKeyService;
 
     /**
@@ -46,7 +45,7 @@ public class ConfigVersionController {
             @RequestHeader(value = "X-Region-Code", required = false) String regionCode,
             @RequestHeader(value = "X-Secret-Ack", required = false) String secretAck
     ) {
-        long version = regionSyncService.getLocalConfigVersion();
+        long version = internalConfigQueryService.getConfigVersion();
         log.debug("查询配置版本: {}", version);
 
         if (regionCode != null && !regionCode.isBlank() && secretAck != null && !secretAck.isBlank()) {

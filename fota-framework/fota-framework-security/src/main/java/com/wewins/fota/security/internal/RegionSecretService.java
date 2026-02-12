@@ -1,4 +1,4 @@
-package com.wewins.fota.infra.security;
+package com.wewins.fota.security.internal;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import lombok.RequiredArgsConstructor;
@@ -6,10 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * 分区密钥查询服务
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Region secret query and persistence service.
  */
 @Service
 @RequiredArgsConstructor
@@ -20,10 +17,7 @@ public class RegionSecretService {
     public String getSecret(String regionCode) {
         String key = String.format(RedisKeyConstants.REGION_SECRET_KEY_TEMPLATE, regionCode);
         Object value = redisTemplate.opsForValue().get(key);
-        if (value == null) {
-            return null;
-        }
-        return String.valueOf(value);
+        return value == null ? null : String.valueOf(value);
     }
 
     public void setSecret(String regionCode, String secret) {

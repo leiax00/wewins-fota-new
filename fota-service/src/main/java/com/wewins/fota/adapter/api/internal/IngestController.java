@@ -1,8 +1,8 @@
 package com.wewins.fota.adapter.api.internal;
 
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +22,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/internal/ingest")
-@ConditionalOnProperty(name = "app.mode", havingValue = "main")
-@ConditionalOnProperty(name = "app.features.data-ingest", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RequiredArgsConstructor
 public class IngestController {
 
@@ -50,4 +49,3 @@ public class IngestController {
         return ResponseEntity.ok().build();
     }
 }
-

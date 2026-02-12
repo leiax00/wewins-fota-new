@@ -1,12 +1,12 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/admin/product")
-@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RequiredArgsConstructor
 public class ProductController {
 

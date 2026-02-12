@@ -1,4 +1,4 @@
-package com.wewins.fota.infra.security;
+package com.wewins.fota.security.internal;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
@@ -6,10 +6,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * 内部接口鉴权配置
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Internal API auth web configuration.
  */
 @Configuration
 @ConditionalOnProperty(name = "app.mode", havingValue = "main")
@@ -24,7 +21,6 @@ public class InternalAuthWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(internalHmacInterceptor)
-                .addPathPatterns("/internal/**");
+        registry.addInterceptor(internalHmacInterceptor).addPathPatterns("/internal/**");
     }
 }

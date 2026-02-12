@@ -1,12 +1,9 @@
-package com.wewins.fota.infra.security;
+package com.wewins.fota.security.internal;
 
 import lombok.Data;
 
 /**
- * 分区密钥轮换载荷
- *
- * @author FOTA Team
- * @since 2026-02-12
+ * Pending rotate key payload.
  */
 @Data
 public class RegionRotateKey {

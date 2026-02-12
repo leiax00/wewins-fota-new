@@ -23,12 +23,6 @@ app:
     baseUrl: ${APP_MAIN_BASE_URL:https://main.api.xxx.com}
     bootstrapSecret: ${APP_MAIN_BOOTSTRAP_SECRET:change-me}
 
-  features:
-    admin: false
-    device-api: true
-    data-ingest: false
-    data-forward: true
-
 # 区域模式禁用 Liquibase（由主区域管理迁移）
 spring:
   liquibase:
