@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.device;
+package com.wewins.fota.interfaces.device;
 
 import com.wewins.fota.analytics.entity.DeviceUpgradeEvent;
 import com.wewins.fota.analytics.service.DeviceUpgradeEventService;

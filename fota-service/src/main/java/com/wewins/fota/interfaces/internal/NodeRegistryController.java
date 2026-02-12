@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.internal;
+package com.wewins.fota.interfaces.internal;
 
 import com.wewins.fota.cache.cluster.NodeInstance;
 import com.wewins.fota.cache.cluster.NodeRegistryService;

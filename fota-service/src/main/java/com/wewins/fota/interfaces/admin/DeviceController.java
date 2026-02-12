@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.admin;
+package com.wewins.fota.interfaces.admin;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

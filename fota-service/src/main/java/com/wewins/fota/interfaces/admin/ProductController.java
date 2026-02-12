@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.admin;
+package com.wewins.fota.interfaces.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;

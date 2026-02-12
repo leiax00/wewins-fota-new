@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.device;
+package com.wewins.fota.interfaces.device;
 
 import com.wewins.fota.application.upgrade.UpgradeCheckService;
 import com.wewins.fota.application.upgrade.UpgradeCheckService.CheckResult;
