@@ -2,6 +2,7 @@ package com.wewins.fota.adapter.api.admin;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/admin/device")
+@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
 @RequiredArgsConstructor
 public class DeviceController {
 

@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -29,7 +30,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.mq", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "app.mq", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class UpgradeEventConsumer {
 
     private final ObjectMapper objectMapper;
@@ -38,7 +39,8 @@ public class UpgradeEventConsumer {
     /**
      * 监听升级事件队列
      * <p>
-     * 队列名称：通过配置 app.mq.upgrade-event-queue 指定，默认为 fota.upgrade.events
+     * 通过 queuesToDeclare 方式自动声明队列
+     * 队列名称从配置文件读取：${app.mq.queues.upgrade-events.name}
      * </p>
      *
      * @param payload 消息体（JSON 字符串）
@@ -46,7 +48,12 @@ public class UpgradeEventConsumer {
      * @param channel RabbitMQ 通道
      * @throws IOException 消息处理失败时抛出
      */
-    @RabbitListener(queues = "${app.mq.upgrade-event-queue:fota.upgrade.events}")
+    @RabbitListener(
+            queuesToDeclare = @Queue(
+                    name = "${app.mq.queues.upgrade-events.name:fota.upgrade.events}",
+                    durable = "${app.mq.queues.upgrade-events.durable:true}"
+            )
+    )
     public void onUpgradeEvent(String payload, Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
 

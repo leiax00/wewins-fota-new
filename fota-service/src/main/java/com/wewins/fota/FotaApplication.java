@@ -6,10 +6,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * FOTA 平台启动类
  *
- * <p>支持两种运行模式：
+ * <p>支持三种运行模式：
  * <ul>
  *   <li>MODE=main：主区域模式（管理后台、配置中心、数据汇聚）</li>
  *   <li>MODE=region：区域模式（设备 API、配置同步、数据转发）</li>
+ *   <li>MODE=standalone：单区域多实例（全功能）</li>
  * </ul>
  *
  * <p>运行模式通过环境变量 {@code MODE} 或 JVM 参数 {@code -Dspring.profiles.active} 指定。

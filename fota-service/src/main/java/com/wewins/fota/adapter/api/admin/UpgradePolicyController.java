@@ -4,6 +4,7 @@ import com.wewins.fota.application.policy.PolicyApplicationService;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/admin/policy")
+@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
 @RequiredArgsConstructor
 public class UpgradePolicyController {
 

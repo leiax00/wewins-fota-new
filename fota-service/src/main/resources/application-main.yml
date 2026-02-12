@@ -7,47 +7,20 @@
 #
 # 使用说明：通过 spring.profiles.active=main 加载此配置文件
 
-# 主区域模式标识
+# 应用配置
 app:
   mode: main
 
-  # 主区域 API 配置
-  main:
-    apiBaseUrl: https://main.api.xxx.com
+  # 节点配置（main 和 region 共用）
+  node:
+    code: main
+    name: 主区域
+    baseUrl: https://main.api.xxx.com
+    timeZone: Asia/Shanghai
 
-    # 子区域注册表
-    regions:
-      - code: us-east
-        name: 美国东部区域
-        apiBaseUrl: https://region-us-east.api.xxx.com
-        timeZone: America/New_York
-        status: active
-      - code: eu-west
-        name: 欧洲西部区域
-        apiBaseUrl: https://region-eu-west.api.xxx.com
-        timeZone: Europe/Paris
-        status: active
-      - code: ap-southeast
-        name: 亚太东南区域
-        apiBaseUrl: https://region-ap-southeast.api.xxx.com
-        timeZone: Asia/Singapore
-        status: active
-
-  # 集群配置
-  cluster:
-    enabled: true
-    lock:
-      prefix: fota:lock:
-      leaseTime: 30
-    leader:
-      enabled: true
-      renewInterval: 10
-
-# 功能开关（主区域）
-feature:
-  admin:
-    enabled: true  # 管理后台
-  ingest:
-    enabled: true  # 跨区域数据接入
-  forwarder:
-    enabled: false # Forwarder 仅在 region 启用
+  # 功能开关
+  features:
+    admin: true      # 管理后台
+    device-api: false
+    data-ingest: true
+    data-forward: false

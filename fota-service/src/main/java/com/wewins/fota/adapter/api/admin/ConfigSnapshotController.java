@@ -1,4 +1,4 @@
-package com.wewins.fota.adapter.api.internal;
+package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.region.RegionSyncService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +29,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/internal/config")
 @ConditionalOnProperty(name = "app.mode", havingValue = "main")
+@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
 @RequiredArgsConstructor
 public class ConfigSnapshotController {
 
@@ -54,4 +55,3 @@ public class ConfigSnapshotController {
         return ResponseEntity.ok(snapshot);
     }
 }
-

@@ -11,6 +11,7 @@ import com.wewins.fota.system.exception.ErrorCode;
 import com.wewins.fota.system.service.IDictItemService;
 import com.wewins.fota.system.service.IDictTypeService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -33,6 +34,7 @@ import java.util.List;
  * @since 2026-02-11
  */
 @Slf4j
+@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
 @RestController
 @RequestMapping("/api/sys/dict-types")
 public class DictTypeController {

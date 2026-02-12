@@ -23,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/internal/ingest")
 @ConditionalOnProperty(name = "app.mode", havingValue = "main")
+@ConditionalOnProperty(name = "app.features.data-ingest", havingValue = "true")
 @RequiredArgsConstructor
 public class IngestController {
 

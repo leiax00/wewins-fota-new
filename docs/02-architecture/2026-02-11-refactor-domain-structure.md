@@ -153,8 +153,8 @@ com.wewins.fota/
 | `FirmwareVersionController.java` | `adapter/api/admin/FirmwareVersionController.java` | 固件版本管理 |
 | `UpgradePolicyController.java` | `adapter/api/admin/UpgradePolicyController.java` | 升级策略管理 |
 | `DeviceController.java` | `adapter/api/admin/DeviceController.java` | 设备管理 |
-| `ConfigVersionController.java` | `adapter/api/internal/ConfigVersionController.java` | 配置版本查询（仅 main） |
-| `ConfigSnapshotController.java` | `adapter/api/internal/ConfigSnapshotController.java` | 配置快照拉取（仅 main） |
+| `ConfigVersionController.java` | `adapter/api/admin/ConfigVersionController.java` | 配置版本查询（仅 main） |
+| `ConfigSnapshotController.java` | `adapter/api/admin/ConfigSnapshotController.java` | 配置快照拉取（仅 main） |
 | `IngestController.java` | `adapter/api/internal/IngestController.java` | 数据汇总接入（仅 main） |
 
 ---

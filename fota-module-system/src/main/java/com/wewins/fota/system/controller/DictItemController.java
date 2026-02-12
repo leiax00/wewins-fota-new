@@ -9,6 +9,7 @@ import com.wewins.fota.system.exception.BizException;
 import com.wewins.fota.system.exception.ErrorCode;
 import com.wewins.fota.system.service.IDictItemService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2026-02-11
  */
 @Slf4j
+@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
 @RestController
 @RequestMapping("/api/sys/dict-items")
 public class DictItemController {
