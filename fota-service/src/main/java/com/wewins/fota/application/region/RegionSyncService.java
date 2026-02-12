@@ -1,5 +1,6 @@
 package com.wewins.fota.application.region;
 
+import com.wewins.fota.cache.cluster.ClusterProperties;
 import com.wewins.fota.cache.cluster.RegionLeaderService;
 import com.wewins.fota.common.region.RegionCodeResolver;
 import com.wewins.fota.common.security.HmacSigner;
@@ -37,9 +38,9 @@ import java.util.UUID;
  * <p>
  * <strong>负载均衡场景说明</strong>：
  * <ul>
- *   <li>多实例部署时，每个实例都会独立执行配置同步</li>
+ *   <li>多实例部署时，默认可并行执行配置同步</li>
  *   <li>通过版本号判断是否需要更新，避免重复拉取</li>
- *   <li>无需 Leader 选举，重复执行无害（幂等操作）</li>
+ *   <li>若启用 Leader 组件，则仅 Leader 实例执行同步</li>
  * </ul>
  * </p>
  *
@@ -51,7 +52,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RegionSyncService {
 
-    private final RegionSyncProperties regionSyncProperties;
+    private final ClusterProperties clusterProperties;
+    private final RegionMainProperties regionMainProperties;
     private final RestTemplate restTemplate;
     private final ObjectProvider<RegionLeaderService> leaderServiceProvider;
     private final RegionSecretService regionSecretService;
@@ -91,15 +93,15 @@ public class RegionSyncService {
     /**
      * 执行一次配置同步
      * <p>
-     * 负载均衡场景下，每个实例都可以执行此操作
-     * 通过版本号判断是否需要更新，避免重复拉取
+     * 通过版本号判断是否需要更新，避免重复拉取。
+     * 若系统启用了 leader 选举，非 leader 实例会跳过执行。
      * </p>
      *
      * @return 同步是否成功
      */
     public boolean syncOnce() {
         // 检查是否在区域模式
-        if (!"region".equals(regionSyncProperties.getMode())) {
+        if (!"region".equals(clusterProperties.getMode())) {
             log.warn("当前不在区域模式，跳过配置同步");
             return false;
         }
@@ -222,11 +224,11 @@ public class RegionSyncService {
 
     private String resolveMainBaseUrl() {
         String mainBaseUrl = null;
-        if (regionSyncProperties.getMain() != null) {
-            mainBaseUrl = regionSyncProperties.getMain().getBaseUrl();
+        if (regionMainProperties != null) {
+            mainBaseUrl = regionMainProperties.getBaseUrl();
         }
         if (mainBaseUrl == null || mainBaseUrl.isBlank()) {
-            String fallback = regionSyncProperties.getNode().getBaseUrl();
+            String fallback = clusterProperties.getNode().getBaseUrl();
             log.warn("未配置 app.main.baseUrl，回退使用 app.node.baseUrl={}", fallback);
             return fallback;
         }
@@ -235,10 +237,10 @@ public class RegionSyncService {
 
     private HttpHeaders buildInternalAuthHeaders(String url, String method) {
         HttpHeaders headers = new HttpHeaders();
-        String regionCode = RegionCodeResolver.resolveRegionCode(regionSyncProperties.getNode().getCode());
+        String regionCode = RegionCodeResolver.resolveRegionCode(clusterProperties.getNode().getCode());
         String secret = regionSecretService.getSecret(regionCode);
         if (secret == null || secret.isBlank()) {
-            secret = regionSyncProperties.getMain() != null ? regionSyncProperties.getMain().getBootstrapSecret() : null;
+            secret = regionMainProperties != null ? regionMainProperties.getBootstrapSecret() : null;
         }
         if (secret == null || secret.isBlank()) {
             log.warn("未配置 app.main.bootstrapSecret，内部请求不携带签名: url={}", url);
@@ -289,7 +291,7 @@ public class RegionSyncService {
         if (secret.isBlank()) {
             return;
         }
-        String regionCode = RegionCodeResolver.resolveRegionCode(regionSyncProperties.getNode().getCode());
+        String regionCode = RegionCodeResolver.resolveRegionCode(clusterProperties.getNode().getCode());
         regionSecretService.setSecret(regionCode, secret);
         pendingAckKeyId = keyId;
         log.info("已应用分区新密钥: keyId={}", keyId);

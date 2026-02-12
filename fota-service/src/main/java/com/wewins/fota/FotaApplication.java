@@ -6,14 +6,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * FOTA 平台启动类
  *
- * <p>支持三种运行模式：
+ * <p>支持两种运行模式：
  * <ul>
- *   <li>MODE=main：主区域模式（管理后台、配置中心、数据汇聚）</li>
- *   <li>MODE=region：区域模式（设备 API、配置同步、数据转发）</li>
- *   <li>MODE=standalone：单区域多实例（全功能）</li>
+ *   <li>app.mode=main：主区域模式（管理后台、配置中心、数据汇聚）</li>
+ *   <li>app.mode=region：区域模式（设备 API、配置同步、数据转发）</li>
  * </ul>
  *
- * <p>运行模式通过环境变量 {@code MODE} 或 JVM 参数 {@code -Dspring.profiles.active} 指定。
+ * <p>运行模式通过配置项 {@code app.mode}（可由环境变量 {@code APP_MODE} 覆盖）指定。
  *
  * <p>MyBatis Mapper 扫描配置已拆分到：
  * <ul>
@@ -34,7 +33,6 @@ public class FotaApplication {
      */
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(FotaApplication.class);
-        // MODE 环境变量会自动映射到 spring.profiles.active（见 application.yml）
         app.run(args);
     }
 }
