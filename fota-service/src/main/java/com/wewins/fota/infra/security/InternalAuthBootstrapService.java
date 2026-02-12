@@ -2,8 +2,8 @@ package com.wewins.fota.infra.security;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
-import com.wewins.fota.system.entity.DictItem;
-import com.wewins.fota.system.service.IDictItemService;
+import com.wewins.fota.module.system.entity.DictItem;
+import com.wewins.fota.module.system.service.IDictItemService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
