@@ -1,11 +1,11 @@
 package com.wewins.fota.application.policy;
 
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.mapper.FirmwareVersionMapper;
+import com.wewins.fota.infra.persistence.mybatis.firmware.mapper.FirmwareVersionMapper;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.domain.policy.mapper.UpgradePolicyMapper;
+import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
 import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.mapper.ProductMapper;
+import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

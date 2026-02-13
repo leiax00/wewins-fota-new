@@ -2,8 +2,8 @@ package com.wewins.fota.infra.security;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
-import com.wewins.fota.module.system.entity.DictItem;
-import com.wewins.fota.module.system.service.IDictItemService;
+import com.wewins.fota.module.system.domain.entity.dict.DictItem;
+import com.wewins.fota.module.system.application.DictItemAppService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,7 +29,7 @@ public class InternalAuthBootstrapService {
     private static final String BOOTSTRAP_DICT_TYPE_CODE = "region_bootstrap_secret";
 
     private final RedisTemplate<String, Object> redisTemplate;
-    private final IDictItemService dictItemService;
+    private final DictItemAppService dictItemService;
 
     @EventListener(ApplicationReadyEvent.class)
     public void bootstrapSecrets() {

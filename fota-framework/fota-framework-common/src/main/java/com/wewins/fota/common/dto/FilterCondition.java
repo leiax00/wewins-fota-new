@@ -9,7 +9,7 @@ import java.util.Collection;
 /**
  * 过滤条件
  * <p>
- * 定义查询条件的操作符和值，用于 BaseRequestVo 的过滤器
+ * 定义查询条件的操作符和值，用于 BaseReqVO 的过滤器
  * </p>
  * <p>
  * 使用示例：

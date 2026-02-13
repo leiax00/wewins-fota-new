@@ -1,8 +1,8 @@
 package com.wewins.fota.interfaces.device;
 
-import com.wewins.fota.analytics.entity.DeviceUpgradeEvent;
-import com.wewins.fota.analytics.service.DeviceUpgradeEventService;
+import com.wewins.fota.application.reporting.UpgradeReportAppService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
+import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class UpgradeReportController {
 
-    private final DeviceUpgradeEventService deviceUpgradeEventService;
+    private final UpgradeReportAppService upgradeReportAppService;
 
     /**
      * 上报升级状态
@@ -37,28 +37,28 @@ public class UpgradeReportController {
      */
     @PostMapping("/report")
     public ResponseEntity<Void> reportUpgrade(@RequestBody UpgradeReportRequestBody requestBody) {
-
-        log.info("收到设备升级上报: imei={}, eventType={}",
-                requestBody.getImei(), requestBody.getEventType());
-
-        // TODO: 构建事件记录并发送到 MQ
-        // 当前直接记录到 ClickHouse
-
-        // deviceUpgradeEventService.recordUpgradeEvent(buildEvent(requestBody));
+        upgradeReportAppService.reportUpgrade(buildReport(requestBody));
 
         return ResponseEntity.ok().build();
     }
 
     /**
-     * 构建设备升级事件
+     * 构建设备升级上报领域模型
      *
      * @param requestBody 上报请求体
-     * @return 事件对象
+     * @return 上报对象
      */
-    private DeviceUpgradeEvent buildEvent(UpgradeReportRequestBody requestBody) {
-        // TODO: 根据请求体构建完整的事件对象
-        // 当前仅记录基础信息
-        return null;
+    private UpgradeReport buildReport(UpgradeReportRequestBody requestBody) {
+        return UpgradeReport.builder()
+                .imei(requestBody.getImei())
+                .currentVersion(requestBody.getCurrentVersion())
+                .targetVersion(requestBody.getTargetVersion())
+                .eventType(requestBody.getEventType())
+                .downloadUrl(requestBody.getDownloadUrl())
+                .clientIp(requestBody.getClientIp())
+                .userAgent(requestBody.getUserAgent())
+                .ext(requestBody.getExt())
+                .build();
     }
 
     /**

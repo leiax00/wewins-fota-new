@@ -3,7 +3,7 @@ package com.wewins.fota.common.dto;
 /**
  * 过滤操作符枚举
  * <p>
- * 定义查询条件的操作符类型，用于 BaseRequestVo 的过滤器
+ * 定义查询条件的操作符类型，用于 BaseReqVO 的过滤器
  * </p>
  *
  * @author FOTA Team

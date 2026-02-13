@@ -1,20 +1,16 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.domain.device.cache.DeviceCache;
-import com.wewins.fota.domain.device.cache.DeviceCacheService;
+import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.mapper.DeviceMapper;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.mapper.FirmwareVersionMapper;
+import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.domain.policy.mapper.UpgradePolicyMapper;
-import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.mapper.ProductMapper;
+import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -43,11 +39,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UpgradeCheckService {
 
-    private final DeviceMapper deviceMapper;
-    private final DeviceCacheService deviceCacheService;
-    private final ProductMapper productMapper;
-    private final FirmwareVersionMapper firmwareVersionMapper;
-    private final UpgradePolicyMapper upgradePolicyMapper;
+    private final DeviceRepository deviceRepository;
+    private final DeviceCacheRepository deviceCacheService;
+    private final DataIntegrityService dataIntegrityService;
+    private final UpgradePolicyRepository upgradePolicyRepository;
 
     /**
      * 检查设备是否有可用更新
@@ -109,7 +104,7 @@ public class UpgradeCheckService {
         }
 
         // 缓存未命中，从数据库加载
-        Device device = deviceMapper.selectByImei(imei);
+        Device device = deviceRepository.findByImei(imei).orElse(null);
         if (device != null) {
             // 写入缓存
             // deviceCacheService.put(imei, buildDeviceCache(device));
@@ -125,8 +120,11 @@ public class UpgradeCheckService {
      * @return true 如果有效
      */
     private boolean validateProductAndFirmware(Device device) {
-        // TODO: 集成 DataIntegrityService
-        return true;
+        if (device == null) {
+            return false;
+        }
+        return dataIntegrityService.isProductActive(device.getProductId())
+                && dataIntegrityService.isFirmwareVersionActive(device.getCurrentVersionId());
     }
 
     /**
@@ -139,12 +137,12 @@ public class UpgradeCheckService {
      * @return 适用的策略列表（按优先级降序）
      */
     private List<UpgradePolicy> findApplicablePolicies(Device device) {
-        // TODO: 实现策略匹配逻辑
-        // 1. 查找该产品的所有激活策略
-        // 2. 过滤出符合条件的策略（版本范围、设备标签、时间窗口）
-        // 3. 按优先级排序
-
-        return List.of();
+        if (device == null || device.getProductId() == null) {
+            return List.of();
+        }
+        // 最小版本：先按产品拉取激活策略并按优先级降序。
+        // 后续再补充版本范围、标签、时间窗口过滤。
+        return upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(device.getProductId());
     }
 
     /**

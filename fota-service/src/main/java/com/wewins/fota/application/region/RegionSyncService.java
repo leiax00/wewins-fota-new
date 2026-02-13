@@ -4,6 +4,7 @@ import com.wewins.fota.cache.cluster.ClusterProperties;
 import com.wewins.fota.cache.cluster.RegionLeaderService;
 import com.wewins.fota.common.region.RegionCodeResolver;
 import com.wewins.fota.common.security.HmacSigner;
+import com.wewins.fota.infra.config.properties.RegionMainProperties;
 import com.wewins.fota.security.internal.RegionRotateKey;
 import com.wewins.fota.security.internal.RegionSecretService;
 import lombok.RequiredArgsConstructor;
