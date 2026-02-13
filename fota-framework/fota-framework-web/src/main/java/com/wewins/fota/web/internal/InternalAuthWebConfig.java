@@ -1,4 +1,4 @@
-package com.wewins.fota.security.internal;
+package com.wewins.fota.web.internal;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;

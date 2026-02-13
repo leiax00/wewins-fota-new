@@ -1,7 +1,11 @@
-package com.wewins.fota.security.internal;
+package com.wewins.fota.web.internal;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.common.security.HmacSigner;
+import com.wewins.fota.security.internal.InternalAuthProperties;
+import com.wewins.fota.security.internal.RegionRotateKey;
+import com.wewins.fota.security.internal.RegionRotateKeyService;
+import com.wewins.fota.security.internal.RegionSecretService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

@@ -1,16 +1,15 @@
 package com.wewins.fota.infra.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.application.reporting.dto.UpgradeEventMessage;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
 import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
 import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
+import com.wewins.fota.mq.core.MqMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -26,8 +25,7 @@ import java.util.List;
 @ConditionalOnProperty(prefix = "app.mq", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
 
-    private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
+    private final MqMessagePublisher mqMessagePublisher;
 
     @Value("${app.mq.queues.upgrade-events.name:fota.upgrade.events}")
     private String upgradeEventQueue;
@@ -44,8 +42,7 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
                     .events(List.of(buildEvent(report)))
                     .build();
 
-            String payload = objectMapper.writeValueAsString(message);
-            rabbitTemplate.convertAndSend(upgradeEventQueue, payload);
+            mqMessagePublisher.publishJson(upgradeEventQueue, message);
         } catch (Exception e) {
             log.error("设备上报消息发送失败: imei={}, eventType={}", report.getImei(), report.getEventType(), e);
             throw new IllegalStateException("设备上报消息发送失败", e);

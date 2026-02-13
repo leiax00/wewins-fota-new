@@ -158,3 +158,19 @@ app:
       check-logs:
         name: ${MQ_CHECK_LOG_QUEUE:fota.device.check.logs}
         durable: true
+    publish:
+      mandatory: ${MQ_PUBLISH_MANDATORY:false}
+
+  # 对象存储配置
+  storage:
+    defaultTtlSeconds: ${STORAGE_DEFAULT_TTL_SECONDS:3600}
+    local:
+      baseDir: ${STORAGE_LOCAL_BASE_DIR:data/storage}
+    s3:
+      enabled: ${STORAGE_S3_ENABLED:true}
+      endpoint: ${STORAGE_S3_ENDPOINT:https://oss.wewins.wolaie.com}
+      region: ${STORAGE_S3_REGION:us-east-1}
+      bucket: ${STORAGE_S3_BUCKET:fota}
+      accessKey: ${STORAGE_S3_ACCESS_KEY:ZsEQ1rvjVJCeFULdOnXk}
+      secretKey: ${STORAGE_S3_SECRET_KEY:Gl5hB7WqDIXKSoa89iAp6sOU31Hkyrjc0gmxLzCJ}
+      pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}
