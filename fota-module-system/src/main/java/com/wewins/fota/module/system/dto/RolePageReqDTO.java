@@ -1,7 +1,7 @@
 package com.wewins.fota.module.system.dto;
 
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.wewins.fota.common.dto.BaseReqVO;
+import com.wewins.fota.common.dto.BaseQueryDTO;
 import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.module.system.domain.entity.rbac.Role;
 import lombok.Data;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 角色分页查询 ReqVO
+ * 角色分页查询 ReqDTO
  * <p>
  * 提供角色列表查询的专用请求参数，支持状态过滤、时间范围查询和排序
  * </p>
@@ -29,7 +29,7 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class RolePageReqDTO extends BaseReqVO {
+public class RolePageReqDTO extends BaseQueryDTO {
 
     /**
      * 角色编码（模糊查询）
@@ -129,7 +129,7 @@ public class RolePageReqDTO extends BaseReqVO {
     /**
      * 构建查询 Wrapper（类型安全）
      * <p>
-     * 将 ReqVO 的查询条件（包括 typed 字段和 filters）转换为 LambdaQueryWrapperX
+     * 将 ReqDTO 的查询条件（包括 typed 字段和 filters）转换为 LambdaQueryWrapperX
      * </p>
      *
      * @return LambdaQueryWrapperX 实例

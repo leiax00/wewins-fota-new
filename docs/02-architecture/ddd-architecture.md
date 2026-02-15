@@ -43,7 +43,7 @@
 
 ```
 ┌─────────────────────────────────────────┐
-│         interfaces (用户接口层)          │
+│         adapter.api (用户接口层)         │
 │  - REST Controller                      │
 │  - DTO 转换                              │
 │  - 鉴权、限流                            │
@@ -275,7 +275,7 @@ interface UpgradeSessionRepository {
 
 ## 分层职责
 
-### interfaces（用户接口层）
+### adapter.api（用户接口层）
 
 **职责**：
 - 接收 HTTP 请求（Controller）
@@ -445,9 +445,9 @@ fota-application (应用层)
   - fota-application-device
   - fota-application-product
 
-fota-interfaces (用户接口层)
-  - fota-interfaces-rest
-  - fota-interfaces-internal
+fota-adapter-api (用户接口层)
+  - fota-adapter-api-rest
+  - fota-adapter-api-internal
 
 fota-infrastructure (基础设施层)
   - fota-infrastructure-persistence (MyBatis-Plus)
@@ -459,7 +459,7 @@ fota-infrastructure (基础设施层)
 ### 依赖关系
 
 ```xml
-<!-- fota-interfaces-rest 依赖应用层 -->
+<!-- fota-adapter-api-rest 依赖应用层 -->
 <dependency>
     <groupId>com.wewins</groupId>
     <artifactId>fota-application-upgrade</artifactId>

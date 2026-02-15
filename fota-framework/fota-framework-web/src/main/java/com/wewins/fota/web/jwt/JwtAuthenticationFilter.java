@@ -1,7 +1,7 @@
 package com.wewins.fota.web.jwt;
 
 import com.wewins.fota.common.context.UserContext;
-import com.wewins.fota.security.exception.TokenExpiredException;
+import com.wewins.fota.common.exception.TokenExpiredException;
 import com.wewins.fota.security.jwt.JwtUtil;
 import com.wewins.fota.security.jwt.SysUserDetails;
 import jakarta.servlet.FilterChain;

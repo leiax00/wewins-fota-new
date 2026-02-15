@@ -37,7 +37,7 @@ mkdir -p fota-application-device/src/main/java/com/wewins/fota/application/devic
 ### 模块依赖关系
 
 ```
-fota-interfaces-rest
+fota-adapter-api-rest
   ↓ 依赖
 fota-application-upgrade
   ↓ 依赖

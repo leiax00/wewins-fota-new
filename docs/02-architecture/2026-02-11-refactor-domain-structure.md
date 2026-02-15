@@ -189,7 +189,7 @@ Controller → Application Service → Domain Repository/Infrastructure
 | 领域实体 | `com.wewins.fota.domain.device.entity.Device` |
 | 领域服务 | `com.wewins.fota.domain.device.service.DeviceService` |
 | 应用服务 | `com.wewins.fota.application.upgrade.UpgradeCheckService` |
-| 适配器 | `com.wewins.fota.interfaces.UpgradeCheckController` |
+| 适配器 | `com.wewins.fota.adapter.api.device.UpgradeCheckController` |
 
 ### 3.4 部署模式支持
 

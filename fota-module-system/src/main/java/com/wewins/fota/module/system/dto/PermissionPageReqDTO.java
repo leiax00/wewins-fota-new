@@ -1,7 +1,7 @@
 package com.wewins.fota.module.system.dto;
 
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.wewins.fota.common.dto.BaseReqVO;
+import com.wewins.fota.common.dto.BaseQueryDTO;
 import com.wewins.fota.database.wrapper.LambdaQueryWrapperX;
 import com.wewins.fota.module.system.domain.entity.rbac.Permission;
 import lombok.Data;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 权限分页查询 ReqVO
+ * 权限分页查询 ReqDTO
  * <p>
  * 提供权限列表查询的专用请求参数，支持类型、状态过滤与时间范围查询
  * </p>
@@ -29,7 +29,7 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class PermissionPageReqDTO extends BaseReqVO {
+public class PermissionPageReqDTO extends BaseQueryDTO {
 
     /**
      * 权限编码（模糊查询）
@@ -153,7 +153,7 @@ public class PermissionPageReqDTO extends BaseReqVO {
     /**
      * 构建查询 Wrapper（类型安全）
      * <p>
-     * 将 ReqVO 的查询条件（包括 typed 字段和 filters）转换为 LambdaQueryWrapperX
+     * 将 ReqDTO 的查询条件（包括 typed 字段和 filters）转换为 LambdaQueryWrapperX
      * </p>
      *
      * @return LambdaQueryWrapperX 实例

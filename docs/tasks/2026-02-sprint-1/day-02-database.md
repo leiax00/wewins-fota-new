@@ -307,7 +307,7 @@ spring:
 - 数据库驱动设计
 
 **目标架构（Day 3+）**：
-- DDD 四层架构：interfaces → application → domain → infrastructure
+- DDD 四层架构：adapter.api → application → domain → infrastructure
 - 富领域模型：聚合根封装业务规则
 - 领域驱动设计
 
