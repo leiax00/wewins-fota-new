@@ -18,11 +18,10 @@
         "best-practices"
     ],
     "skills": [
-        "./agents/skills/",
-        "./agents/commands/"
+        "./.claude/skills/",
+        "./.claude/commands/"
     ],
     "agents": [
-        "./agents/code-reviewer.md",
-        "./agents/tdd-guide.md"
+        "./.claude/agents"
     ]
 }

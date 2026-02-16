@@ -19,6 +19,10 @@
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-cache</artifactId>
+        </dependency>
 
         <!-- Spring Security -->
         <dependency>

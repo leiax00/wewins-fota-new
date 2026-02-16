@@ -10,7 +10,7 @@
         {
             "name": "fota-code-bundles",
             "description": "Applies Anthropic's official brand colors and typography to artifacts for consistent visual identity and professional design standards.",
-            "source": "./agent",
+            "source": "./.claude",
             "category": "code",
             "keywords": [
                 "agents",

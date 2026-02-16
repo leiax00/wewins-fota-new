@@ -1,5 +1,6 @@
 package com.wewins.fota.database.config;
 
+import com.wewins.fota.database.annotation.ClickHouseMapper;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
@@ -28,9 +30,9 @@ import javax.sql.DataSource;
 @Configuration
 @ConditionalOnProperty(name = "spring.datasource.clickhouse.url")
 @MapperScan(
-        basePackages = "com.wewins.fota.clickhouse.mapper",
-        sqlSessionFactoryRef = "clickhouseSqlSessionFactory",
-        sqlSessionTemplateRef = "clickhouseSqlSessionTemplate"
+        basePackages = "com.wewins.fota",
+        annotationClass = ClickHouseMapper.class,
+        sqlSessionFactoryRef = "clickhouseSqlSessionFactory"
 )
 public class MybatisClickHouseConfig {
 
@@ -51,10 +53,9 @@ public class MybatisClickHouseConfig {
         org.mybatis.spring.SqlSessionFactoryBean factory = new org.mybatis.spring.SqlSessionFactoryBean();
         factory.setDataSource(dataSource);
         factory.setConfiguration(configuration);
-        factory.setMapperLocations(
-                new PathMatchingResourcePatternResolver()
-                        .getResources("classpath*:mapper/clickhouse/**/*.xml")
-        );
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource[] infraResources = resolver.getResources("classpath*:mapper/infra/reporting/**/*.xml");
+        factory.setMapperLocations(infraResources);
         return factory.getObject();
     }
 

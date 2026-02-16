@@ -1,6 +1,6 @@
 package com.wewins.fota.security.jwt;
 
-import com.wewins.fota.security.exception.TokenExpiredException;
+import com.wewins.fota.common.exception.TokenExpiredException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;

@@ -3,6 +3,7 @@ package com.wewins.fota.database.config;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import com.wewins.fota.database.annotation.PrimaryDbMapper;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -26,12 +27,9 @@ import javax.sql.DataSource;
  */
 @Configuration
 @MapperScan(
-        basePackages = {
-                "com.wewins.fota.mapper",
-                "com.wewins.fota.system.mapper"
-        },
-        sqlSessionFactoryRef = "primarySqlSessionFactory",
-        sqlSessionTemplateRef = "primarySqlSessionTemplate"
+        basePackages = "com.wewins.fota",
+        annotationClass = PrimaryDbMapper.class,
+        sqlSessionFactoryRef = "primarySqlSessionFactory"
 )
 public class MybatisPrimaryConfig {
 

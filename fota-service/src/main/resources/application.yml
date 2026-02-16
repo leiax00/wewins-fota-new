@@ -1,13 +1,13 @@
 # FOTA 平台主配置文件
 #
-# 支持两种运行模式：
-# - MODE=main：主区域模式（管理后台、配置中心、数据汇聚）
-# - MODE=region：区域模式（设备 API、配置同步、数据转发）
+# 支持两种运行模式（通过 app.mode 配置）：
+# - app.mode=main：主区域模式（管理后台、配置中心、数据汇聚）
+# - app.mode=region：区域模式（设备 API、配置同步、数据转发）
 
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.wewins.fota.entity,com.wewins.fota.system.entity
+  type-aliases-package: com.wewins.fota.domain.*.entity,com.wewins.fota.module.*.domain.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
@@ -26,18 +26,17 @@ spring:
   application:
     name: wewins-fota-new
 
-  # 激活的 Profile（通过 MODE 环境变量映射）
-  # MODE=main → spring.profiles.active=main
-  # MODE=region → spring.profiles.active=region
+  # 激活的 Profile
+  # 使用 spring.profiles.active 控制环境（dev/test/prod）
   profiles:
-    active: ${MODE:main}
+    active: ${SPRING_PROFILES_ACTIVE:main}
     include: security
 
   # PostgreSQL 主数据源配置
   datasource:
     url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota}
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:wewins@2025}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -50,7 +49,7 @@ spring:
     clickhouse:
       url: ${CLICKHOUSE_URL:jdbc:clickhouse://chouse.wewins.wolaie.com:28123/ww-fota}
       username: ${CLICKHOUSE_USER:wewins}
-      password: ${CLICKHOUSE_PASSWORD:wewins@2025}
+      password: ${CLICKHOUSE_PASSWORD}
       driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
       hikari:
         maximum-pool-size: 5
@@ -83,7 +82,7 @@ spring:
     host: ${RABBITMQ_HOST:mq.wewins.wolaie.com}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:admin}
-    password: ${RABBITMQ_PASSWORD:admin@123456}
+    password: ${RABBITMQ_PASSWORD}
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
@@ -121,7 +120,57 @@ logging:
 app:
   # 运行模式：main 或 region
   # 用于条件装配 @ConditionalOnProperty(name = "app.mode", havingValue = "main/region")
-  mode: ${MODE:main}
+  mode: ${APP_MODE:main}
 
-  # 区域标识：main, jp, sg, eu 等
-  region: ${REGION:main}
+  # 节点配置（main 和 region 共用）
+  node:
+    code: ${NODE_CODE:main}
+    name: ${NODE_NAME:主区域}
+    baseUrl: ${NODE_BASE_URL:https://main.api.xxx.com}
+    timeZone: ${NODE_TIME_ZONE:Asia/Shanghai}
+
+  # 服务注册
+  registry:
+    enabled: ${REGISTRY_ENABLED:true}
+    ttlSeconds: ${REGISTRY_TTL_SECONDS:90}
+    heartbeatIntervalMs: ${REGISTRY_HEARTBEAT_INTERVAL_MS:20000}
+    instanceId: ${INSTANCE_ID:1}
+
+  # 分区主节点选举
+  leader:
+    enabled: ${LEADER_ENABLED:true}
+    ttlSeconds: ${LEADER_TTL_SECONDS:30}
+    renewIntervalMs: ${LEADER_RENEW_INTERVAL_MS:10000}
+
+  # 内部接口鉴权
+  internal-auth:
+    enabled: ${INTERNAL_AUTH_ENABLED:true}
+    skewSeconds: ${INTERNAL_AUTH_SKEW_SECONDS:300}
+    nonceTtlSeconds: ${INTERNAL_AUTH_NONCE_TTL_SECONDS:300}
+
+  # 消息队列配置
+  mq:
+    enabled: ${MQ_ENABLED:true}
+    queues:
+      upgrade-events:
+        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events}
+        durable: true
+      check-logs:
+        name: ${MQ_CHECK_LOG_QUEUE:fota.device.check.logs}
+        durable: true
+    publish:
+      mandatory: ${MQ_PUBLISH_MANDATORY:false}
+
+  # 对象存储配置
+  storage:
+    defaultTtlSeconds: ${STORAGE_DEFAULT_TTL_SECONDS:3600}
+    local:
+      baseDir: ${STORAGE_LOCAL_BASE_DIR:data/storage}
+    s3:
+      enabled: ${STORAGE_S3_ENABLED:true}
+      endpoint: ${STORAGE_S3_ENDPOINT:https://oss.wewins.wolaie.com}
+      region: ${STORAGE_S3_REGION:us-east-1}
+      bucket: ${STORAGE_S3_BUCKET:fota}
+      accessKey: ${STORAGE_S3_ACCESS_KEY}
+      secretKey: ${STORAGE_S3_SECRET_KEY}
+      pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}

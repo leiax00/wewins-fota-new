@@ -12,18 +12,30 @@
 
     <artifactId>fota-framework-storage</artifactId>
     <name>fota-framework-storage</name>
-    <description>FOTA framework object storage module (S3/Local/OSS)</description>
+    <description>FOTA framework object storage module (S3/Local)</description>
 
     <dependencies>
         <dependency>
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-common</artifactId>
         </dependency>
-
-        <!-- AWS S3 SDK (compatible with MinIO, Aliyun OSS) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

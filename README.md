@@ -205,6 +205,7 @@ curl "http://localhost:8080/v1/upgrade/check?product=test&imei=123456789012345&v
 |------|------|------|
 | **产品需求** | 业务需求、功能规格、交互流程 | [docs/prd.md](docs/prd.md) |
 | **技术架构** | 系统架构、技术选型、接口设计 | [docs/FOTA 系统架构及技术说明书.md](docs/FOTA%20系统架构及技术说明书.md) |
+| **文件存储策略** | 本地临时文件与 S3 可选最终存储策略 | [docs/02-architecture/storage-strategy.md](docs/02-architecture/storage-strategy.md) |
 | **实施计划** | Milestone 规划、验收标准、风险管理 | [docs/implementation-plan.md](docs/implementation-plan.md) |
 | **任务列表** | 全量任务清单、任务依赖、技术细节 | [docs/tasks.md](docs/tasks.md) |
 

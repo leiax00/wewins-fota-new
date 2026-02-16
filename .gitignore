@@ -44,9 +44,8 @@ logs/
 *.swo
 *~
 
+# Environment files
+.env
+
 # Docker
 .docker/
-
-# Agent
-.agent/
-.claude/

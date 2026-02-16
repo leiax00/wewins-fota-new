@@ -4,21 +4,16 @@
 # - 管理后台（产品、策略、固件、设备管理）
 # - 配置中心（版本查询、快照拉取）
 # - 数据汇聚（跨区域汇总数据接入）
+#
+# 使用说明：通过 spring.profiles.active=main 加载此配置文件
 
-spring:
-  config:
-    activate:
-      on-profile: main
-
-# 主区域模式标识
+# 应用配置
 app:
   mode: main
 
-# 功能开关（主区域）
-feature:
-  admin:
-    enabled: true  # 管理后台
-  ingest:
-    enabled: true  # 跨区域数据接入
-  forwarder:
-    enabled: false # Forwarder 仅在 region 启用
+  # 节点配置（main 和 region 共用）
+  node:
+    code: main
+    name: 主区域
+    baseUrl: https://main.api.xxx.com
+    timeZone: Asia/Shanghai

@@ -1,0 +1,42 @@
+# 开发环境配置（profile=dev）
+#
+# 说明：
+# 1. 生产环境不要依赖这里的默认值
+# 2. 支持使用环境变量覆盖全部敏感参数
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:lax4832.}
+    clickhouse:
+      url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/ww-fota}
+      username: ${CLICKHOUSE_USER:wewins}
+      password: ${CLICKHOUSE_PASSWORD:wewins@123}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:wewins}
+    password: ${RABBITMQ_PASSWORD:wewins@123}
+
+  data:
+    redis:
+      host: localhost
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:wewins-fota-jwt-secret-key-change-in-development-2026}
+
+app:
+  main:
+    bootstrapSecret: ${APP_MAIN_BOOTSTRAP_SECRET:development-bootstrap-secret}
+
+  storage:
+    s3:
+      enabled: ${STORAGE_S3_ENABLED:true}
+      endpoint: ${STORAGE_S3_ENDPOINT:http://localhost:9000}
+      region: ${STORAGE_S3_REGION:us-east-1}
+      bucket: ${STORAGE_S3_BUCKET:fota}
+      accessKey: ${STORAGE_S3_ACCESS_KEY:uzFXvQ4GgMsyZ2YhU50q}
+      secretKey: ${STORAGE_S3_SECRET_KEY:AGzlSY175qMCBwxdbjct6e0I8isOyQfKpmDa3n4L}
