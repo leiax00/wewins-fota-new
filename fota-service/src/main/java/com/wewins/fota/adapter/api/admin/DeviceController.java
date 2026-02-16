@@ -28,7 +28,7 @@ public class DeviceController {
      * 获取设备列表
      *
      * @param productId 产品 ID（可选）
-     * @param imei 设备 IMEI（可选）
+     * @param imei      设备 IMEI（可选）
      * @return 设备列表
      */
     @GetMapping
