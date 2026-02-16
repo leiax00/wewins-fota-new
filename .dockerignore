@@ -18,10 +18,6 @@ logs/
 *.md
 !README.md
 
-# Agent
-.agent/
-.claude/
-
 # OS
 .DS_Store
 Thumbs.db

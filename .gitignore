@@ -49,7 +49,3 @@ logs/
 
 # Docker
 .docker/
-
-# Agent
-.agent/
-.claude/
