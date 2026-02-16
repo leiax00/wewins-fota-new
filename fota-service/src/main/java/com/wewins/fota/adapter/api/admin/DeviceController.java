@@ -1,10 +1,14 @@
 package com.wewins.fota.adapter.api.admin;
 
+import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.common.api.ApiResponse;
+import com.wewins.fota.domain.device.entity.Device;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 设备管理控制器
@@ -22,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class DeviceController {
 
-    // TODO: 注入需要的应用服务
+    private final DeviceAppService deviceAppService;
 
     /**
      * 获取设备列表
@@ -32,11 +36,11 @@ public class DeviceController {
      * @return 设备列表
      */
     @GetMapping
-    public ApiResponse<String> listDevices(
+    public ApiResponse<List<Device>> listDevices(
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String imei) {
-        // TODO: 实现设备列表查询
-        return ApiResponse.success("设备列表查询待实现");
+        List<Device> devices = deviceAppService.listDevices(productId, imei);
+        return ApiResponse.success(devices);
     }
 
     /**
@@ -46,9 +50,12 @@ public class DeviceController {
      * @return 设备详情
      */
     @GetMapping("/{id}")
-    public ApiResponse<String> getDevice(@PathVariable Long id) {
-        // TODO: 实现设备详情查询
-        return ApiResponse.success("设备详情查询待实现");
+    public ApiResponse<Device> getDevice(@PathVariable Long id) {
+        Device device = deviceAppService.getDevice(id);
+        if (device == null) {
+            return ApiResponse.error(404, "设备不存在");
+        }
+        return ApiResponse.success(device);
     }
 
     /**
@@ -59,8 +66,7 @@ public class DeviceController {
      */
     @PostMapping("/import")
     public ApiResponse<String> importDevices(@RequestBody String request) {
-        // TODO: 实现设备批量导入
-        return ApiResponse.success("设备导入待实现");
+        return ApiResponse.success(deviceAppService.importDevices(request));
     }
 
     /**
@@ -71,8 +77,7 @@ public class DeviceController {
      */
     @PutMapping("/{id}")
     public ApiResponse<String> updateDevice(@PathVariable Long id) {
-        // TODO: 实现设备更新
-        return ApiResponse.success("设备更新待实现");
+        return ApiResponse.success(deviceAppService.updateDevice(id));
     }
 
     /**
@@ -83,7 +88,10 @@ public class DeviceController {
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteDevice(@PathVariable Long id) {
-        // TODO: 实现设备删除
+        boolean deleted = deviceAppService.deleteDevice(id);
+        if (!deleted) {
+            return ApiResponse.error(404, "设备不存在");
+        }
         return ApiResponse.success();
     }
 }
