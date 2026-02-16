@@ -23,6 +23,7 @@
 - [DDD 架构设计文档](02-architecture/ddd-architecture.md) 🆕
 - [DDD 实施指南](02-architecture/ddd-implementation-guide.md) 🆕
 - [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md) 🆕
+- [文件存储策略说明](02-architecture/storage-strategy.md) 🆕
 
 ---
 

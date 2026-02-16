@@ -1,12 +1,12 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
+import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,9 +36,9 @@ public class FirmwareVersionController {
      * @return 固件版本列表
      */
     @GetMapping
-    public ResponseEntity<List<FirmwareVersion>> listVersions(@RequestParam Long productId) {
+    public ApiResponse<List<FirmwareVersion>> listVersions(@RequestParam Long productId) {
         // TODO: 实现固件版本列表查询
-        return ResponseEntity.ok(List.of());
+        return ApiResponse.success(List.of());
     }
 
     /**
@@ -48,9 +48,9 @@ public class FirmwareVersionController {
      * @return 版本详情
      */
     @GetMapping("/{id}")
-    public ResponseEntity<FirmwareVersion> getVersion(@PathVariable Long id) {
+    public ApiResponse<FirmwareVersion> getVersion(@PathVariable Long id) {
         // TODO: 实现固件版本详情查询
-        return ResponseEntity.ok(new FirmwareVersion());
+        return ApiResponse.success(new FirmwareVersion());
     }
 
     /**
@@ -60,20 +60,20 @@ public class FirmwareVersionController {
      * @return 上传的版本
      */
     @PostMapping
-    public ResponseEntity<FirmwareVersion> uploadVersion(@RequestBody FirmwareVersion version) {
+    public ApiResponse<FirmwareVersion> uploadVersion(@RequestBody FirmwareVersion version) {
         // TODO: 实现固件上传和文件存储
-        return ResponseEntity.ok(version);
+        return ApiResponse.success(version);
     }
 
     /**
      * 删除固件版本
      *
      * @param id 版本 ID
-     * @return 204 No Content
+     * @return 删除结果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVersion(@PathVariable Long id) {
+    public ApiResponse<Void> deleteVersion(@PathVariable Long id) {
         // TODO: 实现固件版本删除
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success();
     }
 }

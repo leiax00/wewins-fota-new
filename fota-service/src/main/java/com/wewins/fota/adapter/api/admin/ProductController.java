@@ -1,13 +1,13 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
+import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,9 +36,9 @@ public class ProductController {
      * @return 产品列表
      */
     @GetMapping
-    public ResponseEntity<List<Product>> listProducts() {
+    public ApiResponse<List<Product>> listProducts() {
         // TODO: 实现产品列表查询
-        return ResponseEntity.ok(List.of());
+        return ApiResponse.success(List.of());
     }
 
     /**
@@ -48,9 +48,9 @@ public class ProductController {
      * @return 产品详情
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
+    public ApiResponse<Product> getProduct(@PathVariable Long id) {
         // TODO: 实现产品详情查询
-        return ResponseEntity.ok(new Product());
+        return ApiResponse.success(new Product());
     }
 
     /**
@@ -60,9 +60,9 @@ public class ProductController {
      * @return 创建的产品
      */
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+    public ApiResponse<Product> createProduct(@RequestBody Product product) {
         // TODO: 实现产品创建
-        return ResponseEntity.ok(product);
+        return ApiResponse.success(product);
     }
 
     /**
@@ -73,20 +73,20 @@ public class ProductController {
      * @return 更新后的产品
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
+    public ApiResponse<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
         // TODO: 实现产品更新
-        return ResponseEntity.ok(product);
+        return ApiResponse.success(product);
     }
 
     /**
      * 删除产品
      *
      * @param id 产品 ID
-     * @return 204 No Content
+     * @return 删除结果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ApiResponse<Void> deleteProduct(@PathVariable Long id) {
         // TODO: 实现产品删除
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success();
     }
 }

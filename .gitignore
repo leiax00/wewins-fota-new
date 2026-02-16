@@ -44,6 +44,9 @@ logs/
 *.swo
 *~
 
+# Environment files
+.env
+
 # Docker
 .docker/
 

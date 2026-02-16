@@ -42,12 +42,17 @@ public class StorageFrameworkAutoConfiguration {
         return new LocalStorageClient(baseDir);
     }
 
-    @Bean
-    @ConditionalOnMissingBean
+    @Bean("storageClient")
+    @ConditionalOnMissingBean(name = "storageClient")
+    @Qualifier("storageClient")
     public StorageClient storageClient(
             LocalStorageClient localStorageClient,
             ObjectProvider<S3StorageClient> s3StorageClientProvider
     ) {
+        // Storage policy:
+        // 1) local storage is always available (also used for staging files)
+        // 2) S3 storage is optional and enabled by config
+        // 3) if S3 exists, final firmware objects go to S3; otherwise stay local
         S3StorageClient s3StorageClient = s3StorageClientProvider.getIfAvailable();
         return s3StorageClient != null ? s3StorageClient : localStorageClient;
     }
@@ -116,7 +121,7 @@ public class StorageFrameworkAutoConfiguration {
     @ConditionalOnMissingBean(FileTransferService.class)
     public FileTransferService fileTransferService(
             @Qualifier("storageLocalTempDir") Path storageLocalTempDir,
-            StorageClient storageClient
+            @Qualifier("storageClient") StorageClient storageClient
     ) {
         return new DefaultFileTransferService(storageLocalTempDir, storageClient);
     }

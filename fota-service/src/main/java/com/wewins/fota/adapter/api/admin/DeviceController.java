@@ -1,9 +1,9 @@
 package com.wewins.fota.adapter.api.admin;
 
+import com.wewins.fota.common.api.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -32,11 +32,11 @@ public class DeviceController {
      * @return 设备列表
      */
     @GetMapping
-    public ResponseEntity<String> listDevices(
+    public ApiResponse<String> listDevices(
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String imei) {
         // TODO: 实现设备列表查询
-        return ResponseEntity.ok("设备列表查询待实现");
+        return ApiResponse.success("设备列表查询待实现");
     }
 
     /**
@@ -46,9 +46,9 @@ public class DeviceController {
      * @return 设备详情
      */
     @GetMapping("/{id}")
-    public ResponseEntity<String> getDevice(@PathVariable Long id) {
+    public ApiResponse<String> getDevice(@PathVariable Long id) {
         // TODO: 实现设备详情查询
-        return ResponseEntity.ok("设备详情查询待实现");
+        return ApiResponse.success("设备详情查询待实现");
     }
 
     /**
@@ -58,9 +58,9 @@ public class DeviceController {
      * @return 导入结果
      */
     @PostMapping("/import")
-    public ResponseEntity<String> importDevices(@RequestBody String request) {
+    public ApiResponse<String> importDevices(@RequestBody String request) {
         // TODO: 实现设备批量导入
-        return ResponseEntity.ok("设备导入待实现");
+        return ApiResponse.success("设备导入待实现");
     }
 
     /**
@@ -70,20 +70,20 @@ public class DeviceController {
      * @return 更新的设备
      */
     @PutMapping("/{id}")
-    public ResponseEntity<String> updateDevice(@PathVariable Long id) {
+    public ApiResponse<String> updateDevice(@PathVariable Long id) {
         // TODO: 实现设备更新
-        return ResponseEntity.ok("设备更新待实现");
+        return ApiResponse.success("设备更新待实现");
     }
 
     /**
      * 删除设备
      *
      * @param id 设备 ID
-     * @return 204 No Content
+     * @return 删除结果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
+    public ApiResponse<Void> deleteDevice(@PathVariable Long id) {
         // TODO: 实现设备删除
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success();
     }
 }

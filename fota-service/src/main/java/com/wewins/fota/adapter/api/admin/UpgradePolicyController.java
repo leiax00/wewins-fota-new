@@ -1,11 +1,11 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.wewins.fota.application.policy.PolicyApplicationService;
+import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,9 +35,9 @@ public class UpgradePolicyController {
      * @return 策略列表
      */
     @GetMapping
-    public ResponseEntity<List<UpgradePolicy>> listPolicies(@RequestParam Long productId) {
+    public ApiResponse<List<UpgradePolicy>> listPolicies(@RequestParam Long productId) {
         List<UpgradePolicy> policies = policyApplicationService.getPoliciesByProduct(productId);
-        return ResponseEntity.ok(policies);
+        return ApiResponse.success(policies);
     }
 
     /**
@@ -47,12 +47,12 @@ public class UpgradePolicyController {
      * @return 策略详情
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UpgradePolicy> getPolicy(@PathVariable Long id) {
+    public ApiResponse<UpgradePolicy> getPolicy(@PathVariable Long id) {
         UpgradePolicy policy = policyApplicationService.getPolicy(id);
         if (policy == null) {
-            return ResponseEntity.notFound().build();
+            return ApiResponse.error(404, "策略不存在");
         }
-        return ResponseEntity.ok(policy);
+        return ApiResponse.success(policy);
     }
 
     /**
@@ -62,10 +62,10 @@ public class UpgradePolicyController {
      * @return 创建的策略
      */
     @PostMapping
-    public ResponseEntity<UpgradePolicy> createPolicy(@RequestBody UpgradePolicy policy) {
+    public ApiResponse<UpgradePolicy> createPolicy(@RequestBody UpgradePolicy policy) {
         Long policyId = policyApplicationService.createPolicy(policy);
         UpgradePolicy created = policyApplicationService.getPolicy(policyId);
-        return ResponseEntity.ok(created);
+        return ApiResponse.success(created);
     }
 
     /**
@@ -76,45 +76,45 @@ public class UpgradePolicyController {
      * @return 更新的策略
      */
     @PutMapping("/{id}")
-    public ResponseEntity<UpgradePolicy> updatePolicy(@PathVariable Long id, @RequestBody UpgradePolicy policy) {
+    public ApiResponse<UpgradePolicy> updatePolicy(@PathVariable Long id, @RequestBody UpgradePolicy policy) {
         policy.setId(id);
-        int rows = policyApplicationService.updatePolicy(policy);
-        return ResponseEntity.ok(policy);
+        policyApplicationService.updatePolicy(policy);
+        return ApiResponse.success(policy);
     }
 
     /**
      * 删除升级策略
      *
      * @param id 策略 ID
-     * @return 204 No Content
+     * @return 删除结果
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePolicy(@PathVariable Long id) {
+    public ApiResponse<Void> deletePolicy(@PathVariable Long id) {
         policyApplicationService.deletePolicy(id);
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success();
     }
 
     /**
      * 激活升级策略
      *
      * @param id 策略 ID
-     * @return 200 OK
+     * @return 激活结果
      */
     @PostMapping("/{id}/activate")
-    public ResponseEntity<Void> activatePolicy(@PathVariable Long id) {
+    public ApiResponse<Void> activatePolicy(@PathVariable Long id) {
         policyApplicationService.activatePolicy(id);
-        return ResponseEntity.ok().build();
+        return ApiResponse.success();
     }
 
     /**
      * 暂停升级策略
      *
      * @param id 策略 ID
-     * @return 200 OK
+     * @return 暂停结果
      */
     @PostMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivatePolicy(@PathVariable Long id) {
+    public ApiResponse<Void> deactivatePolicy(@PathVariable Long id) {
         policyApplicationService.deactivatePolicy(id);
-        return ResponseEntity.ok().build();
+        return ApiResponse.success();
     }
 }

@@ -1,11 +1,11 @@
 package com.wewins.fota.application.policy;
 
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.infra.persistence.mybatis.firmware.mapper.FirmwareVersionMapper;
+import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
+import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
+import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,9 +28,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PolicyApplicationService {
 
-    private final UpgradePolicyMapper upgradePolicyMapper;
-    private final ProductMapper productMapper;
-    private final FirmwareVersionMapper firmwareVersionMapper;
+    private final UpgradePolicyRepository upgradePolicyRepository;
+    private final ProductRepository productRepository;
+    private final FirmwareVersionRepository firmwareVersionRepository;
 
     /**
      * 创建升级策略
@@ -44,12 +44,12 @@ public class PolicyApplicationService {
         policy.setCreatedAt(LocalDateTime.now());
         policy.setUpdatedAt(LocalDateTime.now());
 
-        upgradePolicyMapper.insert(policy);
+        Long policyId = upgradePolicyRepository.save(policy);
 
         log.info("升级策略创建成功: policyId={}, name={}",
                 policy.getId(), policy.getName());
 
-        return policy.getId();
+        return policyId;
     }
 
     /**
@@ -63,7 +63,8 @@ public class PolicyApplicationService {
 
         policy.setUpdatedAt(LocalDateTime.now());
 
-        int rows = upgradePolicyMapper.updateById(policy);
+        upgradePolicyRepository.save(policy);
+        int rows = 1;
 
         log.info("升级策略更新成功: policyId={}, rowsAffected={}",
                 policy.getId(), rows);
@@ -77,14 +78,13 @@ public class PolicyApplicationService {
      * @param policyId 策略 ID
      */
     public void deletePolicy(Long policyId) {
-        UpgradePolicy policy = upgradePolicyMapper.selectById(policyId);
+        UpgradePolicy policy = upgradePolicyRepository.findById(policyId).orElse(null);
         if (policy == null) {
             log.warn("策略不存在，无法删除: policyId={}", policyId);
             return;
         }
 
-        policy.setDeletedAt(LocalDateTime.now());
-        upgradePolicyMapper.updateById(policy);
+        upgradePolicyRepository.softDeleteById(policyId);
 
         log.info("升级策略删除成功: policyId={}, name={}",
                 policyId, policy.getName());
@@ -97,12 +97,7 @@ public class PolicyApplicationService {
      * @return 策略列表
      */
     public List<UpgradePolicy> getPoliciesByProduct(Long productId) {
-        List<UpgradePolicy> policies = upgradePolicyMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UpgradePolicy>()
-                        .eq(UpgradePolicy::getProductId, productId)
-                        .eq(UpgradePolicy::getDeletedAt, null)
-                        .orderByDesc(UpgradePolicy::getPriority)
-        );
+        List<UpgradePolicy> policies = upgradePolicyRepository.findByProductIdOrderByPriorityDesc(productId);
 
         log.debug("查询产品策略列表: productId={}, count={}", productId, policies.size());
 
@@ -116,7 +111,7 @@ public class PolicyApplicationService {
      * @return 策略实体
      */
     public UpgradePolicy getPolicy(Long policyId) {
-        UpgradePolicy policy = upgradePolicyMapper.selectById(policyId);
+        UpgradePolicy policy = upgradePolicyRepository.findById(policyId).orElse(null);
 
         if (policy == null || policy.getDeletedAt() != null) {
             log.warn("策略不存在或已删除: policyId={}", policyId);
@@ -175,13 +170,13 @@ public class PolicyApplicationService {
         }
 
         // 验证产品存在
-        Product product = productMapper.selectById(policy.getProductId());
+        Product product = productRepository.findById(policy.getProductId()).orElse(null);
         if (product == null || product.getDeletedAt() != null) {
             throw new IllegalArgumentException("产品不存在或已删除");
         }
 
         // 验证目标版本存在
-        FirmwareVersion version = firmwareVersionMapper.selectById(policy.getTargetVersionId());
+        FirmwareVersion version = firmwareVersionRepository.findById(policy.getTargetVersionId()).orElse(null);
         if (version == null || version.getDeletedAt() != null) {
             throw new IllegalArgumentException("目标固件版本不存在或已删除");
         }
@@ -198,7 +193,7 @@ public class PolicyApplicationService {
         }
 
         // 验证策略存在
-        UpgradePolicy existing = upgradePolicyMapper.selectById(policy.getId());
+        UpgradePolicy existing = upgradePolicyRepository.findById(policy.getId()).orElse(null);
         if (existing == null || existing.getDeletedAt() != null) {
             throw new IllegalArgumentException("策略不存在或已删除");
         }

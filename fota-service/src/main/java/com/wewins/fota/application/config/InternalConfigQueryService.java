@@ -1,10 +1,9 @@
 package com.wewins.fota.application.config;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
+import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
+import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class InternalConfigQueryService {
 
-    private final UpgradePolicyMapper upgradePolicyMapper;
-    private final ProductMapper productMapper;
+    private final UpgradePolicyRepository upgradePolicyRepository;
+    private final ProductRepository productRepository;
 
     public long getConfigVersion() {
         long policyVersion = latestPolicyVersion();
@@ -60,40 +59,19 @@ public class InternalConfigQueryService {
     }
 
     private List<UpgradePolicy> listPolicySnapshotItems() {
-        return upgradePolicyMapper.selectList(
-                new LambdaQueryWrapper<UpgradePolicy>()
-                        .isNull(UpgradePolicy::getDeletedAt)
-                        .orderByDesc(UpgradePolicy::getPriority)
-                        .orderByDesc(UpgradePolicy::getUpdatedAt)
-        );
+        return upgradePolicyRepository.findAllActiveOrderByPriorityAndUpdatedAt();
     }
 
     private List<Product> listProductSnapshotItems() {
-        return productMapper.selectList(
-                new LambdaQueryWrapper<Product>()
-                        .isNull(Product::getDeletedAt)
-                        .orderByDesc(Product::getUpdatedAt)
-        );
+        return productRepository.findAllActiveOrderByUpdatedAtDesc();
     }
 
     private long latestPolicyVersion() {
-        UpgradePolicy latest = upgradePolicyMapper.selectOne(
-                new LambdaQueryWrapper<UpgradePolicy>()
-                        .isNull(UpgradePolicy::getDeletedAt)
-                        .orderByDesc(UpgradePolicy::getUpdatedAt)
-                        .last("LIMIT 1")
-        );
-        return toEpochSeconds(latest == null ? null : latest.getUpdatedAt());
+        return toEpochSeconds(upgradePolicyRepository.findLatestUpdatedAt());
     }
 
     private long latestProductVersion() {
-        Product latest = productMapper.selectOne(
-                new LambdaQueryWrapper<Product>()
-                        .isNull(Product::getDeletedAt)
-                        .orderByDesc(Product::getUpdatedAt)
-                        .last("LIMIT 1")
-        );
-        return toEpochSeconds(latest == null ? null : latest.getUpdatedAt());
+        return toEpochSeconds(productRepository.findLatestUpdatedAt());
     }
 
     private long toEpochSeconds(LocalDateTime dateTime) {

@@ -29,8 +29,7 @@ import javax.sql.DataSource;
 @MapperScan(
         basePackages = "com.wewins.fota",
         annotationClass = PrimaryDbMapper.class,
-        sqlSessionFactoryRef = "primarySqlSessionFactory",
-        sqlSessionTemplateRef = "primarySqlSessionTemplate"
+        sqlSessionFactoryRef = "primarySqlSessionFactory"
 )
 public class MybatisPrimaryConfig {
 

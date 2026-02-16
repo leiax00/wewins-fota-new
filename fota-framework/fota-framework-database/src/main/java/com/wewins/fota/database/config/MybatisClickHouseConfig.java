@@ -32,8 +32,7 @@ import javax.sql.DataSource;
 @MapperScan(
         basePackages = "com.wewins.fota",
         annotationClass = ClickHouseMapper.class,
-        sqlSessionFactoryRef = "clickhouseSqlSessionFactory",
-        sqlSessionTemplateRef = "clickhouseSqlSessionTemplate"
+        sqlSessionFactoryRef = "clickhouseSqlSessionFactory"
 )
 public class MybatisClickHouseConfig {
 

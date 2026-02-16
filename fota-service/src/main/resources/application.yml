@@ -7,7 +7,7 @@
 # MyBatis-Plus 配置
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
-  type-aliases-package: com.wewins.fota.domain.device.entity,com.wewins.fota.domain.product.entity,com.wewins.fota.domain.firmware.entity,com.wewins.fota.domain.policy.entity,com.wewins.fota.system.entity
+  type-aliases-package: com.wewins.fota.domain.*.entity,com.wewins.fota.module.*.domain.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
@@ -36,7 +36,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota}
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:wewins@2025}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -49,7 +49,7 @@ spring:
     clickhouse:
       url: ${CLICKHOUSE_URL:jdbc:clickhouse://chouse.wewins.wolaie.com:28123/ww-fota}
       username: ${CLICKHOUSE_USER:wewins}
-      password: ${CLICKHOUSE_PASSWORD:wewins@2025}
+      password: ${CLICKHOUSE_PASSWORD}
       driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
       hikari:
         maximum-pool-size: 5
@@ -82,7 +82,7 @@ spring:
     host: ${RABBITMQ_HOST:mq.wewins.wolaie.com}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:admin}
-    password: ${RABBITMQ_PASSWORD:admin@123456}
+    password: ${RABBITMQ_PASSWORD}
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
@@ -171,6 +171,6 @@ app:
       endpoint: ${STORAGE_S3_ENDPOINT:https://oss.wewins.wolaie.com}
       region: ${STORAGE_S3_REGION:us-east-1}
       bucket: ${STORAGE_S3_BUCKET:fota}
-      accessKey: ${STORAGE_S3_ACCESS_KEY:ZsEQ1rvjVJCeFULdOnXk}
-      secretKey: ${STORAGE_S3_SECRET_KEY:Gl5hB7WqDIXKSoa89iAp6sOU31Hkyrjc0gmxLzCJ}
+      accessKey: ${STORAGE_S3_ACCESS_KEY}
+      secretKey: ${STORAGE_S3_SECRET_KEY}
       pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}
