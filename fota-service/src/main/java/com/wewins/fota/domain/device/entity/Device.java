@@ -1,6 +1,7 @@
 package com.wewins.fota.domain.device.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,15 +27,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName(value = "devices", autoResultMap = true)
-public class Device implements Serializable {
+public class Device extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 设备唯一标识
-     */
-    @TableId(type = IdType.AUTO)
-    private Long id;
 
     /**
      * 设备 IMEI 号（唯一）
@@ -96,30 +91,6 @@ public class Device implements Serializable {
      * </p>
      */
     private Long importBatchId;
-
-    /**
-     * 创建时间（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
-
-    /**
-     * 创建人用户ID（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Long createdBy;
-
-    /**
-     * 更新时间（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
-
-    /**
-     * 更新人用户ID（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updatedBy;
 
     /**
      * 软删除时间（逻辑删除）

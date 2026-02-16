@@ -1,6 +1,7 @@
 package com.wewins.fota.module.system.domain.entity.user;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.wewins.fota.database.entity.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,15 +24,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("sys_users")
-public class User implements Serializable {
+public class User extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 用户ID
-     */
-    @TableId(type = IdType.AUTO)
-    private Long id;
 
     /**
      * 用户名（唯一）
@@ -72,30 +67,6 @@ public class User implements Serializable {
      * 租户ID（预留多租户）
      */
     private Long tenantId;
-
-    /**
-     * 创建时间
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
-
-    /**
-     * 创建人用户ID
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Long createdBy;
-
-    /**
-     * 更新时间
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
-
-    /**
-     * 更新人用户ID
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updatedBy;
 
     /**
      * 软删除时间

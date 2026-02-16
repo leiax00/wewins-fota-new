@@ -1,6 +1,7 @@
 package com.wewins.fota.domain.product.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.wewins.fota.database.entity.BaseEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,15 +25,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("products")
-public class Product implements Serializable {
+public class Product extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 产品唯一标识
-     */
-    @TableId(type = IdType.AUTO)
-    private Long id;
 
     /**
      * 产品名称
@@ -53,30 +48,6 @@ public class Product implements Serializable {
      * 产品备注
      */
     private String remark;
-
-    /**
-     * 创建时间（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
-
-    /**
-     * 创建人用户ID（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Long createdBy;
-
-    /**
-     * 更新时间（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
-
-    /**
-     * 更新人用户ID（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updatedBy;
 
     /**
      * 软删除时间（逻辑删除）

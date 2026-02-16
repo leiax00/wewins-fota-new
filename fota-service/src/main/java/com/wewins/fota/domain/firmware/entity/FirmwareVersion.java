@@ -1,6 +1,7 @@
 package com.wewins.fota.domain.firmware.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,15 +27,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("firmware_versions")
-public class FirmwareVersion implements Serializable {
+public class FirmwareVersion extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 固件版本唯一标识
-     */
-    @TableId(type = IdType.AUTO)
-    private Long id;
 
     /**
      * 关联的产品 ID
@@ -123,30 +118,6 @@ public class FirmwareVersion implements Serializable {
      */
     @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode meta;
-
-    /**
-     * 创建时间（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
-
-    /**
-     * 创建人用户ID（自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Long createdBy;
-
-    /**
-     * 更新时间（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updatedAt;
-
-    /**
-     * 更新人用户ID（插入和更新时自动填充）
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updatedBy;
 
     /**
      * 软删除时间（逻辑删除）
