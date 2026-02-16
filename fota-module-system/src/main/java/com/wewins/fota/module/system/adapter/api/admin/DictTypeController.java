@@ -1,15 +1,17 @@
 package com.wewins.fota.module.system.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.module.system.dto.DictTypePageReqDTO;
-import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.api.ApiResponse;
-import com.wewins.fota.module.system.domain.entity.dict.DictItem;
-import com.wewins.fota.module.system.domain.entity.dict.DictType;
+import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.DictItemAppService;
 import com.wewins.fota.module.system.application.DictTypeAppService;
+import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.dto.DictItemRespDTO;
+import com.wewins.fota.module.system.dto.DictTypePageReqDTO;
+import com.wewins.fota.module.system.dto.DictTypeReqDTO;
+import com.wewins.fota.module.system.dto.DictTypeRespDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,12 +28,6 @@ import java.util.List;
 
 /**
  * 字典类型 Controller
- * <p>
- * 提供字典类型管理的 CRUD 接口
- * </p>
- *
- * @author FOTA Team
- * @since 2026-02-11
  */
 @Slf4j
 @ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
@@ -41,20 +37,18 @@ public class DictTypeController {
 
     private final DictTypeAppService dictTypeService;
     private final DictItemAppService dictItemService;
+    private final AdminApiAssembler adminApiAssembler;
 
-    public DictTypeController(DictTypeAppService dictTypeService, DictItemAppService dictItemService) {
+    public DictTypeController(DictTypeAppService dictTypeService,
+                              DictItemAppService dictItemService,
+                              AdminApiAssembler adminApiAssembler) {
         this.dictTypeService = dictTypeService;
         this.dictItemService = dictItemService;
+        this.adminApiAssembler = adminApiAssembler;
     }
 
-    /**
-     * 分页查询字典类型
-     *
-     * @param reqDTO 分页查询参数
-     * @return 分页字典类型列表
-     */
     @GetMapping
-    public ApiResponse<PageResponse<DictType>> listDictTypes(@ModelAttribute DictTypePageReqDTO reqDTO) {
+    public ApiResponse<PageResponse<DictTypeRespDTO>> listDictTypes(@ModelAttribute DictTypePageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new DictTypePageReqDTO();
         }
@@ -64,10 +58,11 @@ public class DictTypeController {
                     reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<DictType> pageResult = dictTypeService.pageTypes(reqDTO);
+        Page<?> pageResult = dictTypeService.pageTypes(reqDTO);
+        List<DictTypeRespDTO> records = adminApiAssembler.toDictTypeRespListFromUnknown(pageResult.getRecords());
 
-        PageResponse<DictType> response = PageResponse.of(
-                pageResult.getRecords(),
+        PageResponse<DictTypeRespDTO> response = PageResponse.of(
+                records,
                 (int) pageResult.getCurrent(),
                 (int) pageResult.getSize(),
                 pageResult.getTotal()
@@ -75,14 +70,8 @@ public class DictTypeController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * 获取字典类型详情
-     *
-     * @param id 字典类型ID
-     * @return 字典类型信息
-     */
     @GetMapping("/{id}")
-    public ApiResponse<DictType> getDictType(@PathVariable Long id) {
+    public ApiResponse<DictTypeRespDTO> getDictType(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -92,11 +81,11 @@ public class DictTypeController {
         }
 
         try {
-            DictType dictType = dictTypeService.getById(id);
+            var dictType = dictTypeService.getById(id);
             if (dictType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
-            return ApiResponse.success(dictType);
+            return ApiResponse.success(adminApiAssembler.toDictTypeResp(dictType));
         } catch (BizException e) {
             log.warn("获取字典类型详情失败: dictTypeId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -106,14 +95,8 @@ public class DictTypeController {
         }
     }
 
-    /**
-     * 按编码获取字典类型
-     *
-     * @param code 字典类型编码
-     * @return 字典类型信息
-     */
     @GetMapping("/code/{code}")
-    public ApiResponse<DictType> getDictTypeByCode(@PathVariable String code) {
+    public ApiResponse<DictTypeRespDTO> getDictTypeByCode(@PathVariable String code) {
         if (code == null || code.isBlank()) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -123,11 +106,11 @@ public class DictTypeController {
         }
 
         try {
-            DictType dictType = dictTypeService.getByCode(code);
+            var dictType = dictTypeService.getByCode(code);
             if (dictType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
-            return ApiResponse.success(dictType);
+            return ApiResponse.success(adminApiAssembler.toDictTypeResp(dictType));
         } catch (BizException e) {
             log.warn("按编码获取字典类型失败: code={}, errorCode={}, message={}", code, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -137,46 +120,34 @@ public class DictTypeController {
         }
     }
 
-    /**
-     * 创建字典类型
-     *
-     * @param dictType 字典类型信息
-     * @return 创建后的字典类型
-     */
     @PostMapping
-    public ApiResponse<DictType> createDictType(@RequestBody DictType dictType) {
-        if (dictType == null) {
+    public ApiResponse<DictTypeRespDTO> createDictType(@RequestBody DictTypeReqDTO reqDTO) {
+        if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("创建字典类型: code={}", dictType.getCode());
+            log.debug("创建字典类型: code={}", reqDTO.getCode());
         }
 
         try {
+            var dictType = adminApiAssembler.toDictTypeEntity(reqDTO);
             dictType.setId(null);
-            DictType createdType = dictTypeService.createDictType(dictType);
+            var createdType = dictTypeService.createDictType(dictType);
             log.info("字典类型创建成功: dictTypeId={}, code={}", createdType.getId(), createdType.getCode());
-            return ApiResponse.success(createdType);
+            return ApiResponse.success(adminApiAssembler.toDictTypeResp(createdType));
         } catch (BizException e) {
-            log.warn("创建字典类型失败: code={}, errorCode={}, message={}", dictType.getCode(), e.getCode(), e.getMessage());
+            log.warn("创建字典类型失败: code={}, errorCode={}, message={}", reqDTO.getCode(), e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.warn("创建字典类型参数错误: code={}, message={}", dictType.getCode(), e.getMessage());
+            log.warn("创建字典类型参数错误: code={}, message={}", reqDTO.getCode(), e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
     }
 
-    /**
-     * 更新字典类型
-     *
-     * @param id       字典类型ID
-     * @param dictType 字典类型信息
-     * @return 更新后的字典类型
-     */
     @PutMapping("/{id}")
-    public ApiResponse<DictType> updateDictType(@PathVariable Long id, @RequestBody DictType dictType) {
-        if (id == null || id <= 0 || dictType == null) {
+    public ApiResponse<DictTypeRespDTO> updateDictType(@PathVariable Long id, @RequestBody DictTypeReqDTO reqDTO) {
+        if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
@@ -185,16 +156,17 @@ public class DictTypeController {
         }
 
         try {
-            DictType existingType = dictTypeService.getById(id);
+            var existingType = dictTypeService.getById(id);
             if (existingType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
 
+            var dictType = adminApiAssembler.toDictTypeEntity(reqDTO);
             dictType.setId(id);
-            DictType updatedType = dictTypeService.updateDictType(dictType);
+            var updatedType = dictTypeService.updateDictType(dictType);
 
             log.info("字典类型更新成功: dictTypeId={}", updatedType.getId());
-            return ApiResponse.success(updatedType);
+            return ApiResponse.success(adminApiAssembler.toDictTypeResp(updatedType));
         } catch (BizException e) {
             log.warn("更新字典类型失败: dictTypeId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -204,12 +176,6 @@ public class DictTypeController {
         }
     }
 
-    /**
-     * 删除字典类型
-     *
-     * @param id 字典类型ID
-     * @return 删除结果
-     */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteDictType(@PathVariable Long id) {
         if (id == null || id <= 0) {
@@ -221,7 +187,7 @@ public class DictTypeController {
         }
 
         try {
-            DictType existingType = dictTypeService.getById(id);
+            var existingType = dictTypeService.getById(id);
             if (existingType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
@@ -238,14 +204,8 @@ public class DictTypeController {
         }
     }
 
-    /**
-     * 按字典类型ID查询字典项
-     *
-     * @param id 字典类型ID
-     * @return 字典项列表
-     */
     @GetMapping("/{id}/items")
-    public ApiResponse<List<DictItem>> listItemsByTypeId(@PathVariable Long id) {
+    public ApiResponse<List<DictItemRespDTO>> listItemsByTypeId(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -255,13 +215,13 @@ public class DictTypeController {
         }
 
         try {
-            DictType existingType = dictTypeService.getById(id);
+            var existingType = dictTypeService.getById(id);
             if (existingType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
 
-            List<DictItem> items = dictItemService.listItemsByTypeId(id);
-            return ApiResponse.success(items);
+            var items = dictItemService.listItemsByTypeId(id);
+            return ApiResponse.success(adminApiAssembler.toDictItemRespList(items));
         } catch (BizException e) {
             log.warn("按字典类型ID查询字典项失败: dictTypeId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -271,14 +231,8 @@ public class DictTypeController {
         }
     }
 
-    /**
-     * 按字典类型编码查询字典项
-     *
-     * @param code 字典类型编码
-     * @return 字典项列表
-     */
     @GetMapping("/code/{code}/items")
-    public ApiResponse<List<DictItem>> listItemsByTypeCode(@PathVariable String code) {
+    public ApiResponse<List<DictItemRespDTO>> listItemsByTypeCode(@PathVariable String code) {
         if (code == null || code.isBlank()) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -288,14 +242,13 @@ public class DictTypeController {
         }
 
         try {
-            // 先验证字典类型是否存在（保持与其他接口的一致性）
-            DictType dictType = dictTypeService.getByCode(code);
+            var dictType = dictTypeService.getByCode(code);
             if (dictType == null) {
                 return ApiResponse.error(ErrorCode.DICT_TYPE_NOT_FOUND.getCode(), ErrorCode.DICT_TYPE_NOT_FOUND.getMessage());
             }
 
-            List<DictItem> items = dictItemService.listItemsByTypeId(dictType.getId());
-            return ApiResponse.success(items);
+            var items = dictItemService.listItemsByTypeId(dictType.getId());
+            return ApiResponse.success(adminApiAssembler.toDictItemRespList(items));
         } catch (BizException e) {
             log.warn("按字典类型编码查询字典项失败: code={}, errorCode={}, message={}", code, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());

@@ -1,14 +1,16 @@
 package com.wewins.fota.module.system.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.api.ApiResponse;
-import com.wewins.fota.module.system.dto.UserPageReqDTO;
-import com.wewins.fota.module.system.domain.entity.rbac.Role;
-import com.wewins.fota.module.system.domain.entity.user.User;
+import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.UserAppService;
+import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.dto.RoleRespDTO;
+import com.wewins.fota.module.system.dto.UserPageReqDTO;
+import com.wewins.fota.module.system.dto.UserReqDTO;
+import com.wewins.fota.module.system.dto.UserRespDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,12 +27,6 @@ import java.util.List;
 
 /**
  * 用户 Controller
- * <p>
- * 提供用户管理的 CRUD 接口与角色分配功能
- * </p>
- *
- * @author FOTA Team
- * @since 2026-02-10
  */
 @Slf4j
 @ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
@@ -39,35 +35,28 @@ import java.util.List;
 public class UserController {
 
     private final UserAppService userService;
+    private final AdminApiAssembler adminApiAssembler;
 
-    public UserController(UserAppService userService) {
+    public UserController(UserAppService userService, AdminApiAssembler adminApiAssembler) {
         this.userService = userService;
+        this.adminApiAssembler = adminApiAssembler;
     }
 
-    /**
-     * 分页查询用户
-     *
-     * @param reqDTO 分页查询参数
-     * @return 分页用户列表
-     */
     @GetMapping
-    public ApiResponse<PageResponse<User>> listUsers(@ModelAttribute UserPageReqDTO reqDTO) {
+    public ApiResponse<PageResponse<UserRespDTO>> listUsers(@ModelAttribute UserPageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new UserPageReqDTO();
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询用户: status={}, page={}, size={}",
-                    reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询用户: status={}, page={}, size={}", reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<User> pageResult = userService.pageUsers(reqDTO);
+        Page<?> pageResult = userService.pageUsers(reqDTO);
+        List<UserRespDTO> records = adminApiAssembler.toUserRespListFromUnknown(pageResult.getRecords());
 
-        // 清空密码哈希，避免暴露给前端
-        pageResult.getRecords().forEach(user -> user.setPasswordHash(null));
-
-        PageResponse<User> response = PageResponse.of(
-                pageResult.getRecords(),
+        PageResponse<UserRespDTO> response = PageResponse.of(
+                records,
                 (int) pageResult.getCurrent(),
                 (int) pageResult.getSize(),
                 pageResult.getTotal()
@@ -75,14 +64,8 @@ public class UserController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * 获取用户详情
-     *
-     * @param id 用户ID
-     * @return 用户信息
-     */
     @GetMapping("/{id}")
-    public ApiResponse<User> getUser(@PathVariable Long id) {
+    public ApiResponse<UserRespDTO> getUser(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -92,15 +75,11 @@ public class UserController {
         }
 
         try {
-            User user = userService.getUserById(id);
+            var user = userService.getUserById(id);
             if (user == null) {
                 return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
             }
-
-            // 清空密码哈希，避免暴露给前端
-            user.setPasswordHash(null);
-
-            return ApiResponse.success(user);
+            return ApiResponse.success(adminApiAssembler.toUserResp(user));
         } catch (BizException e) {
             log.warn("获取用户详情失败: userId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -110,50 +89,35 @@ public class UserController {
         }
     }
 
-    /**
-     * 创建用户
-     *
-     * @param user 用户信息
-     * @return 创建后的用户
-     */
     @PostMapping
-    public ApiResponse<User> createUser(@RequestBody User user) {
-        if (user == null) {
+    public ApiResponse<UserRespDTO> createUser(@RequestBody UserReqDTO reqDTO) {
+        if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("创建用户: username={}", user.getUsername());
+            log.debug("创建用户: username={}", reqDTO.getUsername());
         }
 
         try {
+            var user = adminApiAssembler.toUserEntity(reqDTO);
             user.setId(null);
-            User createdUser = userService.createUser(user, null);
-
-            // 清空密码哈希，避免暴露给前端
-            createdUser.setPasswordHash(null);
+            var createdUser = userService.createUser(user, null);
 
             log.info("用户创建成功: userId={}, username={}", createdUser.getId(), createdUser.getUsername());
-            return ApiResponse.success(createdUser);
+            return ApiResponse.success(adminApiAssembler.toUserResp(createdUser));
         } catch (BizException e) {
-            log.warn("创建用户失败: username={}, code={}, message={}", user.getUsername(), e.getCode(), e.getMessage());
+            log.warn("创建用户失败: username={}, code={}, message={}", reqDTO.getUsername(), e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.warn("创建用户参数错误: username={}, message={}", user.getUsername(), e.getMessage());
+            log.warn("创建用户参数错误: username={}, message={}", reqDTO.getUsername(), e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
     }
 
-    /**
-     * 更新用户
-     *
-     * @param id   用户ID
-     * @param user 用户信息
-     * @return 更新后的用户
-     */
     @PutMapping("/{id}")
-    public ApiResponse<User> updateUser(@PathVariable Long id, @RequestBody User user) {
-        if (id == null || id <= 0 || user == null) {
+    public ApiResponse<UserRespDTO> updateUser(@PathVariable Long id, @RequestBody UserReqDTO reqDTO) {
+        if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
@@ -162,22 +126,18 @@ public class UserController {
         }
 
         try {
-            User existingUser = userService.getUserById(id);
+            var existingUser = userService.getUserById(id);
             if (existingUser == null) {
                 return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
             }
 
-            // 密码字段不允许通过此接口修改，保留原始值
+            var user = adminApiAssembler.toUserEntity(reqDTO);
             user.setId(id);
             user.setPasswordHash(existingUser.getPasswordHash());
 
-            User updatedUser = userService.updateUser(user, null);
-
-            // 清空密码哈希，避免暴露给前端
-            updatedUser.setPasswordHash(null);
-
+            var updatedUser = userService.updateUser(user, null);
             log.info("用户更新成功: userId={}", updatedUser.getId());
-            return ApiResponse.success(updatedUser);
+            return ApiResponse.success(adminApiAssembler.toUserResp(updatedUser));
         } catch (BizException e) {
             log.warn("更新用户失败: userId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -187,12 +147,6 @@ public class UserController {
         }
     }
 
-    /**
-     * 删除用户（软删除）
-     *
-     * @param id 用户ID
-     * @return 删除结果
-     */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteUser(@PathVariable Long id) {
         if (id == null || id <= 0) {
@@ -204,7 +158,7 @@ public class UserController {
         }
 
         try {
-            User existingUser = userService.getUserById(id);
+            var existingUser = userService.getUserById(id);
             if (existingUser == null) {
                 return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
             }
@@ -221,14 +175,8 @@ public class UserController {
         }
     }
 
-    /**
-     * 获取用户角色
-     *
-     * @param id 用户ID
-     * @return 角色列表
-     */
     @GetMapping("/{id}/roles")
-    public ApiResponse<List<Role>> getUserRoles(@PathVariable Long id) {
+    public ApiResponse<List<RoleRespDTO>> getUserRoles(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -238,13 +186,13 @@ public class UserController {
         }
 
         try {
-            User existingUser = userService.getUserById(id);
+            var existingUser = userService.getUserById(id);
             if (existingUser == null) {
                 return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
             }
 
-            List<Role> roles = userService.getUserRoles(id);
-            return ApiResponse.success(roles);
+            var roles = userService.getUserRoles(id);
+            return ApiResponse.success(adminApiAssembler.toRoleRespList(roles));
         } catch (BizException e) {
             log.warn("获取用户角色失败: userId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -254,13 +202,6 @@ public class UserController {
         }
     }
 
-    /**
-     * 分配角色
-     *
-     * @param id      用户ID
-     * @param roleIds 角色ID列表
-     * @return 分配结果
-     */
     @PostMapping("/{id}/roles")
     public ApiResponse<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
         if (id == null || id <= 0) {
@@ -272,7 +213,7 @@ public class UserController {
         }
 
         try {
-            User existingUser = userService.getUserById(id);
+            var existingUser = userService.getUserById(id);
             if (existingUser == null) {
                 return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
             }

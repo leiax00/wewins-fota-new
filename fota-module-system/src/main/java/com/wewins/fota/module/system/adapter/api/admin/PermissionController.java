@@ -1,14 +1,16 @@
 package com.wewins.fota.module.system.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.common.api.PageResponse;
-import com.wewins.fota.module.system.dto.PermissionPageReqDTO;
 import com.wewins.fota.common.api.ApiResponse;
-import com.wewins.fota.module.system.domain.entity.rbac.Permission;
+import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.PermissionAppService;
-import com.wewins.fota.module.system.application.dto.PermissionTreeNode;
+import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.dto.PermissionPageReqDTO;
+import com.wewins.fota.module.system.dto.PermissionReqDTO;
+import com.wewins.fota.module.system.dto.PermissionRespDTO;
+import com.wewins.fota.module.system.dto.PermissionTreeNodeRespDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,12 +27,6 @@ import java.util.List;
 
 /**
  * 权限 Controller
- * <p>
- * 提供权限管理的 CRUD 接口与树形结构查询功能
- * </p>
- *
- * @author FOTA Team
- * @since 2026-02-11
  */
 @Slf4j
 @ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
@@ -39,19 +35,15 @@ import java.util.List;
 public class PermissionController {
 
     private final PermissionAppService permissionService;
+    private final AdminApiAssembler adminApiAssembler;
 
-    public PermissionController(PermissionAppService permissionService) {
+    public PermissionController(PermissionAppService permissionService, AdminApiAssembler adminApiAssembler) {
         this.permissionService = permissionService;
+        this.adminApiAssembler = adminApiAssembler;
     }
 
-    /**
-     * 分页查询权限
-     *
-     * @param reqDTO 分页查询参数
-     * @return 分页权限列表
-     */
     @GetMapping
-    public ApiResponse<PageResponse<Permission>> listPermissions(@ModelAttribute PermissionPageReqDTO reqDTO) {
+    public ApiResponse<PageResponse<PermissionRespDTO>> listPermissions(@ModelAttribute PermissionPageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new PermissionPageReqDTO();
         }
@@ -61,10 +53,11 @@ public class PermissionController {
                     reqDTO.getType(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<Permission> pageResult = permissionService.pagePermissions(reqDTO);
+        Page<?> pageResult = permissionService.pagePermissions(reqDTO);
+        List<PermissionRespDTO> records = adminApiAssembler.toPermissionRespListFromUnknown(pageResult.getRecords());
 
-        PageResponse<Permission> response = PageResponse.of(
-                pageResult.getRecords(),
+        PageResponse<PermissionRespDTO> response = PageResponse.of(
+                records,
                 (int) pageResult.getCurrent(),
                 (int) pageResult.getSize(),
                 pageResult.getTotal()
@@ -72,14 +65,8 @@ public class PermissionController {
         return ApiResponse.success(response);
     }
 
-    /**
-     * 获取权限详情
-     *
-     * @param id 权限ID
-     * @return 权限信息
-     */
     @GetMapping("/{id}")
-    public ApiResponse<Permission> getPermission(@PathVariable Long id) {
+    public ApiResponse<PermissionRespDTO> getPermission(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -89,11 +76,11 @@ public class PermissionController {
         }
 
         try {
-            Permission permission = permissionService.getPermissionById(id);
+            var permission = permissionService.getPermissionById(id);
             if (permission == null) {
                 return ApiResponse.error(ErrorCode.PERMISSION_NOT_FOUND.getCode(), ErrorCode.PERMISSION_NOT_FOUND.getMessage());
             }
-            return ApiResponse.success(permission);
+            return ApiResponse.success(adminApiAssembler.toPermissionResp(permission));
         } catch (BizException e) {
             log.warn("获取权限详情失败: permissionId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -103,46 +90,34 @@ public class PermissionController {
         }
     }
 
-    /**
-     * 创建权限
-     *
-     * @param permission 权限信息
-     * @return 创建后的权限
-     */
     @PostMapping
-    public ApiResponse<Permission> createPermission(@RequestBody Permission permission) {
-        if (permission == null) {
+    public ApiResponse<PermissionRespDTO> createPermission(@RequestBody PermissionReqDTO reqDTO) {
+        if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("创建权限: code={}, parentId={}", permission.getCode(), permission.getParentId());
+            log.debug("创建权限: code={}, parentId={}", reqDTO.getCode(), reqDTO.getParentId());
         }
 
         try {
+            var permission = adminApiAssembler.toPermissionEntity(reqDTO);
             permission.setId(null);
-            Permission createdPermission = permissionService.createPermission(permission);
+            var createdPermission = permissionService.createPermission(permission);
             log.info("权限创建成功: permissionId={}, code={}", createdPermission.getId(), createdPermission.getCode());
-            return ApiResponse.success(createdPermission);
+            return ApiResponse.success(adminApiAssembler.toPermissionResp(createdPermission));
         } catch (BizException e) {
-            log.warn("创建权限失败: code={}, errorCode={}, message={}", permission.getCode(), e.getCode(), e.getMessage());
+            log.warn("创建权限失败: code={}, errorCode={}, message={}", reqDTO.getCode(), e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
-            log.warn("创建权限参数错误: code={}, message={}", permission.getCode(), e.getMessage());
+            log.warn("创建权限参数错误: code={}, message={}", reqDTO.getCode(), e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
     }
 
-    /**
-     * 更新权限
-     *
-     * @param id         权限ID
-     * @param permission 权限信息
-     * @return 更新后的权限
-     */
     @PutMapping("/{id}")
-    public ApiResponse<Permission> updatePermission(@PathVariable Long id, @RequestBody Permission permission) {
-        if (id == null || id <= 0 || permission == null) {
+    public ApiResponse<PermissionRespDTO> updatePermission(@PathVariable Long id, @RequestBody PermissionReqDTO reqDTO) {
+        if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
@@ -151,16 +126,17 @@ public class PermissionController {
         }
 
         try {
-            Permission existingPermission = permissionService.getPermissionById(id);
+            var existingPermission = permissionService.getPermissionById(id);
             if (existingPermission == null) {
                 return ApiResponse.error(ErrorCode.PERMISSION_NOT_FOUND.getCode(), ErrorCode.PERMISSION_NOT_FOUND.getMessage());
             }
 
+            var permission = adminApiAssembler.toPermissionEntity(reqDTO);
             permission.setId(id);
-            Permission updatedPermission = permissionService.updatePermission(permission);
+            var updatedPermission = permissionService.updatePermission(permission);
 
             log.info("权限更新成功: permissionId={}", updatedPermission.getId());
-            return ApiResponse.success(updatedPermission);
+            return ApiResponse.success(adminApiAssembler.toPermissionResp(updatedPermission));
         } catch (BizException e) {
             log.warn("更新权限失败: permissionId={}, code={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -170,12 +146,6 @@ public class PermissionController {
         }
     }
 
-    /**
-     * 删除权限
-     *
-     * @param id 权限ID
-     * @return 删除结果
-     */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deletePermission(@PathVariable Long id) {
         if (id == null || id <= 0) {
@@ -187,7 +157,7 @@ public class PermissionController {
         }
 
         try {
-            Permission existingPermission = permissionService.getPermissionById(id);
+            var existingPermission = permissionService.getPermissionById(id);
             if (existingPermission == null) {
                 return ApiResponse.error(ErrorCode.PERMISSION_NOT_FOUND.getCode(), ErrorCode.PERMISSION_NOT_FOUND.getMessage());
             }
@@ -204,20 +174,15 @@ public class PermissionController {
         }
     }
 
-    /**
-     * 获取权限树
-     *
-     * @return 权限树结构
-     */
     @GetMapping("/tree")
-    public ApiResponse<List<PermissionTreeNode>> listPermissionTree() {
+    public ApiResponse<List<PermissionTreeNodeRespDTO>> listPermissionTree() {
         if (log.isDebugEnabled()) {
             log.debug("查询权限树");
         }
 
         try {
-            List<PermissionTreeNode> tree = permissionService.listPermissionTree();
-            return ApiResponse.success(tree);
+            var tree = permissionService.listPermissionTree();
+            return ApiResponse.success(adminApiAssembler.toPermissionTreeNodeRespList(tree));
         } catch (BizException e) {
             log.warn("查询权限树失败: code={}, message={}", e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
