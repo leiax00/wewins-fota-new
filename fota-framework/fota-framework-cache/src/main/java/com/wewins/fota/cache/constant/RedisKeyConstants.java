@@ -125,6 +125,112 @@ public final class RedisKeyConstants {
      */
     public static final long RATE_LIMIT_TTL_SECONDS = 60;
 
+    /**
+     * 活跃度 Bitmap TTL（90 天）
+     * <p>
+     * 用于离线分析和统计，建议保留较长时间
+     * </p>
+     */
+    public static final long ACTIVE_BITMAP_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+    /**
+     * BITOP 临时键 TTL（60 秒）
+     * <p>
+     * BITOP 操作产生的临时键，设置短 TTL 避免内存泄漏
+     * </p>
+     */
+    public static final long BITOP_TEMP_TTL_SECONDS = 60;
+
+    // ========== 活跃度 Bitmap 常量 ==========
+
+    /**
+     * 活跃度 Bitmap Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.ACTIVE_BITMAP_KEY_TEMPLATE, date)
+     * </p>
+     * <p>
+     * 示例：fota:active:20260217
+     * </p>
+     * <p>
+     * 说明：设备 ID 作为 bitmap 偏移量，标记设备活跃状态
+     * </p>
+     */
+    public static final String ACTIVE_BITMAP_KEY_TEMPLATE = "fota:active:%s";
+
+    /**
+     * BITOP 临时键 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.BITOP_TEMP_KEY_TEMPLATE, operation, identifier)
+     * </p>
+     * <p>
+     * 示例：fota:tmp:bitop:union:20260215-20260217
+     * </p>
+     * <p>
+     * 说明：用于 BITOP 操作的临时键，操作完成后自动过期
+     * </p>
+     */
+    public static final String BITOP_TEMP_KEY_TEMPLATE = "fota:tmp:bitop:%s:%s";
+
+    // ========== 策略快照常量 ==========
+
+    /**
+     * 策略快照 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_SNAPSHOT_KEY_TEMPLATE, scope, version)
+     * </p>
+     * <p>
+     * 示例：fota:pol:snap:main:v123
+     * </p>
+     * <p>
+     * 说明：策略快照数据，用于区域配置同步
+     * </p>
+     */
+    public static final String POLICY_SNAPSHOT_KEY_TEMPLATE = "fota:pol:snap:%s:v%s";
+
+    /**
+     * 策略快照活跃版本 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_ACTIVE_VER_KEY_TEMPLATE, scope)
+     * </p>
+     * <p>
+     * 示例：fota:pol:active_ver:main
+     * </p>
+     * <p>
+     * 说明：指向当前活跃的策略快照版本，原子切换
+     * </p>
+     */
+    public static final String POLICY_ACTIVE_VER_KEY_TEMPLATE = "fota:pol:active_ver:%s";
+
+    // ========== 限流配额常量 ==========
+
+    /**
+     * 策略配额 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_QUOTA_KEY_TEMPLATE, policyId, date)
+     * </p>
+     * <p>
+     * 示例：fota:quota:policy:101:20260217
+     * </p>
+     * <p>
+     * 说明：策略每日配额计数器，用于灰度发布控制
+     * </p>
+     */
+    public static final String POLICY_QUOTA_KEY_TEMPLATE = "fota:quota:policy:%s:%s";
+
+    /**
+     * 灰度计数 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.GRAY_COUNT_KEY_TEMPLATE, policyId, date)
+     * </p>
+     * <p>
+     * 示例：fota:gray:count:101:20260217
+     * </p>
+     * <p>
+     * 说明：灰度发布设备计数器，记录命中灰度的设备数量
+     * </p>
+     */
+    public static final String GRAY_COUNT_KEY_TEMPLATE = "fota:gray:count:%s:%s";
+
     // ========== 服务注册常量 ==========
 
     /**
