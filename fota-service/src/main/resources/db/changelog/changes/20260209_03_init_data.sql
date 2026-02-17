@@ -93,7 +93,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 -- wewins@2026 的 BCrypt hash
 INSERT INTO sys_users (id, username, password_hash, display_name, status, created_at, updated_at)
 VALUES
-  (1, 'wewins', '$2a$10$rVvZ.jq8Z/KGvGYK4MYuOex/J9Gx1hJOY8Q3v.X5.YTGx8Gy0kZCW', '系统管理员', 'active', now(), now())
+  (1, 'wewins', '$2a$10$EZXnfjmgPCoizFOQcy/YneL9btA2u5jecupZ2MmAbNP.LhAoqj22m', '系统管理员', 'active', now(), now())
 ON CONFLICT (username) DO NOTHING;
 
 -- 绑定用户与角色（wewins -> super_wewins）
