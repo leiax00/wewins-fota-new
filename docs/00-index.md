@@ -33,6 +33,7 @@
 - [Git Flow 工作流规范](03-standards/git-workflow.md)
 - [Lombok 使用规范](03-standards/lombok-standards.md)
 - [Jackson 配置指南](03-standards/jackson-config.md)
+- [Redis 缓存标准与规范](03-standards/redis-cache-standards.md) 🆕
 
 ---
 
@@ -66,9 +67,10 @@ Sprint 计划、里程碑、风险评估
 **Day 3: 系统管理与安全认证** ✅ 已完成
 - [任务文档](tasks/2026-02-sprint-1/day-03-system-security.md)
 
-**Day 4-5: 待开始**
-- Day 4: Redis 缓存架构
-- Day 5: 集成测试与验收
+**Day 4: Redis 缓存架构** ⏸️ 待开始
+- [任务文档](tasks/2026-02-sprint-1/day-04-redis-cache.md)
+
+**Day 5: 集成测试与验收** ⏸️ 待开始
 
 ---
 
@@ -88,6 +90,7 @@ Sprint 计划、里程碑、风险评估
 - [Git Flow 工作流](03-standards/git-workflow.md)
 - [Lombok 规范](03-standards/lombok-standards.md)
 - [Jackson 配置](03-standards/jackson-config.md)
+- [Redis 缓存标准](03-standards/redis-cache-standards.md)
 - [当前任务](#️⃣-任务执行)
 
 **测试工程师**:
@@ -111,6 +114,11 @@ Day 5: ⏸️ 集成测试与验收 (待开始)
 ---
 
 ## 📝 文档更新日志
+
+### 2026-02-17
+- ✅ 创建 Day 4: Redis 缓存架构实施计划
+- ✅ 创建 Redis 缓存标准与规范文档
+- ✅ 更新文档导航索引
 
 ### 2026-02-10
 - ✅ 标记 Day 2 为已完成

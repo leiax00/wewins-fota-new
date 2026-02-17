@@ -75,6 +75,8 @@ spring:
           max-active: 20
           max-idle: 10
           min-idle: 5
+          max-wait: 3s
+          time-between-eviction-runs: 60s
       database: 10
 
   # RabbitMQ 配置
@@ -174,3 +176,14 @@ app:
       accessKey: ${STORAGE_S3_ACCESS_KEY}
       secretKey: ${STORAGE_S3_SECRET_KEY}
       pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}
+
+  # 缓存配置
+  cache:
+    # 设备活跃度 Bitmap TTL（默认 90 天）
+    bitmap-ttl: ${APP_CACHE_BITMAP_TTL:90d}
+    # Bitmap 保留天数（默认 90 天）
+    bitmap-keep-days: ${APP_CACHE_BITMAP_KEEP_DAYS:90}
+    # 策略缓存 TTL（默认 1 小时）
+    policy-ttl: ${APP_CACHE_POLICY_TTL:1h}
+    # 限流默认窗口大小（默认 60 秒）
+    default-rate-limit-window: ${APP_CACHE_DEFAULT_RATE_LIMIT_WINDOW:60s}
