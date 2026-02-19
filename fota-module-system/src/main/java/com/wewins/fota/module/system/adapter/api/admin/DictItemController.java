@@ -3,6 +3,7 @@ package com.wewins.fota.module.system.adapter.api.admin;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.api.PageResponse;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.DictItemAppService;
@@ -11,7 +12,6 @@ import com.wewins.fota.module.system.dto.DictItemPageReqDTO;
 import com.wewins.fota.module.system.dto.DictItemReqDTO;
 import com.wewins.fota.module.system.dto.DictItemRespDTO;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -28,7 +28,7 @@ import java.util.List;
  * 字典项 Controller
  */
 @Slf4j
-@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RestController
 @RequestMapping("/api/sys/dict-items")
 public class DictItemController {

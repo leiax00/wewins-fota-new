@@ -1,6 +1,9 @@
 package com.wewins.fota.application.upgrade;
 
 import com.wewins.fota.application.validation.DataIntegrityService;
+import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
+import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
+import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
@@ -11,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -43,16 +48,20 @@ public class UpgradeCheckService {
     private final DeviceCacheRepository deviceCacheService;
     private final DataIntegrityService dataIntegrityService;
     private final UpgradePolicyRepository upgradePolicyRepository;
+    private final DeviceRateLimiter deviceRateLimiter;
+    private final DeviceActivityBitmapRepository bitmapRepository;
 
     /**
      * 检查设备是否有可用更新
      * <p>
      * 核心业务逻辑：
-     * 1. 验证设备存在且激活
-     * 2. 匹配适用的升级策略
-     * 3. 检查灰度发布
-     * 4. 检查时间窗口
-     * 5. 检查配额限制
+     * 1. 限流检查（防止设备频繁请求）
+     * 2. 验证设备存在且激活
+     * 3. 标记设备活跃
+     * 4. 匹配适用的升级策略
+     * 5. 检查灰度发布
+     * 6. 检查时间窗口
+     * 7. 检查配额限制
      * </p>
      *
      * @param imei 设备 IMEI
@@ -61,19 +70,43 @@ public class UpgradeCheckService {
     public CheckResult checkUpgrade(String imei) {
         log.debug("开始检查设备更新: imei={}", imei);
 
-        // 1. 从缓存或数据库加载设备信息
+        // 1. 限流检查（每分钟最多 10 次请求）
+        RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
+                "upgrade:" + imei,
+                10,  // 每分钟最多 10 次
+                Duration.ofMinutes(1)
+        );
+
+        if (!rateLimitDecision.isAllowed()) {
+            log.warn("设备请求被限流: imei={}, reason={}", imei, rateLimitDecision.getReason());
+            return CheckResult.rateLimited(
+                    "请求过于频繁",
+                    (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
+            );
+        }
+
+        // 2. 从缓存或数据库加载设备信息
         Device device = loadDevice(imei);
         if (device == null) {
             log.warn("设备不存在或已软删除: imei={}", imei);
             return CheckResult.notFound("设备不存在");
         }
 
-        // 2. 验证产品和固件版本
+        // 3. 标记设备活跃（使用设备 ID 作为 bitmap 偏移量）
+        try {
+            bitmapRepository.markActive(LocalDate.now(), device.getId());
+            log.debug("标记设备活跃: imei={}, deviceId={}", imei, device.getId());
+        } catch (Exception e) {
+            log.error("标记设备活跃失败: imei={}, deviceId={}", imei, device.getId(), e);
+            // 降级处理：记录错误但不中断主流程
+        }
+
+        // 4. 验证产品和固件版本
         if (!validateProductAndFirmware(device)) {
             return CheckResult.error("产品或固件版本配置无效");
         }
 
-        // 3. 匹配适用的升级策略
+        // 5. 匹配适用的升级策略
         List<UpgradePolicy> policies = findApplicablePolicies(device);
         if (policies.isEmpty()) {
             log.debug("未找到适用的升级策略: deviceId={}", device.getId());
@@ -84,7 +117,7 @@ public class UpgradeCheckService {
         // 当前选择优先级最高的策略
         UpgradePolicy policy = policies.get(0);
 
-        // 4. 构建响应
+        // 6. 构建响应
         return buildCheckResult(device, policy);
     }
 
@@ -240,6 +273,23 @@ public class UpgradeCheckService {
                     .hasUpdate(false)
                     .decision("ERROR")
                     .errorMessage(message)
+                    .build();
+        }
+
+        /**
+         * 创建限流拒绝结果
+         *
+         * @param message          限流原因
+         * @param retryAfterSeconds 重试等待时间（秒）
+         * @return CheckResult
+         */
+        public static CheckResult rateLimited(String message, int retryAfterSeconds) {
+            return CheckResult.builder()
+                    .hasUpdate(false)
+                    .decision("RATE_LIMITED")
+                    .errorMessage(message)
+                    .responseCheckInterval(retryAfterSeconds)
+                    .downloadDelay(retryAfterSeconds)
                     .build();
         }
     }

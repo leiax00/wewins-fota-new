@@ -1,6 +1,7 @@
 package com.wewins.fota.module.system.adapter.api.admin;
 
 import com.wewins.fota.common.api.ApiResponse;
+import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.context.UserContext;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.UserAppService;
@@ -12,7 +13,6 @@ import com.wewins.fota.security.jwt.JwtUtil;
 import com.wewins.fota.security.jwt.SysUserDetails;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -29,7 +29,7 @@ import java.util.Map;
  * 认证 Controller
  */
 @Slf4j
-@ConditionalOnProperty(name = "app.features.admin", havingValue = "true")
+@ConditionalOnAppMode("main")
 @RestController
 @RequestMapping("/api/sys/auth")
 public class AuthController {
