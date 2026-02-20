@@ -167,6 +167,13 @@ export default {
     dark: '深色',
     system: '跟随系统',
   },
+  tabs: {
+    refresh: '刷新当前页',
+    closeCurrent: '关闭当前',
+    closeOthers: '关闭其他',
+    closeRight: '关闭右侧',
+    closeAll: '关闭全部',
+  },
   status: {
     online: '在线',
     offline: '离线',

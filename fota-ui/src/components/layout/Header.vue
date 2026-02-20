@@ -1,27 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { availableLocales, setLocale } from '@/locales'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 import { useLayoutStore } from '@/stores/layout'
 import { useUserStore } from '@/stores/user'
 import { safeStorage } from '@/utils/storage'
+import Breadcrumb from './Breadcrumb.vue'
 
-const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const themeStore = useThemeStore()
 const layoutStore = useLayoutStore()
 const userStore = useUserStore()
-
-const breadcrumbs = computed(() => {
-  const matched = route.matched.filter((item) => item.meta?.titleKey || item.meta?.title)
-  return matched.map((item) => ({
-    title: item.meta?.titleKey ? t(item.meta.titleKey as string) : (item.meta?.title as string),
-    path: item.path,
-  }))
-})
 
 const handleCommand = async (command: string) => {
   if (command === 'logout') {
@@ -54,47 +46,43 @@ const currentThemeIcon = computed(() => {
   return themeOptions.find((opt) => opt.value === themeStore.currentMode)?.icon || 'Monitor'
 })
 
+const currentThemeLabel = computed(() => {
+  return t(themeOptions.find((opt) => opt.value === themeStore.currentMode)?.labelKey || 'theme.system')
+})
+
 const handleThemeChange = (mode: ThemeMode) => {
   themeStore.setMode(mode)
 }
 </script>
 
 <template>
-  <el-header
-    class="flex h-[50px] items-center justify-between border-b border-ui-border-light bg-ui-bg-header px-4"
-  >
-    <div class="flex items-center gap-4">
-      <div
-        class="ui-brand-text flex items-center gap-2 font-semibold"
-      >
-        <el-icon class="text-lg">
-          <Promotion />
-        </el-icon>
-        <span class="text-sm">{{ t('header.brand') }}</span>
-      </div>
-      <el-divider direction="vertical" />
-      <el-icon
-        class="ui-interactive-text cursor-pointer text-xl"
+  <el-header class="header-shell">
+    <div class="header-left">
+      <button
+        type="button"
+        class="header-collapse-btn"
         @click="layoutStore.toggleCollapsed()"
       >
-        <Fold v-if="!layoutStore.collapsed" />
-        <Expand v-else />
-      </el-icon>
-      <el-breadcrumb separator="/">
-        <el-breadcrumb-item
-          v-for="item in breadcrumbs"
-          :key="item.path"
-        >
-          {{ item.title }}
-        </el-breadcrumb-item>
-      </el-breadcrumb>
+        <el-icon>
+          <Fold v-if="!layoutStore.collapsed" />
+          <Expand v-else />
+        </el-icon>
+      </button>
+
+      <el-divider direction="vertical" class="header-divider" />
+
+      <div class="header-breadcrumb-wrap">
+        <Breadcrumb />
+      </div>
     </div>
-    <div class="flex items-center gap-3">
+
+    <div class="header-right">
       <el-dropdown @command="handleThemeChange">
         <div
-          class="ui-interactive-text header-dropdown-trigger flex cursor-pointer items-center gap-1 text-sm"
+          class="ui-interactive-text header-dropdown-trigger"
         >
           <el-icon><component :is="currentThemeIcon" /></el-icon>
+          <span class="hidden lg:inline">{{ currentThemeLabel }}</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -119,10 +107,10 @@ const handleThemeChange = (mode: ThemeMode) => {
       </el-dropdown>
       <el-dropdown @command="handleLocaleChange">
         <div
-          class="ui-interactive-text header-dropdown-trigger flex cursor-pointer items-center gap-1 text-sm"
+          class="ui-interactive-text header-dropdown-trigger"
         >
           <el-icon><Globe /></el-icon>
-          <span>{{ availableLocales.find((it) => it.value === currentLocale)?.label }}</span>
+          <span class="hidden md:inline">{{ availableLocales.find((it) => it.value === currentLocale)?.label }}</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -146,7 +134,7 @@ const handleThemeChange = (mode: ThemeMode) => {
       </el-dropdown>
       <el-dropdown @command="handleCommand">
         <div
-          class="ui-interactive-text header-dropdown-trigger flex cursor-pointer items-center gap-2"
+          class="ui-interactive-text header-dropdown-trigger"
         >
           <el-avatar
             :size="32"
@@ -154,8 +142,8 @@ const handleThemeChange = (mode: ThemeMode) => {
           >
             <el-icon><User /></el-icon>
           </el-avatar>
-          <span class="text-sm">{{ t('header.admin') }}</span>
-          <el-icon><ArrowDown /></el-icon>
+          <span class="text-sm hidden md:inline">{{ t('header.admin') }}</span>
+          <el-icon class="hidden md:inline-flex"><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -174,3 +162,94 @@ const handleThemeChange = (mode: ThemeMode) => {
     </div>
   </el-header>
 </template>
+
+<style scoped>
+.header-shell {
+  height: var(--header-height);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ui-brand) 18%, var(--color-ui-border-light));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-ui-bg-header) 82%, var(--color-ui-brand) 10%) 0%,
+      color-mix(in srgb, var(--color-ui-bg-header) 95%, transparent) 34%,
+      var(--color-ui-bg-header) 100%
+    );
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 14px 0 10px;
+}
+
+.header-left {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-collapse-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--color-ui-brand) 20%, var(--color-ui-border-light));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-ui-brand) 8%, transparent);
+  color: var(--color-ui-text-regular);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.header-collapse-btn:hover {
+  color: var(--color-ui-brand);
+  background: color-mix(in srgb, var(--color-ui-brand) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-ui-brand) 35%, var(--color-ui-border-light));
+}
+
+.header-divider {
+  margin: 0 2px;
+}
+
+.header-breadcrumb-wrap {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  border: 1px solid transparent;
+  padding: 5px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.header-dropdown-trigger:hover {
+  background: color-mix(in srgb, var(--color-ui-brand) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-ui-brand) 26%, var(--color-ui-border-light));
+}
+
+@media (max-width: 768px) {
+  .header-shell {
+    padding: 0 10px 0 8px;
+    gap: 8px;
+  }
+
+  .header-left {
+    gap: 8px;
+  }
+}
+</style>

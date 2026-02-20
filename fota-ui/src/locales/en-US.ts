@@ -167,6 +167,13 @@ export default {
     dark: 'Dark',
     system: 'System',
   },
+  tabs: {
+    refresh: 'Refresh Current',
+    closeCurrent: 'Close Current',
+    closeOthers: 'Close Others',
+    closeRight: 'Close Right',
+    closeAll: 'Close All',
+  },
   status: {
     online: 'Online',
     offline: 'Offline',

@@ -65,7 +65,7 @@ const stats = ref([
           <el-icon
             class="ui-brand-text text-3xl mb-2"
           >
-            <Disc />
+            <Cpu />
           </el-icon>
           <div>{{ t('menu.firmware') }}</div>
         </router-link>

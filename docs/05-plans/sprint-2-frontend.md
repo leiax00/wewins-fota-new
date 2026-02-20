@@ -1,12 +1,13 @@
 # Sprint 2: 管理后台前端开发
 
 > **时间**: 2026-02 (Week 3-4)  
-> **目标**: 完成 FOTA 管理后台核心功能  
+> **目标**: 完成 FOTA 管理后台核心功能（当前已进入实现中期）  
 > **范围**: 核心版（基础框架 + 核心业务 + 设备管理 + 系统管理）
 
 **Sprint Owner**: FOTA 前端组  
-**文档版本**: v1.0  
-**创建日期**: 2026-02-17
+**文档版本**: v1.1  
+**创建日期**: 2026-02-17  
+**最近更新**: 2026-02-20
 
 ---
 
@@ -18,20 +19,46 @@
 - 完成产品、固件、策略管理模块
 - 完成设备管理模块
 - 完成系统管理模块（用户、角色、权限、字典）
+- 完成登录页品牌化设计与暗色模式体验优化
 
 ### 范围
 
 - ✅ **包含**: 项目框架、核心业务、设备管理、系统管理
-- ❌ **不包含**: Dashboard 统计看板（后续迭代）、移动端适配
+- ✅ **已提前实现**: Dashboard 概览页骨架、登录页多语言与主题切换入口
+- ❌ **不包含**: 真实业务数据联调、复杂表单编辑器、批量导入完整流程
 
 ### 验收标准
 
-- [ ] 所有页面可正常访问
-- [ ] 登录认证流程完整
-- [ ] CRUD 功能完整（产品、固件、策略、设备、用户、角色、字典）
-- [ ] 权限控制生效（菜单 + 按钮）
-- [ ] 代码通过 ESLint 检查
-- [ ] 打包构建成功
+- [x] 页面骨架可访问（登录、Dashboard、产品、固件、策略、设备、系统管理）
+- [x] 登录认证流程完整（登录、登出、401 处理、路由守卫）
+- [ ] CRUD 功能完整（当前主要为表格/详情骨架，接口待补齐）
+- [x] 权限控制生效（路由 + 按钮级）
+- [ ] 代码通过 ESLint 检查（待统一执行）
+- [ ] 打包构建成功（待在具备 Node/npm 环境执行）
+
+---
+
+## 📌 当前实现快照（2026-02-20）
+
+### 已完成
+
+- 前端工程初始化：Vite + Vue 3 + TS + Element Plus + TailwindCSS + Pinia + Vue Router + Vue I18n
+- 基础布局：`AppLayout`、`Sidebar`、`Header`
+- 主题系统：`light / dark / system`，并已接入 Header 与登录页
+- 登录页：品牌化视觉背景、暗色模式重配色、多语言切换、主题切换入口
+- 路由守卫：未登录跳转、登录后回跳、权限兜底路由
+- 页面骨架：Dashboard、产品、固件、策略、设备列表/详情、系统管理（用户/角色/权限/字典）
+
+### 进行中
+
+- 各业务模块从“空表格骨架”向“真实接口数据 + 交互”推进
+- 页面级联调与错误处理一致性
+
+### 未开始/待补充
+
+- 细粒度菜单权限过滤（当前侧边栏为静态菜单）
+- 业务模块 CRUD 对话框与表单校验全量落地
+- E2E 自动化验收
 
 ---
 
@@ -46,13 +73,13 @@
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 1.1 | 创建 Vite + Vue 3 + TS 项目 | 0.5h | ⬜ |
-| 1.2 | 配置 TailwindCSS | 0.5h | ⬜ |
-| 1.3 | 配置 Element Plus | 0.5h | ⬜ |
-| 1.4 | 配置 Vue Router | 0.5h | ⬜ |
-| 1.5 | 配置 Pinia | 0.5h | ⬜ |
-| 1.6 | 配置 Axios + 拦截器 + Vite Proxy | 1h | ⬜ |
-| 1.7 | 配置 ESLint + Prettier | 0.5h | ⬜ |
+| 1.1 | 创建 Vite + Vue 3 + TS 项目 | 0.5h | ✅ |
+| 1.2 | 配置 TailwindCSS | 0.5h | ✅ |
+| 1.3 | 配置 Element Plus | 0.5h | ✅ |
+| 1.4 | 配置 Vue Router | 0.5h | ✅ |
+| 1.5 | 配置 Pinia | 0.5h | ✅ |
+| 1.6 | 配置 Axios + 拦截器 + Vite Proxy | 1h | ✅ |
+| 1.7 | 配置 ESLint + Prettier | 0.5h | ✅ |
 
 #### 产出文件
 
@@ -60,7 +87,7 @@
 fota-ui/
 ├── package.json
 ├── vite.config.ts
-├── tailwind.config.js
+├── postcss.config.js
 ├── tsconfig.json
 ├── .eslintrc.cjs
 ├── .prettierrc
@@ -76,14 +103,14 @@ fota-ui/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 2.1 | 创建 AppLayout 布局组件 | 2h | ⬜ |
-| 2.2 | 创建 Sidebar 侧边栏 | 2h | ⬜ |
-| 2.3 | 创建 Header 顶栏 | 1h | ⬜ |
-| 2.4 | 创建 TabsView 多标签页 | 2h | ⬜ |
-| 2.5 | 创建登录页面 | 1.5h | ⬜ |
-| 2.6 | 实现登录 API 对接后端 | 1h | ⬜ |
-| 2.7 | 实现路由守卫 | 1h | ⬜ |
-| 2.8 | 实现 Token 管理 | 0.5h | ⬜ |
+| 2.1 | 创建 AppLayout 布局组件 | 2h | ✅ |
+| 2.2 | 创建 Sidebar 侧边栏 | 2h | ✅ |
+| 2.3 | 创建 Header 顶栏 | 1h | ✅ |
+| 2.4 | 创建 TabsView 多标签页 | 2h | ⏸️ |
+| 2.5 | 创建登录页面 | 1.5h | ✅ |
+| 2.6 | 实现登录 API 对接后端 | 1h | ✅ |
+| 2.7 | 实现路由守卫 | 1h | ✅ |
+| 2.8 | 实现 Token 管理 | 0.5h | ✅ |
 
 #### 产出文件
 
@@ -93,17 +120,19 @@ src/
 │   ├── AppLayout.vue
 │   ├── Sidebar.vue
 │   ├── Header.vue
-│   ├── TabsView.vue
-│   └── Breadcrumb.vue
+├── components/login/
+│   ├── LoginCard.vue
+│   └── LoginHeroBackground.vue
 ├── views/login/
 │   └── LoginView.vue
 ├── stores/
 │   ├── user.ts
-│   └── app.ts
+│   ├── layout.ts
+│   └── theme.ts
 ├── utils/
 │   └── auth.ts
 └── api/
-    └── auth.ts
+    └── request.ts
 ```
 
 ---
@@ -119,23 +148,18 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 3.1 | 创建 Product 类型定义 | 0.5h | ⬜ |
-| 3.2 | 创建 Product API 对接后端 | 1h | ⬜ |
-| 3.3 | 创建产品列表页 | 2h | ⬜ |
-| 3.4 | 创建产品表单（新增/编辑） | 2h | ⬜ |
-| 3.5 | 实现产品 CRUD 功能 | 1h | ⬜ |
+| 3.1 | 创建 Product 类型定义 | 0.5h | ⏸️ |
+| 3.2 | 创建 Product API 对接后端 | 1h | ⏸️ |
+| 3.3 | 创建产品列表页 | 2h | ✅ |
+| 3.4 | 创建产品表单（新增/编辑） | 2h | ⏸️ |
+| 3.5 | 实现产品 CRUD 功能 | 1h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── types/product.d.ts
-├── api/product.ts
-├── router/routes/product.ts
 └── views/product/
-    ├── ProductListView.vue
-    └── components/
-        └── ProductFormDialog.vue
+    └── ProductListView.vue
 ```
 
 ### Day 4: 固件管理
@@ -144,26 +168,18 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 4.1 | 创建 Firmware 类型定义 | 0.5h | ⬜ |
-| 4.2 | 创建 Firmware API 对接后端 | 1h | ⬜ |
-| 4.3 | 创建固件列表页 | 2h | ⬜ |
-| 4.4 | 创建固件上传组件 | 2h | ⬜ |
-| 4.5 | 创建固件表单（含标签编辑） | 2h | ⬜ |
+| 4.1 | 创建 Firmware 类型定义 | 0.5h | ⏸️ |
+| 4.2 | 创建 Firmware API 对接后端 | 1h | ⏸️ |
+| 4.3 | 创建固件列表页 | 2h | ✅ |
+| 4.4 | 创建固件上传组件 | 2h | ⏸️ |
+| 4.5 | 创建固件表单（含标签编辑） | 2h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── types/firmware.d.ts
-├── api/firmware.ts
-├── router/routes/firmware.ts
-├── components/business/FirmwareUploader/
-│   └── index.vue
 └── views/firmware/
-    ├── FirmwareListView.vue
-    └── components/
-        ├── FirmwareFormDialog.vue
-        └── JsonTagsEditor.vue
+    └── FirmwareListView.vue
 ```
 
 ### Day 5: 策略管理
@@ -172,28 +188,18 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 5.1 | 创建 Policy 类型定义 | 0.5h | ⬜ |
-| 5.2 | 创建 Policy API 对接后端 | 1h | ⬜ |
-| 5.3 | 创建策略列表页 | 2h | ⬜ |
-| 5.4 | 创建策略表单（灰度滑块、时间窗口） | 3h | ⬜ |
-| 5.5 | 创建设备筛选组件 | 1.5h | ⬜ |
+| 5.1 | 创建 Policy 类型定义 | 0.5h | ⏸️ |
+| 5.2 | 创建 Policy API 对接后端 | 1h | ⏸️ |
+| 5.3 | 创建策略列表页 | 2h | ✅ |
+| 5.4 | 创建策略表单（灰度滑块、时间窗口） | 3h | ⏸️ |
+| 5.5 | 创建设备筛选组件 | 1.5h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── types/policy.d.ts
-├── api/policy.ts
-├── router/routes/policy.ts
-├── components/business/PolicyForm/
-│   ├── index.vue
-│   ├── GrayRateSlider.vue
-│   ├── TimeWindowPicker.vue
-│   └── DeviceFilter.vue
 └── views/policy/
-    ├── PolicyListView.vue
-    └── components/
-        └── PolicyFormDialog.vue
+    └── PolicyListView.vue
 ```
 
 ---
@@ -209,26 +215,18 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 6.1 | 创建 Device 类型定义 | 0.5h | ⬜ |
-| 6.2 | 创建 Device API 对接后端 | 1h | ⬜ |
-| 6.3 | 创建设备列表页（含筛选） | 2.5h | ⬜ |
-| 6.4 | 创建标签搜索组件 | 1.5h | ⬜ |
-| 6.5 | 实现标签编辑功能 | 1h | ⬜ |
+| 6.1 | 创建 Device 类型定义 | 0.5h | ⏸️ |
+| 6.2 | 创建 Device API 对接后端 | 1h | ⏸️ |
+| 6.3 | 创建设备列表页（含筛选） | 2.5h | ✅ |
+| 6.4 | 创建标签搜索组件 | 1.5h | ⏸️ |
+| 6.5 | 实现标签编辑功能 | 1h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── types/device.d.ts
-├── api/device.ts
-├── router/routes/device.ts
-├── components/business/DeviceTagsInput/
-│   └── index.vue
 └── views/device/
-    ├── DeviceListView.vue
-    └── components/
-        ├── DeviceSearchForm.vue
-        └── DeviceTagsDialog.vue
+    └── DeviceListView.vue
 ```
 
 ### Day 7: 设备详情与导入
@@ -237,24 +235,17 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 7.1 | 创建设备详情页 | 2h | ⬜ |
-| 7.2 | 创建升级历史时间线 | 1.5h | ⬜ |
-| 7.3 | 创建设备导入页面 | 2h | ⬜ |
-| 7.4 | 实现 CSV/Excel 上传解析 | 1.5h | ⬜ |
+| 7.1 | 创建设备详情页 | 2h | ✅ |
+| 7.2 | 创建升级历史时间线 | 1.5h | ⏸️ |
+| 7.3 | 创建设备导入页面 | 2h | ⏸️ |
+| 7.4 | 实现 CSV/Excel 上传解析 | 1.5h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── views/device/
-│   ├── DeviceDetailView.vue
-│   ├── DeviceImportView.vue
-│   └── components/
-│       ├── DeviceInfoCard.vue
-│       ├── UpgradeTimeline.vue
-│       └── ImportPreview.vue
-└── composables/
-    └── useFileParse.ts
+└── views/device/
+    └── DeviceDetailView.vue
 ```
 
 ---
@@ -270,22 +261,17 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 8.1 | 创建系统管理类型定义 | 0.5h | ⬜ |
-| 8.2 | 创建 User/Role API 对接后端 | 1h | ⬜ |
-| 8.3 | 创建用户列表页 | 1.5h | ⬜ |
-| 8.4 | 创建用户表单（含密码重置） | 1.5h | ⬜ |
-| 8.5 | 创建角色列表页 | 1h | ⬜ |
-| 8.6 | 创建角色表单（含权限分配） | 1.5h | ⬜ |
+| 8.1 | 创建系统管理类型定义 | 0.5h | ⏸️ |
+| 8.2 | 创建 User/Role API 对接后端 | 1h | ⏸️ |
+| 8.3 | 创建用户列表页 | 1.5h | ✅ |
+| 8.4 | 创建用户表单（含密码重置） | 1.5h | ⏸️ |
+| 8.5 | 创建角色列表页 | 1h | ✅ |
+| 8.6 | 创建角色表单（含权限分配） | 1.5h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── types/system.d.ts
-├── api/system/
-│   ├── user.ts
-│   └── role.ts
-├── router/routes/system.ts
 └── views/system/
     ├── UserListView.vue
     └── RoleListView.vue
@@ -297,21 +283,16 @@ src/
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 9.1 | 创建权限管理页（树形） | 2h | ⬜ |
-| 9.2 | 创建权限表单 | 1.5h | ⬜ |
-| 9.3 | 创建字典类型列表 | 1h | ⬜ |
-| 9.4 | 创建字典项管理 | 1.5h | ⬜ |
-| 9.5 | 集成测试 | 1h | ⬜ |
+| 9.1 | 创建权限管理页（树形） | 2h | ✅ |
+| 9.2 | 创建权限表单 | 1.5h | ⏸️ |
+| 9.3 | 创建字典类型列表 | 1h | ✅ |
+| 9.4 | 创建字典项管理 | 1.5h | ⏸️ |
+| 9.5 | 集成测试 | 1h | ⏸️ |
 
 #### 产出文件
 
 ```
 src/
-├── api/system/
-│   ├── permission.ts
-│   └── dict.ts
-├── components/common/
-│   └── PermissionTree.vue
 └── views/system/
     ├── PermissionView.vue
     └── DictView.vue
@@ -322,12 +303,12 @@ src/
 ## 📊 进度跟踪
 
 ```
-Sprint 2: [░░░░░░░░░░░░░░░░] 0%
+Sprint 2: [███████░░░░░░░░░] 40%
 
-阶段 1: 项目骨架        ⬜ Day 1-2 (0/2)
-阶段 2: 核心业务        ⬜ Day 3-5 (0/3)
-阶段 3: 设备管理        ⬜ Day 6-7 (0/2)
-阶段 4: 系统管理        ⬜ Day 8-9 (0/2)
+阶段 1: 项目骨架        ✅ Day 1-2 (2/2)
+阶段 2: 核心业务        🔄 Day 3-5 (页面骨架完成，接口联调中)
+阶段 3: 设备管理        🔄 Day 6-7 (列表/详情骨架完成)
+阶段 4: 系统管理        🔄 Day 8-9 (页面骨架完成，表单待补)
 ```
 
 ---
@@ -363,6 +344,11 @@ Sprint 2: [░░░░░░░░░░░░░░░░] 0%
 - 📝 细化任务清单和文件结构
 - ✅ 移除 Mock 策略，改为直接对接后端 API
 - ✅ 更新文件统计（~78 → ~60 文件）
+
+### 2026-02-20
+- ✅ 增加“当前实现快照”，区分已完成/进行中/待补充
+- ✅ 更新阶段进度为 40%，标记框架与登录认证能力已落地
+- ✅ 同步登录页视觉重构与主题切换入口实现
 
 ---
 

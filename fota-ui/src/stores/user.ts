@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { post, get } from '@/api/request'
 import router from '@/router'
+import { useAppStore } from '@/stores/app'
 import { getToken, setToken, clearToken } from '@/utils/auth'
 
 export interface UserInfo {
@@ -73,6 +74,7 @@ export const useUserStore = defineStore('user', {
       this.token = ''
       this.userInfo = null
       clearToken()
+      useAppStore().clearTabState()
 
       if (!redirect) return
 

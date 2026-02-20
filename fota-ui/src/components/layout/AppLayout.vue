@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import TabsView from './TabsView.vue'
 import { useLayoutStore } from '@/stores/layout'
 
 const layoutStore = useLayoutStore()
 </script>
 
 <template>
-  <el-container
-    direction="vertical"
-    class="app-shell"
-  >
-    <Header />
-    <el-container class="app-content">
-      <Sidebar :collapsed="layoutStore.collapsed" />
+  <el-container class="app-shell">
+    <Sidebar :collapsed="layoutStore.collapsed" />
+    <el-container direction="vertical" class="app-right">
+      <Header />
+      <TabsView />
       <el-main
         class="app-main bg-ui-bg-page"
       >
@@ -44,8 +43,9 @@ const layoutStore = useLayoutStore()
   overflow: hidden;
 }
 
-.app-content {
+.app-right {
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -54,4 +54,5 @@ const layoutStore = useLayoutStore()
   overflow: auto;
   min-height: 0;
 }
+
 </style>

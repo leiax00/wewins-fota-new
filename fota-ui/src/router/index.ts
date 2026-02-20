@@ -1,6 +1,28 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
+interface BreadcrumbMetaItem {
+  titleKey?: string
+  title?: string
+  path?: string
+}
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    titleKey?: string
+    title?: string
+    requiresAuth?: boolean
+    hidden?: boolean
+    icon?: string
+    permission?: string | string[]
+    affix?: boolean
+    tabClosable?: boolean
+    tabHidden?: boolean
+    breadcrumbHidden?: boolean
+    breadcrumb?: BreadcrumbMetaItem[]
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -16,7 +38,13 @@ const routes: RouteRecordRaw[] = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('@/views/dashboard/DashboardView.vue'),
-    meta: { titleKey: 'menu.dashboard', icon: 'Odometer', permission: 'dashboard:view' },
+    meta: {
+      titleKey: 'menu.dashboard',
+      icon: 'Odometer',
+      permission: 'dashboard:view',
+      affix: true,
+      tabClosable: false,
+    },
   },
   {
     path: '/product',
@@ -28,7 +56,7 @@ const routes: RouteRecordRaw[] = [
     path: '/firmware',
     name: 'Firmware',
     component: () => import('@/views/firmware/FirmwareListView.vue'),
-    meta: { titleKey: 'menu.firmware', icon: 'Disc', permission: 'firmware:read' },
+    meta: { titleKey: 'menu.firmware', icon: 'Cpu', permission: 'firmware:read' },
   },
   {
     path: '/policy',
@@ -46,37 +74,62 @@ const routes: RouteRecordRaw[] = [
     path: '/device/:id',
     name: 'DeviceDetail',
     component: () => import('@/views/device/DeviceDetailView.vue'),
-    meta: { titleKey: 'device.detail', hidden: true, permission: 'device:detail' },
+    meta: {
+      titleKey: 'device.detail',
+      hidden: true,
+      permission: 'device:detail',
+      breadcrumb: [{ titleKey: 'menu.device', path: '/device' }],
+    },
   },
   {
     path: '/system/user',
     name: 'SystemUser',
     component: () => import('@/views/system/UserListView.vue'),
-    meta: { titleKey: 'menu.user', icon: 'User', permission: 'sys:user:read' },
+    meta: {
+      titleKey: 'menu.user',
+      icon: 'User',
+      permission: 'sys:user:read',
+      breadcrumb: [{ titleKey: 'menu.system' }],
+    },
   },
   {
     path: '/system/role',
     name: 'SystemRole',
     component: () => import('@/views/system/RoleListView.vue'),
-    meta: { titleKey: 'menu.role', icon: 'UserFilled', permission: 'sys:role:read' },
+    meta: {
+      titleKey: 'menu.role',
+      icon: 'UserFilled',
+      permission: 'sys:role:read',
+      breadcrumb: [{ titleKey: 'menu.system' }],
+    },
   },
   {
     path: '/system/permission',
     name: 'SystemPermission',
     component: () => import('@/views/system/PermissionView.vue'),
-    meta: { titleKey: 'menu.permission', icon: 'Lock', permission: 'sys:perm:read' },
+    meta: {
+      titleKey: 'menu.permission',
+      icon: 'Lock',
+      permission: 'sys:perm:read',
+      breadcrumb: [{ titleKey: 'menu.system' }],
+    },
   },
   {
     path: '/system/dict',
     name: 'SystemDict',
     component: () => import('@/views/system/DictView.vue'),
-    meta: { titleKey: 'menu.dict', icon: 'Collection', permission: ['sys:dict_type:read', 'sys:dict_item:read'] },
+    meta: {
+      titleKey: 'menu.dict',
+      icon: 'Collection',
+      permission: ['sys:dict_type:read', 'sys:dict_item:read'],
+      breadcrumb: [{ titleKey: 'menu.system' }],
+    },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/error/NotFoundView.vue'),
-    meta: { title: '404', hidden: true },
+    meta: { title: '404', hidden: true, tabHidden: true, breadcrumbHidden: true },
   },
 ]
 

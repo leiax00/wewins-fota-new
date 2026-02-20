@@ -1,7 +1,8 @@
 # FOTA 管理后台前端架构设计
 
-> **版本**: v1.0  
+> **版本**: v1.1  
 > **创建日期**: 2026-02-17  
+> **最近更新**: 2026-02-20  
 > **状态**: Accepted
 
 ---
@@ -25,21 +26,52 @@ FOTA 管理后台是千万级设备 OTA 管理平台的 Web 控制台，为运�
 
 | 层级 | 技术 | 版本 | 说明 |
 |------|------|------|------|
-| 框架 | Vue 3 | ^3.4 | Composition API + `<script setup>` |
-| 语言 | TypeScript | ^5.3 | 严格模式 |
-| 构建 | Vite | ^5.1 | 开发服务器 + 打包 |
-| UI 组件 | Element Plus | ^2.5 | 企业级组件库 |
-| CSS | TailwindCSS | ^3.4 | 原子化 CSS |
-| 路由 | Vue Router | ^4.2 | 路由管理 |
-| 状态 | Pinia | ^2.1 | 状态管理 |
-| HTTP | Axios | ^1.6 | 请求封装 |
-| 图表 | ECharts | ^5.4 | 数据可视化 |
-| 国际化 | Vue I18n | ^9.9 | 多语言支持 |
-| 工具 | dayjs | ^1.11 | 日期处理 |
+| 框架 | Vue 3 | ^3.5.28 | Composition API + `<script setup>` |
+| 语言 | TypeScript | ~5.9.3 | 严格模式 |
+| 构建 | Vite | ^7.3.1 | 开发服务器 + 打包 |
+| UI 组件 | Element Plus | ^2.13.2 | 企业级组件库 |
+| CSS | TailwindCSS | ^4.2.0 | 原子化 CSS |
+| 路由 | Vue Router | ^4.6.4 | 路由管理 |
+| 状态 | Pinia | ^3.0.4 | 状态管理 |
+| HTTP | Axios | ^1.13.5 | 请求封装 |
+| 图表 | ECharts | ^6.0.0 | 数据可视化 |
+| 国际化 | Vue I18n | ^9.14.5 | 多语言支持 |
+| 工具 | dayjs | ^1.11.19 | 日期处理 |
+
+> 注：以上版本已按 `fota-ui/package.json` 同步。
 
 ---
 
 ## 3. 项目结构
+
+> 当前代码以“可运行骨架 + 核心基建”优先，文档中的目标结构仍保留为后续演进方向。
+
+### 3.1 当前已落地目录（2026-02-20）
+
+```text
+src/
+├── api/request.ts
+├── components/
+│   ├── layout/{AppLayout.vue,Header.vue,Sidebar.vue}
+│   ├── login/{LoginCard.vue,LoginHeroBackground.vue}
+│   └── common/{LoadingScreen.vue,PageCardTableShell.vue,PageDetailShell.vue}
+├── locales/{index.ts,zh-CN.ts,en-US.ts}
+├── router/index.ts
+├── stores/{user.ts,layout.ts,theme.ts,app.ts}
+├── styles/{main.css,base.css,tokens.css,element-plus-overrides.css}
+├── views/
+│   ├── login/LoginView.vue
+│   ├── dashboard/DashboardView.vue
+│   ├── product/ProductListView.vue
+│   ├── firmware/FirmwareListView.vue
+│   ├── policy/PolicyListView.vue
+│   ├── device/{DeviceListView.vue,DeviceDetailView.vue}
+│   ├── system/{UserListView.vue,RoleListView.vue,PermissionView.vue,DictView.vue}
+│   └── error/NotFoundView.vue
+└── utils/{auth.ts,storage.ts}
+```
+
+### 3.2 目标结构（规划）
 
 ```
 fota-ui/
@@ -311,9 +343,21 @@ export default defineConfig({
 
 | Store | 职责 |
 |-------|------|
-| `user` | 用户信息、Token、登录状态 |
-| `app` | 侧边栏折叠、标签页列表、主题 |
-| `permission` | 用户权限列表、菜单权限 |
+| `user` | 用户信息、Token、登录状态、权限判断 |
+| `layout` | 侧边栏折叠状态 |
+| `theme` | 主题模式（浅色/深色/跟随系统） |
+| `app` | 应用级基础状态（预留） |
+
+### 5.4 当前实现状态（2026-02-20）
+
+| 模块 | 实现状态 | 说明 |
+|------|---------|------|
+| 登录认证 | ✅ 已实现 | 登录/登出、Token 持久化、401 自动回登录 |
+| 路由权限 | ✅ 已实现 | 路由守卫 + 页面按钮级权限控制 |
+| 主题系统 | ✅ 已实现 | Header 与登录页均支持主题切换 |
+| 国际化 | ✅ 已实现 | `zh-CN` / `en-US`，运行时切换 |
+| 业务页面 | 🔄 骨架完成 | 产品/固件/策略/设备/系统管理页面已就位，数据联调进行中 |
+| 复杂业务组件 | ⏸️ 待补充 | 表单弹窗、批量导入、复杂筛选等 |
 
 ---
 
@@ -457,3 +501,8 @@ server {
 - ✅ 确定技术栈：Vue 3 + Element Plus + TailwindCSS
 - ✅ 确定部署方式：独立部署
 - ✅ 移除 Mock 策略，改为直接对接后端 API
+
+### 2026-02-20
+- ✅ 同步依赖版本到当前代码（Vue 3.5 / Vite 7 / Tailwind 4）
+- ✅ 新增“当前实现状态”章节，明确骨架完成与联调边界
+- ✅ 更新状态管理说明（`layout` / `theme` 已落地）
