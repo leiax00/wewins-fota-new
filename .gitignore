@@ -46,6 +46,20 @@ logs/
 
 # Environment files
 .env
+.env.local
+.env.*.local
 
 # Docker
 .docker/
+
+# Node.js / Frontend (fota-ui)
+fota-ui/node_modules/
+fota-ui/dist/
+fota-ui/.vite/
+fota-ui/*.local
+fota-ui/src/auto-imports.d.ts
+fota-ui/src/components.d.ts
+fota-ui/yarn-error.log
+fota-ui/.DS_Store
+fota-ui/tsconfig.tsbuildinfo
+fota-ui/.eslintrc-auto-import.json

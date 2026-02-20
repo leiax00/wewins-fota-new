@@ -2,8 +2,8 @@
 
 > 本项目文档采用分类管理，便于查找、维护和归档。
 
-**最后更新**: 2026-02-10
-**文档版本**: v1.0
+**最后更新**: 2026-02-17
+**文档版本**: v1.1
 
 ---
 
@@ -20,10 +20,11 @@
 系统架构、技术选型、设计决策
 
 - [FOTA 系统架构及技术说明书](02-architecture/fota-architecture.md)
-- [DDD 架构设计文档](02-architecture/ddd-architecture.md) 🆕
-- [DDD 实施指南](02-architecture/ddd-implementation-guide.md) 🆕
-- [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md) 🆕
-- [文件存储策略说明](02-architecture/storage-strategy.md) 🆕
+- [DDD 架构设计文档](02-architecture/ddd-architecture.md)
+- [DDD 实施指南](02-architecture/ddd-implementation-guide.md)
+- [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md)
+- [文件存储策略说明](02-architecture/storage-strategy.md)
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
 
 ---
 
@@ -47,7 +48,8 @@
 ### 5️⃣ 计划与里程碑 (`05-plans/`)
 Sprint 计划、里程碑、风险评估
 
-- [Sprint 1 计划](05-plans/sprint-1.md)
+- [Sprint 1 计划 - 后端基础平台](05-plans/sprint-1.md)
+- [Sprint 2 计划 - 管理后台前端](05-plans/sprint-2-frontend.md) 🆕
 
 ---
 
@@ -84,7 +86,12 @@ Sprint 计划、里程碑、风险评估
 
 **架构师/技术负责人**:
 - [系统架构文档](02-architecture/fota-architecture.md)
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
 - [时区语义设计](04-guides/time-semantics.md)
+
+**前端工程师**:
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
+- [Sprint 2 前端计划](05-plans/sprint-2-frontend.md) 🆕
 
 **开发工程师**:
 - [Git Flow 工作流](03-standards/git-workflow.md)
@@ -103,6 +110,7 @@ Sprint 计划、里程碑、风险评估
 
 ```
 Sprint 1: 基础平台搭建 [██████████████████] 100% (Day 1-5 完成 ✅)
+Sprint 2: 管理后台前端 [░░░░░░░░░░░░░░░░] 0% (待开始)
 
 Day 1: ✅ 项目基础架构搭建 (2026-02-05)
 Day 2: ✅ PostgreSQL 数据库架构 (2026-02-06)
@@ -123,6 +131,11 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 - ✅ Week 1 验收总结
 - ✅ 更新文档导航索引
 - ✅ 更新 Sprint 1 进度
+
+### 2026-02-17
+- ✅ 创建前端架构设计文档
+- ✅ 创建 Sprint 2 前端迭代计划
+- ✅ 更新文档导航，添加前端相关链接
 
 ### 2026-02-17
 - ✅ Day 4 完成：Redis 缓存架构
