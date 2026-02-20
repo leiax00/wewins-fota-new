@@ -43,3 +43,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260220_04_init_fota_permissions
+      author: fota-team
+      comment: 初始化 FOTA 业务模块权限（dashboard/product/firmware/policy/device）
+      changes:
+        - sqlFile:
+            path: changes/20260220_04_init_fota_permissions.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
