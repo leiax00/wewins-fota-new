@@ -2,14 +2,14 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { availableLocales, setLocale } from '@/locales'
+import { availableLocales, localePreference, setLocale, type LocalePreference } from '@/locales'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 import { useLayoutStore } from '@/stores/layout'
 import { useUserStore } from '@/stores/user'
 import Breadcrumb from './Breadcrumb.vue'
 
 const router = useRouter()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const themeStore = useThemeStore()
 const layoutStore = useLayoutStore()
 const userStore = useUserStore()
@@ -25,22 +25,25 @@ const handleCommand = async (command: string) => {
   }
 }
 
-const currentLocale = computed(() => locale.value || 'zh-CN')
+const currentLocale = computed(() => localePreference.value)
 
-const localeOptions: { value: string; label: string }[] = [
-  { value: 'zh-CN', label: '中文' },
-  { value: 'en-US', label: 'English' },
-]
+const localeOptions = availableLocales
+
+const getLocaleLabel = (option: typeof availableLocales[number]) => {
+  return 'labelKey' in option ? t(option.labelKey) : option.label
+}
 
 const currentLocaleLabel = computed(() => {
-  return availableLocales.find((it) => it.value === currentLocale.value)?.label || '中文'
+  const selected = availableLocales.find((it) => it.value === currentLocale.value)
+  if (!selected) return t('locale.system')
+  return getLocaleLabel(selected)
 })
 
-const handleLocaleChange = (locale: string) => {
-  if (locale === currentLocale.value) {
+const handleLocaleChange = (nextLocale: LocalePreference) => {
+  if (nextLocale === currentLocale.value) {
     return
   }
-  setLocale(locale)
+  setLocale(nextLocale)
   // locale change is reactive, no need to reload page
 }
 
@@ -124,15 +127,15 @@ const handleThemeChange = (mode: ThemeMode) => {
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item
-              v-for="localeItem in localeOptions"
-              :key="localeItem.value"
-              :command="localeItem.value"
-            >
-              <div class="flex items-center gap-2">
-                <span>{{ localeItem.label }}</span>
-                <el-icon
-                  v-if="currentLocale === localeItem.value"
-                  class="ui-action-primary"
+                v-for="localeItem in localeOptions"
+                :key="localeItem.value"
+                :command="localeItem.value"
+              >
+                <div class="flex items-center gap-2">
+                  <span>{{ getLocaleLabel(localeItem) }}</span>
+                  <el-icon
+                    v-if="currentLocale === localeItem.value"
+                    class="ui-action-primary"
                 >
                   <Check />
                 </el-icon>

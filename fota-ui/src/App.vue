@@ -15,7 +15,14 @@ const isReady = computed(() => route.matched.length > 0)
   <template v-else>
     <router-view v-if="isLoginPage" />
     <AppLayout v-else>
-      <router-view />
+      <router-view v-slot="{ Component, route: viewRoute }">
+        <keep-alive>
+          <component
+            :is="Component"
+            :key="viewRoute.name as string"
+          />
+        </keep-alive>
+      </router-view>
     </AppLayout>
   </template>
 </template>

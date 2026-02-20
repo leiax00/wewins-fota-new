@@ -1,8 +1,8 @@
 export type StatusTagType = 'success' | 'warning' | 'danger' | 'info'
 export type DeviceStatus = 'online' | 'offline' | 'upgrading' | 'failed'
 export type PolicyStatus = 'active' | 'paused' | 'expired' | 'failed'
-export type UserStatus = 'enabled' | 'disabled' | 'locked'
-export type RoleStatus = 'enabled' | 'disabled'
+export type UserStatus = 'active' | 'disabled' | 'locked'
+export type RoleStatus = 'active' | 'disabled'
 
 export const deviceStatusTypeMap: Record<string, StatusTagType> = {
   online: 'success',
@@ -19,12 +19,14 @@ export const policyStatusTypeMap: Record<string, StatusTagType> = {
 }
 
 export const userStatusTypeMap: Record<string, StatusTagType> = {
+  active: 'success',
   enabled: 'success',
   disabled: 'info',
   locked: 'danger',
 }
 
 export const roleStatusTypeMap: Record<string, StatusTagType> = {
+  active: 'success',
   enabled: 'success',
   disabled: 'info',
 }

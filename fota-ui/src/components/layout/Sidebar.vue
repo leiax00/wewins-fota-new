@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { availableLocales, setLocale } from '@/locales'
+import { availableLocales, localePreference, setLocale, type LocalePreference } from '@/locales'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 import { useUserStore } from '@/stores/user'
 
@@ -14,7 +14,7 @@ defineProps<Props>()
 
 const route = useRoute()
 const router = useRouter()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const themeStore = useThemeStore()
 const userStore = useUserStore()
 
@@ -78,10 +78,12 @@ const handleSelect = (path: string) => {
   router.push(path)
 }
 
-const currentLocale = computed(() => locale.value || 'zh-CN')
+const currentLocale = computed(() => localePreference.value)
 
 const currentLocaleLabel = computed(() => {
-  return availableLocales.find((item) => item.value === currentLocale.value)?.label || '中文'
+  const selected = availableLocales.find((item) => item.value === currentLocale.value)
+  if (!selected) return t('locale.system')
+  return 'labelKey' in selected ? t(selected.labelKey) : selected.label
 })
 
 const themeOptions: { value: ThemeMode; labelKey: string; icon: string }[] = [
@@ -90,10 +92,11 @@ const themeOptions: { value: ThemeMode; labelKey: string; icon: string }[] = [
   { value: 'system', labelKey: 'theme.system', icon: 'Monitor' },
 ]
 
-const localeOptions: { value: string; label: string }[] = [
-  { value: 'zh-CN', label: '中文' },
-  { value: 'en-US', label: 'English' },
-]
+const localeOptions = availableLocales
+
+const getLocaleLabel = (option: typeof availableLocales[number]) => {
+  return 'labelKey' in option ? t(option.labelKey) : option.label
+}
 
 const currentThemeIcon = computed(() => {
   return themeOptions.find((opt) => opt.value === themeStore.currentMode)?.icon || 'Monitor'
@@ -107,7 +110,7 @@ const handleThemeChange = (mode: ThemeMode) => {
   themeStore.setMode(mode)
 }
 
-const handleLocaleChange = (nextLocale: string) => {
+const handleLocaleChange = (nextLocale: LocalePreference) => {
   if (nextLocale === currentLocale.value) return
   setLocale(nextLocale)
 }
@@ -236,7 +239,7 @@ const handleUserCommand = async (command: string) => {
                 :command="localeItem.value"
               >
                 <div class="flex items-center gap-2">
-                  <span>{{ localeItem.label }}</span>
+                  <span>{{ getLocaleLabel(localeItem) }}</span>
                   <el-icon
                     v-if="currentLocale === localeItem.value"
                     class="ui-action-primary"

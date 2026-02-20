@@ -5,8 +5,7 @@ import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
-import { availableLocales, setLocale } from '@/locales'
-import { safeStorage } from '@/utils/storage'
+import { availableLocales, localePreference, setLocale, type LocalePreference } from '@/locales'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -16,7 +15,7 @@ const themeStore = useThemeStore()
 
 const formRef = ref()
 const loading = ref(false)
-const currentLocale = ref(safeStorage.getItem('locale') || 'zh-CN')
+const currentLocale = computed(() => localePreference.value)
 
 const form = reactive({
   username: '',
@@ -55,10 +54,13 @@ const handleLogin = async () => {
   }
 }
 
-const handleLocaleChange = (locale: string) => {
-  currentLocale.value = locale
-  setLocale(locale)
-  window.location.reload()
+const getLocaleLabel = (option: typeof availableLocales[number]) => {
+  return 'labelKey' in option ? t(option.labelKey) : option.label
+}
+
+const handleLocaleChange = (nextLocale: LocalePreference) => {
+  if (nextLocale === currentLocale.value) return
+  setLocale(nextLocale)
 }
 
 const themeOptions: { value: ThemeMode; labelKey: string; icon: string }[] = [
@@ -165,7 +167,7 @@ const handleThemeChange = (mode: ThemeMode) => {
           <el-dropdown @command="handleLocaleChange">
             <div class="locale-selector">
               <el-icon><Globe /></el-icon>
-              <span>{{ availableLocales.find(l => l.value === currentLocale)?.label }}</span>
+              <span>{{ getLocaleLabel(availableLocales.find(l => l.value === currentLocale) || availableLocales[0]) }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
@@ -176,7 +178,7 @@ const handleThemeChange = (mode: ThemeMode) => {
                   :command="locale.value"
                   :class="{ 'is-active': currentLocale === locale.value }"
                 >
-                  {{ locale.label }}
+                  {{ getLocaleLabel(locale) }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
