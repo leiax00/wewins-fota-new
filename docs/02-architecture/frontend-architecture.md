@@ -1,6 +1,6 @@
 # FOTA 管理后台前端架构设计
 
-> **版本**: v1.1  
+> **版本**: v1.2  
 > **创建日期**: 2026-02-17  
 > **最近更新**: 2026-02-20  
 > **状态**: Accepted
@@ -52,7 +52,7 @@ FOTA 管理后台是千万级设备 OTA 管理平台的 Web 控制台，为运�
 src/
 ├── api/request.ts
 ├── components/
-│   ├── layout/{AppLayout.vue,Header.vue,Sidebar.vue}
+│   ├── layout/{AppLayout.vue,Header.vue,Sidebar.vue,TabsView.vue,Breadcrumb.vue}
 │   ├── login/{LoginCard.vue,LoginHeroBackground.vue}
 │   └── common/{LoadingScreen.vue,PageCardTableShell.vue,PageDetailShell.vue}
 ├── locales/{index.ts,zh-CN.ts,en-US.ts}
@@ -330,13 +330,13 @@ export default defineConfig({
 - 侧边栏宽度: `210px`（展开）/ `64px`（折叠）
 - 顶栏高度: `50px`
 - 内容区背景: `#F5F7FA`
-- 最大内容宽度: `1440px`
+- 最小页面宽度: `1024px`（当前阶段锁定桌面体验）
 
 ### 5.2 权限系统
 
 - **路由守卫**: 未登录跳转登录页
-- **菜单权限**: 根据 `permissions` 过滤侧边栏菜单
-- **按钮权限**: `v-permission` 指令控制按钮显隐
+- **菜单权限**: 已按权限过滤侧边栏菜单（父子菜单联动过滤）
+- **按钮权限**: 通过 `userStore.hasPermission(...)` 控制按钮显隐
 - **API 权限**: 后端校验，前端仅做 UI 隐藏
 
 ### 5.3 状态管理
@@ -353,11 +353,20 @@ export default defineConfig({
 | 模块 | 实现状态 | 说明 |
 |------|---------|------|
 | 登录认证 | ✅ 已实现 | 登录/登出、Token 持久化、401 自动回登录 |
-| 路由权限 | ✅ 已实现 | 路由守卫 + 页面按钮级权限控制 |
-| 主题系统 | ✅ 已实现 | Header 与登录页均支持主题切换 |
+| 路由权限 | ✅ 已实现 | 路由守卫 + 菜单过滤 + 页面按钮级权限控制 |
+| 导航框架 | ✅ 已实现 | Sidebar + Header + TabsView + Breadcrumb 联动 |
+| 标签页状态 | ✅ 已实现 | 打开页持久化；登出/鉴权失效时清理 |
+| 主题系统 | ✅ 已实现 | Header 与登录页支持切换，侧边视觉已统一 |
 | 国际化 | ✅ 已实现 | `zh-CN` / `en-US`，运行时切换 |
 | 业务页面 | 🔄 骨架完成 | 产品/固件/策略/设备/系统管理页面已就位，数据联调进行中 |
+| 响应式布局 | ⏸️ 暂缓 | 当前阶段固定桌面布局（min-width: 1024） |
 | 复杂业务组件 | ⏸️ 待补充 | 表单弹窗、批量导入、复杂筛选等 |
+
+### 5.5 当前待讨论事项
+
+1. **移动端策略**：当前按你的决策固定桌面布局（`min-width: 1024`）。
+   - 我建议后续明确是否需要“移动可用”目标；若需要，建议单独开一个 Sprint（导航重排 + 触控优化 + 关键页简化）。
+2. **菜单权限一致性**：已实现菜单过滤，后续建议和后端菜单配置源统一（避免前端硬编码漂移）。
 
 ---
 
@@ -489,6 +498,7 @@ server {
 ## 9. 相关文档
 
 - [Sprint 2 前端迭代计划](../05-plans/sprint-2-frontend.md)
+- [前端移动端策略 ADR（桌面优先）](./frontend-mobile-strategy-adr.md)
 - [后端架构文档](./fota-architecture.md)
 - [产品需求文档](../01-product/prd.md)
 
@@ -506,3 +516,6 @@ server {
 - ✅ 同步依赖版本到当前代码（Vue 3.5 / Vite 7 / Tailwind 4）
 - ✅ 新增“当前实现状态”章节，明确骨架完成与联调边界
 - ✅ 更新状态管理说明（`layout` / `theme` 已落地）
+- ✅ 同步导航框架落地（TabsView / Breadcrumb / Header-Sidebar 联动）
+- ✅ 修正文档中的权限实现描述（按钮权限已实现，菜单权限待补）
+- ✅ 记录当前阶段策略：桌面优先（min-width: 1024）

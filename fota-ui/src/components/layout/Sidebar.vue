@@ -19,26 +19,60 @@ const themeStore = useThemeStore()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
-const openedMenus = computed(() => (route.path.startsWith('/system') ? ['/system'] : []))
 
-const menuItems = [
-  { path: '/dashboard', labelKey: 'menu.dashboard', icon: 'Odometer' },
-  { path: '/product', labelKey: 'menu.product', icon: 'Box' },
-  { path: '/firmware', labelKey: 'menu.firmware', icon: 'Cpu' },
-  { path: '/policy', labelKey: 'menu.policy', icon: 'Document' },
-  { path: '/device', labelKey: 'menu.device', icon: 'Iphone' },
+interface MenuItem {
+  path: string
+  labelKey: string
+  icon: string
+  permission?: string | string[]
+  children?: MenuItem[]
+}
+
+const hasAnyPermission = (permission?: string | string[]) => {
+  if (!permission) return true
+  const required = Array.isArray(permission) ? permission : [permission]
+  return required.some((item) => userStore.hasPermission(item))
+}
+
+const menuItems: MenuItem[] = [
+  { path: '/dashboard', labelKey: 'menu.dashboard', icon: 'Odometer', permission: 'dashboard:view' },
+  { path: '/product', labelKey: 'menu.product', icon: 'Box', permission: 'product:read' },
+  { path: '/firmware', labelKey: 'menu.firmware', icon: 'Cpu', permission: 'firmware:read' },
+  { path: '/policy', labelKey: 'menu.policy', icon: 'Document', permission: 'policy:read' },
+  { path: '/device', labelKey: 'menu.device', icon: 'Iphone', permission: 'device:read' },
   {
     path: '/system',
     labelKey: 'menu.system',
     icon: 'Setting',
     children: [
-      { path: '/system/user', labelKey: 'menu.user', icon: 'User' },
-      { path: '/system/role', labelKey: 'menu.role', icon: 'UserFilled' },
-      { path: '/system/permission', labelKey: 'menu.permission', icon: 'Lock' },
-      { path: '/system/dict', labelKey: 'menu.dict', icon: 'Collection' },
+      { path: '/system/user', labelKey: 'menu.user', icon: 'User', permission: 'sys:user:read' },
+      { path: '/system/role', labelKey: 'menu.role', icon: 'UserFilled', permission: 'sys:role:read' },
+      { path: '/system/permission', labelKey: 'menu.permission', icon: 'Lock', permission: 'sys:perm:read' },
+      { path: '/system/dict', labelKey: 'menu.dict', icon: 'Collection', permission: ['sys:dict_type:read', 'sys:dict_item:read'] },
     ],
   },
 ]
+
+const filteredMenuItems = computed<MenuItem[]>(() => {
+  return menuItems
+    .map((item) => {
+      if (item.children?.length) {
+        const children = item.children.filter((child) => hasAnyPermission(child.permission))
+        if (!children.length) return null
+        return { ...item, children }
+      }
+
+      if (!hasAnyPermission(item.permission)) return null
+      return item
+    })
+    .filter((item): item is MenuItem => item !== null)
+})
+
+const openedMenus = computed(() => {
+  if (!route.path.startsWith('/system')) return []
+  const hasSystem = filteredMenuItems.value.some((item) => item.path === '/system')
+  return hasSystem ? ['/system'] : []
+})
 
 const handleSelect = (path: string) => {
   router.push(path)
@@ -117,7 +151,7 @@ const handleUserCommand = async (command: string) => {
       @select="handleSelect"
     >
       <template
-        v-for="item in menuItems"
+        v-for="item in filteredMenuItems"
         :key="item.path"
       >
         <el-sub-menu
