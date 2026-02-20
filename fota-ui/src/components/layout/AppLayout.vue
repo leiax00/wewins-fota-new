@@ -40,6 +40,7 @@ const layoutStore = useLayoutStore()
 
 .app-shell {
   height: 100vh;
+  min-width: 1024px;
   overflow: hidden;
 }
 

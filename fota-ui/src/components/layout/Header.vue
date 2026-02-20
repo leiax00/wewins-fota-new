@@ -6,11 +6,10 @@ import { availableLocales, setLocale } from '@/locales'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 import { useLayoutStore } from '@/stores/layout'
 import { useUserStore } from '@/stores/user'
-import { safeStorage } from '@/utils/storage'
 import Breadcrumb from './Breadcrumb.vue'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const themeStore = useThemeStore()
 const layoutStore = useLayoutStore()
 const userStore = useUserStore()
@@ -26,7 +25,16 @@ const handleCommand = async (command: string) => {
   }
 }
 
-const currentLocale = computed(() => safeStorage.getItem('locale') || 'zh-CN')
+const currentLocale = computed(() => locale.value || 'zh-CN')
+
+const localeOptions: { value: string; label: string }[] = [
+  { value: 'zh-CN', label: '中文' },
+  { value: 'en-US', label: 'English' },
+]
+
+const currentLocaleLabel = computed(() => {
+  return availableLocales.find((it) => it.value === currentLocale.value)?.label || '中文'
+})
 
 const handleLocaleChange = (locale: string) => {
   if (locale === currentLocale.value) {
@@ -109,20 +117,21 @@ const handleThemeChange = (mode: ThemeMode) => {
         <div
           class="ui-interactive-text header-dropdown-trigger"
         >
-          <el-icon><Globe /></el-icon>
-          <span class="hidden md:inline">{{ availableLocales.find((it) => it.value === currentLocale)?.label }}</span>
+          <el-icon><Collection /></el-icon>
+          <span class="hidden md:inline">{{ currentLocaleLabel }}</span>
+          <el-icon class="hidden md:inline-flex"><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item
-              v-for="locale in availableLocales"
-              :key="locale.value"
-              :command="locale.value"
+              v-for="localeItem in localeOptions"
+              :key="localeItem.value"
+              :command="localeItem.value"
             >
               <div class="flex items-center gap-2">
-                <span>{{ locale.label }}</span>
+                <span>{{ localeItem.label }}</span>
                 <el-icon
-                  v-if="currentLocale === locale.value"
+                  v-if="currentLocale === localeItem.value"
                   class="ui-action-primary"
                 >
                   <Check />
@@ -244,12 +253,12 @@ const handleThemeChange = (mode: ThemeMode) => {
 
 @media (max-width: 768px) {
   .header-shell {
-    padding: 0 10px 0 8px;
-    gap: 8px;
+    padding: 0 14px 0 10px;
+    gap: 16px;
   }
 
   .header-left {
-    gap: 8px;
+    gap: 10px;
   }
 }
 </style>

@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { availableLocales, setLocale } from '@/locales'
+import { useThemeStore, type ThemeMode } from '@/stores/theme'
+import { useUserStore } from '@/stores/user'
 
 interface Props {
   collapsed: boolean
@@ -11,7 +14,9 @@ defineProps<Props>()
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const themeStore = useThemeStore()
+const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 const openedMenus = computed(() => (route.path.startsWith('/system') ? ['/system'] : []))
@@ -37,6 +42,51 @@ const menuItems = [
 
 const handleSelect = (path: string) => {
   router.push(path)
+}
+
+const currentLocale = computed(() => locale.value || 'zh-CN')
+
+const currentLocaleLabel = computed(() => {
+  return availableLocales.find((item) => item.value === currentLocale.value)?.label || '中文'
+})
+
+const themeOptions: { value: ThemeMode; labelKey: string; icon: string }[] = [
+  { value: 'light', labelKey: 'theme.light', icon: 'Sunny' },
+  { value: 'dark', labelKey: 'theme.dark', icon: 'Moon' },
+  { value: 'system', labelKey: 'theme.system', icon: 'Monitor' },
+]
+
+const localeOptions: { value: string; label: string }[] = [
+  { value: 'zh-CN', label: '中文' },
+  { value: 'en-US', label: 'English' },
+]
+
+const currentThemeIcon = computed(() => {
+  return themeOptions.find((opt) => opt.value === themeStore.currentMode)?.icon || 'Monitor'
+})
+
+const currentThemeLabel = computed(() => {
+  return t(themeOptions.find((opt) => opt.value === themeStore.currentMode)?.labelKey || 'theme.system')
+})
+
+const handleThemeChange = (mode: ThemeMode) => {
+  themeStore.setMode(mode)
+}
+
+const handleLocaleChange = (nextLocale: string) => {
+  if (nextLocale === currentLocale.value) return
+  setLocale(nextLocale)
+}
+
+const handleUserCommand = async (command: string) => {
+  if (command === 'profile') {
+    router.push('/system/user')
+    return
+  }
+
+  if (command === 'logout') {
+    await userStore.logout()
+  }
 }
 </script>
 
@@ -98,6 +148,102 @@ const handleSelect = (path: string) => {
         </el-menu-item>
       </template>
     </el-menu>
+
+    <div class="sidebar-mobile-tools" :class="{ 'is-collapsed': collapsed }">
+      <div class="mobile-tools-row">
+        <el-dropdown
+          trigger="click"
+          @command="handleThemeChange"
+        >
+          <button
+            type="button"
+            class="mobile-tool-btn"
+          >
+            <el-icon><component :is="currentThemeIcon" /></el-icon>
+            <span v-if="!collapsed">{{ currentThemeLabel }}</span>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="opt in themeOptions"
+                :key="opt.value"
+                :command="opt.value"
+              >
+                <div class="flex items-center gap-2">
+                  <span>{{ t(opt.labelKey) }}</span>
+                  <el-icon
+                    v-if="themeStore.currentMode === opt.value"
+                    class="ui-action-primary"
+                  >
+                    <Check />
+                  </el-icon>
+                </div>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+
+        <el-dropdown
+          trigger="click"
+          @command="handleLocaleChange"
+        >
+          <button
+            type="button"
+            class="mobile-tool-btn"
+          >
+            <el-icon><Collection /></el-icon>
+            <span v-if="!collapsed">{{ currentLocaleLabel }}</span>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="localeItem in localeOptions"
+                :key="localeItem.value"
+                :command="localeItem.value"
+              >
+                <div class="flex items-center gap-2">
+                  <span>{{ localeItem.label }}</span>
+                  <el-icon
+                    v-if="currentLocale === localeItem.value"
+                    class="ui-action-primary"
+                  >
+                    <Check />
+                  </el-icon>
+                </div>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+
+      <div class="mobile-tools-user">
+        <el-dropdown
+          trigger="click"
+          @command="handleUserCommand"
+        >
+          <button
+            type="button"
+            class="mobile-tool-btn"
+          >
+            <el-icon><User /></el-icon>
+            <span v-if="!collapsed">{{ t('header.admin') }}</span>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">
+                {{ t('header.profile') }}
+              </el-dropdown-item>
+              <el-dropdown-item
+                divided
+                command="logout"
+              >
+                {{ t('header.logout') }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+    </div>
   </el-aside>
 </template>
 
@@ -228,6 +374,10 @@ const handleSelect = (path: string) => {
 
 .sidebar-menu :deep(.el-menu--collapse .el-sub-menu__title .menu-label),
 .sidebar-menu :deep(.el-menu--collapse .el-menu-item .menu-label) {
+  display: none;
+}
+
+.sidebar-mobile-tools {
   display: none;
 }
 
