@@ -33,8 +33,10 @@ spring:
     include: security
 
   # PostgreSQL 主数据源配置
+  # 注意：DB_URL 环境变量必须包含 TimeZone=UTC 参数，例如：
+  #   jdbc:postgresql://host:port/database?TimeZone=UTC
   datasource:
-    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota}
+    url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota?TimeZone=UTC}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver

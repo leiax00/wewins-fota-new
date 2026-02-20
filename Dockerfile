@@ -48,7 +48,7 @@ WORKDIR /app
 # 环境变量
 ENV MODE=main \
     REGION=main \
-    JAVA_OPTS=""
+    JAVA_OPTS="-Duser.timezone=UTC"
 
 # 复制打包好的 JAR 文件
 COPY --from=build /workspace/fota-service/target/fota-service-*.jar /app/app.jar

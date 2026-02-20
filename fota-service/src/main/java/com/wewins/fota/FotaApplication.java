@@ -3,6 +3,8 @@ package com.wewins.fota;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.TimeZone;
+
 /**
  * FOTA 平台启动类
  *
@@ -32,6 +34,7 @@ public class FotaApplication {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         SpringApplication app = new SpringApplication(FotaApplication.class);
         app.run(args);
     }

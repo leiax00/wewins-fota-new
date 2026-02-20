@@ -7,6 +7,7 @@ import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * 审计字段自动填充处理器
@@ -41,7 +42,7 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
 
     @Override
     public void insertFill(MetaObject metaObject) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         Long userId = UserContext.getCurrentUserId();
 
         log.debug("自动填充 INSERT 审计字段: currentTime={}, userId={}", now, userId);
@@ -63,7 +64,7 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
 
     @Override
     public void updateFill(MetaObject metaObject) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         Long userId = UserContext.getCurrentUserId();
 
         log.debug("自动填充 UPDATE 审计字段: currentTime={}, userId={}", now, userId);

@@ -2,12 +2,16 @@ package com.wewins.fota.database.config;
 
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.config.GlobalConfig;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.wewins.fota.database.annotation.PrimaryDbMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -31,6 +35,7 @@ import javax.sql.DataSource;
         annotationClass = PrimaryDbMapper.class,
         sqlSessionFactoryRef = "primarySqlSessionFactory"
 )
+@Slf4j
 public class MybatisPrimaryConfig {
 
     /**
@@ -55,7 +60,8 @@ public class MybatisPrimaryConfig {
     @Primary
     public SqlSessionFactory primarySqlSessionFactory(
             @Qualifier("primaryDataSource") DataSource dataSource,
-            MybatisPlusProperties properties
+            MybatisPlusProperties properties,
+            ObjectProvider<MetaObjectHandler> metaObjectHandlerProvider
     ) throws Exception {
         MybatisSqlSessionFactoryBean factory = new MybatisSqlSessionFactoryBean();
         factory.setDataSource(dataSource);
@@ -77,7 +83,20 @@ public class MybatisPrimaryConfig {
         factory.setTypeHandlersPackage(properties.getTypeHandlersPackage());
 
         // 应用全局配置（逻辑删除等，从 application.yml 读取）
-        factory.setGlobalConfig(properties.getGlobalConfig());
+        GlobalConfig globalConfig = properties.getGlobalConfig();
+        if (globalConfig == null) {
+            globalConfig = new GlobalConfig();
+        }
+
+        MetaObjectHandler metaObjectHandler = metaObjectHandlerProvider.getIfAvailable();
+        if (metaObjectHandler != null) {
+            globalConfig.setMetaObjectHandler(metaObjectHandler);
+            log.info("MyBatis-Plus 自动填充已启用: metaObjectHandler={}",
+                    metaObjectHandler.getClass().getName());
+        } else {
+            log.warn("MyBatis-Plus 自动填充未启用: 未找到 MetaObjectHandler Bean");
+        }
+        factory.setGlobalConfig(globalConfig);
 
         return factory.getObject();
     }

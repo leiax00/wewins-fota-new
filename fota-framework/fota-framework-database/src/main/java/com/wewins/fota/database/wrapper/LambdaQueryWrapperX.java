@@ -57,7 +57,7 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
     }
 
     /**
-     * 等值查询（值为 null 时跳过）
+     * 等值查询（值为 null 或空白字符串时跳过）
      *
      * @param column 字段 Lambda
      * @param value  值
@@ -67,11 +67,15 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
         if (value == null) {
             return this;
         }
+        // 对于字符序列类型，检查空白字符串
+        if (value instanceof CharSequence cs && !StringUtils.hasText(cs)) {
+            return this;
+        }
         return (LambdaQueryWrapperX<T>) eq(column, value);
     }
 
     /**
-     * 不等查询（值为 null 时跳过）
+     * 不等查询（值为 null 或空白字符串时跳过）
      *
      * @param column 字段 Lambda
      * @param value  值
@@ -79,6 +83,10 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
      */
     public LambdaQueryWrapperX<T> neIfPresent(SFunction<T, ?> column, Object value) {
         if (value == null) {
+            return this;
+        }
+        // 对于字符序列类型，检查空白字符串
+        if (value instanceof CharSequence cs && !StringUtils.hasText(cs)) {
             return this;
         }
         return (LambdaQueryWrapperX<T>) ne(column, value);
