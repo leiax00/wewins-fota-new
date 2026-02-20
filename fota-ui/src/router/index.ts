@@ -121,8 +121,19 @@ const routes: RouteRecordRaw[] = [
     meta: {
       titleKey: 'menu.dict',
       icon: 'Collection',
-      permission: ['sys:dict_type:read', 'sys:dict_item:read'],
+      permission: 'sys:dict_type:read',
       breadcrumb: [{ titleKey: 'menu.system' }],
+    },
+  },
+  {
+    path: '/system/dict/:id/items',
+    name: 'SystemDictItems',
+    component: () => import('@/views/system/DictItemListView.vue'),
+    meta: {
+      titleKey: 'system.dict.itemTab',
+      hidden: true,
+      permission: 'sys:dict_item:read',
+      breadcrumb: [{ titleKey: 'menu.system' }, { titleKey: 'menu.dict', path: '/system/dict' }],
     },
   },
   {
@@ -148,7 +159,7 @@ const resolveFirstAccessiblePath = (userStore: ReturnType<typeof useUserStore>):
     { path: '/system/user', permission: 'sys:user:read' },
     { path: '/system/role', permission: 'sys:role:read' },
     { path: '/system/permission', permission: 'sys:perm:read' },
-    { path: '/system/dict', permission: ['sys:dict_type:read', 'sys:dict_item:read'] },
+    { path: '/system/dict', permission: 'sys:dict_type:read' },
   ]
 
   for (const candidate of candidates) {

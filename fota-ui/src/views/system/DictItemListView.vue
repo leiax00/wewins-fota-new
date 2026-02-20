@@ -1,41 +1,46 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { resolveStatusLabelKey, resolveStatusType, roleStatusTypeMap } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
 import {
-  createDictType,
-  deleteDictType,
-  pageDictTypes,
-  updateDictType,
+  createDictItem,
+  deleteDictItem,
+  getDictTypeById,
+  pageDictItems,
+  updateDictItem,
+  type DictItem,
   type DictTypeItem,
 } from '@/api/system'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const dictTypeId = computed(() => Number(route.params.id))
+const dictType = ref<DictTypeItem | null>(null)
+const contextLoading = ref(false)
 
 const statusOptions = [
   { value: 'active', label: t('status.active') },
   { value: 'disabled', label: t('status.disabled') },
 ]
 
-const list = ref<DictTypeItem[]>([])
-const total = ref(0)
 const loading = ref(false)
+const list = ref<DictItem[]>([])
+const total = ref(0)
 const query = reactive({
   page: 1,
   size: 20,
-  name: '',
+  label: '',
   status: '',
 })
 
-const canShowAnyAction = computed(() =>
-  userStore.hasPermission('sys:dict_type:update') ||
-  userStore.hasPermission('sys:dict_type:delete') ||
-  userStore.hasPermission('sys:dict_item:read')
+const canShowActions = computed(() =>
+  userStore.hasPermission('sys:dict_item:update') || userStore.hasPermission('sys:dict_item:delete')
 )
 
 const dialogVisible = ref(false)
@@ -45,24 +50,52 @@ const editingId = ref<number | null>(null)
 const formRef = ref()
 
 const form = reactive({
-  code: '',
-  name: '',
+  label: '',
+  value: '',
   i18nKey: '',
+  sortOrder: 0,
   status: 'active',
-  description: '',
 })
 
 const formRules = {
-  code: [{ required: true, message: t('system.dict.codeRequired'), trigger: 'blur' }],
-  name: [{ required: true, message: t('system.dict.nameRequired'), trigger: 'blur' }],
+  label: [{ required: true, message: t('system.dict.itemLabelRequired'), trigger: 'blur' }],
+  value: [{ required: true, message: t('system.dict.itemValueRequired'), trigger: 'blur' }],
   status: [{ required: true, message: t('system.common.statusRequired'), trigger: 'change' }],
 }
 
+const fetchTypeInfo = async () => {
+  const id = dictTypeId.value
+  if (!id || Number.isNaN(id)) {
+    router.replace('/system/dict')
+    return
+  }
+
+  contextLoading.value = true
+  try {
+    dictType.value = await getDictTypeById(id)
+  } catch {
+    router.replace('/system/dict')
+  } finally {
+    contextLoading.value = false
+  }
+}
+
 const fetchList = async () => {
+  const id = dictTypeId.value
+  if (!id || Number.isNaN(id)) return
+
   loading.value = true
   try {
-    const result = await pageDictTypes(query)
-    list.value = result.records || []
+    const result = await pageDictItems({
+      page: query.page,
+      size: query.size,
+      dictTypeId: id,
+      label: query.label,
+      status: query.status,
+    })
+
+    const records = result.records || []
+    list.value = records
     total.value = result.total || 0
   } finally {
     loading.value = false
@@ -72,22 +105,22 @@ const fetchList = async () => {
 const openCreateDialog = () => {
   dialogMode.value = 'create'
   editingId.value = null
-  form.code = ''
-  form.name = ''
+  form.label = ''
+  form.value = ''
   form.i18nKey = ''
+  form.sortOrder = 0
   form.status = 'active'
-  form.description = ''
   dialogVisible.value = true
 }
 
-const openEditDialog = (row: DictTypeItem) => {
+const openEditDialog = (row: DictItem) => {
   dialogMode.value = 'edit'
   editingId.value = row.id
-  form.code = row.code
-  form.name = row.name
+  form.label = row.label
+  form.value = row.value
   form.i18nKey = row.i18nKey
+  form.sortOrder = row.sortOrder || 0
   form.status = row.status || 'active'
-  form.description = row.description
   dialogVisible.value = true
 }
 
@@ -96,18 +129,19 @@ const submitForm = async () => {
   submitting.value = true
   try {
     const payload = {
-      code: form.code,
-      name: form.name,
+      dictTypeId: dictTypeId.value,
+      label: form.label,
+      value: form.value,
       i18nKey: form.i18nKey,
+      sortOrder: form.sortOrder,
       status: form.status,
-      description: form.description,
     }
 
     if (dialogMode.value === 'create') {
-      await createDictType(payload)
+      await createDictItem(payload)
       ElMessage.success(t('system.common.createSuccess'))
     } else if (editingId.value) {
-      await updateDictType(editingId.value, payload)
+      await updateDictItem(editingId.value, payload)
       ElMessage.success(t('system.common.updateSuccess'))
     }
 
@@ -118,29 +152,29 @@ const submitForm = async () => {
   }
 }
 
-const handleDelete = async (row: DictTypeItem) => {
+const handleDelete = async (row: DictItem) => {
   await ElMessageBox.confirm(t('system.common.deleteConfirm'), t('common.tip'), { type: 'warning' })
-  await deleteDictType(row.id)
+  await deleteDictItem(row.id)
   ElMessage.success(t('system.common.deleteSuccess'))
   await fetchList()
 }
 
-const goToItems = (row: DictTypeItem) => {
-  router.push({ path: `/system/dict/${row.id}/items` })
-}
-
-onMounted(() => {
-  void fetchList()
+onMounted(async () => {
+  await fetchTypeInfo()
+  await fetchList()
 })
 </script>
 
 <template>
-  <PageCardTableShell :title="t('system.dict.title')">
+  <PageCardTableShell :title="t('system.dict.itemTab')">
     <template #actions>
       <div class="flex items-center gap-2">
+        <el-button @click="router.push('/system/dict')">
+          {{ t('system.dict.backToTypes') }}
+        </el-button>
         <el-input
-          v-model="query.name"
-          :placeholder="t('system.dict.name')"
+          v-model="query.label"
+          :placeholder="t('system.dict.itemLabel')"
           clearable
           style="width: 180px"
           @keyup.enter="fetchList"
@@ -156,20 +190,33 @@ onMounted(() => {
         <el-button @click="fetchList">{{ t('common.search') }}</el-button>
         <el-button @click="fetchList">{{ t('common.refresh') }}</el-button>
         <el-button
-          v-if="userStore.hasPermission('sys:dict_type:create')"
+          v-if="userStore.hasPermission('sys:dict_item:create')"
           type="primary"
           @click="openCreateDialog"
         >
-          {{ t('system.dict.addType') }}
+          {{ t('system.dict.addItem') }}
         </el-button>
       </div>
     </template>
 
+    <el-alert
+      v-if="dictType"
+      class="mb-4"
+      type="info"
+      :closable="false"
+    >
+      <template #title>
+        {{ t('system.dict.currentType') }}: {{ dictType.name }} ({{ dictType.code }})
+      </template>
+    </el-alert>
+
+    <el-skeleton v-if="contextLoading" :rows="1" animated />
+
     <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="code" :label="t('system.dict.code')" min-width="150" />
-      <el-table-column prop="name" :label="t('system.dict.name')" min-width="160" />
+      <el-table-column prop="label" :label="t('system.dict.itemLabel')" min-width="160" />
+      <el-table-column prop="value" :label="t('system.dict.itemValue')" min-width="160" />
+      <el-table-column prop="sortOrder" :label="t('system.dict.sortOrder')" width="100" />
       <el-table-column prop="i18nKey" :label="t('system.dict.i18nKey')" min-width="180" />
-      <el-table-column prop="description" :label="t('system.dict.description')" min-width="220" />
       <el-table-column prop="status" :label="t('common.status')" width="110">
         <template #default="{ row }">
           <el-tag size="small" :type="resolveStatusType(roleStatusTypeMap, row.status)">
@@ -179,22 +226,14 @@ onMounted(() => {
       </el-table-column>
 
       <el-table-column
-        v-if="canShowAnyAction"
+        v-if="canShowActions"
         :label="t('common.actions')"
-        width="210"
+        width="140"
         fixed="right"
       >
         <template #default="{ row }">
           <el-button
-            v-if="userStore.hasPermission('sys:dict_item:read')"
-            link
-            class="ui-action-success"
-            @click="goToItems(row)"
-          >
-            {{ t('system.dict.viewItems') }}
-          </el-button>
-          <el-button
-            v-if="userStore.hasPermission('sys:dict_type:update')"
+            v-if="userStore.hasPermission('sys:dict_item:update')"
             link
             class="ui-action-primary"
             @click="openEditDialog(row)"
@@ -202,7 +241,7 @@ onMounted(() => {
             {{ t('common.edit') }}
           </el-button>
           <el-button
-            v-if="userStore.hasPermission('sys:dict_type:delete')"
+            v-if="userStore.hasPermission('sys:dict_item:delete')"
             link
             class="ui-action-danger"
             @click="handleDelete(row)"
@@ -226,19 +265,22 @@ onMounted(() => {
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('system.dict.addType') : t('common.edit')" width="560px">
+  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('system.dict.addItem') : t('common.edit')" width="560px">
     <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
-      <el-form-item prop="code" :label="t('system.dict.code')">
-        <el-input v-model="form.code" :disabled="dialogMode === 'edit'" />
+      <el-form-item :label="t('system.dict.type')">
+        <el-input :model-value="dictType ? `${dictType.name} (${dictType.code})` : '-'" disabled />
       </el-form-item>
-      <el-form-item prop="name" :label="t('system.dict.name')">
-        <el-input v-model="form.name" />
+      <el-form-item prop="label" :label="t('system.dict.itemLabel')">
+        <el-input v-model="form.label" />
+      </el-form-item>
+      <el-form-item prop="value" :label="t('system.dict.itemValue')">
+        <el-input v-model="form.value" />
       </el-form-item>
       <el-form-item :label="t('system.dict.i18nKey')">
         <el-input v-model="form.i18nKey" />
       </el-form-item>
-      <el-form-item :label="t('system.dict.description')">
-        <el-input v-model="form.description" type="textarea" :rows="3" />
+      <el-form-item :label="t('system.dict.sortOrder')">
+        <el-input-number v-model="form.sortOrder" :min="0" style="width: 100%" />
       </el-form-item>
       <el-form-item prop="status" :label="t('common.status')">
         <el-select v-model="form.status" style="width: 100%">

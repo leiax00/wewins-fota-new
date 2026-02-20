@@ -4,6 +4,14 @@ import { safeStorage } from '@/utils/storage'
 const TAB_STORAGE_KEY = 'app_tabs_v1'
 const ACTIVE_TAB_STORAGE_KEY = 'app_active_tab_v1'
 
+const parseBoolean = (value: string | undefined, fallback: boolean) => {
+  if (value == null) return fallback
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
+  return fallback
+}
+
 export interface AppTabItem {
   key: string
   path: string
@@ -35,6 +43,7 @@ const readStoredTabs = (): AppTabItem[] => {
 
 export const useAppStore = defineStore('app', {
   state: () => ({
+    multiTabsEnabled: parseBoolean(import.meta.env.VITE_ENABLE_MULTI_TABS, false),
     tabsList: readStoredTabs(),
     activeTab: safeStorage.getItem(ACTIVE_TAB_STORAGE_KEY) || '',
   }),

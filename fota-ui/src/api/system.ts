@@ -180,6 +180,10 @@ export const pageDictTypes = (params: Record<string, unknown>) => {
   return get<PageResult<DictTypeItem>>('/sys/dict-types', { params })
 }
 
+export const getDictTypeById = (id: number) => {
+  return get<DictTypeItem>(`/sys/dict-types/${id}`)
+}
+
 export const createDictType = (payload: DictTypePayload) => {
   return post<DictTypeItem>('/sys/dict-types', payload)
 }

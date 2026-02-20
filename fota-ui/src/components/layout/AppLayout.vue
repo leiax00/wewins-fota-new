@@ -2,9 +2,13 @@
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import TabsView from './TabsView.vue'
+import { computed } from 'vue'
+import { useAppStore } from '@/stores/app'
 import { useLayoutStore } from '@/stores/layout'
 
 const layoutStore = useLayoutStore()
+const appStore = useAppStore()
+const tabsEnabled = computed(() => appStore.multiTabsEnabled)
 </script>
 
 <template>
@@ -12,7 +16,7 @@ const layoutStore = useLayoutStore()
     <Sidebar :collapsed="layoutStore.collapsed" />
     <el-container direction="vertical" class="app-right">
       <Header />
-      <TabsView />
+      <TabsView v-if="tabsEnabled" />
       <el-main
         class="app-main bg-ui-bg-page"
       >

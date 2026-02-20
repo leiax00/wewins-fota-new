@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, type AppTabItem } from '@/stores/app'
@@ -9,7 +9,9 @@ const router = useRouter()
 const { t } = useI18n()
 const appStore = useAppStore()
 
-appStore.ensureAffixTabs([
+const tabsEnabled = computed(() => appStore.multiTabsEnabled)
+
+const affixTabs: AppTabItem[] = [
   {
     key: '/dashboard',
     path: '/dashboard',
@@ -17,7 +19,17 @@ appStore.ensureAffixTabs([
     affix: true,
     closable: false,
   },
-])
+]
+
+onMounted(() => {
+  if (tabsEnabled.value) {
+    appStore.ensureAffixTabs(affixTabs)
+  }
+})
+
+watch(tabsEnabled, (enabled) => {
+  if (enabled) appStore.ensureAffixTabs(affixTabs)
+})
 
 const getRouteTitle = () => {
   const titleKey = route.meta?.titleKey as string | undefined
@@ -26,6 +38,7 @@ const getRouteTitle = () => {
 }
 
 const shouldIgnoreRoute = () => {
+  if (!tabsEnabled.value) return true
   if (route.path === '/login') return true
   return route.meta?.tabHidden === true
 }

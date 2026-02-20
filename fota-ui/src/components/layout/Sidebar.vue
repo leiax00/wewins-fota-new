@@ -6,6 +6,14 @@ import { availableLocales, localePreference, setLocale, type LocalePreference } 
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
 import { useUserStore } from '@/stores/user'
 
+interface MenuItem {
+  path: string
+  labelKey: string
+  icon: string
+  permission?: string | string[]
+  children?: MenuItem[]
+}
+
 interface Props {
   collapsed: boolean
 }
@@ -20,14 +28,6 @@ const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 
-interface MenuItem {
-  path: string
-  labelKey: string
-  icon: string
-  permission?: string | string[]
-  children?: MenuItem[]
-}
-
 const hasAnyPermission = (permission?: string | string[]) => {
   if (!permission) return true
   const required = Array.isArray(permission) ? permission : [permission]
@@ -37,9 +37,9 @@ const hasAnyPermission = (permission?: string | string[]) => {
 const menuItems: MenuItem[] = [
   { path: '/dashboard', labelKey: 'menu.dashboard', icon: 'Odometer', permission: 'dashboard:view' },
   { path: '/product', labelKey: 'menu.product', icon: 'Box', permission: 'product:read' },
+  { path: '/device', labelKey: 'menu.device', icon: 'Iphone', permission: 'device:read' },
   { path: '/firmware', labelKey: 'menu.firmware', icon: 'Cpu', permission: 'firmware:read' },
   { path: '/policy', labelKey: 'menu.policy', icon: 'Document', permission: 'policy:read' },
-  { path: '/device', labelKey: 'menu.device', icon: 'Iphone', permission: 'device:read' },
   {
     path: '/system',
     labelKey: 'menu.system',
@@ -48,7 +48,7 @@ const menuItems: MenuItem[] = [
       { path: '/system/user', labelKey: 'menu.user', icon: 'User', permission: 'sys:user:read' },
       { path: '/system/role', labelKey: 'menu.role', icon: 'UserFilled', permission: 'sys:role:read' },
       { path: '/system/permission', labelKey: 'menu.permission', icon: 'Lock', permission: 'sys:perm:read' },
-      { path: '/system/dict', labelKey: 'menu.dict', icon: 'Collection', permission: ['sys:dict_type:read', 'sys:dict_item:read'] },
+      { path: '/system/dict', labelKey: 'menu.dict', icon: 'Collection', permission: 'sys:dict_type:read' },
     ],
   },
 ]

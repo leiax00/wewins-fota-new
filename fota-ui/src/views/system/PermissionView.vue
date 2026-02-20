@@ -54,17 +54,16 @@ const matchRow = (row: PermissionRow): boolean => {
 }
 
 const filterTree = (source: PermissionRow[]): PermissionRow[] => {
-  return source
-    .map((row) => {
-      const children = row.children?.length ? filterTree(row.children) : []
-      const currentMatches = matchRow(row)
-      if (!currentMatches && children.length === 0) return null
-      return {
-        ...row,
-        children,
-      }
+  return source.reduce<PermissionRow[]>((result, row) => {
+    const children = row.children?.length ? filterTree(row.children) : []
+    const currentMatches = matchRow(row)
+    if (!currentMatches && children.length === 0) return result
+    result.push({
+      ...row,
+      children,
     })
-    .filter((row): row is PermissionRow => row !== null)
+    return result
+  }, [])
 }
 
 const fullTree = ref<PermissionRow[]>([])
@@ -307,7 +306,7 @@ onMounted(() => {
             active-value="active"
             inactive-value="disabled"
             :loading="isStatusSwitchLoading(row.id)"
-            @change="(value: string) => handleStatusToggle(row, value)"
+            @change="(value) => handleStatusToggle(row, String(value))"
           />
           <el-tag
             v-else
