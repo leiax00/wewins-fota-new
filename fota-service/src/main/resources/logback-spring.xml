@@ -28,8 +28,8 @@
     <springProfile name="!dev">
         <logger name="com.wewins.fota" level="INFO"/>
         <logger name="org.springframework.security" level="INFO"/>
-        <logger name="org.apache.ibatis" level="INFO"/>
-        <logger name="org.mybatis" level="INFO"/>
+        <logger name="org.apache.ibatis" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
         <logger name="com.baomidou.mybatisplus" level="INFO"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>

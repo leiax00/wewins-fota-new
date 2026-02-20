@@ -2,8 +2,11 @@ package com.wewins.fota.database.config;
 
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.wewins.fota.database.annotation.PrimaryDbMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +40,15 @@ import javax.sql.DataSource;
 )
 @Slf4j
 public class MybatisPrimaryConfig {
+
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        PaginationInnerInterceptor paginationInnerInterceptor = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
+        paginationInnerInterceptor.setOverflow(false);
+        interceptor.addInnerInterceptor(paginationInnerInterceptor);
+        return interceptor;
+    }
 
     /**
      * 配置主数据源的 SqlSessionFactory（MyBatis-Plus）
@@ -97,6 +109,7 @@ public class MybatisPrimaryConfig {
             log.warn("MyBatis-Plus 自动填充未启用: 未找到 MetaObjectHandler Bean");
         }
         factory.setGlobalConfig(globalConfig);
+        factory.setPlugins(mybatisPlusInterceptor());
 
         return factory.getObject();
     }
