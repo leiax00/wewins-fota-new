@@ -13,6 +13,7 @@ import com.wewins.fota.module.system.dto.UserPageReqDTO;
 import com.wewins.fota.module.system.dto.UserReqDTO;
 import com.wewins.fota.module.system.dto.UserRespDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -43,6 +44,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbac.has('sys:user:read')")
     public ApiResponse<PageResponse<UserRespDTO>> listUsers(@ModelAttribute UserPageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new UserPageReqDTO();
@@ -65,6 +67,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:user:read')")
     public ApiResponse<UserRespDTO> getUser(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -90,6 +93,7 @@ public class UserController {
     }
 
     @PostMapping
+    @PreAuthorize("@rbac.has('sys:user:create')")
     public ApiResponse<UserRespDTO> createUser(@RequestBody UserReqDTO reqDTO) {
         if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -116,6 +120,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:user:update')")
     public ApiResponse<UserRespDTO> updateUser(@PathVariable Long id, @RequestBody UserReqDTO reqDTO) {
         if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -148,6 +153,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:user:delete')")
     public ApiResponse<Void> deleteUser(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -176,6 +182,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/roles")
+    @PreAuthorize("@rbac.has('sys:user:read')")
     public ApiResponse<List<RoleRespDTO>> getUserRoles(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -203,6 +210,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/roles")
+    @PreAuthorize("@rbac.has('sys:user:update')")
     public ApiResponse<Void> assignRoles(@PathVariable Long id, @RequestBody List<Long> roleIds) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());

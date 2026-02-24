@@ -15,6 +15,7 @@ import com.wewins.fota.security.jwt.JwtUtil;
 import com.wewins.fota.security.jwt.SysUserDetails;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -87,6 +88,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> logout() {
         Long userId = UserContext.getCurrentUserId();
 
@@ -104,6 +106,7 @@ public class AuthController {
     }
 
     @GetMapping("/current")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<UserRespDTO> current() {
         Long userId = UserContext.getCurrentUserId();
 
@@ -134,6 +137,7 @@ public class AuthController {
     }
 
     @GetMapping("/user-menu")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<List<UserMenuNodeDTO>> userMenu() {
         Long userId = UserContext.getCurrentUserId();
 

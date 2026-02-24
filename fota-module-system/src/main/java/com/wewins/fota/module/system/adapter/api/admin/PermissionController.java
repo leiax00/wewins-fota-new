@@ -13,6 +13,7 @@ import com.wewins.fota.module.system.dto.PermissionReqDTO;
 import com.wewins.fota.module.system.dto.PermissionRespDTO;
 import com.wewins.fota.module.system.dto.PermissionTreeNodeRespDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -43,6 +44,7 @@ public class PermissionController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbac.has('sys:perm:read')")
     public ApiResponse<PageResponse<PermissionRespDTO>> listPermissions(@ModelAttribute PermissionPageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new PermissionPageReqDTO();
@@ -66,6 +68,7 @@ public class PermissionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:perm:read')")
     public ApiResponse<PermissionRespDTO> getPermission(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -91,6 +94,7 @@ public class PermissionController {
     }
 
     @PostMapping
+    @PreAuthorize("@rbac.has('sys:perm:create')")
     public ApiResponse<PermissionRespDTO> createPermission(@RequestBody PermissionReqDTO reqDTO) {
         if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -116,6 +120,7 @@ public class PermissionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:perm:update')")
     public ApiResponse<PermissionRespDTO> updatePermission(@PathVariable Long id, @RequestBody PermissionReqDTO reqDTO) {
         if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -147,6 +152,7 @@ public class PermissionController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:perm:delete')")
     public ApiResponse<Void> deletePermission(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -175,6 +181,7 @@ public class PermissionController {
     }
 
     @GetMapping("/tree")
+    @PreAuthorize("@rbac.has('sys:perm:read')")
     public ApiResponse<List<PermissionTreeNodeRespDTO>> listPermissionTree() {
         if (log.isDebugEnabled()) {
             log.debug("查询权限树");
