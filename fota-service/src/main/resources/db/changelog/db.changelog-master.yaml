@@ -54,3 +54,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260224_01_fix_system_sequences
+      author: fota-team
+      comment: 修复系统管理模块序列漂移（避免主键冲突）
+      changes:
+        - sqlFile:
+            path: changes/20260224_01_fix_system_sequences.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
