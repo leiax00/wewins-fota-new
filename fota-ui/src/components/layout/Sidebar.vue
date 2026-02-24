@@ -19,7 +19,11 @@ const { t } = useI18n()
 const themeStore = useThemeStore()
 const userStore = useUserStore()
 
-const activeMenu = computed(() => route.path)
+// 支持通过 route.meta.activeMenu 指定高亮菜单
+// 用于详情页场景：访问 /device/123 时高亮 /device 菜单
+const activeMenu = computed(() => {
+  return (route.meta?.activeMenu as string) || route.path
+})
 
 const hasAnyPermission = (permission?: string | string[]) => {
   if (!permission) return true
