@@ -120,6 +120,26 @@ public class AdminApiAssembler {
                 .method(req.getMethod())
                 .parentId(req.getParentId())
                 .status(req.getStatus())
+                // 菜单路由字段
+                .routePath(req.getRoutePath())
+                .routeName(req.getRouteName())
+                .componentKey(req.getComponentKey())
+                .redirectPath(req.getRedirectPath())
+                // 菜单显示字段
+                .i18nKey(req.getI18nKey())
+                .icon(req.getIcon())
+                .menuSort(req.getMenuSort())
+                .menuVisible(req.getMenuVisible())
+                .breadcrumbVisible(req.getBreadcrumbVisible())
+                .tabVisible(req.getTabVisible())
+                .tabClosable(req.getTabClosable())
+                .affixTab(req.getAffixTab())
+                .keepAlive(req.getKeepAlive())
+                .alwaysShow(req.getAlwaysShow())
+                // 菜单高级字段
+                .activeMenu(req.getActiveMenu())
+                .externalLink(req.getExternalLink())
+                .openMode(req.getOpenMode())
                 .build();
     }
 
@@ -140,6 +160,26 @@ public class AdminApiAssembler {
                 .createdBy(permission.getCreatedBy())
                 .updatedAt(permission.getUpdatedAt())
                 .updatedBy(permission.getUpdatedBy())
+                // 菜单路由字段
+                .routePath(permission.getRoutePath())
+                .routeName(permission.getRouteName())
+                .componentKey(permission.getComponentKey())
+                .redirectPath(permission.getRedirectPath())
+                // 菜单显示字段
+                .i18nKey(permission.getI18nKey())
+                .icon(permission.getIcon())
+                .menuSort(permission.getMenuSort())
+                .menuVisible(permission.getMenuVisible())
+                .breadcrumbVisible(permission.getBreadcrumbVisible())
+                .tabVisible(permission.getTabVisible())
+                .tabClosable(permission.getTabClosable())
+                .affixTab(permission.getAffixTab())
+                .keepAlive(permission.getKeepAlive())
+                .alwaysShow(permission.getAlwaysShow())
+                // 菜单高级字段
+                .activeMenu(permission.getActiveMenu())
+                .externalLink(permission.getExternalLink())
+                .openMode(permission.getOpenMode())
                 .build();
     }
 

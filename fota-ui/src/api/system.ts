@@ -54,6 +54,26 @@ export interface PermissionItem {
   parentId: number | null
   status: string
   createdAt: string
+  // 菜单路由字段
+  routePath?: string | null
+  routeName?: string | null
+  componentKey?: string | null
+  redirectPath?: string | null
+  // 菜单显示字段
+  i18nKey?: string | null
+  icon?: string | null
+  menuSort?: number | null
+  menuVisible?: boolean | null
+  breadcrumbVisible?: boolean | null
+  tabVisible?: boolean | null
+  tabClosable?: boolean | null
+  affixTab?: boolean | null
+  keepAlive?: boolean | null
+  alwaysShow?: boolean | null
+  // 菜单高级字段
+  activeMenu?: string | null
+  externalLink?: string | null
+  openMode?: string | null
 }
 
 export interface PermissionPayload {
@@ -64,6 +84,26 @@ export interface PermissionPayload {
   method: string
   parentId?: number | null
   status: string
+  // 菜单路由字段
+  routePath?: string | null
+  routeName?: string | null
+  componentKey?: string | null
+  redirectPath?: string | null
+  // 菜单显示字段
+  i18nKey?: string | null
+  icon?: string | null
+  menuSort?: number | null
+  menuVisible?: boolean | null
+  breadcrumbVisible?: boolean | null
+  tabVisible?: boolean | null
+  tabClosable?: boolean | null
+  affixTab?: boolean | null
+  keepAlive?: boolean | null
+  alwaysShow?: boolean | null
+  // 菜单高级字段
+  activeMenu?: string | null
+  externalLink?: string | null
+  openMode?: string | null
 }
 
 export interface PermissionTreeNode {
