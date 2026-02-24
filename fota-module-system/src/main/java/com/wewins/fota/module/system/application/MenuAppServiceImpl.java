@@ -122,6 +122,20 @@ public class MenuAppServiceImpl implements MenuAppService {
         }
     }
 
+    @Override
+    public void evictAllUserMenusCache() {
+        // 使用 Redis 的 keys 命令查找所有菜单缓存键，然后批量删除
+        Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            Long deletedCount = redisTemplate.delete(keys);
+            log.info("清除所有用户菜单缓存: count={}", deletedCount);
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("没有找到需要清除的菜单缓存");
+            }
+        }
+    }
+
     /**
      * 递归构建菜单节点（支持折叠 MODULE）
      *

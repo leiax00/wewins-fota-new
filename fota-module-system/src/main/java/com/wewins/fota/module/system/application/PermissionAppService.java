@@ -24,11 +24,14 @@ public class PermissionAppService  {
 
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final MenuAppService menuAppService;
 
     public PermissionAppService(PermissionRepository permissionRepository,
-                                 RolePermissionRepository rolePermissionRepository) {
+                                 RolePermissionRepository rolePermissionRepository,
+                                 MenuAppService menuAppService) {
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.menuAppService = menuAppService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -41,6 +44,10 @@ public class PermissionAppService  {
         validateParent(permission.getParentId(), null);
 
         permissionRepository.create(permission);
+
+        // 清除所有用户菜单缓存
+        menuAppService.evictAllUserMenusCache();
+
         log.info("权限创建成功: permissionId={}, code={}", permission.getId(), permission.getCode());
         return permission;
     }
@@ -59,6 +66,10 @@ public class PermissionAppService  {
         validateParent(permission.getParentId(), permission.getId());
 
         permissionRepository.updateById(permission);
+
+        // 清除所有用户菜单缓存
+        menuAppService.evictAllUserMenusCache();
+
         log.info("权限更新成功: permissionId={}", permission.getId());
         return permission;
     }
@@ -82,6 +93,10 @@ public class PermissionAppService  {
         }
 
         boolean result = permissionRepository.deleteById(permissionId);
+
+        // 清除所有用户菜单缓存
+        menuAppService.evictAllUserMenusCache();
+
         log.info("权限删除成功: permissionId={}, result={}", permissionId, result);
         return result;
     }

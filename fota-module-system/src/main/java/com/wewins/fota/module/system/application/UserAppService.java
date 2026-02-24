@@ -32,17 +32,20 @@ public class UserAppService  {
     private final PermissionRepository permissionRepository;
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final MenuAppService menuAppService;
 
     public UserAppService(UserRepository userRepository,
                            RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
                            UserRoleRepository userRoleRepository,
-                           RolePermissionRepository rolePermissionRepository) {
+                           RolePermissionRepository rolePermissionRepository,
+                           MenuAppService menuAppService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.userRoleRepository = userRoleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.menuAppService = menuAppService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -95,6 +98,10 @@ public class UserAppService  {
 
         userRoleRepository.deleteByUserId(userId);
         boolean result = userRepository.deleteById(userId);
+
+        // 清除用户菜单缓存
+        menuAppService.evictUserMenuCache(userId);
+
         log.info("用户删除成功: userId={}, result={}", userId, result);
         return result;
     }
@@ -155,6 +162,10 @@ public class UserAppService  {
                 .toList();
 
         userRoleRepository.saveBatch(userRoles);
+
+        // 清除用户菜单缓存
+        menuAppService.evictUserMenuCache(userId);
+
         log.info("用户角色分配成功: userId={}, roleCount={}", userId, distinctRoleIds.size());
     }
 

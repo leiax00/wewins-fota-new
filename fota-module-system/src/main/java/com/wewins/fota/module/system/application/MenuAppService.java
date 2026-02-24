@@ -23,4 +23,12 @@ public interface MenuAppService {
      * @param userId 用户ID
      */
     void evictUserMenuCache(Long userId);
+
+    /**
+     * 清除所有用户菜单缓存
+     * <p>
+     * 用于权限配置变更时，清除所有用户的菜单缓存
+     * </p>
+     */
+    void evictAllUserMenusCache();
 }
