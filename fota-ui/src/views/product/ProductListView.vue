@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 const { t } = useI18n()
 const userStore = useUserStore()
 
-const canShowActions = computed(() => userStore.hasPermission('product:update') || userStore.hasPermission('product:delete'))
+const canShowActions = computed(() => userStore.hasPermission('fota:product:update') || userStore.hasPermission('fota:product:delete'))
 </script>
 
 <template>
@@ -14,7 +14,7 @@ const canShowActions = computed(() => userStore.hasPermission('product:update') 
     <PageCardTableShell :title="t('product.title')">
       <template #actions>
         <el-button
-          v-if="userStore.hasPermission('product:create')"
+          v-if="userStore.hasPermission('fota:product:create')"
           type="primary"
           size="small"
         >
@@ -49,14 +49,14 @@ const canShowActions = computed(() => userStore.hasPermission('product:update') 
         >
           <template #default>
             <el-button
-              v-if="userStore.hasPermission('product:update')"
+              v-if="userStore.hasPermission('fota:product:update')"
               link
               class="ui-action-primary"
             >
               {{ t('common.edit') }}
             </el-button>
             <el-button
-              v-if="userStore.hasPermission('product:delete')"
+              v-if="userStore.hasPermission('fota:product:delete')"
               link
               class="ui-action-danger"
             >

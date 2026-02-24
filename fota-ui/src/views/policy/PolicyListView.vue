@@ -8,9 +8,9 @@ const { t } = useI18n()
 const userStore = useUserStore()
 
 const canShowActions = computed(() =>
-  userStore.hasPermission('policy:update') ||
-  userStore.hasPermission('policy:pause') ||
-  userStore.hasPermission('policy:delete')
+  userStore.hasPermission('fota:policy:update') ||
+  userStore.hasPermission('fota:policy:pause') ||
+  userStore.hasPermission('fota:policy:delete')
 )
 </script>
 
@@ -19,7 +19,7 @@ const canShowActions = computed(() =>
     <PageCardTableShell :title="t('policy.title')">
       <template #actions>
         <el-button
-          v-if="userStore.hasPermission('policy:create')"
+          v-if="userStore.hasPermission('fota:policy:create')"
           type="primary"
           size="small"
         >
@@ -67,21 +67,21 @@ const canShowActions = computed(() =>
         >
           <template #default>
             <el-button
-              v-if="userStore.hasPermission('policy:update')"
+              v-if="userStore.hasPermission('fota:policy:update')"
               link
               class="ui-action-primary"
             >
               {{ t('common.edit') }}
             </el-button>
             <el-button
-              v-if="userStore.hasPermission('policy:pause')"
+              v-if="userStore.hasPermission('fota:policy:pause')"
               link
               class="ui-action-warning"
             >
               {{ t('policy.pause') }}
             </el-button>
             <el-button
-              v-if="userStore.hasPermission('policy:delete')"
+              v-if="userStore.hasPermission('fota:policy:delete')"
               link
               class="ui-action-danger"
             >

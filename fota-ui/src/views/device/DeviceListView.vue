@@ -8,8 +8,8 @@ const { t } = useI18n()
 const userStore = useUserStore()
 
 const canShowActions = computed(() =>
-  userStore.hasPermission('device:detail') ||
-  userStore.hasPermission('device:update')
+  userStore.hasPermission('fota:device:detail') ||
+  userStore.hasPermission('fota:device:update')
 )
 </script>
 
@@ -18,7 +18,7 @@ const canShowActions = computed(() =>
     <PageCardTableShell :title="t('device.title')">
       <template #actions>
         <el-button
-          v-if="userStore.hasPermission('device:import')"
+          v-if="userStore.hasPermission('fota:device:import')"
           type="primary"
           size="small"
         >
@@ -66,14 +66,14 @@ const canShowActions = computed(() =>
         >
           <template #default>
             <el-button
-              v-if="userStore.hasPermission('device:detail')"
+              v-if="userStore.hasPermission('fota:device:detail')"
               link
               class="ui-action-info"
             >
               {{ t('common.detail') }}
             </el-button>
             <el-button
-              v-if="userStore.hasPermission('device:update')"
+              v-if="userStore.hasPermission('fota:device:update')"
               link
               class="ui-action-primary"
             >

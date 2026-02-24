@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 const { t } = useI18n()
 const userStore = useUserStore()
 
-const canShowActions = computed(() => userStore.hasPermission('firmware:download') || userStore.hasPermission('firmware:delete'))
+const canShowActions = computed(() => userStore.hasPermission('fota:firmware:download') || userStore.hasPermission('fota:firmware:delete'))
 </script>
 
 <template>
@@ -14,7 +14,7 @@ const canShowActions = computed(() => userStore.hasPermission('firmware:download
     <PageCardTableShell :title="t('firmware.title')">
       <template #actions>
         <el-button
-          v-if="userStore.hasPermission('firmware:create')"
+          v-if="userStore.hasPermission('fota:firmware:create')"
           type="primary"
           size="small"
         >
@@ -49,14 +49,14 @@ const canShowActions = computed(() => userStore.hasPermission('firmware:download
         >
           <template #default>
             <el-button
-              v-if="userStore.hasPermission('firmware:download')"
+              v-if="userStore.hasPermission('fota:firmware:download')"
               link
               class="ui-action-primary"
             >
               {{ t('firmware.download') }}
             </el-button>
             <el-button
-              v-if="userStore.hasPermission('firmware:delete')"
+              v-if="userStore.hasPermission('fota:firmware:delete')"
               link
               class="ui-action-danger"
             >

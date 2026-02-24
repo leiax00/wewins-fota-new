@@ -46,7 +46,7 @@ const stats = ref([
       </template>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <router-link
-          v-if="userStore.hasPermission('product:read')"
+          v-if="userStore.hasPermission('fota:product:read')"
           to="/product"
           class="ui-nav-tile"
         >
@@ -58,7 +58,7 @@ const stats = ref([
           <div>{{ t('menu.product') }}</div>
         </router-link>
         <router-link
-          v-if="userStore.hasPermission('firmware:read')"
+          v-if="userStore.hasPermission('fota:firmware:read')"
           to="/firmware"
           class="ui-nav-tile"
         >
@@ -70,7 +70,7 @@ const stats = ref([
           <div>{{ t('menu.firmware') }}</div>
         </router-link>
         <router-link
-          v-if="userStore.hasPermission('policy:read')"
+          v-if="userStore.hasPermission('fota:policy:read')"
           to="/policy"
           class="ui-nav-tile"
         >
@@ -82,7 +82,7 @@ const stats = ref([
           <div>{{ t('menu.policy') }}</div>
         </router-link>
         <router-link
-          v-if="userStore.hasPermission('device:read')"
+          v-if="userStore.hasPermission('fota:device:read')"
           to="/device"
           class="ui-nav-tile"
         >
