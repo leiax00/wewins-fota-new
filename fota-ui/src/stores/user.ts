@@ -64,6 +64,7 @@ export const useUserStore = defineStore('user', {
     userInfo: null as UserInfo | null,
     menus: [] as MenuDTO[],
     dynamicRoutesInited: false,
+    dynamicRouteNames: [] as string[], // 记录已注入的动态路由名称
   }),
 
   getters: {
@@ -100,7 +101,19 @@ export const useUserStore = defineStore('user', {
       if (!this.menus.length) {
         await this.fetchUserMenu()
       }
-      void router
+
+      // 导入菜单转换工具
+      const { convertMenusToRoutes } = await import('@/router/menu-converter')
+      const dynamicRoutes = convertMenusToRoutes(this.menus)
+
+      // 注入动态路由并记录名称
+      for (const route of dynamicRoutes) {
+        if (route.name && !router.hasRoute(route.name)) {
+          router.addRoute(route)
+          this.dynamicRouteNames.push(String(route.name))
+        }
+      }
+
       this.dynamicRoutesInited = true
     },
 
@@ -120,6 +133,15 @@ export const useUserStore = defineStore('user', {
       this.userInfo = null
       this.menus = []
       this.dynamicRoutesInited = false
+
+      // 移除所有动态路由
+      for (const routeName of this.dynamicRouteNames) {
+        if (router.hasRoute(routeName)) {
+          router.removeRoute(routeName)
+        }
+      }
+      this.dynamicRouteNames = []
+
       clearToken()
       useAppStore().clearTabState()
 
