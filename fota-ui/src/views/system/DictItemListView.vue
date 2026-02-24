@@ -55,6 +55,7 @@ const form = reactive({
   i18nKey: '',
   sortOrder: 0,
   status: 'active',
+  extraText: '',
 })
 
 const formRules = {
@@ -110,7 +111,74 @@ const openCreateDialog = () => {
   form.i18nKey = ''
   form.sortOrder = 0
   form.status = 'active'
+  form.extraText = ''
   dialogVisible.value = true
+}
+
+const formatExtraForEdit = (extra: unknown) => {
+  if (extra === null || extra === undefined) return ''
+  try {
+    return JSON.stringify(extra, null, 2)
+  } catch {
+    return String(extra)
+  }
+}
+
+const formatExtraForTable = (extra: unknown) => {
+  if (extra === null || extra === undefined) return '-'
+  try {
+    return JSON.stringify(extra)
+  } catch {
+    return String(extra)
+  }
+}
+
+const formatExtraSummary = (extra: unknown) => {
+  if (extra === null || extra === undefined) return t('system.dict.extraEmpty')
+  if (Array.isArray(extra)) {
+    return `Array(${extra.length})`
+  }
+  if (typeof extra === 'object') {
+    return `Object(${Object.keys(extra as Record<string, unknown>).length})`
+  }
+  return formatExtraForTable(extra)
+}
+
+const formatExtraPretty = (extra: unknown) => {
+  if (extra === null || extra === undefined) return ''
+  try {
+    return JSON.stringify(extra, null, 2)
+  } catch {
+    return String(extra)
+  }
+}
+
+const hasExtra = (extra: unknown) => extra !== null && extra !== undefined
+
+const parseExtraFromForm = (): { valid: boolean; value: unknown | null } => {
+  const raw = form.extraText.trim()
+  if (!raw) {
+    return { valid: true, value: null }
+  }
+
+  try {
+    return { valid: true, value: JSON.parse(raw) }
+  } catch {
+    ElMessage.error(t('system.dict.extraJsonInvalid'))
+    return { valid: false, value: null }
+  }
+}
+
+const formatExtraInput = () => {
+  const parsedExtra = parseExtraFromForm()
+  if (!parsedExtra.valid) {
+    return
+  }
+  if (parsedExtra.value === null) {
+    form.extraText = ''
+    return
+  }
+  form.extraText = formatExtraForEdit(parsedExtra.value)
 }
 
 const openEditDialog = (row: DictItem) => {
@@ -121,11 +189,17 @@ const openEditDialog = (row: DictItem) => {
   form.i18nKey = row.i18nKey
   form.sortOrder = row.sortOrder || 0
   form.status = row.status || 'active'
+  form.extraText = formatExtraForEdit(row.extra)
   dialogVisible.value = true
 }
 
 const submitForm = async () => {
   await formRef.value?.validate()
+  const parsedExtra = parseExtraFromForm()
+  if (!parsedExtra.valid) {
+    return
+  }
+
   submitting.value = true
   try {
     const payload = {
@@ -135,6 +209,7 @@ const submitForm = async () => {
       i18nKey: form.i18nKey,
       sortOrder: form.sortOrder,
       status: form.status,
+      extra: parsedExtra.value,
     }
 
     if (dialogMode.value === 'create') {
@@ -215,8 +290,25 @@ onMounted(async () => {
     <el-table v-loading="loading" :data="list" stripe>
       <el-table-column prop="label" :label="t('system.dict.itemLabel')" min-width="160" />
       <el-table-column prop="value" :label="t('system.dict.itemValue')" min-width="160" />
+      <el-table-column :label="t('system.dict.extra')" min-width="220">
+        <template #default="{ row }">
+          <div class="extra-cell">
+            <span class="extra-summary">{{ formatExtraSummary(row.extra) }}</span>
+            <el-popover
+              v-if="hasExtra(row.extra)"
+              placement="left"
+              trigger="hover"
+              width="420"
+            >
+              <template #reference>
+                <el-button link type="primary">{{ t('system.dict.viewJson') }}</el-button>
+              </template>
+              <pre class="extra-json-preview">{{ formatExtraPretty(row.extra) }}</pre>
+            </el-popover>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="sortOrder" :label="t('system.dict.sortOrder')" width="100" />
-      <el-table-column prop="i18nKey" :label="t('system.dict.i18nKey')" min-width="180" />
       <el-table-column prop="status" :label="t('common.status')" width="110">
         <template #default="{ row }">
           <el-tag size="small" :type="resolveStatusType(roleStatusTypeMap, row.status)">
@@ -282,6 +374,21 @@ onMounted(async () => {
       <el-form-item :label="t('system.dict.sortOrder')">
         <el-input-number v-model="form.sortOrder" :min="0" style="width: 100%" />
       </el-form-item>
+      <el-form-item :label="t('system.dict.extra')">
+        <div style="width: 100%">
+          <div class="mb-1 flex justify-end">
+            <el-button link type="primary" @click="formatExtraInput">
+              {{ t('system.dict.formatJson') }}
+            </el-button>
+          </div>
+          <el-input
+            v-model="form.extraText"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 10 }"
+            :placeholder="t('system.dict.extraJsonPlaceholder')"
+          />
+        </div>
+      </el-form-item>
       <el-form-item prop="status" :label="t('common.status')">
         <el-select v-model="form.status" style="width: 100%">
           <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
@@ -295,3 +402,27 @@ onMounted(async () => {
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.extra-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.extra-summary {
+  color: var(--color-ui-text-regular);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.extra-json-preview {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+</style>

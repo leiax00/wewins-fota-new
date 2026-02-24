@@ -96,6 +96,7 @@ export interface DictItem {
   i18nKey: string
   sortOrder: number
   status: string
+  extra?: unknown | null
   createdAt: string
 }
 
@@ -106,6 +107,7 @@ export interface DictItemPayload {
   i18nKey: string
   sortOrder: number
   status: string
+  extra?: unknown | null
 }
 
 export const pageUsers = (params: Record<string, unknown>) => {
