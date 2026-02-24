@@ -85,6 +85,7 @@ export default {
     role: '角色管理',
     permission: '权限管理',
     dict: '字典管理',
+    dict_item_prefix: '字典项',
   },
   dashboard: {
     totalDevices: '设备总数',

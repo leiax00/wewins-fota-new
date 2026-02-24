@@ -12,13 +12,11 @@
 SELECT setval(pg_get_serial_sequence('sys_users', 'id'), COALESCE((SELECT MAX(id) FROM sys_users), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('sys_roles', 'id'), COALESCE((SELECT MAX(id) FROM sys_roles), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('sys_permissions', 'id'), GREATEST(COALESCE((SELECT MAX(id) FROM sys_permissions), 0) + 1, 2000), false);
-SELECT setval(pg_get_serial_sequence('sys_user_role', 'id'), COALESCE((SELECT MAX(id) FROM sys_user_role), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('sys_role_permission', 'id'), COALESCE((SELECT MAX(id) FROM sys_role_permission), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('sys_dict_type', 'id'), COALESCE((SELECT MAX(id) FROM sys_dict_type), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('sys_dict_item', 'id'), COALESCE((SELECT MAX(id) FROM sys_dict_item), 0) + 1, false);
 
 DO $$
 BEGIN
     RAISE NOTICE '系统表序列已对齐完成';
-    RAISE NOTICE 'sys_users/sys_roles/sys_permissions/sys_user_role/sys_role_permission/sys_dict_type/sys_dict_item';
+    RAISE NOTICE 'sys_users/sys_roles/sys_permissions/sys_dict_type/sys_dict_item';
 END $$;

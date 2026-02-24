@@ -168,7 +168,6 @@ onMounted(() => {
     <el-table v-loading="loading" :data="list" stripe>
       <el-table-column prop="code" :label="t('system.dict.code')" min-width="150" />
       <el-table-column prop="name" :label="t('system.dict.name')" min-width="160" />
-      <el-table-column prop="i18nKey" :label="t('system.dict.i18nKey')" min-width="180" />
       <el-table-column prop="description" :label="t('system.dict.description')" min-width="220" />
       <el-table-column prop="status" :label="t('common.status')" width="110">
         <template #default="{ row }">

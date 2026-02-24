@@ -13,4 +13,6 @@ public interface UserRoleRepository {
     void saveBatch(List<UserRole> userRoles);
 
     List<UserRole> findByUserId(Long userId);
+
+    List<Long> findUserIdsByRoleId(Long roleId);
 }

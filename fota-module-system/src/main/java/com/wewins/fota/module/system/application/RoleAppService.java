@@ -25,15 +25,18 @@ public class RoleAppService  {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final UserRoleRepository userRoleRepository;
+    private final MenuAppService menuAppService;
 
     public RoleAppService(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
                            RolePermissionRepository rolePermissionRepository,
-                           UserRoleRepository userRoleRepository) {
+                           UserRoleRepository userRoleRepository,
+                           MenuAppService menuAppService) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.userRoleRepository = userRoleRepository;
+        this.menuAppService = menuAppService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -127,10 +130,12 @@ public class RoleAppService  {
             throw new IllegalArgumentException("角色不存在");
         }
 
+        // 删除原有权限关联
         rolePermissionRepository.deleteByRoleId(roleId);
 
         if (permissionIds == null || permissionIds.isEmpty()) {
             log.info("清空角色权限: roleId={}", roleId);
+            evictRelatedUserMenuCache(roleId);
             return;
         }
 
@@ -143,6 +148,9 @@ public class RoleAppService  {
 
         rolePermissionRepository.saveBatch(rolePermissions);
         log.info("角色权限分配成功: roleId={}, permissionCount={}", roleId, distinctPermissionIds.size());
+
+        // 清除相关用户的菜单缓存
+        evictRelatedUserMenuCache(roleId);
     }
 
     public List<Permission> getRolePermissions(Long roleId) {
@@ -178,5 +186,37 @@ public class RoleAppService  {
         if (count != permissionIds.size()) {
             throw new IllegalArgumentException("部分权限不存在或已被删除");
         }
+    }
+
+    /**
+     * 清除拥有该角色的所有用户的菜单缓存
+     * <p>
+     * 当角色权限变更时，需要清除相关用户的菜单缓存，确保下次刷新时获取最新菜单
+     * </p>
+     *
+     * @param roleId 角色 ID
+     */
+    private void evictRelatedUserMenuCache(Long roleId) {
+        List<Long> userIds = userRoleRepository.findUserIdsByRoleId(roleId);
+
+        if (userIds.isEmpty()) {
+            if (log.isDebugEnabled()) {
+                log.debug("该角色无关联用户，无需清除缓存: roleId={}", roleId);
+            }
+            return;
+        }
+
+        int clearedCount = 0;
+        for (Long userId : userIds) {
+            try {
+                menuAppService.evictUserMenuCache(userId);
+                clearedCount++;
+            } catch (Exception e) {
+                log.warn("清除用户菜单缓存失败: userId={}, error={}", userId, e.getMessage());
+            }
+        }
+
+        log.info("清除角色菜单缓存完成: roleId={}, userCount={}, clearedCount={}",
+                roleId, userIds.size(), clearedCount);
     }
 }

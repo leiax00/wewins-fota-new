@@ -3,12 +3,6 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-interface BreadcrumbMetaItem {
-  titleKey?: string
-  title?: string
-  path?: string
-}
-
 interface BreadcrumbItem {
   title: string
   path?: string
@@ -18,31 +12,28 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
-const resolveTitle = (titleKey?: string, title?: string): string => {
-  if (titleKey) return t(titleKey)
-  return title || ''
-}
-
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => {
   const items: BreadcrumbItem[] = []
 
-  const customTrail = (route.meta.breadcrumb as BreadcrumbMetaItem[] | undefined) || []
-  for (const crumb of customTrail) {
-    const resolvedTitle = resolveTitle(crumb.titleKey, crumb.title)
-    if (!resolvedTitle) continue
-    items.push({ title: resolvedTitle, path: crumb.path })
-  }
-
+  // 从 route.matched 自动构建面包屑
   for (const matched of route.matched) {
+    // 跳过隐藏的节点和根布局节点
     if (matched.meta?.breadcrumbHidden) continue
-    const resolvedTitle = resolveTitle(matched.meta?.titleKey as string | undefined, matched.meta?.title as string | undefined)
-    if (!resolvedTitle) continue
+    if (matched.path === '/' || !matched.path) continue
+
+    // 解析标题：优先使用 title，其次 i18nKey，最后 name
+    let title = matched.meta?.title as string | undefined;
+    if (!title && matched.meta?.i18nKey) {
+      title = t(matched.meta?.i18nKey as string)
+    }
+
+    if (!title) continue
 
     const currentPath = matched.path || undefined
-    const alreadyExists = items.some((item) => item.title === resolvedTitle && item.path === currentPath)
+    const alreadyExists = items.some((item) => item.title === title && item.path === currentPath)
     if (alreadyExists) continue
 
-    items.push({ title: resolvedTitle, path: currentPath })
+    items.push({ title, path: currentPath })
   }
 
   return items

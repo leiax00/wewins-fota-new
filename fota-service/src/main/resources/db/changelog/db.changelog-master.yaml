@@ -65,3 +65,36 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260224_02_add_menu_fields
+      author: fota-team
+      comment: 为 sys_permissions 表添加菜单路由字段（支持动态菜单）
+      changes:
+        - sqlFile:
+            path: changes/20260224_02_add_menu_fields.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260224_03_bind_menu_permissions
+      author: fota-team
+      comment: 为角色补充 MODULE/MENU 类型的菜单权限（符合"选中子节点必定选中父节点"的业务约定）
+      changes:
+        - sqlFile:
+            path: changes/20260224_03_bind_menu_permissions.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260224_05_add_menu_config_examples
+      author: fota-team
+      comment: 添加完整的菜单配置示例（包含 breadcrumbHidden、tabHidden、tabClosable 字段）
+      changes:
+        - sqlFile:
+            path: changes/20260224_05_add_menu_config_examples.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

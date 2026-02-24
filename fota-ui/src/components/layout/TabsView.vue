@@ -32,9 +32,9 @@ watch(tabsEnabled, (enabled) => {
 })
 
 const getRouteTitle = () => {
-  const titleKey = route.meta?.titleKey as string | undefined
+  const titleKey = route.meta?.i18nKey as string | undefined
   if (titleKey) return t(titleKey)
-  return (route.meta?.title as string) || String(route.name || route.path)
+  return String(route.name || route.path)
 }
 
 const shouldIgnoreRoute = () => {

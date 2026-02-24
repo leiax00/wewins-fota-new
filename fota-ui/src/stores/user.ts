@@ -3,6 +3,7 @@ import { post, get } from '@/api/request'
 import router from '@/router'
 import { useAppStore } from '@/stores/app'
 import { getToken, setToken, clearToken } from '@/utils/auth'
+import type { Router } from 'vue-router'
 
 export interface UserInfo {
   id: number
@@ -13,6 +14,31 @@ export interface UserInfo {
   status: string
   roles: string[]
   permissions: string[]
+}
+
+export interface RouteMetaDTO {
+  i18nKey?: string
+  icon?: string
+  hidden?: boolean
+  keepAlive?: boolean
+  affix?: boolean
+  alwaysShow?: boolean
+  breadcrumbHidden?: boolean
+  tabHidden?: boolean
+  tabClosable?: boolean
+  activeMenu?: string
+  permission?: string
+  externalLink?: { url: string; openMode?: string }
+}
+
+export interface MenuDTO {
+  path: string
+  name: string
+  componentKey?: string
+  redirect?: string
+  meta: RouteMetaDTO
+  sort?: number
+  children?: MenuDTO[]
 }
 
 interface LoginParams {
@@ -36,12 +62,15 @@ export const useUserStore = defineStore('user', {
   state: () => ({
     token: getToken(),
     userInfo: null as UserInfo | null,
+    menus: [] as MenuDTO[],
+    dynamicRoutesInited: false,
   }),
 
   getters: {
     isLoggedIn: (state) => !!state.token,
     username: (state) => state.userInfo?.displayName || state.userInfo?.username || '',
     permissions: (state) => state.userInfo?.permissions || [],
+    menuTree: (state) => state.menus,
   },
 
   actions: {
@@ -59,6 +88,22 @@ export const useUserStore = defineStore('user', {
       return user
     },
 
+    async fetchUserMenu() {
+      const { getUserMenu } = await import('@/api/system')
+      const menus = await getUserMenu()
+      this.menus = menus || []
+      return this.menus
+    },
+
+    async ensureDynamicRoutes(router: Router) {
+      if (this.dynamicRoutesInited) return
+      if (!this.menus.length) {
+        await this.fetchUserMenu()
+      }
+      void router
+      this.dynamicRoutesInited = true
+    },
+
     async logout() {
       try {
         await post('/sys/auth/logout')
@@ -73,6 +118,8 @@ export const useUserStore = defineStore('user', {
       const { redirect = true, redirectPath = '' } = options
       this.token = ''
       this.userInfo = null
+      this.menus = []
+      this.dynamicRoutesInited = false
       clearToken()
       useAppStore().clearTabState()
 

@@ -1,184 +1,117 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { convertMenusToRoutes } from '@/router/menu-converter'
 import { useUserStore } from '@/stores/user'
-
-interface BreadcrumbMetaItem {
-  titleKey?: string
-  title?: string
-  path?: string
-}
 
 declare module 'vue-router' {
   interface RouteMeta {
-    titleKey?: string
+    // 国际化
+    i18nKey?: string
+    titleKey?: string  // 别名，兼容静态路由
     title?: string
+
+    // 权限控制
+    permission?: string | string[]
     requiresAuth?: boolean
+
+    // 显示控制
     hidden?: boolean
     icon?: string
-    permission?: string | string[]
+
+    // 页面缓存
+    keepAlive?: boolean
     affix?: boolean
+
+    // 菜单行为
+    alwaysShow?: boolean
+    activeMenu?: string
+
+    // 标签页控制
     tabClosable?: boolean
     tabHidden?: boolean
+
+    // 面包屑控制
     breadcrumbHidden?: boolean
-    breadcrumb?: BreadcrumbMetaItem[]
+
+    // 排序
+    sort?: number
   }
 }
 
-const routes: RouteRecordRaw[] = [
+// 基础路由（登录、403、404）
+const baseRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
-    name: 'Login',
+    name: 'login',
     component: () => import('@/views/login/LoginView.vue'),
     meta: { titleKey: 'login.login', requiresAuth: false },
+  },
+  {
+    path: '/forbidden',
+    name: 'forbidden',
+    component: () => import('@/views/error/NotFoundView.vue'),
+    meta: {
+      title: '403',
+      hidden: true,
+      tabHidden: true,
+      breadcrumbHidden: true,
+    },
   },
   {
     path: '/',
     redirect: '/dashboard',
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: () => import('@/views/dashboard/DashboardView.vue'),
-    meta: {
-      titleKey: 'menu.dashboard',
-      icon: 'Odometer',
-      permission: 'dashboard:view',
-      affix: true,
-      tabClosable: false,
-    },
-  },
-  {
-    path: '/product',
-    name: 'Product',
-    component: () => import('@/views/product/ProductListView.vue'),
-    meta: { titleKey: 'menu.product', icon: 'Box', permission: 'product:read' },
-  },
-  {
-    path: '/firmware',
-    name: 'Firmware',
-    component: () => import('@/views/firmware/FirmwareListView.vue'),
-    meta: { titleKey: 'menu.firmware', icon: 'Cpu', permission: 'firmware:read' },
-  },
-  {
-    path: '/policy',
-    name: 'Policy',
-    component: () => import('@/views/policy/PolicyListView.vue'),
-    meta: { titleKey: 'menu.policy', icon: 'Document', permission: 'policy:read' },
-  },
-  {
-    path: '/device',
-    name: 'Device',
-    component: () => import('@/views/device/DeviceListView.vue'),
-    meta: { titleKey: 'menu.device', icon: 'Iphone', permission: 'device:read' },
-  },
-  {
-    path: '/device/:id',
-    name: 'DeviceDetail',
-    component: () => import('@/views/device/DeviceDetailView.vue'),
-    meta: {
-      titleKey: 'device.detail',
-      hidden: true,
-      permission: 'device:detail',
-      breadcrumb: [{ titleKey: 'menu.device', path: '/device' }],
-    },
-  },
-  {
-    path: '/system/user',
-    name: 'SystemUser',
-    component: () => import('@/views/system/UserListView.vue'),
-    meta: {
-      titleKey: 'menu.user',
-      icon: 'User',
-      permission: 'sys:user:read',
-      breadcrumb: [{ titleKey: 'menu.system' }],
-    },
-  },
-  {
-    path: '/system/role',
-    name: 'SystemRole',
-    component: () => import('@/views/system/RoleListView.vue'),
-    meta: {
-      titleKey: 'menu.role',
-      icon: 'UserFilled',
-      permission: 'sys:role:read',
-      breadcrumb: [{ titleKey: 'menu.system' }],
-    },
-  },
-  {
-    path: '/system/permission',
-    name: 'SystemPermission',
-    component: () => import('@/views/system/PermissionView.vue'),
-    meta: {
-      titleKey: 'menu.permission',
-      icon: 'Lock',
-      permission: 'sys:perm:read',
-      breadcrumb: [{ titleKey: 'menu.system' }],
-    },
-  },
-  {
-    path: '/system/dict',
-    name: 'SystemDict',
-    component: () => import('@/views/system/DictView.vue'),
-    meta: {
-      titleKey: 'menu.dict',
-      icon: 'Collection',
-      permission: 'sys:dict_type:read',
-      breadcrumb: [{ titleKey: 'menu.system' }],
-    },
-  },
-  {
-    path: '/system/dict/:id/items',
-    name: 'SystemDictItems',
-    component: () => import('@/views/system/DictItemListView.vue'),
-    meta: {
-      titleKey: 'system.dict.itemTab',
-      hidden: true,
-      permission: 'sys:dict_item:read',
-      breadcrumb: [{ titleKey: 'menu.system' }, { titleKey: 'menu.dict', path: '/system/dict' }],
-    },
-  },
-  {
     path: '/:pathMatch(.*)*',
-    name: 'NotFound',
+    name: 'notFound',
     component: () => import('@/views/error/NotFoundView.vue'),
     meta: { title: '404', hidden: true, tabHidden: true, breadcrumbHidden: true },
   },
 ]
+
+const routes: RouteRecordRaw[] = [...baseRoutes]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
 })
 
-const resolveFirstAccessiblePath = (userStore: ReturnType<typeof useUserStore>): string => {
-  const candidates: Array<{ path: string; permission?: string | string[] }> = [
-    { path: '/dashboard', permission: 'dashboard:view' },
-    { path: '/product', permission: 'product:read' },
-    { path: '/firmware', permission: 'firmware:read' },
-    { path: '/policy', permission: 'policy:read' },
-    { path: '/device', permission: 'device:read' },
-    { path: '/system/user', permission: 'sys:user:read' },
-    { path: '/system/role', permission: 'sys:role:read' },
-    { path: '/system/permission', permission: 'sys:perm:read' },
-    { path: '/system/dict', permission: 'sys:dict_type:read' },
-  ]
+const dynamicMenuEnabled = import.meta.env.VITE_DYNAMIC_MENU === 'true'
+let dynamicRoutesInjected = false
 
-  for (const candidate of candidates) {
-    if (!candidate.permission) return candidate.path
-    const requiredList = Array.isArray(candidate.permission)
-      ? candidate.permission
-      : [candidate.permission]
-    const hasAnyPermission = requiredList.some((permission) =>
-      userStore.hasPermission(permission)
-    )
-    if (hasAnyPermission) return candidate.path
+const getFirstMenuPath = (menus: Array<{ path?: string; children?: Array<any> }>): string | null => {
+  for (const menu of menus || []) {
+    if (menu.path) return menu.path
+    const child = getFirstMenuPath(menu.children || [])
+    if (child) return child
+  }
+  return null
+}
+
+const ensureDynamicRoutesInjected = async (userStore: ReturnType<typeof useUserStore>) => {
+  if (!dynamicMenuEnabled || dynamicRoutesInjected) return
+
+  await userStore.ensureDynamicRoutes(router)
+  const dynamicRoutes = convertMenusToRoutes(userStore.menuTree)
+
+  for (const route of dynamicRoutes) {
+    if (route.name && router.hasRoute(route.name)) {
+      continue
+    }
+    router.addRoute(route)
   }
 
-  return '/login'
+  dynamicRoutesInjected = true
+}
+
+const hasRoutePermission = (required: string | string[] | undefined, userStore: ReturnType<typeof useUserStore>) => {
+  if (!required) return true
+  const requiredList = Array.isArray(required) ? required : [required]
+  return requiredList.some((permission) => userStore.hasPermission(permission))
 }
 
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
-  const token = userStore.token || ''
+  const token = userStore.token
   const isLoginRoute = to.path === '/login'
   const isPublicRoute = to.meta.requiresAuth === false
 
@@ -193,12 +126,16 @@ router.beforeEach(async (to) => {
         }
       }
 
-      const fallbackPath = resolveFirstAccessiblePath(userStore)
-      if (fallbackPath !== '/login' && fallbackPath !== to.path) {
-        return fallbackPath
+      await ensureDynamicRoutesInjected(userStore)
+
+      const fallbackPath = getFirstMenuPath(userStore.menuTree)
+      if (fallbackPath && fallbackPath !== to.path) {
+        return { path: fallbackPath }
       }
+
       return true
     }
+
     return true
   }
 
@@ -215,22 +152,28 @@ router.beforeEach(async (to) => {
     }
   }
 
-  const requiredPermission = to.meta.permission as string | string[] | undefined
-  if (requiredPermission) {
-    const requiredList = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission]
-    const hasAnyPermission = requiredList.some((permission) => userStore.hasPermission(permission))
-    if (!hasAnyPermission) {
-      const fallbackPath = resolveFirstAccessiblePath(userStore)
-      if (fallbackPath === to.path) return '/login'
-      return fallbackPath
-    }
+  if (dynamicMenuEnabled && !dynamicRoutesInjected) {
+    await ensureDynamicRoutesInjected(userStore)
+    return to.fullPath
   }
 
   if (isLoginRoute) {
-    return '/dashboard'
+    const fallbackPath = getFirstMenuPath(userStore.menuTree)
+    return fallbackPath || '/dashboard'
+  }
+
+  const requiredPermission = to.meta.permission as string | string[] | undefined
+  if (!hasRoutePermission(requiredPermission, userStore)) {
+    return '/forbidden'
   }
 
   return true
+})
+
+router.afterEach((to) => {
+  if (to.path === '/login') {
+    dynamicRoutesInjected = false
+  }
 })
 
 export default router

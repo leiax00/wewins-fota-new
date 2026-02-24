@@ -4,6 +4,10 @@ import com.wewins.fota.database.annotation.PrimaryDbMapper;
 import com.wewins.fota.database.mapper.BaseMapperX;
 import com.wewins.fota.module.system.domain.entity.rbac.Permission;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 系统权限 Mapper
@@ -14,4 +18,27 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 @PrimaryDbMapper
 public interface PermissionMapper extends BaseMapperX<Permission> {
+
+    /**
+     * 查询用户拥有的菜单权限（MODULE/MENU）
+     * <p>
+     * 业务约定：如果用户拥有子节点权限，则必定拥有父节点权限
+     * 因此只需要查询用户直接拥有的 MODULE/MENU 权限，然后在内存中组织成树
+     * </p>
+     *
+     * @param userId 用户ID
+     * @return 菜单权限列表（MODULE/MENU 类型，已排序）
+     */
+    @Select("""
+            SELECT DISTINCT p.*
+            FROM sys_user_role ur
+            JOIN sys_role_permission rp ON rp.role_id = ur.role_id
+            JOIN sys_permissions p ON p.id = rp.permission_id
+            WHERE ur.user_id = #{userId}
+              AND p.deleted_at IS NULL
+              AND p.status = 'active'
+              AND p.type IN ('MODULE', 'MENU')
+            ORDER BY p.parent_id NULLS FIRST, p.menu_sort NULLS LAST, p.id
+            """)
+    List<Permission> findMenuPermissionsByUserId(@Param("userId") Long userId);
 }

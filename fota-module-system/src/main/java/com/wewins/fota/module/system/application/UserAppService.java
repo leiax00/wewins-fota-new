@@ -166,6 +166,37 @@ public class UserAppService  {
         return roleRepository.findByIds(roleIds);
     }
 
+    /**
+     * 获取用户角色 code 列表
+     *
+     * @param userId 用户ID
+     * @return 角色 code 列表
+     */
+    public List<String> getUserRoleCodes(Long userId) {
+        if (log.isDebugEnabled()) {
+            log.debug("查询用户角色编码: userId={}", userId);
+        }
+
+        List<Role> roles = getUserRoles(userId);
+        return roles.stream()
+                .map(Role::getCode)
+                .toList();
+    }
+
+    /**
+     * 获取用户权限 code 列表
+     *
+     * @param userId 用户ID
+     * @return 权限 code 列表
+     */
+    public List<String> getUserPermissionCodes(Long userId) {
+        if (log.isDebugEnabled()) {
+            log.debug("查询用户权限编码: userId={}", userId);
+        }
+        List<Permission> permissions = getUserPermissions(userId);
+        return permissions.stream().map(Permission::getCode).toList();
+    }
+
     public List<Permission> getUserPermissions(Long userId) {
         List<Long> roleIds = getRoleIds(userId);
         if (roleIds.isEmpty()) {

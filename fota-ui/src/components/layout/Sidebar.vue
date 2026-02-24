@@ -4,15 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { availableLocales, localePreference, setLocale, type LocalePreference } from '@/locales'
 import { useThemeStore, type ThemeMode } from '@/stores/theme'
-import { useUserStore } from '@/stores/user'
-
-interface MenuItem {
-  path: string
-  labelKey: string
-  icon: string
-  permission?: string | string[]
-  children?: MenuItem[]
-}
+import { useUserStore, type MenuDTO } from '@/stores/user'
+import MenuItem from './MenuItem.vue'
 
 interface Props {
   collapsed: boolean
@@ -34,38 +27,22 @@ const hasAnyPermission = (permission?: string | string[]) => {
   return required.some((item) => userStore.hasPermission(item))
 }
 
-const menuItems: MenuItem[] = [
-  { path: '/dashboard', labelKey: 'menu.dashboard', icon: 'Odometer', permission: 'dashboard:view' },
-  { path: '/product', labelKey: 'menu.product', icon: 'Box', permission: 'product:read' },
-  { path: '/device', labelKey: 'menu.device', icon: 'Iphone', permission: 'device:read' },
-  { path: '/firmware', labelKey: 'menu.firmware', icon: 'Cpu', permission: 'firmware:read' },
-  { path: '/policy', labelKey: 'menu.policy', icon: 'Document', permission: 'policy:read' },
-  {
-    path: '/system',
-    labelKey: 'menu.system',
-    icon: 'Setting',
-    children: [
-      { path: '/system/user', labelKey: 'menu.user', icon: 'User', permission: 'sys:user:read' },
-      { path: '/system/role', labelKey: 'menu.role', icon: 'UserFilled', permission: 'sys:role:read' },
-      { path: '/system/permission', labelKey: 'menu.permission', icon: 'Lock', permission: 'sys:perm:read' },
-      { path: '/system/dict', labelKey: 'menu.dict', icon: 'Collection', permission: 'sys:dict_type:read' },
-    ],
-  },
-]
+const menuItems = computed<MenuDTO[]>(() => {
+  return userStore.menuTree
+})
 
-const filteredMenuItems = computed<MenuItem[]>(() => {
-  return menuItems
+const filteredMenuItems = computed<MenuDTO[]>(() => {
+  return menuItems.value
     .map((item) => {
       if (item.children?.length) {
-        const children = item.children.filter((child) => hasAnyPermission(child.permission))
+        const children = item.children.filter((child) => hasAnyPermission(child.meta?.permission))
         if (!children.length) return null
         return { ...item, children }
       }
-
-      if (!hasAnyPermission(item.permission)) return null
+      if (!hasAnyPermission(item.meta?.permission)) return null
       return item
     })
-    .filter((item): item is MenuItem => item !== null)
+    .filter((item): item is MenuDTO => item !== null)
 })
 
 const openedMenus = computed(() => {
@@ -155,34 +132,12 @@ const handleUserCommand = async (command: string) => {
     >
       <template
         v-for="item in filteredMenuItems"
-        :key="item.path"
+        :key="`${item.path}-${item.name}`"
       >
-        <el-sub-menu
-          v-if="item.children"
-          :index="item.path"
-        >
-          <template #title>
-            <el-icon class="menu-icon"><component :is="item.icon" /></el-icon>
-            <span class="menu-label">{{ t(item.labelKey) }}</span>
-          </template>
-          <el-menu-item
-            v-for="child in item.children"
-            :key="child.path"
-            :index="child.path"
-            class="menu-item-child"
-          >
-            <el-icon class="menu-icon"><component :is="child.icon" /></el-icon>
-            <span class="menu-label">{{ t(child.labelKey) }}</span>
-          </el-menu-item>
-        </el-sub-menu>
-        <el-menu-item
-          v-else
-          :index="item.path"
-          class="menu-item-top"
-        >
-          <el-icon class="menu-icon"><component :is="item.icon" /></el-icon>
-          <span class="menu-label">{{ t(item.labelKey) }}</span>
-        </el-menu-item>
+        <MenuItem
+          v-if="!item.meta?.hidden"
+          :menu="item"
+        />
       </template>
     </el-menu>
 

@@ -177,6 +177,34 @@ const mapTree = (nodes: PermissionTreeNode[]): PermissionTreeOption[] => {
   }))
 }
 
+/**
+ * 收集所有叶子节点（API类型的权限）
+ * 在父子关联模式下，只需要设置叶子节点的选中状态，父节点会自动勾选
+ */
+const collectLeafPermissionIds = (nodes: PermissionTreeNode[]): number[] => {
+  const leafIds: number[] = []
+
+  const traverse = (permissions: PermissionTreeNode[]) => {
+    for (const node of permissions) {
+      // 如果是叶子节点（没有子节点），或者是API类型，则收集
+      const isLeaf = !node.children || node.children.length === 0
+      const isApi = node.permission.type === 'API'
+
+      if (isLeaf || isApi) {
+        leafIds.push(node.permission.id)
+      }
+
+      // 递归遍历子节点
+      if (node.children?.length) {
+        traverse(node.children)
+      }
+    }
+  }
+
+  traverse(nodes)
+  return leafIds
+}
+
 const openPermissionDialog = async (row: RoleItem) => {
   currentRoleId.value = row.id
   permissionDialogVisible.value = true
@@ -188,8 +216,12 @@ const openPermissionDialog = async (row: RoleItem) => {
   permissionTree.value = mapTree(tree)
   permissionExpandedKeys.value = permissionTree.value.map((item) => item.id)
   permissionTreeRenderKey.value += 1
-  const validIds = new Set(flattenIds(tree))
-  checkedPermissionIds.value = selected.map((item) => item.id).filter((id) => validIds.has(id))
+
+  // 只设置叶子节点（API类型）的选中状态
+  // 在父子关联模式下，父节点会自动勾选
+  const selectedIds = new Set(selected.map((item) => item.id))
+  const allLeafIds = collectLeafPermissionIds(tree)
+  checkedPermissionIds.value = allLeafIds.filter((id) => selectedIds.has(id))
 }
 
 const submitPermissions = async () => {

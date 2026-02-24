@@ -1,4 +1,5 @@
 import { del, get, post, put } from '@/api/request'
+import type { MenuDTO } from '@/stores/user'
 
 export interface PageResult<T> {
   records: T[]
@@ -108,6 +109,10 @@ export interface DictItemPayload {
   sortOrder: number
   status: string
   extra?: unknown | null
+}
+
+export const getUserMenu = () => {
+  return get<MenuDTO[]>('/sys/auth/user-menu')
 }
 
 export const pageUsers = (params: Record<string, unknown>) => {

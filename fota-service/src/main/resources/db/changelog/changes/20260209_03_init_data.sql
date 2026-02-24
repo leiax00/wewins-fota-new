@@ -122,16 +122,16 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================================================
 
 -- 超级管理员 -> 全部叶子权限（API 类型）
-INSERT INTO sys_role_permission (role_id, permission_id, created_at, updated_at)
-SELECT r.id, p.id, now(), now()
+INSERT INTO sys_role_permission (role_id, permission_id)
+SELECT r.id, p.id
 FROM sys_roles r
 JOIN sys_permissions p ON p.type = 'API'
 WHERE r.code = 'super_wewins'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 系统管理员 -> 系统管理权限（除角色-权限分配外）
-INSERT INTO sys_role_permission (role_id, permission_id, created_at, updated_at)
-SELECT r.id, p.id, now(), now()
+INSERT INTO sys_role_permission (role_id, permission_id)
+SELECT r.id, p.id
 FROM sys_roles r
 JOIN sys_permissions p ON p.code IN (
   -- 用户管理（全权限）
@@ -159,8 +159,8 @@ VALUES
 ON CONFLICT (username) DO NOTHING;
 
 -- 绑定用户与角色（wewins -> super_wewins）
-INSERT INTO sys_user_role (user_id, role_id, created_at, updated_at)
-SELECT u.id, r.id, now(), now()
+INSERT INTO sys_user_role (user_id, role_id)
+SELECT u.id, r.id
 FROM sys_users u
 JOIN sys_roles r ON r.code = 'super_wewins'
 WHERE u.username = 'wewins'

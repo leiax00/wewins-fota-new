@@ -123,55 +123,27 @@ CREATE INDEX IF NOT EXISTS ix_sys_permissions_deleted_at ON sys_permissions(dele
 -- 4. sys_user_role (用户-角色关联表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_user_role (
-    id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT,
-    deleted_at TIMESTAMP
+    PRIMARY KEY (user_id, role_id)
 );
 
 COMMENT ON TABLE sys_user_role IS '用户-角色关联表：存储用户与角色的多对多关联关系';
-COMMENT ON COLUMN sys_user_role.id IS '关联ID';
-COMMENT ON COLUMN sys_user_role.user_id IS '用户ID';
-COMMENT ON COLUMN sys_user_role.role_id IS '角色ID';
-
--- 唯一索引
-CREATE UNIQUE INDEX IF NOT EXISTS ux_sys_user_role ON sys_user_role(user_id, role_id);
-
--- 普通索引
-CREATE INDEX IF NOT EXISTS ix_sys_user_role_user_id ON sys_user_role(user_id);
-CREATE INDEX IF NOT EXISTS ix_sys_user_role_role_id ON sys_user_role(role_id);
-CREATE INDEX IF NOT EXISTS ix_sys_user_role_deleted_at ON sys_user_role(deleted_at) WHERE deleted_at IS NULL;
+COMMENT ON COLUMN sys_user_role.user_id IS '用户ID（外键）';
+COMMENT ON COLUMN sys_user_role.role_id IS '角色ID（外键）';
 
 -- ============================================================================
 -- 5. sys_role_permission (角色-权限关联表)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS sys_role_permission (
-    id BIGSERIAL PRIMARY KEY,
     role_id BIGINT NOT NULL,
     permission_id BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by BIGINT,
-    deleted_at TIMESTAMP
+    PRIMARY KEY (role_id, permission_id)
 );
 
 COMMENT ON TABLE sys_role_permission IS '角色-权限关联表：存储角色与权限的多对多关联关系';
-COMMENT ON COLUMN sys_role_permission.id IS '关联ID';
-COMMENT ON COLUMN sys_role_permission.role_id IS '角色ID';
-COMMENT ON COLUMN sys_role_permission.permission_id IS '权限ID';
-
--- 唯一索引
-CREATE UNIQUE INDEX IF NOT EXISTS ux_sys_role_permission ON sys_role_permission(role_id, permission_id);
-
--- 普通索引
-CREATE INDEX IF NOT EXISTS ix_sys_role_permission_role_id ON sys_role_permission(role_id);
-CREATE INDEX IF NOT EXISTS ix_sys_role_permission_permission_id ON sys_role_permission(permission_id);
-CREATE INDEX IF NOT EXISTS ix_sys_role_permission_deleted_at ON sys_role_permission(deleted_at) WHERE deleted_at IS NULL;
+COMMENT ON COLUMN sys_role_permission.role_id IS '角色ID（外键）';
+COMMENT ON COLUMN sys_role_permission.permission_id IS '权限ID（外键）';
 
 -- ============================================================================
 -- 6. sys_dict_type (字典类型表)

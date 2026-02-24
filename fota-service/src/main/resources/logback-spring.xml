@@ -39,13 +39,13 @@
 
     <springProfile name="dev">
         <logger name="com.wewins.fota" level="DEBUG"/>
-        <logger name="org.springframework.security" level="DEBUG"/>
-        <logger name="org.apache.ibatis" level="DEBUG"/>
-        <logger name="org.mybatis" level="DEBUG"/>
-        <logger name="com.baomidou.mybatisplus" level="DEBUG"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.apache.ibatis" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
+        <logger name="com.baomidou.mybatisplus" level="INFO"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+<!--            <appender-ref ref="FILE"/>-->
         </root>
     </springProfile>
 </configuration>

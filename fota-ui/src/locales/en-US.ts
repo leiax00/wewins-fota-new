@@ -85,6 +85,7 @@ export default {
     role: 'Roles',
     permission: 'Permissions',
     dict: 'Dictionaries',
+    dict_item_prefix: 'Dictionary Items',
   },
   dashboard: {
     totalDevices: 'Total Devices',
