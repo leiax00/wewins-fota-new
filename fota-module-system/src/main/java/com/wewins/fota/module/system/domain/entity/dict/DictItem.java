@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -25,7 +26,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("sys_dict_item")
+@TableName(value = "sys_dict_item", autoResultMap = true)
 public class DictItem extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -63,7 +64,7 @@ public class DictItem extends BaseEntity implements Serializable {
     /**
      * 扩展信息（JSON）
      */
-    @TableField(typeHandler = JsonNodeTypeHandler.class)
+    @TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
     private JsonNode extra;
 
     /**
