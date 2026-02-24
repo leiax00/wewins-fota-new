@@ -157,7 +157,14 @@ public class DictItemPageReqDTO extends BaseQueryDTO {
                 .betweenIfPresent(DictItem::getCreatedAt, getCreateTimeStart(), getCreateTimeEnd())
                 .betweenIfPresent(DictItem::getUpdatedAt, getUpdateTimeStart(), getUpdateTimeEnd());
 
-        wrapper.applySortingIfPresent(getSortingFields(), FIELD_MAP);
+        if (getSortingFields() == null || getSortingFields().isEmpty()) {
+            // Ensure stable and user-expected ordering when caller does not pass explicit sorting.
+            wrapper.orderByAsc(DictItem::getSortOrder)
+                    .orderByAsc(DictItem::getId);
+        } else {
+            wrapper.applySortingIfPresent(getSortingFields(), FIELD_MAP);
+        }
+
         wrapper.applyFiltersIfPresent(getFilters(), FIELD_MAP);
         return wrapper;
     }
