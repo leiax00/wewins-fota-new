@@ -8,6 +8,7 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.PermissionAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.domain.entity.rbac.Permission;
 import com.wewins.fota.module.system.dto.PermissionPageReqDTO;
 import com.wewins.fota.module.system.dto.PermissionReqDTO;
 import com.wewins.fota.module.system.dto.PermissionRespDTO;
@@ -55,8 +56,8 @@ public class PermissionController {
                     reqDTO.getType(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = permissionService.pagePermissions(reqDTO);
-        List<PermissionRespDTO> records = adminApiAssembler.toPermissionRespListFromUnknown(pageResult.getRecords());
+        Page<Permission> pageResult = permissionService.pagePermissions(reqDTO);
+        List<PermissionRespDTO> records = adminApiAssembler.toPermissionRespList(pageResult.getRecords());
 
         PageResponse<PermissionRespDTO> response = PageResponse.of(
                 records,

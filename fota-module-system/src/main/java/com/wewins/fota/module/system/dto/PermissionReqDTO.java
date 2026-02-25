@@ -24,19 +24,7 @@ public class PermissionReqDTO {
     private String redirectPath;
 
     // 菜单显示字段
-    private String i18nKey;
     private String icon;
     private Integer menuSort;
-    private Boolean menuVisible;
-    private Boolean breadcrumbVisible;
-    private Boolean tabVisible;
-    private Boolean tabClosable;
-    private Boolean affixTab;
-    private Boolean keepAlive;
-    private Boolean alwaysShow;
-
-    // 菜单高级字段
-    private String activeMenu;
     private String externalLink;
-    private String openMode;
 }

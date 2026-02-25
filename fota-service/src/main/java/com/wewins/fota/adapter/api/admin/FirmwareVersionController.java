@@ -64,7 +64,7 @@ public class FirmwareVersionController {
                     reqDTO.getProductId(), reqDTO.getVersion(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = firmwareVersionAppService.pageFirmwareVersions(reqDTO);
+        Page<FirmwareVersion> pageResult = firmwareVersionAppService.pageFirmwareVersions(reqDTO);
         List<FirmwareVersionRespDTO> records = pageResult.getRecords().stream()
                 .map(firmwareVersionAssembler::toFirmwareVersionResp)
                 .toList();

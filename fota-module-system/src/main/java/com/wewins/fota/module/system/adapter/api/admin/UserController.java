@@ -8,6 +8,7 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.UserAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.domain.entity.user.User;
 import com.wewins.fota.module.system.dto.RoleRespDTO;
 import com.wewins.fota.module.system.dto.UserPageReqDTO;
 import com.wewins.fota.module.system.dto.UserReqDTO;
@@ -54,8 +55,8 @@ public class UserController {
             log.debug("分页查询用户: status={}, page={}, size={}", reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = userService.pageUsers(reqDTO);
-        List<UserRespDTO> records = adminApiAssembler.toUserRespListFromUnknown(pageResult.getRecords());
+        Page<User> pageResult = userService.pageUsers(reqDTO);
+        List<UserRespDTO> records = adminApiAssembler.toUserRespList(pageResult.getRecords());
 
         PageResponse<UserRespDTO> response = PageResponse.of(
                 records,

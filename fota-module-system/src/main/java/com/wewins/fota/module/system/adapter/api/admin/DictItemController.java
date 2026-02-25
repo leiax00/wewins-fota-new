@@ -8,6 +8,7 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.DictItemAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.domain.entity.dict.DictItem;
 import com.wewins.fota.module.system.dto.DictItemPageReqDTO;
 import com.wewins.fota.module.system.dto.DictItemReqDTO;
 import com.wewins.fota.module.system.dto.DictItemRespDTO;
@@ -52,8 +53,8 @@ public class DictItemController {
                     reqDTO.getDictTypeId(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = dictItemService.pageItems(reqDTO);
-        List<DictItemRespDTO> records = adminApiAssembler.toDictItemRespListFromUnknown(pageResult.getRecords());
+        Page<DictItem> pageResult = dictItemService.pageItems(reqDTO);
+        List<DictItemRespDTO> records = adminApiAssembler.toDictItemRespList(pageResult.getRecords());
 
         PageResponse<DictItemRespDTO> response = PageResponse.of(
                 records,

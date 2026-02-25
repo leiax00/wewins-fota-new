@@ -90,7 +90,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
                 .eq(UpgradePolicy::getProductId, productId)
                 .isNull(UpgradePolicy::getDeletedAt)
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getId()));
+                .orderByDesc(UpgradePolicy::getId));
     }
 
     @Override
@@ -104,7 +104,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
                 .isNull(UpgradePolicy::getDeletedAt)
                 .eq(UpgradePolicy::getStatus, "ACTIVE")
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getId());
+                .orderByDesc(UpgradePolicy::getId);
         return upgradePolicyMapper.selectList(query);
     }
 
@@ -114,7 +114,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         query.isNull(UpgradePolicy::getDeletedAt)
                 .eq(UpgradePolicy::getStatus, "ACTIVE")
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getUpdatedAt());
+                .orderByDesc(UpgradePolicy::getUpdatedAt);
         return upgradePolicyMapper.selectList(query);
     }
 

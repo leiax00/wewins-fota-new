@@ -64,7 +64,7 @@ public class ProductController {
                     reqDTO.getName(), reqDTO.getManufacturer(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = productAppService.pageProducts(reqDTO);
+        Page<Product> pageResult = productAppService.pageProducts(reqDTO);
         List<ProductRespDTO> records = pageResult.getRecords().stream()
                 .map(productAssembler::toProductResp)
                 .toList();

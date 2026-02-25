@@ -8,6 +8,7 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.RoleAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.domain.entity.rbac.Role;
 import com.wewins.fota.module.system.dto.PermissionRespDTO;
 import com.wewins.fota.module.system.dto.RolePageReqDTO;
 import com.wewins.fota.module.system.dto.RoleReqDTO;
@@ -54,8 +55,8 @@ public class RoleController {
             log.debug("分页查询角色: status={}, page={}, size={}", reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = roleService.pageRoles(reqDTO);
-        List<RoleRespDTO> records = adminApiAssembler.toRoleRespListFromUnknown(pageResult.getRecords());
+        Page<Role> pageResult = roleService.pageRoles(reqDTO);
+        List<RoleRespDTO> records = adminApiAssembler.toRoleRespList(pageResult.getRecords());
 
         PageResponse<RoleRespDTO> response = PageResponse.of(
                 records,

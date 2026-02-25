@@ -64,7 +64,7 @@ public class UpgradePolicyController {
                     reqDTO.getProductId(), reqDTO.getName(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = upgradePolicyAppService.pagePolicies(reqDTO);
+        Page<UpgradePolicy> pageResult = upgradePolicyAppService.pagePolicies(reqDTO);
         List<UpgradePolicyRespDTO> records = pageResult.getRecords().stream()
                 .map(upgradePolicyAssembler::toUpgradePolicyResp)
                 .toList();

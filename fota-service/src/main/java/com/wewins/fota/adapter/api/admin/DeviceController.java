@@ -83,13 +83,13 @@ public class DeviceController {
         Map<Long, String> productNameMap = productIds.stream()
                 .map(productRepository::findById)
                 .filter(Optional::isPresent)
-                .map(Optional::get)
+                .map(opt -> opt.get())
                 .collect(Collectors.toMap(Product::getId, Product::getName));
 
         Map<Long, String> versionNameMap = versionIds.stream()
                 .map(firmwareVersionRepository::findById)
                 .filter(Optional::isPresent)
-                .map(Optional::get)
+                .map(opt -> opt.get())
                 .collect(Collectors.toMap(FirmwareVersion::getId, FirmwareVersion::getVersion));
 
         List<DeviceRespDTO> records = devices.stream()
