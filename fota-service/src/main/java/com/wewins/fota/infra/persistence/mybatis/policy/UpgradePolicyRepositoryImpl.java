@@ -1,11 +1,14 @@
 package com.wewins.fota.infra.persistence.mybatis.policy;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
-import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +17,7 @@ import java.util.Optional;
 /**
  * UpgradePolicyRepository 的 MyBatis 实现。
  */
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
@@ -26,23 +30,55 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     }
 
     @Override
-    public Long save(UpgradePolicy policy) {
-        if (policy == null) {
-            return null;
+    public Page<UpgradePolicy> pagePolicies(Page<UpgradePolicy> page, Long productId, String name, String status) {
+        LambdaQueryWrapper<UpgradePolicy> queryWrapper = new LambdaQueryWrapper<UpgradePolicy>()
+                .isNull(UpgradePolicy::getDeletedAt);
+
+        if (productId != null) {
+            queryWrapper.eq(UpgradePolicy::getProductId, productId);
+        }
+        if (StringUtils.hasText(name)) {
+            queryWrapper.like(UpgradePolicy::getName, name);
+        }
+        if (StringUtils.hasText(status)) {
+            queryWrapper.eq(UpgradePolicy::getStatus, status.toUpperCase());
         }
 
-        if (policy.getId() == null) {
-            upgradePolicyMapper.insert(policy);
-            return policy.getId();
-        }
+        queryWrapper.orderByDesc(UpgradePolicy::getPriority)
+                .orderByDesc(UpgradePolicy::getUpdatedAt);
 
-        upgradePolicyMapper.updateById(policy);
-        return policy.getId();
+        return upgradePolicyMapper.selectPage(page, queryWrapper);
     }
 
     @Override
-    public boolean softDeleteById(Long id) {
+    public UpgradePolicy create(UpgradePolicy policy) {
+        upgradePolicyMapper.insert(policy);
+        return policy;
+    }
+
+    @Override
+    public UpgradePolicy updateById(UpgradePolicy policy) {
+        upgradePolicyMapper.updateById(policy);
+        return policy;
+    }
+
+    @Override
+    public boolean deleteById(Long id) {
         return upgradePolicyMapper.deleteById(id) > 0;
+    }
+
+    @Override
+    public long countByProductIdAndNameExcludingId(Long productId, String name, Long excludeId) {
+        LambdaQueryWrapper<UpgradePolicy> queryWrapper = new LambdaQueryWrapper<UpgradePolicy>()
+                .eq(UpgradePolicy::getProductId, productId)
+                .eq(UpgradePolicy::getName, name)
+                .isNull(UpgradePolicy::getDeletedAt);
+
+        if (excludeId != null) {
+            queryWrapper.ne(UpgradePolicy::getId, excludeId);
+        }
+
+        return upgradePolicyMapper.selectCount(queryWrapper);
     }
 
     @Override
@@ -50,12 +86,11 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         if (productId == null) {
             return List.of();
         }
-
-        LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
-        query.eq(UpgradePolicy::getProductId, productId)
+        return upgradePolicyMapper.selectList(new LambdaQueryWrapper<UpgradePolicy>()
+                .eq(UpgradePolicy::getProductId, productId)
+                .isNull(UpgradePolicy::getDeletedAt)
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getId);
-        return upgradePolicyMapper.selectList(query);
+                .orderByDesc(UpgradePolicy::getId()));
     }
 
     @Override
@@ -67,8 +102,9 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.eq(UpgradePolicy::getProductId, productId)
                 .isNull(UpgradePolicy::getDeletedAt)
+                .eq(UpgradePolicy::getStatus, "ACTIVE")
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getId);
+                .orderByDesc(UpgradePolicy::getId());
         return upgradePolicyMapper.selectList(query);
     }
 
@@ -76,8 +112,9 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     public List<UpgradePolicy> findAllActiveOrderByPriorityAndUpdatedAt() {
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.isNull(UpgradePolicy::getDeletedAt)
+                .eq(UpgradePolicy::getStatus, "ACTIVE")
                 .orderByDesc(UpgradePolicy::getPriority)
-                .orderByDesc(UpgradePolicy::getUpdatedAt);
+                .orderByDesc(UpgradePolicy::getUpdatedAt());
         return upgradePolicyMapper.selectList(query);
     }
 

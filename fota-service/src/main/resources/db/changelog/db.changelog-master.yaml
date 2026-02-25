@@ -98,3 +98,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260225_01_upgrade_policy_add_plan_time_status
+      author: fota-team
+      comment: 升级策略表新增 plan_time 与 status 字段，支持策略基础 CRUD
+      changes:
+        - sqlFile:
+            path: changes/20260225_01_upgrade_policy_add_plan_time_status.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

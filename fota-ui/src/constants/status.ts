@@ -15,6 +15,9 @@ export const policyStatusTypeMap: Record<string, StatusTagType> = {
   active: 'success',
   paused: 'warning',
   expired: 'info',
+  ACTIVE: 'success',
+  PAUSED: 'warning',
+  EXPIRED: 'info',
   failed: 'danger',
 }
 
@@ -47,6 +50,9 @@ export const statusLabelKeyMap: Record<string, string> = {
   active: 'status.active',
   paused: 'status.paused',
   expired: 'status.expired',
+  ACTIVE: 'status.active',
+  PAUSED: 'status.paused',
+  EXPIRED: 'status.expired',
   enabled: 'status.enabled',
   disabled: 'status.disabled',
   locked: 'status.locked',

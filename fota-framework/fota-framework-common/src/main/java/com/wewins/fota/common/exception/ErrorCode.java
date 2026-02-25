@@ -65,7 +65,14 @@ public enum ErrorCode {
 
     // 固件版本错误码 (460xx)
     FIRMWARE_VERSION_NOT_FOUND(46001, "Firmware Version Not Found"),
-    FIRMWARE_VERSION_EXISTS(46002, "Firmware Version Already Exists");
+    FIRMWARE_VERSION_EXISTS(46002, "Firmware Version Already Exists"),
+
+    // 升级策略错误码 (470xx)
+    POLICY_NOT_FOUND(47001, "Upgrade Policy Not Found"),
+    POLICY_NAME_EXISTS(47002, "Upgrade Policy Name Already Exists"),
+    POLICY_GRAY_RATE_INVALID(47003, "Upgrade Policy Gray Rate Invalid"),
+    POLICY_STATUS_INVALID(47004, "Upgrade Policy Status Invalid"),
+    POLICY_FIRMWARE_PRODUCT_MISMATCH(47005, "Firmware Version Does Not Belong To Product");
 
     private final int code;
     private final String message;

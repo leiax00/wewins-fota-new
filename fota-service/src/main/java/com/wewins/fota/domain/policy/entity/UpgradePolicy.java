@@ -80,6 +80,16 @@ public class UpgradePolicy extends BaseEntity implements Serializable {
     private Integer grayRate;
 
     /**
+     * 计划时间
+     */
+    private LocalDateTime planTime;
+
+    /**
+     * 策略状态（ACTIVE/PAUSED/EXPIRED）
+     */
+    private String status;
+
+    /**
      * 触发模式
      * <p>
      * 可选值：
