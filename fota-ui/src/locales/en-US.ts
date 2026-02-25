@@ -240,7 +240,12 @@ export default {
     errorUnknownValueNotPrimitive: 'Unknown field {field} only supports primitive values (string/number/boolean)',
   },
   jsonSchema: {
+    firmwareTags: {
+      inner_version: 'Internal Version',
+    },
     firmwareMeta: {
+      show_name: 'Display Name',
+      build_type: 'Build Type',
       i18n: 'Release Notes',
       changelog: 'Changelog',
     },

@@ -1,5 +1,5 @@
 -- 固件版本元数据（meta）字段定义
--- 包含 i18n（多语言升级说明）和 changelog（更新日志）
+-- 包含 show_name、build_type、i18n（多语言升级说明）和 changelog（更新日志）
 
 WITH dict_type AS (
     SELECT id
@@ -19,12 +19,56 @@ SELECT
 FROM dict_type
 JOIN (
     VALUES
+        -- 显示名称（show_name 字段）
+        (
+            '显示名称',
+            'show_name',
+            'jsonSchema.firmwareMeta.show_name',
+            5,
+            '{
+              "kind": "json_field_definition",
+              "schemaVersion": 1,
+              "schema": {
+                "type": "string",
+                "required": false,
+                "placeholder": "友好版本名称",
+                "help": "用于在设备端显示的友好版本名称，留空则根据构建类型和版本号自动生成",
+                "validator": {
+                  "minLength": 0,
+                  "maxLength": 100
+                }
+              }
+            }'
+        ),
+        -- 构建类型（build_type 字段）
+        (
+            '构建类型',
+            'build_type',
+            'jsonSchema.firmwareMeta.build_type',
+            10,
+            '{
+              "kind": "json_field_definition",
+              "schemaVersion": 1,
+              "schema": {
+                "type": "select",
+                "required": false,
+                "defaultValue": "release",
+                "help": "固件的构建类型",
+                "options": [
+                  {"label": "正式版", "value": "release"},
+                  {"label": "调试版", "value": "debug"},
+                  {"label": "测试版", "value": "test"},
+                  {"label": "Beta", "value": "beta"}
+                ]
+              }
+            }'
+        ),
         -- 多语言升级说明（i18n 字段）
         (
             '升级内容',
             'i18n',
             'jsonSchema.firmwareMeta.i18n',
-            10,
+            25,
             '{
               "kind": "json_field_definition",
               "schemaVersion": 1,
@@ -48,7 +92,7 @@ JOIN (
             '更新日志',
             'changelog',
             'jsonSchema.firmwareMeta.changelog',
-            20,
+            30,
             '{
               "kind": "json_field_definition",
               "schemaVersion": 1,

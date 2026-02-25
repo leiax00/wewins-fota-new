@@ -240,7 +240,12 @@ export default {
     errorUnknownValueNotPrimitive: '未知字段 {field} 仅允许原始值（string/number/boolean）',
   },
   jsonSchema: {
+    firmwareTags: {
+      inner_version: '固件内部版本',
+    },
     firmwareMeta: {
+      show_name: '显示名称',
+      build_type: '构建类型',
       i18n: '升级说明',
       changelog: '更新日志',
     },

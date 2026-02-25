@@ -46,7 +46,6 @@ const BCP47_REGEX =
 
 const localValue = ref<I18nFieldValue>({})
 const localeOptions = ref<LanguageOption[]>([])
-const collapsed = ref(false)
 const loadingLocales = ref(false)
 
 const selectedLocale = ref('')
@@ -279,10 +278,6 @@ const onRemoveLocale = (localeCode: string) => {
   localValue.value = next
   emitChange()
 }
-
-const toggleCollapse = () => {
-  collapsed.value = !collapsed.value
-}
 </script>
 
 <template>
@@ -292,28 +287,14 @@ const toggleCollapse = () => {
         <el-tag size="small" type="info" effect="plain">{{ label }}</el-tag>
         <span class="i18n-field__count">{{ localeCountText }}</span>
       </div>
-      <el-button link size="small" :disabled="disabled" @click="toggleCollapse">
-        <span class="i18n-field__toggle-text">
-          {{
-            collapsed
-              ? tr('jsonField.i18nField.expand', 'Expand')
-              : tr('jsonField.i18nField.collapse', 'Collapse')
-          }}
-        </span>
-        <el-icon>
-          <ArrowDown v-if="collapsed" />
-          <ArrowUp v-else />
-        </el-icon>
-      </el-button>
     </div>
 
-    <el-collapse-transition>
-      <div v-show="!collapsed" class="i18n-field__panel">
-        <div v-if="localeEntries.length === 0" class="i18n-field__empty">
-          {{ tr('jsonField.i18nField.empty', 'No language entries yet.') }}
-        </div>
+    <div class="i18n-field__panel">
+      <div v-if="localeEntries.length === 0" class="i18n-field__empty">
+        {{ tr('jsonField.i18nField.empty', 'No language entries yet.') }}
+      </div>
 
-        <div class="i18n-field__list">
+      <div class="i18n-field__list">
           <div
             v-for="[localeCode, text] in localeEntries"
             :key="localeCode"
@@ -349,10 +330,6 @@ const toggleCollapse = () => {
         </div>
 
         <div class="i18n-add-panel">
-          <div class="i18n-add-panel__title">
-            {{ tr('jsonField.i18nField.addLocale', 'Add') }}
-          </div>
-
           <div class="i18n-add-panel__body">
             <el-select
               v-model="selectedLocale"
@@ -398,7 +375,6 @@ const toggleCollapse = () => {
         </p>
         <p v-if="helpText" class="i18n-field__help">{{ helpText }}</p>
       </div>
-    </el-collapse-transition>
   </div>
 </template>
 
@@ -412,7 +388,7 @@ const toggleCollapse = () => {
 .i18n-field__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: 24px;
 }
 
@@ -427,29 +403,24 @@ const toggleCollapse = () => {
   color: var(--el-text-color-secondary);
 }
 
-.i18n-field__toggle-text {
-  margin-right: 4px;
-  font-size: 12px;
-}
-
 .i18n-field__panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .i18n-field__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .i18n-locale-card {
   position: relative;
-  padding: 12px;
+  padding: 8px 10px;
   background-color: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 
@@ -460,36 +431,38 @@ const toggleCollapse = () => {
 
 .i18n-locale-card__head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .i18n-locale-card__meta {
   min-width: 0;
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .i18n-locale-card__label {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .i18n-locale-card__code {
   font-size: 12px;
   font-family: 'Monaco', 'Courier New', monospace;
   color: var(--el-text-color-regular);
-  line-height: 1.2;
+  line-height: 1.1;
   word-break: break-all;
 }
 
 .i18n-locale-card__delete {
   flex-shrink: 0;
-  margin-top: -2px;
+  margin-top: 0;
 }
 
 .i18n-locale-card__textarea {
@@ -497,33 +470,32 @@ const toggleCollapse = () => {
 }
 
 .i18n-add-panel {
-  padding: 12px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #fafbfc 100%);
+  padding: 8px 10px;
+  background: var(--el-fill-color-lighter);
   border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
-}
-
-.i18n-add-panel__title {
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  border-radius: 6px;
 }
 
 .i18n-add-panel__body {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr) auto;
-  gap: 8px;
-  align-items: start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.i18n-add-panel__locale-select,
+.i18n-add-panel__locale-select {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
 .i18n-add-panel__custom-input {
-  width: 100%;
+  flex: 0 1 150px;
+  min-width: 120px;
 }
 
 .i18n-add-panel__actions {
+  margin-left: auto;
   display: flex;
-  justify-content: flex-end;
 }
 
 .i18n-field__empty {
@@ -552,12 +524,8 @@ const toggleCollapse = () => {
 }
 
 @media (max-width: 900px) {
-  .i18n-add-panel__body {
-    grid-template-columns: 1fr;
-  }
-
   .i18n-add-panel__actions {
-    justify-content: flex-start;
+    margin-left: 0;
   }
 }
 </style>

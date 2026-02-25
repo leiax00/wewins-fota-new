@@ -122,6 +122,39 @@ export const validateBySchema = (
         break
       }
 
+      case 'textarea': {
+        if (typeof value !== 'string') {
+          errors.push(`jsonField.errorTypeString::${field.key}`)
+          break
+        }
+
+        // 长度校验
+        if (schema.validator?.minLength !== undefined && value.length < schema.validator.minLength) {
+          errors.push(`jsonField.errorMinLength::${field.key}::${schema.validator.minLength}`)
+        }
+        if (schema.validator?.maxLength !== undefined && value.length > schema.validator.maxLength) {
+          errors.push(`jsonField.errorMaxLength::${field.key}::${schema.validator.maxLength}`)
+        }
+        break
+      }
+
+      case 'i18n': {
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+          errors.push(`jsonField.errorMustObject::${field.key}`)
+          break
+        }
+
+        // 校验每个语言条目的长度
+        if (schema.validator?.i18nMaxLength) {
+          for (const [locale, text] of Object.entries(value)) {
+            if (typeof text === 'string' && text.length > schema.validator.i18nMaxLength) {
+              errors.push(`jsonField.errorMaxLength::${field.key}.${locale}::${schema.validator.i18nMaxLength}`)
+            }
+          }
+        }
+        break
+      }
+
       default:
         break
     }

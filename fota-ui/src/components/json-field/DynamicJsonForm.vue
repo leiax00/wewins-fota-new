@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import StringField from '@/components/json-field/fields/StringField.vue'
-import NumberField from '@/components/json-field/fields/NumberField.vue'
-import BooleanField from '@/components/json-field/fields/BooleanField.vue'
-import SelectField from '@/components/json-field/fields/SelectField.vue'
-import I18nField from '@/components/json-field/fields/I18nField.vue'
 import I18nDisplayCard from '@/components/json-field/fields/I18nDisplayCard.vue'
 import I18nEditDialog from '@/components/json-field/fields/I18nEditDialog.vue'
+import PrimitiveEditDialog from '@/components/json-field/fields/PrimitiveEditDialog.vue'
+import TextareaDisplayCard from '@/components/json-field/fields/TextareaDisplayCard.vue'
 import { validateBySchema } from '@/components/json-field/utils/validator'
 import type {
   I18nFieldValue,
@@ -18,7 +15,7 @@ import type {
 /**
  * 动态 JSON 表单组件（美化版本）
  *
- * 用户主动添加字段，卡片式布局
+ * 用户主动添加字段，简单字段用 Tag 展示，i18n 字段用卡片展示
  */
 interface Props {
   /** 字段定义列表 */
@@ -51,10 +48,14 @@ const unknownDraft = reactive<Record<string, string>>({})
 // 字段添加顺序（用于控制显示顺序，新添加的在前）
 const fieldOrder = ref<string[]>([])
 
-// 添加字段相关状态
-const showAddField = ref(false)
-const selectedFieldKey = ref<string>('')
-const newFieldValue = ref<unknown>(undefined)
+// Primitive 字段类型集合
+const primitiveFieldTypes = new Set(['string', 'textarea', 'number', 'boolean', 'select'])
+
+// Primitive 编辑对话框状态
+const primitiveDialogVisible = ref(false)
+const editingPrimitiveKey = ref('')
+const editingPrimitiveField = ref<JsonFieldDefinition | null>(null)
+const editingPrimitiveValue = ref<string | number | boolean>()
 
 // i18n 编辑对话框相关状态
 const i18nDialogVisible = ref(false)
@@ -69,14 +70,6 @@ const availableFields = computed(() => {
 })
 
 /**
- * 当前选中的字段定义
- */
-const selectedField = computed(() => {
-  if (!selectedFieldKey.value) return null
-  return props.fields.find((f) => f.key === selectedFieldKey.value) || null
-})
-
-/**
  * 已添加的字段列表（按添加顺序排序，新添加的在前）
  */
 const addedFieldKeys = computed(() => {
@@ -84,81 +77,104 @@ const addedFieldKeys = computed(() => {
 })
 
 /**
- * 确认添加字段
+ * 打开 primitive 字段编辑对话框（新增或编辑）
  */
-const confirmAddField = () => {
-  if (!selectedFieldKey.value) return
+const openPrimitiveEdit = (key?: string) => {
+  if (props.disabled) return
 
-  const field = selectedField.value
-  if (!field) return
-
-  let value = newFieldValue.value
-  if (value === undefined && field.config.schema.defaultValue !== undefined) {
-    value = field.config.schema.defaultValue
+  if (key) {
+    // 编辑模式：编辑已存在的字段
+    const field = getFieldByKey(key)
+    if (!field || !isPrimitiveField(field)) return
+    editingPrimitiveKey.value = key
+    editingPrimitiveField.value = field
+    editingPrimitiveValue.value = localKnown[key] as string | number | boolean | undefined
+  } else {
+    // 新增模式：此入口暂不使用，预留
+    editingPrimitiveKey.value = ''
+    editingPrimitiveField.value = null
+    editingPrimitiveValue.value = undefined
   }
 
-  if (value !== undefined && value !== '') {
-    // 添加到顺序数组最前面
-    fieldOrder.value.unshift(selectedFieldKey.value)
-    localKnown[selectedFieldKey.value] = value
-  }
-
-  emitAll()
-  cancelAddField()
+  primitiveDialogVisible.value = true
 }
 
 /**
- * 快速添加字段（直接从可用字段列表点击）
+ * 确认 primitive 字段编辑
  */
-const quickAddField = (fieldKey: string) => {
-  const field = props.fields.find((f) => f.key === fieldKey)
-  if (!field) return
+const confirmPrimitiveEdit = (value: string | number | boolean) => {
+  if (!editingPrimitiveField.value) return
 
-  // i18n 字段直接打开编辑对话框
-  if (isI18nField(field)) {
-    openI18nEdit(fieldKey)
-    return
-  }
+  const fieldKey = editingPrimitiveField.value.key
 
-  // 获取默认值，如果没有则根据类型设置合理的默认值
-  let value = field.config.schema.defaultValue
-  if (value === undefined) {
-    // 根据字段类型设置默认值
-    switch (field.config.schema.type) {
-      case 'string':
-      case 'textarea':
-        value = ''
-        break
-      case 'number':
-        value = 0
-        break
-      case 'boolean':
-        value = false
-        break
-      case 'select':
-        // 使用第一个选项
-        const options = field.config.schema.options || []
-        if (options.length > 0) {
-          value = options[0].value
-        }
-        break
-    }
-  }
-
-  // 只有获取到有效值才添加
-  if (value !== undefined) {
-    // 添加到顺序数组最前面
-    fieldOrder.value.unshift(fieldKey)
+  if (editingPrimitiveKey.value) {
+    // 编辑模式：更新已存在字段的值
     localKnown[fieldKey] = value
-    emitAll()
+  } else {
+    // 新增模式：追加到列表末尾
+    fieldOrder.value.push(fieldKey)
+    localKnown[fieldKey] = value
   }
+  emitAll()
 }
+
+// 监听 primitive 对话框关闭，清空状态
+watch(primitiveDialogVisible, (visible) => {
+  if (!visible) {
+    editingPrimitiveKey.value = ''
+    editingPrimitiveField.value = null
+    editingPrimitiveValue.value = undefined
+  }
+})
 
 /**
  * 根据 key 获取字段定义
  */
 const getFieldByKey = (key: string): JsonFieldDefinition | null => {
   return props.fields.find((f) => f.key === key) || null
+}
+
+/**
+ * 点击可选字段 Tag
+ */
+const onAvailableFieldClick = (fieldKey: string) => {
+  const field = props.fields.find((f) => f.key === fieldKey)
+  if (!field) return
+
+  // i18n 字段打开 i18n 编辑对话框
+  if (isI18nField(field)) {
+    openI18nEdit(fieldKey)
+    return
+  }
+
+  // 其他字段（包括 textarea）打开 primitive 编辑对话框（新增模式）
+  editingPrimitiveKey.value = ''
+  editingPrimitiveField.value = field
+  editingPrimitiveValue.value = field.config.schema.defaultValue ?? getDefaultValueForField(field)
+  primitiveDialogVisible.value = true
+}
+
+/**
+ * 获取字段默认值
+ */
+const getDefaultValueForField = (field: JsonFieldDefinition): string | number | boolean => {
+  const { defaultValue } = field.config.schema
+  if (defaultValue !== undefined) return defaultValue
+
+  switch (field.config.schema.type) {
+    case 'string':
+    case 'textarea':
+      return ''
+    case 'number':
+      return 0
+    case 'boolean':
+      return false
+    case 'select':
+      const options = field.config.schema.options || []
+      return options.length > 0 ? options[0].value : ''
+    default:
+      return ''
+  }
 }
 
 /**
@@ -169,10 +185,24 @@ const isI18nField = (field: JsonFieldDefinition | null): boolean => {
 }
 
 /**
- * 判断给定 key 是否为 i18n 字段
+ * 判断给定 key 是否为 textarea 字段
  */
-const isI18nFieldKey = (key: string): boolean => {
-  return isI18nField(getFieldByKey(key))
+const isTextareaField = (field: JsonFieldDefinition | null): boolean => {
+  return field?.config.schema.type === 'textarea'
+}
+
+/**
+ * 判断是否为 primitive 字段（非 textarea）
+ */
+const isSimplePrimitiveField = (field: JsonFieldDefinition | null): boolean => {
+  return Boolean(field && primitiveFieldTypes.has(field.config.schema.type) && field.config.schema.type !== 'textarea')
+}
+
+/**
+ * 判断是否为 primitive 字段
+ */
+const isPrimitiveField = (field: JsonFieldDefinition | null): boolean => {
+  return Boolean(field && primitiveFieldTypes.has(field.config.schema.type))
 }
 
 /**
@@ -201,14 +231,24 @@ const editingI18nField = computed(() => {
  * 同步本地状态
  */
 const syncLocalState = () => {
+  // 获取 props 中的所有 key
+  const propsKeys = new Set(Object.keys(props.modelValue || {}))
+
+  // 清理 localKnown 中已删除的 key
+  Object.keys(localKnown).forEach((key) => {
+    if (!propsKeys.has(key)) {
+      delete localKnown[key]
+    }
+  })
+
   // 同步已知字段
   const oldKeys = new Set(Object.keys(localKnown))
 
   Object.entries(props.modelValue || {}).forEach(([key, value]) => {
     localKnown[key] = value
-    // 如果是新字段，添加到顺序数组最前面
+    // 如果是新字段，追加到顺序数组末尾
     if (!oldKeys.has(key) && !fieldOrder.value.includes(key)) {
-      fieldOrder.value.unshift(key)
+      fieldOrder.value.push(key)
     }
   })
 
@@ -236,27 +276,6 @@ watch(
   },
   { immediate: true, deep: true }
 )
-
-/**
- * 根据字段类型获取对应组件
- */
-const componentOf = (field: JsonFieldDefinition) => {
-  switch (field.config.schema.type) {
-    case 'string':
-    case 'textarea':
-      return StringField
-    case 'number':
-      return NumberField
-    case 'boolean':
-      return BooleanField
-    case 'select':
-      return SelectField
-    case 'i18n':
-      return I18nField
-    default:
-      return StringField
-  }
-}
 
 /**
  * 触发所有事件
@@ -298,26 +317,47 @@ const updateKnownField = (key: string, value: unknown) => {
 /**
  * 获取字段显示标签
  */
-const getFieldLabel = (field: JsonFieldDefinition): string => {
+const getFieldLabel = (field: JsonFieldDefinition | null): string => {
+  if (!field) return '-'
   return field.label
 }
 
 /**
- * 打开添加字段面板
+ * 格式化 primitive 字段值用于 Tag 显示（带省略）
  */
-const openAddField = () => {
-  showAddField.value = true
-  selectedFieldKey.value = ''
-  newFieldValue.value = undefined
-}
+const formatPrimitiveValue = (key: string): string => {
+  const value = localKnown[key]
+  const field = getFieldByKey(key)
+  if (!field) return String(value ?? '-')
 
-/**
- * 取消添加字段
- */
-const cancelAddField = () => {
-  showAddField.value = false
-  selectedFieldKey.value = ''
-  newFieldValue.value = undefined
+  const { type, options } = field.config.schema
+
+  // 空值处理
+  if (value === undefined || value === null || value === '') {
+    return '-'
+  }
+
+  // boolean 类型显示是/否
+  if (typeof value === 'boolean') {
+    return value
+      ? t('jsonField.primitiveDisplay.booleanTrue')
+      : t('jsonField.primitiveDisplay.booleanFalse')
+  }
+
+  // select 类型显示 option label
+  if (type === 'select' && Array.isArray(options)) {
+    const option = options.find((item: any) => item.value === value)
+    if (option?.label) return option.label
+  }
+
+  const strValue = String(value)
+
+  // 超过 20 个字符省略显示
+  if (strValue.length > 20) {
+    return strValue.slice(0, 20) + '...'
+  }
+
+  return strValue
 }
 
 /**
@@ -446,53 +486,64 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
   <div class="dynamic-json-form">
     <!-- 已添加的字段列表 -->
     <transition-group name="field-list" tag="div" class="field-list">
+      <!-- 简单 primitive 字段（非 textarea）使用 Tag 展示 -->
       <div
-        v-for="key in addedFieldKeys"
+        v-for="key in addedFieldKeys.filter(k => isSimplePrimitiveField(getFieldByKey(k)))"
         :key="key"
-        class="field-card"
-        :class="{ 'field-card--i18n': isI18nFieldKey(key) }"
+        class="primitive-field-tag-wrapper"
       >
-        <div class="field-card__header">
-          <el-tag size="small" type="info" effect="plain">
-            {{ getFieldLabel(getFieldByKey(key)!) }}
-          </el-tag>
-          <el-button
-            link
-            size="small"
-            class="field-card__delete"
-            :disabled="disabled"
-            @click="removeField(key)"
-          >
-            <el-icon><Close /></el-icon>
-          </el-button>
-        </div>
-        <div class="field-card__body">
-          <!-- i18n 字段使用只读展示卡片 -->
-          <I18nDisplayCard
-            v-if="isI18nFieldKey(key)"
-            :model-value="normalizeI18nValue(localKnown[key])"
-            :disabled="disabled"
-            @edit="openI18nEdit(key)"
-            @remove="removeField(key)"
-            @remove-locale="(locale) => removeLocaleFromI18nField(key, locale)"
-          />
-          <!-- 其他字段使用正常编辑组件 -->
-          <component
-            v-else
-            :is="componentOf(getFieldByKey(key)!)"
-            :field="getFieldByKey(key)!"
-            :model-value="localKnown[key] as string | number | boolean | I18nFieldValue"
-            :disabled="disabled"
-            @update:model-value="(value: string | number | boolean | I18nFieldValue) => updateKnownField(key, value)"
-          />
-        </div>
+        <el-tag
+          class="primitive-field-tag"
+          :class="{ 'is-disabled': disabled }"
+          :closable="!disabled"
+          :disable-transitions="false"
+          @click="openPrimitiveEdit(key)"
+          @close="removeField(key)"
+        >
+          <span class="primitive-field-tag__label">
+            {{ getFieldLabel(getFieldByKey(key)) }}:
+          </span>
+          <span class="primitive-field-tag__value">
+            {{ formatPrimitiveValue(key) }}
+          </span>
+        </el-tag>
+      </div>
+
+      <!-- textarea 字段使用 TextareaDisplayCard（全宽） -->
+      <div
+        v-for="key in addedFieldKeys.filter(k => isTextareaField(getFieldByKey(k)))"
+        :key="key"
+        class="textarea-field-wrapper"
+      >
+        <TextareaDisplayCard
+          :field="getFieldByKey(key)!"
+          :model-value="localKnown[key] as string"
+          :disabled="disabled"
+          @edit="openPrimitiveEdit(key)"
+          @remove="removeField(key)"
+        />
+      </div>
+
+      <!-- i18n 字段使用 I18nDisplayCard（全宽） -->
+      <div
+        v-for="key in addedFieldKeys.filter(k => isI18nField(getFieldByKey(k)))"
+        :key="key"
+        class="i18n-field-wrapper"
+      >
+        <I18nDisplayCard
+          :field="getFieldByKey(key)!"
+          :model-value="normalizeI18nValue(localKnown[key])"
+          :disabled="disabled"
+          @edit="openI18nEdit(key)"
+          @remove="removeField(key)"
+          @remove-locale="(locale) => removeLocaleFromI18nField(key, locale)"
+        />
       </div>
     </transition-group>
 
-    <!-- 添加字段按钮 -->
+    <!-- 可选字段列表 -->
     <transition name="fade">
-      <div v-if="!showAddField && availableFields.length > 0" class="add-field-section">
-        <!-- 可选字段列表 -->
+      <div v-if="availableFields.length > 0" class="add-field-section">
         <div class="available-fields">
           <span class="available-fields__label">{{ t('jsonField.availableFields') }}:</span>
           <el-tag
@@ -502,65 +553,10 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
             type="info"
             effect="plain"
             class="available-field-tag"
-            @click="quickAddField(field.key)"
+            @click="onAvailableFieldClick(field.key)"
           >
             {{ getFieldLabel(field) }}
           </el-tag>
-        </div>
-        <el-button
-          class="add-field-btn"
-          size="small"
-          :disabled="disabled"
-          @click="openAddField"
-        >
-          <el-icon><Plus /></el-icon>
-        </el-button>
-      </div>
-    </transition>
-
-    <!-- 添加字段面板 -->
-    <transition name="slide-down">
-      <div v-if="showAddField" class="add-field-panel">
-        <div class="add-field-panel__row">
-          <el-select
-            v-model="selectedFieldKey"
-            :placeholder="t('jsonField.selectFieldPlaceholder')"
-            size="default"
-            @change="() => { newFieldValue = undefined }"
-          >
-            <el-option
-              v-for="field in availableFields"
-              :key="field.key"
-              :label="getFieldLabel(field)"
-              :value="field.key"
-            />
-          </el-select>
-        </div>
-
-        <transition name="fade">
-          <div v-if="selectedField" class="add-field-panel__row">
-            <component
-              :is="componentOf(selectedField)"
-              :field="selectedField"
-              :model-value="newFieldValue as string | number | boolean | I18nFieldValue | undefined"
-              :disabled="disabled"
-              @update:model-value="(value: string | number | boolean | I18nFieldValue) => { newFieldValue = value }"
-            />
-          </div>
-        </transition>
-
-        <div class="add-field-panel__actions">
-          <el-button size="small" @click="cancelAddField">
-            {{ t('common.cancel') }}
-          </el-button>
-          <el-button
-            type="primary"
-            size="small"
-            :disabled="!selectedFieldKey"
-            @click="confirmAddField"
-          >
-            {{ t('common.confirm') }}
-          </el-button>
         </div>
       </div>
     </transition>
@@ -617,6 +613,15 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
       :disabled="disabled"
       @confirm="confirmI18nEdit"
     />
+
+    <!-- primitive 字段编辑对话框 -->
+    <PrimitiveEditDialog
+      v-model="primitiveDialogVisible"
+      :field="editingPrimitiveField"
+      :value="editingPrimitiveValue"
+      :disabled="disabled"
+      @confirm="confirmPrimitiveEdit"
+    />
   </div>
 </template>
 
@@ -626,61 +631,58 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  align-items: flex-start;
 }
 
-/* 字段卡片 */
-.field-card {
-  background: #fff;
-  border: 1px solid var(--el-border-color);
-  border-radius: 8px;
-  padding: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  width: 150px;
-  flex-shrink: 0;
+/* 字段包装器（全宽） */
+.textarea-field-wrapper,
+.i18n-field-wrapper {
+  width: 100%;
 }
 
-.field-card:hover {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+/* Primitive 字段 Tag 包装器 */
+.primitive-field-tag-wrapper {
+  display: inline-flex;
 }
 
-.field-card__header {
-  display: flex;
+.primitive-field-tag {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.field-card__delete {
+.primitive-field-tag:hover {
+  background-color: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
+}
+
+.primitive-field-tag.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.primitive-field-tag.is-disabled:hover {
+  background-color: transparent;
+  border-color: var(--el-border-color);
+}
+
+.primitive-field-tag__label {
+  font-weight: 500;
+  color: var(--el-text-color-regular);
+}
+
+.primitive-field-tag__value {
   color: var(--el-text-color-secondary);
-  transition: color 0.2s ease;
 }
 
-.field-card__delete:hover {
-  color: var(--el-color-danger);
-}
-
-/* i18n 字段 header 特殊样式 */
-.field-card__i18n-count {
-  margin-left: 8px;
-}
-
-/* i18n 字段卡片特殊样式：更宽，占半行 */
-.field-card--i18n {
-  width: calc(50% - 6px);
-  min-width: 360px;
-  flex-grow: 1;
-}
-
-.field-card__delete:hover {
-  color: var(--el-color-danger);
-}
-
-.field-card__body {
-  flex: 1;
-  min-height: 0;
+.primitive-field-tag.is-disabled .primitive-field-tag__label,
+.primitive-field-tag.is-disabled .primitive-field-tag__value {
+  cursor: not-allowed;
 }
 
 /* 添加字段区域 */
@@ -718,59 +720,6 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
   transform: translateY(-1px);
 }
 
-/* 添加字段按钮 - 小尺寸 */
-.add-field-btn {
-  flex-shrink: 0;
-  padding: 8px 12px;
-  border: 1px dashed var(--el-border-color);
-  background-color: var(--el-fill-color-blank);
-  transition: all 0.2s ease;
-}
-
-.add-field-btn:hover {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.add-field-btn:hover {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-  background-color: var(--el-color-primary-light-9);
-  border-style: solid;
-}
-
-.add-field-btn .el-icon {
-  margin-right: 6px;
-  font-size: 18px;
-}
-
-/* 添加字段面板 */
-.add-field-panel {
-  width: 100%;
-  padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #fafbfc 100%);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.add-field-panel__row {
-  margin-bottom: 16px;
-}
-
-.add-field-panel__row:last-of-type {
-  margin-bottom: 0;
-}
-
-.add-field-panel__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
 /* 未知字段区域 */
 .unknown-fields {
   margin-top: 20px;
@@ -795,11 +744,6 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.unknown-field-item {
-  width: 260px;
-  flex-shrink: 0;
 }
 
 .unknown-field-item {
@@ -884,16 +828,13 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
 
 /* 响应式布局（可选，移动端单列） */
 @media (max-width: 480px) {
-  .field-card {
-    width: 100%;
-  }
-
-  .field-card--i18n {
+  .i18n-field-card {
     min-width: 0;
+    width: 100%;
   }
 
-  .unknown-field-item {
-    width: 100%;
+  .primitive-field-tag {
+    font-size: 12px;
   }
 }
 </style>

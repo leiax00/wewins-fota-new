@@ -126,26 +126,6 @@ JOIN (
                 "help": "固件的内部版本号"
               }
             }'
-        ),
-        -- 构建类型（单选下拉）
-        (
-            '构建类型',
-            'build_type',
-            'jsonSchema.firmwareTags.build_type',
-            20,
-            '{
-              "kind": "json_field_definition",
-              "schemaVersion": 1,
-              "schema": {
-                "type": "select",
-                "required": false,
-                "defaultValue": "release",
-                "options": [
-                  {"label": "正式版", "value": "release"},
-                  {"label": "调试版", "value": "debug"}
-                ]
-              }
-            }'
         )
 ) AS t(label, value, i18n_key, sort_order, extra) ON TRUE
 ON CONFLICT (dict_type_id, value) DO UPDATE

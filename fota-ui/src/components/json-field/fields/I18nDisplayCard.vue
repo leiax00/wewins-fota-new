@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { JsonFieldDefinition } from '@/components/json-field/types/json-field'
 import type { I18nFieldValue } from '@/components/json-field/types/json-field'
 
+/**
+ * I18n 字段展示卡片组件
+ *
+ * 全宽展示，多语言内容，可展开/折叠
+ */
 interface Props {
+  field: JsonFieldDefinition
   modelValue?: I18nFieldValue
   disabled?: boolean
 }
@@ -51,46 +58,64 @@ const resolveLocaleLabel = (code: string): string => {
   return labelMap[code] || code
 }
 
-const toggleCollapse = () => {
+const toggleCollapse = (event: MouseEvent) => {
+  event.stopPropagation()
   collapsed.value = !collapsed.value
 }
 
-const removeLocale = (locale: string) => {
+const removeLocale = (locale: string, event: MouseEvent) => {
+  event.stopPropagation()
   emit('removeLocale', locale)
+}
+
+const onEdit = () => {
+  emit('edit')
+}
+
+const onRemove = (event: MouseEvent) => {
+  event.stopPropagation()
+  emit('remove')
 }
 </script>
 
 <template>
-  <div class="i18n-display-card">
+  <div class="i18n-display-card" @click="onEdit">
     <div v-if="entries.length > 0">
-      <!-- 标题行：字段 label + 语言数 + 折叠/编辑/删除按钮 -->
+      <!-- 第一行：字段名 + 删除按钮 -->
       <div class="i18n-display-card__header">
-        <div class="i18n-display-card__title">
-          <el-tag size="small" type="success" effect="plain">{{ localeCountText }}</el-tag>
-        </div>
-        <div class="i18n-display-card__actions">
-          <el-button link size="small" :disabled="disabled" @click="toggleCollapse">
-            <span class="i18n-display-card__toggle-text">
-              {{ collapsed ? tr('jsonField.i18nField.expand', '展开') : tr('jsonField.i18nField.collapse', '收起') }}
-            </span>
-            <el-icon>
-              <ArrowDown v-if="collapsed" />
-              <ArrowUp v-else />
-            </el-icon>
-          </el-button>
-          <el-button link size="small" :disabled="disabled" @click="emit('edit')">
-            <el-icon><Edit /></el-icon>
-          </el-button>
-          <el-button
-            link
-            size="small"
-            class="ui-action-danger"
-            :disabled="disabled"
-            @click="emit('remove')"
-          >
-            <el-icon><Delete /></el-icon>
-          </el-button>
-        </div>
+        <el-tag size="small" type="info" effect="plain">
+          {{ field.label }}
+        </el-tag>
+        <el-button
+          link
+          size="small"
+          class="ui-action-danger"
+          :disabled="disabled"
+          @click="onRemove"
+        >
+          <el-icon><Delete /></el-icon>
+        </el-button>
+      </div>
+
+      <!-- 第二行：语言数 + 展开/折叠按钮 -->
+      <div class="i18n-display-card__subtitle">
+        <el-tag size="small" type="success" effect="plain">
+          {{ localeCountText }}
+        </el-tag>
+        <el-button
+          link
+          size="small"
+          :disabled="disabled"
+          @click="toggleCollapse"
+        >
+          <span class="i18n-display-card__toggle-text">
+            {{ collapsed ? tr('jsonField.i18nField.expand', '展开') : tr('jsonField.i18nField.collapse', '收起') }}
+          </span>
+          <el-icon>
+            <ArrowDown v-if="collapsed" />
+            <ArrowUp v-else />
+          </el-icon>
+        </el-button>
       </div>
 
       <!-- 语言列表 -->
@@ -104,7 +129,7 @@ const removeLocale = (locale: string) => {
               size="small"
               class="ui-action-danger i18n-display-item__delete"
               :disabled="disabled"
-              @click="removeLocale(locale)"
+              @click="(e) => removeLocale(locale, e)"
             >
               <el-icon><Close /></el-icon>
             </el-button>
@@ -114,20 +139,27 @@ const removeLocale = (locale: string) => {
     </div>
 
     <div v-else class="i18n-display-card__empty">
-      <el-tag size="small" type="info" effect="plain">{{ localeCountText }}</el-tag>
-      <span class="i18n-display-card__empty-text">
-        {{ tr('jsonField.i18nField.empty', '暂无语言条目') }}
-      </span>
-      <div class="i18n-display-card__actions">
+      <div class="i18n-display-card__header">
+        <el-tag size="small" type="info" effect="plain">
+          {{ field.label }}
+        </el-tag>
         <el-button
           link
           size="small"
           class="ui-action-danger"
           :disabled="disabled"
-          @click="emit('remove')"
+          @click="onRemove"
         >
           <el-icon><Delete /></el-icon>
         </el-button>
+      </div>
+      <div class="i18n-display-card__subtitle i18n-display-card__subtitle--empty">
+        <el-tag size="small" type="info" effect="plain">
+          {{ localeCountText }}
+        </el-tag>
+        <span class="i18n-display-card__empty-text">
+          {{ tr('jsonField.i18nField.empty', '暂无语言条目') }}
+        </span>
       </div>
     </div>
   </div>
@@ -135,9 +167,19 @@ const removeLocale = (locale: string) => {
 
 <style scoped>
 .i18n-display-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  padding: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  width: 100%;
+}
+
+.i18n-display-card:hover {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .i18n-display-card__header {
@@ -145,23 +187,21 @@ const removeLocale = (locale: string) => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 0;
+  margin-bottom: 8px;
 }
 
-.i18n-display-card__title {
+.i18n-display-card__subtitle {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.i18n-display-card__actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.i18n-display-card__subtitle--empty {
+  justify-content: flex-start;
 }
 
 .i18n-display-card__toggle-text {
-  margin-right: 4px;
   font-size: 12px;
 }
 
@@ -214,14 +254,14 @@ const removeLocale = (locale: string) => {
 
 .i18n-display-card__empty {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 8px 0;
 }
 
 .i18n-display-card__empty-text {
   flex: 1;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  word-break: break-word;
 }
 </style>
