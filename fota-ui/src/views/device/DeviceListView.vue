@@ -67,10 +67,55 @@ const imeiValidator = (_rule: unknown, value: string, callback: (error?: Error) 
   callback()
 }
 
+const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  if (!value || !value.trim()) {
+    callback()
+    return
+  }
+
+  try {
+    const parsed = JSON.parse(value.trim())
+
+    // 校验必须是对象类型
+    if (Array.isArray(parsed)) {
+      callback(new Error(t('device.tagsMustBeObject')))
+      return
+    }
+
+    if (typeof parsed !== 'object') {
+      callback(new Error(t('device.tagsMustBeObject')))
+      return
+    }
+
+    // 校验不允许嵌套对象或数组
+    const checkNested = (obj: Record<string, unknown>, path = '') => {
+      for (const [key, val] of Object.entries(obj)) {
+        const currentPath = path ? `${path}.${key}` : key
+        if (Array.isArray(val)) {
+          throw new Error(t('device.tagsNoNestedArray', { key: currentPath }))
+        }
+        if (typeof val === 'object' && val !== null) {
+          throw new Error(t('device.tagsNoNestedObject', { key: currentPath }))
+        }
+      }
+    }
+
+    checkNested(parsed as Record<string, unknown>)
+    callback()
+  } catch (error) {
+    if (error instanceof Error) {
+      callback(error)
+    } else {
+      callback(new Error(t('device.tagsJsonInvalid')))
+    }
+  }
+}
+
 const formRules = {
   imei: [{ required: true, validator: imeiValidator, trigger: 'blur' }],
   productId: [{ required: true, message: t('device.productIdRequired'), trigger: 'change' }],
   status: [{ required: true, message: t('device.statusRequired'), trigger: 'change' }],
+  tags: [{ validator: tagsValidator, trigger: 'blur' }],
 }
 
 const fetchProducts = async () => {
@@ -148,7 +193,7 @@ const submitForm = async () => {
       productId: form.productId!,
       currentVersionId: form.currentVersionId || undefined,
       status: form.status,
-      tags: form.tags || undefined,
+      tags: form.tags?.trim() || undefined,
     }
 
     if (dialogMode.value === 'create') {
@@ -397,7 +442,7 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item :label="t('device.tags')">
+      <el-form-item prop="tags" :label="t('device.tags')">
         <el-input v-model="form.tags" type="textarea" :rows="3" placeholder='{"region":"CN","env":"prod"}' />
       </el-form-item>
     </el-form>
