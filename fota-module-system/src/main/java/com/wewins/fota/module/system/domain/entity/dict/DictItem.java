@@ -64,7 +64,7 @@ public class DictItem extends BaseEntity implements Serializable {
     /**
      * 扩展信息（JSON）
      */
-    @TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode extra;
 
     /**

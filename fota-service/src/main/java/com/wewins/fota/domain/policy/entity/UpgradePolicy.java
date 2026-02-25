@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("upgrade_policies")
+@TableName(value = "upgrade_policies", autoResultMap = true)
 public class UpgradePolicy extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
@@ -64,7 +64,7 @@ public class UpgradePolicy extends BaseEntity {
      * 如果为空，表示不限制源版本
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode sourceVersions;
 
     /**
@@ -114,7 +114,7 @@ public class UpgradePolicy extends BaseEntity {
      * 如果为空，表示不限制设备ID
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode targetDeviceIds;
 
     /**
@@ -136,7 +136,7 @@ public class UpgradePolicy extends BaseEntity {
      * 如果为空，表示不限制设备标签
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode targetDeviceTags;
 
     /**
@@ -170,7 +170,7 @@ public class UpgradePolicy extends BaseEntity {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode timeWindow;
 
     /**

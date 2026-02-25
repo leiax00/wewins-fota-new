@@ -109,3 +109,47 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260225_02_init_json_schema_dict_types
+      author: fota-team
+      comment: "初始化 JSON 字段配置化字典类型（MVP: 设备 tags、固件 tags/meta）"
+      changes:
+        - sqlFile:
+            path: changes/20260225_02_init_json_schema_dict_types.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260225_03_json_schema_examples
+      author: fota-team
+      comment: "初始化 JSON 字段配置示例数据（MVP: 设备 tags 和固件 tags 字段定义）"
+      changes:
+        - sqlFile:
+            path: changes/20260225_03_json_schema_examples.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260225_04_supported_languages
+      author: fota-team
+      comment: "初始化支持的语言字典（用于 i18n 字段的语言选项）"
+      changes:
+        - sqlFile:
+            path: changes/20260225_04_supported_languages.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260225_05_firmware_meta_fields
+      author: fota-team
+      comment: "初始化固件版本元数据（meta）字段定义（i18n 多语言升级说明 + changelog 更新日志）"
+      changes:
+        - sqlFile:
+            path: changes/20260225_05_firmware_meta_fields.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

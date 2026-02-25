@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
+import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import {
   createFirmwareVersion,
   deleteFirmwareVersion,
@@ -297,10 +298,24 @@ onMounted(() => {
         <el-input v-model="form.sha256" />
       </el-form-item>
       <el-form-item :label="t('firmware.tags')">
-        <el-input v-model="form.tags" type="textarea" :rows="2" placeholder='{"stability": "stable"}' />
+        <JsonFieldEditor
+          v-model="form.tags"
+          dict-type-code="json_schema.firmware_tags"
+          mode="form"
+          class="w-full"
+          :allow-mode-switch="true"
+          :disabled="submitting"
+        />
       </el-form-item>
       <el-form-item :label="t('firmware.meta')">
-        <el-input v-model="form.meta" type="textarea" :rows="3" placeholder='{"i18n": {...}}' />
+        <JsonFieldEditor
+          v-model="form.meta"
+          dict-type-code="json_schema.firmware_meta"
+          mode="form"
+          class="w-full"
+          :allow-mode-switch="true"
+          :disabled="submitting"
+        />
       </el-form-item>
     </el-form>
 

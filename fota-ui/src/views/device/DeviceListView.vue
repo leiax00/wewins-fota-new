@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { deviceStatusTypeMap, resolveStatusLabelKey, resolveStatusType } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
+import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import {
   createDevice,
   deleteDevice,
@@ -44,6 +45,7 @@ const dialogMode = ref<'create' | 'edit'>('create')
 const submitting = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref()
+const tagsValidationErrors = ref<string[]>([])
 
 const form = reactive({
   imei: '',
@@ -68,6 +70,13 @@ const imeiValidator = (_rule: unknown, value: string, callback: (error?: Error) 
 }
 
 const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+  // 如果有 JsonFieldEditor 的校验错误，优先显示
+  if (tagsValidationErrors.value.length > 0) {
+    callback(new Error(tagsValidationErrors.value[0]))
+    return
+  }
+
+  // 保留原有兜底校验逻辑
   if (!value || !value.trim()) {
     callback()
     return
@@ -76,31 +85,16 @@ const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) 
   try {
     const parsed = JSON.parse(value.trim())
 
-    // 校验必须是对象类型
     if (Array.isArray(parsed)) {
       callback(new Error(t('device.tagsMustBeObject')))
       return
     }
 
-    if (typeof parsed !== 'object') {
+    if (parsed === null || typeof parsed !== 'object') {
       callback(new Error(t('device.tagsMustBeObject')))
       return
     }
 
-    // 校验不允许嵌套对象或数组
-    const checkNested = (obj: Record<string, unknown>, path = '') => {
-      for (const [key, val] of Object.entries(obj)) {
-        const currentPath = path ? `${path}.${key}` : key
-        if (Array.isArray(val)) {
-          throw new Error(t('device.tagsNoNestedArray', { key: currentPath }))
-        }
-        if (typeof val === 'object' && val !== null) {
-          throw new Error(t('device.tagsNoNestedObject', { key: currentPath }))
-        }
-      }
-    }
-
-    checkNested(parsed as Record<string, unknown>)
     callback()
   } catch (error) {
     if (error instanceof Error) {
@@ -109,6 +103,17 @@ const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) 
       callback(new Error(t('device.tagsJsonInvalid')))
     }
   }
+}
+
+/**
+ * 处理 JsonFieldEditor 的校验变化
+ */
+const handleTagsValidationChange = (errors: string[]) => {
+  tagsValidationErrors.value = errors
+  // 触发表单重新校验
+  formRef.value?.validateField('tags').catch(() => {
+    // 忽略校验错误
+  })
 }
 
 const formRules = {
@@ -161,6 +166,7 @@ const openCreateDialog = () => {
   form.currentVersionId = undefined
   form.status = 'OFFLINE'
   form.tags = ''
+  tagsValidationErrors.value = []
   firmwareOptions.value = []
   formRef.value?.clearValidate()
   dialogVisible.value = true
@@ -174,6 +180,7 @@ const openEditDialog = async (row: DeviceItem) => {
   form.currentVersionId = row.currentVersionId
   form.status = row.status
   form.tags = row.tags || ''
+  tagsValidationErrors.value = []
   await fetchFirmwareByProduct(row.productId)
   formRef.value?.clearValidate()
   dialogVisible.value = true
@@ -443,7 +450,15 @@ onMounted(() => {
         </el-select>
       </el-form-item>
       <el-form-item prop="tags" :label="t('device.tags')">
-        <el-input v-model="form.tags" type="textarea" :rows="3" placeholder='{"region":"CN","env":"prod"}' />
+        <JsonFieldEditor
+          v-model="form.tags"
+          dict-type-code="json_schema.device_tags"
+          class="w-full"
+          mode="form"
+          :allow-mode-switch="true"
+          :disabled="submitting"
+          @validation-change="handleTagsValidationChange"
+        />
       </el-form-item>
     </el-form>
 

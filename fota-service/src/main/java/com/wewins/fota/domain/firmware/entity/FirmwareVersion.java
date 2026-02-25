@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("firmware_versions")
+@TableName(value = "firmware_versions", autoResultMap = true)
 public class FirmwareVersion extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -86,7 +86,7 @@ public class FirmwareVersion extends BaseEntity implements Serializable {
      * 通过 JsonNodeTypeHandler 自动处理 JsonNode 与 JSONB 之间的转换
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode tags;
 
     /**
@@ -116,7 +116,7 @@ public class FirmwareVersion extends BaseEntity implements Serializable {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode meta;
 
     /**
