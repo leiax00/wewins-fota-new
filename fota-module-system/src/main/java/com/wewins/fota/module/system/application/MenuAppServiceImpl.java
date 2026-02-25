@@ -29,16 +29,13 @@ public class MenuAppServiceImpl implements MenuAppService {
     private static final String CACHE_KEY_PREFIX = "user:menu:";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5); // 5分钟缓存
 
-    private final UserAppService userAppService;
     private final PermissionRepository permissionRepository;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public MenuAppServiceImpl(UserAppService userAppService,
-                              PermissionRepository permissionRepository,
+    public MenuAppServiceImpl(PermissionRepository permissionRepository,
                               ObjectMapper objectMapper,
                               RedisTemplate<String, Object> redisTemplate) {
-        this.userAppService = userAppService;
         this.permissionRepository = permissionRepository;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
