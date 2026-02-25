@@ -18,6 +18,11 @@ export default {
     status: '状态',
     createTime: '创建时间',
     updateTime: '更新时间',
+    remark: '备注',
+    deleteConfirm: '确定要删除吗？',
+    createSuccess: '创建成功',
+    updateSuccess: '更新成功',
+    deleteSuccess: '删除成功',
   },
   login: {
     title: 'FOTA 管理后台',
@@ -97,8 +102,11 @@ export default {
   product: {
     title: '产品列表',
     name: '产品名称',
+    nameRequired: '请输入产品名称',
     manufacturer: '制造商',
+    manufacturerRequired: '请输入制造商',
     model: '型号',
+    modelRequired: '请输入型号',
     add: '新增产品',
   },
   firmware: {

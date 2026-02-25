@@ -57,7 +57,11 @@ public enum ErrorCode {
     DICT_TYPE_IN_USE(44003, "Dictionary Type Is In Use"),
     DICT_ITEM_NOT_FOUND(44004, "Dictionary Item Not Found"),
     DICT_ITEM_VALUE_EXISTS(44005, "Dictionary Item Value Already Exists"),
-    DICT_ITEM_LABEL_EXISTS(44006, "Dictionary Item Label Already Exists");
+    DICT_ITEM_LABEL_EXISTS(44006, "Dictionary Item Label Already Exists"),
+
+    // 产品错误码 (450xx)
+    PRODUCT_NOT_FOUND(45001, "Product Not Found"),
+    PRODUCT_NAME_EXISTS(45002, "Product Name Already Exists");
 
     private final int code;
     private final String message;

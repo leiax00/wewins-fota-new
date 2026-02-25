@@ -18,6 +18,11 @@ export default {
     status: 'Status',
     createTime: 'Create Time',
     updateTime: 'Update Time',
+    remark: 'Remark',
+    deleteConfirm: 'Are you sure to delete?',
+    createSuccess: 'Created successfully',
+    updateSuccess: 'Updated successfully',
+    deleteSuccess: 'Deleted successfully',
   },
   login: {
     title: 'FOTA Admin',
@@ -97,8 +102,11 @@ export default {
   product: {
     title: 'Product List',
     name: 'Product Name',
+    nameRequired: 'Please enter product name',
     manufacturer: 'Manufacturer',
+    manufacturerRequired: 'Please enter manufacturer',
     model: 'Model',
+    modelRequired: 'Please enter model',
     add: 'Add Product',
   },
   firmware: {
