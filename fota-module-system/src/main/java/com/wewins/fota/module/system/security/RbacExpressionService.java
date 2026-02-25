@@ -1,11 +1,15 @@
 package com.wewins.fota.module.system.security;
 
-import com.wewins.fota.web.security.SecurityUserContext;
+import com.wewins.fota.common.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * RBAC 权限校验工具类
@@ -21,8 +25,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RbacExpressionService {
 
-    private final SecurityUserContext securityUserContext;
-
     /**
      * 通配符权限：超级管理员
      */
@@ -35,7 +37,7 @@ public class RbacExpressionService {
      * @return true if has permission
      */
     public boolean has(String permission) {
-        Set<String> authorities = securityUserContext.getCurrentAuthorities();
+        Set<String> authorities = getCurrentAuthorities();
         if (authorities == null || authorities.isEmpty()) {
             return false;
         }
@@ -59,7 +61,7 @@ public class RbacExpressionService {
             return false;
         }
 
-        Set<String> authorities = securityUserContext.getCurrentAuthorities();
+        Set<String> authorities = getCurrentAuthorities();
         if (authorities == null || authorities.isEmpty()) {
             return false;
         }
@@ -89,7 +91,7 @@ public class RbacExpressionService {
             return false;
         }
 
-        Set<String> authorities = securityUserContext.getCurrentAuthorities();
+        Set<String> authorities = getCurrentAuthorities();
         if (authorities == null || authorities.isEmpty()) {
             return false;
         }
@@ -119,7 +121,7 @@ public class RbacExpressionService {
             return false;
         }
 
-        Long currentUserId = securityUserContext.getCurrentUserId();
+        Long currentUserId = UserContext.getCurrentUserId();
         return userId.equals(currentUserId);
     }
 
@@ -132,5 +134,21 @@ public class RbacExpressionService {
      */
     public boolean hasOrSelf(String permission, Long userId) {
         return has(permission) || isSelf(userId);
+    }
+
+    /**
+     * 获取当前用户的权限集合
+     *
+     * @return 权限码集合
+     */
+    private Set<String> getCurrentAuthorities() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Set.of();
+        }
+
+        return authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
     }
 }
