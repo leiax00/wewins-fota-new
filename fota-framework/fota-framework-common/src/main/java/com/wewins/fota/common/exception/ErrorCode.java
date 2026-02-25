@@ -72,7 +72,14 @@ public enum ErrorCode {
     POLICY_NAME_EXISTS(47002, "Upgrade Policy Name Already Exists"),
     POLICY_GRAY_RATE_INVALID(47003, "Upgrade Policy Gray Rate Invalid"),
     POLICY_STATUS_INVALID(47004, "Upgrade Policy Status Invalid"),
-    POLICY_FIRMWARE_PRODUCT_MISMATCH(47005, "Firmware Version Does Not Belong To Product");
+    POLICY_FIRMWARE_PRODUCT_MISMATCH(47005, "Firmware Version Does Not Belong To Product"),
+
+    // 设备错误码 (480xx)
+    DEVICE_NOT_FOUND(48001, "Device Not Found"),
+    DEVICE_IMEI_EXISTS(48002, "Device IMEI Already Exists"),
+    DEVICE_STATUS_INVALID(48003, "Device Status Invalid"),
+    DEVICE_FIRMWARE_PRODUCT_MISMATCH(48004, "Device Firmware Version Does Not Belong To Product"),
+    DEVICE_IMEI_INVALID(48005, "Device IMEI Invalid");
 
     private final int code;
     private final String message;

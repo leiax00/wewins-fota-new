@@ -1,12 +1,15 @@
 export type StatusTagType = 'success' | 'warning' | 'danger' | 'info'
-export type DeviceStatus = 'online' | 'offline' | 'upgrading' | 'failed'
+export type DeviceStatus = 'ONLINE' | 'OFFLINE' | 'LOST' | 'online' | 'offline' | 'upgrading' | 'failed'
 export type PolicyStatus = 'active' | 'paused' | 'expired' | 'failed'
 export type UserStatus = 'active' | 'disabled' | 'locked'
 export type RoleStatus = 'active' | 'disabled'
 
 export const deviceStatusTypeMap: Record<string, StatusTagType> = {
+  ONLINE: 'success',
+  OFFLINE: 'info',
+  LOST: 'danger',
   online: 'success',
-  offline: 'info',
+  offline: 'warning',
   upgrading: 'warning',
   failed: 'danger',
 }
@@ -43,6 +46,9 @@ export const resolveStatusType = (
 }
 
 export const statusLabelKeyMap: Record<string, string> = {
+  ONLINE: 'status.online',
+  OFFLINE: 'status.offline',
+  LOST: 'status.lost',
   online: 'status.online',
   offline: 'status.offline',
   upgrading: 'status.upgrading',

@@ -1,50 +1,51 @@
 package com.wewins.fota.application.device;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.repository.DeviceRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
- * 设备应用服务
- * <p>
- * 承接管理端设备请求，编排设备领域能力。
- * </p>
+ * 设备应用服务接口
  */
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class DeviceAppService {
+public interface DeviceAppService {
 
-    private final DeviceRepository deviceRepository;
+    /**
+     * 分页查询设备列表
+     *
+     * @param reqDTO 分页查询参数
+     * @return 分页结果
+     */
+    Page<Device> pageDevices(DevicePageReqDTO reqDTO);
 
-    public List<Device> listDevices(Long productId, String imei) {
-        log.debug("查询设备列表: productId={}, imei={}", productId, imei);
-        return deviceRepository.findByConditions(productId, imei);
-    }
+    /**
+     * 根据 ID 获取设备
+     *
+     * @param id 设备 ID
+     * @return 设备实体
+     */
+    Device getById(Long id);
 
-    public Device getDevice(Long id) {
-        log.debug("查询设备详情: id={}", id);
-        return deviceRepository.findById(id).orElse(null);
-    }
+    /**
+     * 创建设备
+     *
+     * @param device 设备实体
+     * @return 创建后的设备
+     */
+    Device createDevice(Device device);
 
-    public String importDevices(String request) {
-        log.debug("批量导入设备: payloadLength={}", request == null ? 0 : request.length());
-        // TODO: 实现设备批量导入（批次创建、解析、入库）
-        return "设备导入待实现";
-    }
+    /**
+     * 更新设备
+     *
+     * @param device 设备实体
+     * @return 更新后的设备
+     */
+    Device updateDevice(Device device);
 
-    public String updateDevice(Long id) {
-        log.debug("更新设备: id={}", id);
-        // TODO: 实现设备更新
-        return "设备更新待实现";
-    }
-
-    public boolean deleteDevice(Long id) {
-        log.debug("删除设备: id={}", id);
-        return deviceRepository.softDeleteById(id);
-    }
+    /**
+     * 删除设备（逻辑删除）
+     *
+     * @param id 设备 ID
+     * @return 是否成功
+     */
+    boolean deleteDevice(Long id);
 }
