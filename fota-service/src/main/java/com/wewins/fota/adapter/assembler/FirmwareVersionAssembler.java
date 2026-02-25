@@ -1,0 +1,93 @@
+package com.wewins.fota.adapter.assembler;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
+import com.wewins.fota.application.firmware.dto.FirmwareVersionRespDTO;
+import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+/**
+ * 固件版本 DTO 转换器
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class FirmwareVersionAssembler {
+
+    private final ObjectMapper objectMapper;
+
+    /**
+     * 将 FirmwareVersionReqDTO 转换为 FirmwareVersion 实体
+     */
+    public FirmwareVersion toFirmwareVersionEntity(FirmwareVersionReqDTO req) {
+        if (req == null) {
+            return null;
+        }
+
+        FirmwareVersion.FirmwareVersionBuilder builder = FirmwareVersion.builder()
+                .productId(req.getProductId())
+                .version(req.getVersion())
+                .fileUrl(req.getFileUrl())
+                .fileSize(req.getFileSize())
+                .md5(req.getMd5())
+                .sha256(req.getSha256());
+
+        // 转换 tags JSON 字符串为 JsonNode
+        if (req.getTags() != null && !req.getTags().isBlank()) {
+            try {
+                builder.tags(objectMapper.readTree(req.getTags()));
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("tags JSON 格式错误: " + e.getMessage(), e);
+            }
+        }
+
+        // 转换 meta JSON 字符串为 JsonNode
+        if (req.getMeta() != null && !req.getMeta().isBlank()) {
+            try {
+                builder.meta(objectMapper.readTree(req.getMeta()));
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("meta JSON 格式错误: " + e.getMessage(), e);
+            }
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * 将 FirmwareVersion 实体转换为 FirmwareVersionRespDTO
+     */
+    public FirmwareVersionRespDTO toFirmwareVersionResp(FirmwareVersion firmwareVersion) {
+        if (firmwareVersion == null) {
+            return null;
+        }
+
+        FirmwareVersionRespDTO.FirmwareVersionRespDTOBuilder builder = FirmwareVersionRespDTO.builder()
+                .id(firmwareVersion.getId())
+                .productId(firmwareVersion.getProductId())
+                .version(firmwareVersion.getVersion())
+                .fileUrl(firmwareVersion.getFileUrl())
+                .fileSize(firmwareVersion.getFileSize())
+                .md5(firmwareVersion.getMd5())
+                .sha256(firmwareVersion.getSha256())
+                .createdAt(firmwareVersion.getCreatedAt())
+                .createdBy(firmwareVersion.getCreatedBy())
+                .updatedAt(firmwareVersion.getUpdatedAt())
+                .updatedBy(firmwareVersion.getUpdatedBy());
+
+        // 转换 tags JsonNode 为 JSON 字符串
+        if (firmwareVersion.getTags() != null) {
+            builder.tags(firmwareVersion.getTags().toString());
+        }
+
+        // 转换 meta JsonNode 为 JSON 字符串
+        if (firmwareVersion.getMeta() != null) {
+            builder.meta(firmwareVersion.getMeta().toString());
+        }
+
+        return builder.build();
+    }
+}

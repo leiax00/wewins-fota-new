@@ -61,7 +61,11 @@ public enum ErrorCode {
 
     // 产品错误码 (450xx)
     PRODUCT_NOT_FOUND(45001, "Product Not Found"),
-    PRODUCT_NAME_EXISTS(45002, "Product Name Already Exists");
+    PRODUCT_NAME_EXISTS(45002, "Product Name Already Exists"),
+
+    // 固件版本错误码 (460xx)
+    FIRMWARE_VERSION_NOT_FOUND(46001, "Firmware Version Not Found"),
+    FIRMWARE_VERSION_EXISTS(46002, "Firmware Version Already Exists");
 
     private final int code;
     private final String message;
