@@ -38,21 +38,21 @@ export interface UpgradePolicyPayload {
 }
 
 export const pagePolicies = (params: Record<string, unknown>) => {
-  return get<PageResult<UpgradePolicyItem>>('/api/admin/policies', { params })
+  return get<PageResult<UpgradePolicyItem>>('/admin/policies', { params })
 }
 
 export const getPolicyById = (id: number) => {
-  return get<UpgradePolicyItem>(`/api/admin/policies/${id}`)
+  return get<UpgradePolicyItem>(`/admin/policies/${id}`)
 }
 
 export const createPolicy = (payload: UpgradePolicyPayload) => {
-  return post<UpgradePolicyItem>('/api/admin/policies', payload)
+  return post<UpgradePolicyItem>('/admin/policies', payload)
 }
 
 export const updatePolicy = (id: number, payload: UpgradePolicyPayload) => {
-  return put<UpgradePolicyItem>(`/api/admin/policies/${id}`, payload)
+  return put<UpgradePolicyItem>(`/admin/policies/${id}`, payload)
 }
 
 export const deletePolicy = (id: number) => {
-  return del<void>(`/api/admin/policies/${id}`)
+  return del<void>(`/admin/policies/${id}`)
 }

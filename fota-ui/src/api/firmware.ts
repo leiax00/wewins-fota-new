@@ -37,25 +37,25 @@ export interface FirmwareVersionPayload {
 }
 
 export const pageFirmwareVersions = (params: Record<string, unknown>) => {
-  return get<PageResult<FirmwareVersionItem>>('/api/admin/firmware-versions', { params })
+  return get<PageResult<FirmwareVersionItem>>('/admin/firmware-versions', { params })
 }
 
 export const getFirmwareVersionsByProduct = (productId: number) => {
-  return get<FirmwareVersionItem[]>(`/api/admin/firmware-versions/by-product/${productId}`)
+  return get<FirmwareVersionItem[]>(`/admin/firmware-versions/by-product/${productId}`)
 }
 
 export const getFirmwareVersionById = (id: number) => {
-  return get<FirmwareVersionItem>(`/api/admin/firmware-versions/${id}`)
+  return get<FirmwareVersionItem>(`/admin/firmware-versions/${id}`)
 }
 
 export const createFirmwareVersion = (payload: FirmwareVersionPayload) => {
-  return post<FirmwareVersionItem>('/api/admin/firmware-versions', payload)
+  return post<FirmwareVersionItem>('/admin/firmware-versions', payload)
 }
 
 export const updateFirmwareVersion = (id: number, payload: FirmwareVersionPayload) => {
-  return put<FirmwareVersionItem>(`/api/admin/firmware-versions/${id}`, payload)
+  return put<FirmwareVersionItem>(`/admin/firmware-versions/${id}`, payload)
 }
 
 export const deleteFirmwareVersion = (id: number) => {
-  return del<void>(`/api/admin/firmware-versions/${id}`)
+  return del<void>(`/admin/firmware-versions/${id}`)
 }

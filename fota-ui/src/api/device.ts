@@ -36,21 +36,21 @@ export interface DevicePayload {
 }
 
 export const pageDevices = (params: Record<string, unknown>) => {
-  return get<PageResult<DeviceItem>>('/api/admin/devices', { params })
+  return get<PageResult<DeviceItem>>('/admin/devices', { params })
 }
 
 export const getDeviceById = (id: number) => {
-  return get<DeviceItem>(`/api/admin/devices/${id}`)
+  return get<DeviceItem>(`/admin/devices/${id}`)
 }
 
 export const createDevice = (payload: DevicePayload) => {
-  return post<DeviceItem>('/api/admin/devices', payload)
+  return post<DeviceItem>('/admin/devices', payload)
 }
 
 export const updateDevice = (id: number, payload: DevicePayload) => {
-  return put<DeviceItem>(`/api/admin/devices/${id}`, payload)
+  return put<DeviceItem>(`/admin/devices/${id}`, payload)
 }
 
 export const deleteDevice = (id: number) => {
-  return del<void>(`/api/admin/devices/${id}`)
+  return del<void>(`/admin/devices/${id}`)
 }

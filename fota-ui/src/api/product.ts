@@ -28,21 +28,21 @@ export interface ProductPayload {
 }
 
 export const pageProducts = (params: Record<string, unknown>) => {
-  return get<PageResult<ProductItem>>('/api/admin/products', { params })
+  return get<PageResult<ProductItem>>('/admin/products', { params })
 }
 
 export const getProductById = (id: number) => {
-  return get<ProductItem>(`/api/admin/products/${id}`)
+  return get<ProductItem>(`/admin/products/${id}`)
 }
 
 export const createProduct = (payload: ProductPayload) => {
-  return post<ProductItem>('/api/admin/products', payload)
+  return post<ProductItem>('/admin/products', payload)
 }
 
 export const updateProduct = (id: number, payload: ProductPayload) => {
-  return put<ProductItem>(`/api/admin/products/${id}`, payload)
+  return put<ProductItem>(`/admin/products/${id}`, payload)
 }
 
 export const deleteProduct = (id: number) => {
-  return del<void>(`/api/admin/products/${id}`)
+  return del<void>(`/admin/products/${id}`)
 }
