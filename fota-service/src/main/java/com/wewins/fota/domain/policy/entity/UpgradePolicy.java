@@ -3,10 +3,7 @@ package com.wewins.fota.domain.policy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
@@ -22,12 +19,13 @@ import java.time.LocalDateTime;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("upgrade_policies")
-public class UpgradePolicy extends BaseEntity implements Serializable {
+public class UpgradePolicy extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
