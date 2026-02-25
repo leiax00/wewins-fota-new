@@ -22,11 +22,18 @@ public interface ProductRepository {
      * 分页查询产品列表
      *
      * @param page 分页参数
-     * @param name 产品名称（模糊查询，可选）
-     * @param manufacturer 制造商（模糊查询，可选）
+     * @param keyword 关键词（同时匹配产品名称、制造商、型号，模糊查询）
      * @return 分页结果
      */
-    Page<Product> pageProducts(Page<Product> page, String name, String manufacturer);
+    Page<Product> pageProducts(Page<Product> page, String keyword);
+
+    /**
+     * 批量查询产品列表（按 ID）
+     *
+     * @param ids 产品 ID 列表
+     * @return 产品列表（保持入参顺序）
+     */
+    List<Product> listByIds(List<Long> ids);
 
     /**
      * 创建产品

@@ -170,6 +170,7 @@ export default {
     imeiInvalid: 'IMEI must be exactly 15 digits',
     productId: 'Product',
     productIdRequired: 'Please select product',
+    productLoadFailed: 'Failed to load product information, some product names may display incorrectly',
     currentVersionId: 'Current Firmware',
     currentVersionIdPlaceholder: 'Please select current firmware version (optional)',
     status: 'Device Status',

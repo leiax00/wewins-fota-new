@@ -12,7 +12,7 @@ import {
   type PolicyStatus,
   type UpgradePolicyItem,
 } from '@/api/policy'
-import { pageProducts, type ProductItem } from '@/api/product'
+import { searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
 
 const { t } = useI18n()
@@ -31,9 +31,13 @@ const query = reactive({
 
 const products = ref<ProductItem[]>([])
 const productsLoading = ref(false)
+const productSearchOptions = ref<ProductItem[]>([])
+const productSearchLoading = ref(false)
 const firmwareOptions = ref<FirmwareVersionItem[]>([])
 const firmwareLoading = ref(false)
 const firmwareLabelMap = reactive<Record<number, string>>({})
+
+let productSearchTimer: number | null = null
 
 const canShowActions = computed(() =>
   userStore.hasPermission('fota:policy:update') ||
@@ -71,14 +75,20 @@ const formRules = {
 
 const statusOptions: PolicyStatus[] = ['ACTIVE', 'PAUSED', 'EXPIRED']
 
-const fetchProducts = async () => {
-  productsLoading.value = true
-  try {
-    const result = await pageProducts({ page: 1, size: 1000 })
-    products.value = result.records || []
-  } finally {
-    productsLoading.value = false
+const handleProductSearch = async (keyword: string) => {
+  if (productSearchTimer !== null) {
+    clearTimeout(productSearchTimer)
   }
+
+  productSearchTimer = window.setTimeout(async () => {
+    productSearchLoading.value = true
+    try {
+      const result = await searchProducts(keyword.trim())
+      productSearchOptions.value = result.records || []
+    } finally {
+      productSearchLoading.value = false
+    }
+  }, 300)
 }
 
 const fillFirmwareVersionLabelMap = async (rows: UpgradePolicyItem[]) => {
@@ -230,7 +240,7 @@ const getFirmwareVersionLabel = (firmwareVersionId: number) => {
 }
 
 onMounted(() => {
-  void fetchProducts()
+  void handleProductSearch('')
   void fetchList()
 })
 </script>
@@ -241,14 +251,18 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <el-select
           v-model="query.productId"
-          :loading="productsLoading"
+          :loading="productSearchLoading"
           :placeholder="t('policy.product')"
           clearable
+          filterable
+          remote
+          reserve-keyword
+          :remote-method="handleProductSearch"
           style="width: 180px"
           @change="handleFilterChange"
         >
           <el-option
-            v-for="product in products"
+            v-for="product in productSearchOptions"
             :key="product.id"
             :label="product.name"
             :value="product.id"
@@ -359,13 +373,16 @@ onMounted(() => {
       <el-form-item prop="productId" :label="t('policy.product')">
         <el-select
           v-model="form.productId"
-          :loading="productsLoading"
+          :loading="productSearchLoading"
           filterable
+          remote
+          reserve-keyword
+          :remote-method="handleProductSearch"
           style="width: 100%"
           @change="onFormProductChange"
         >
           <el-option
-            v-for="product in products"
+            v-for="product in productSearchOptions"
             :key="product.id"
             :label="product.name"
             :value="product.id"

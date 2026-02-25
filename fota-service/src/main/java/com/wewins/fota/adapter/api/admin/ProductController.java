@@ -14,16 +14,8 @@ import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.product.entity.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -60,8 +52,8 @@ public class ProductController {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询产品: name={}, manufacturer={}, page={}, size={}",
-                    reqDTO.getName(), reqDTO.getManufacturer(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询产品: keyword={}, page={}, size={}",
+                    reqDTO.getKeyword(), reqDTO.getPage(), reqDTO.getSize());
         }
 
         Page<Product> pageResult = productAppService.pageProducts(reqDTO);
@@ -76,6 +68,65 @@ public class ProductController {
                 pageResult.getTotal()
         );
         return ApiResponse.success(response);
+    }
+
+    /**
+     * 批量查询产品列表（按 ID）
+     *
+     * @param idsParam 产品 ID 列表，逗号分隔，如 "1,2,3"
+     * @return 产品列表
+     */
+    @GetMapping("/by-ids")
+    @PreAuthorize("@rbac.has('fota:product:read')")
+    public ApiResponse<List<ProductRespDTO>> listProductsByIds(@RequestParam("ids") String idsParam) {
+        if (idsParam == null || idsParam.isBlank()) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "ids 不能为空");
+        }
+
+        List<Long> ids = parseIds(idsParam, 200);
+
+        if (log.isDebugEnabled()) {
+            log.debug("批量查询产品: ids={}", ids);
+        }
+
+        List<Product> products = productAppService.listByIds(ids);
+        List<ProductRespDTO> result = products.stream()
+                .map(productAssembler::toProductResp)
+                .toList();
+
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * 解析 ID 列表字符串
+     *
+     * @param idsParam 逗号分隔的 ID 字符串
+     * @param maxSize 最大数量限制
+     * @return ID 列表
+     */
+    private List<Long> parseIds(String idsParam, int maxSize) {
+        String[] parts = idsParam.split(",");
+        List<Long> ids = new java.util.ArrayList<>(parts.length);
+
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+
+            try {
+                Long id = Long.valueOf(trimmed);
+                if (!ids.contains(id)) {
+                    ids.add(id);
+                }
+            } catch (NumberFormatException e) {
+                log.warn("无效的产品 ID: {}", trimmed);
+            }
+        }
+
+        if (ids.size() > maxSize) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "ids 数量不能超过 " + maxSize);
+        }
+
+        return ids;
     }
 
     /**

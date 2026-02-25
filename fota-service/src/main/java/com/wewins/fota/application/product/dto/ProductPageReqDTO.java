@@ -19,14 +19,9 @@ public class ProductPageReqDTO {
     private Integer size = 10;
 
     /**
-     * 产品名称（模糊查询）
+     * 关键词（模糊匹配产品名称、制造商、型号）
      */
-    private String name;
-
-    /**
-     * 制造商（模糊查询）
-     */
-    private String manufacturer;
+    private String keyword;
 
     /**
      * 校验并设置默认值

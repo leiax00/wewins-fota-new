@@ -20,8 +20,7 @@ const loading = ref(false)
 const query = reactive({
   page: 1,
   size: 20,
-  name: '',
-  manufacturer: '',
+  keyword: '',
 })
 
 const canShowActions = computed(() =>
@@ -114,8 +113,7 @@ const handleDelete = async (row: ProductItem) => {
 
 const resetSearch = () => {
   query.page = 1
-  query.name = ''
-  query.manufacturer = ''
+  query.keyword = ''
   void fetchList()
 }
 
@@ -129,15 +127,8 @@ onMounted(() => {
     <template #actions>
       <div class="flex items-center gap-2">
         <el-input
-          v-model="query.name"
+          v-model="query.keyword"
           :placeholder="t('product.name')"
-          clearable
-          style="width: 180px"
-          @keyup.enter="fetchList"
-        />
-        <el-input
-          v-model="query.manufacturer"
-          :placeholder="t('product.manufacturer')"
           clearable
           style="width: 180px"
           @keyup.enter="fetchList"

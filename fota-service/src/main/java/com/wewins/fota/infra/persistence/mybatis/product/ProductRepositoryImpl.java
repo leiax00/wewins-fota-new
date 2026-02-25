@@ -12,7 +12,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * ProductRepository 的 MyBatis 实现。
@@ -50,21 +53,44 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public Page<Product> pageProducts(Page<Product> page, String name, String manufacturer) {
+    public Page<Product> pageProducts(Page<Product> page, String keyword) {
         LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<Product>()
                 .isNull(Product::getDeletedAt);
 
-        if (StringUtils.hasText(name)) {
-            queryWrapper.like(Product::getName, name);
-        }
-
-        if (StringUtils.hasText(manufacturer)) {
-            queryWrapper.like(Product::getManufacturer, manufacturer);
+        if (StringUtils.hasText(keyword)) {
+            // 关键词同时匹配产品名称、制造商、型号
+            queryWrapper.and(wrapper -> wrapper.like(Product::getName, keyword)
+                    .or()
+                    .like(Product::getManufacturer, keyword)
+                    .or()
+                    .like(Product::getModel, keyword));
         }
 
         queryWrapper.orderByDesc(Product::getUpdatedAt);
 
         return productMapper.selectPage(page, queryWrapper);
+    }
+
+    @Override
+    public List<Product> listByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        List<Product> products = productMapper.selectList(
+                new LambdaQueryWrapper<Product>()
+                        .in(Product::getId, ids)
+                        .isNull(Product::getDeletedAt)
+        );
+
+        // 保持入参顺序
+        Map<Long, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        return ids.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     @Override

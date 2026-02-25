@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.product.dto.ProductPageReqDTO;
 import com.wewins.fota.domain.product.entity.Product;
 
+import java.util.List;
+
 /**
  * 产品应用服务接口
  */
@@ -24,6 +26,14 @@ public interface ProductAppService {
      * @return 产品实体
      */
     Product getById(Long id);
+
+    /**
+     * 批量查询产品列表（按 ID）
+     *
+     * @param ids 产品 ID 列表
+     * @return 产品列表
+     */
+    List<Product> listByIds(List<Long> ids);
 
     /**
      * 创建产品

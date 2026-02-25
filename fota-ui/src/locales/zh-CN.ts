@@ -170,6 +170,7 @@ export default {
     imeiInvalid: 'IMEI 必须为 15 位数字',
     productId: '所属产品',
     productIdRequired: '请选择产品',
+    productLoadFailed: '产品信息加载失败，部分产品名称可能显示异常',
     currentVersionId: '当前固件版本',
     currentVersionIdPlaceholder: '请选择当前固件版本（可选）',
     status: '设备状态',

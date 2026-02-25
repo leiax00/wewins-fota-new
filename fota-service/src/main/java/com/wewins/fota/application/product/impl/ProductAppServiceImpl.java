@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * 产品应用服务实现
  */
@@ -32,11 +34,11 @@ public class ProductAppServiceImpl implements ProductAppService {
         Page<Product> page = new Page<>(reqDTO.getPage(), reqDTO.getSize());
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询产品: name={}, manufacturer={}, page={}, size={}",
-                    reqDTO.getName(), reqDTO.getManufacturer(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询产品: keyword={}, page={}, size={}",
+                    reqDTO.getKeyword(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        return productRepository.pageProducts(page, reqDTO.getName(), reqDTO.getManufacturer());
+        return productRepository.pageProducts(page, reqDTO.getKeyword());
     }
 
     @Override
@@ -46,6 +48,23 @@ public class ProductAppServiceImpl implements ProductAppService {
         }
         return productRepository.findById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.PRODUCT_NOT_FOUND));
+    }
+
+    @Override
+    public List<Product> listByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        if (ids.size() > 200) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "ids 数量不能超过 200");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("批量查询产品: ids={}", ids);
+        }
+
+        return productRepository.listByIds(ids);
     }
 
     @Override

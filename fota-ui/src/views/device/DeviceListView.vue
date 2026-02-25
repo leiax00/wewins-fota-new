@@ -13,7 +13,7 @@ import {
   type DeviceItem,
   type DeviceStatus,
 } from '@/api/device'
-import { pageProducts, type ProductItem } from '@/api/product'
+import { getProductsByIds, searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
 
 const { t } = useI18n()
@@ -30,8 +30,19 @@ const query = reactive({
   status: undefined as DeviceStatus | undefined,
 })
 
+// 产品缓存：productId -> ProductItem
+const productCache = ref<Map<number, ProductItem>>(new Map())
+
+// 产品下拉选项（用于筛选和新增）
 const products = ref<ProductItem[]>([])
 const productsLoading = ref(false)
+
+// 产品远程搜索选项
+const productSearchOptions = ref<ProductItem[]>([])
+const productSearchLoading = ref(false)
+
+let productSearchTimer: number | null = null
+
 const firmwareOptions = ref<FirmwareVersionItem[]>([])
 const firmwareLoading = ref(false)
 
@@ -123,14 +134,68 @@ const formRules = {
   tags: [{ validator: tagsValidator, trigger: 'blur' }],
 }
 
-const fetchProducts = async () => {
+/**
+ * 获取产品名称（优先从缓存）
+ */
+const getProductName = (productId: number): string => {
+  const product = productCache.value.get(productId)
+  return product?.name || `Product(${productId})`
+}
+
+/**
+ * 批量获取缺失的产品信息
+ */
+const fetchMissingProducts = async (productIds: number[]) => {
+  const missingIds = productIds.filter(id => !productCache.value.has(id))
+  if (missingIds.length === 0) return
+
   productsLoading.value = true
   try {
-    const result = await pageProducts({ page: 1, size: 1000 })
-    products.value = result.records || []
+    // 使用批量查询接口
+    const fetchedProducts = await getProductsByIds(missingIds)
+
+    fetchedProducts.forEach(product => {
+      productCache.value.set(product.id, product)
+    })
+
+    // 更新产品下拉选项（合并缓存中的所有产品）
+    products.value = Array.from(productCache.value.values())
+  } catch (error) {
+    console.error('Failed to fetch products:', error)
+    ElMessage.warning(t('device.productLoadFailed'))
   } finally {
     productsLoading.value = false
   }
+}
+
+/**
+ * 产品远程搜索（按产品名称和型号）
+ */
+const handleProductSearch = async (keyword: string) => {
+  if (productSearchTimer !== null) {
+    clearTimeout(productSearchTimer)
+  }
+
+  productSearchTimer = window.setTimeout(async () => {
+    if (!keyword || keyword.trim().length === 0) {
+      // 关键词为空时，显示已缓存的产品
+      productSearchOptions.value = Array.from(productCache.value.values())
+      return
+    }
+
+    productSearchLoading.value = true
+    try {
+      const result = await searchProducts(keyword.trim())
+      productSearchOptions.value = result.records || []
+
+      // 将搜索结果也加入缓存
+      productSearchOptions.value.forEach(product => {
+        productCache.value.set(product.id, product)
+      })
+    } finally {
+      productSearchLoading.value = false
+    }
+  }, 300)
 }
 
 const fetchList = async () => {
@@ -139,6 +204,10 @@ const fetchList = async () => {
     const result = await pageDevices(query)
     list.value = result.records || []
     total.value = result.total || 0
+
+    // 提取当前页设备所属的所有产品ID
+    const productIds = [...new Set(list.value.map(d => d.productId))]
+    await fetchMissingProducts(productIds)
   } finally {
     loading.value = false
   }
@@ -243,12 +312,6 @@ const resetSearch = () => {
   void fetchList()
 }
 
-const getProductName = (row: DeviceItem) => {
-  if (row.productName) return row.productName
-  const product = products.value.find(item => item.id === row.productId)
-  return product?.name || `${row.productId}`
-}
-
 const getVersionName = (row: DeviceItem) => {
   if (row.versionName) return row.versionName
   if (!row.currentVersionId) return '-'
@@ -257,7 +320,6 @@ const getVersionName = (row: DeviceItem) => {
 }
 
 onMounted(() => {
-  void fetchProducts()
   void fetchList()
 })
 </script>
@@ -271,11 +333,15 @@ onMounted(() => {
           :loading="productsLoading"
           :placeholder="t('device.productId')"
           clearable
+          filterable
+          remote
+          reserve-keyword
+          :remote-method="handleProductSearch"
           style="width: 180px"
           @change="handleFilterChange"
         >
           <el-option
-            v-for="product in products"
+            v-for="product in productSearchOptions.length > 0 ? productSearchOptions : products"
             :key="product.id"
             :label="product.name"
             :value="product.id"
@@ -326,7 +392,7 @@ onMounted(() => {
         min-width="180"
       >
         <template #default="{ row }">
-          {{ getProductName(row) }}
+          {{ getProductName(row.productId) }}
         </template>
       </el-table-column>
       <el-table-column
@@ -409,13 +475,17 @@ onMounted(() => {
       <el-form-item prop="productId" :label="t('device.productId')">
         <el-select
           v-model="form.productId"
-          :loading="productsLoading"
+          :loading="productSearchLoading"
           filterable
+          remote
+          reserve-keyword
+          :remote-method="handleProductSearch"
+          :placeholder="t('device.productId')"
           style="width: 100%"
           @change="onFormProductChange"
         >
           <el-option
-            v-for="product in products"
+            v-for="product in productSearchOptions.length > 0 ? productSearchOptions : products"
             :key="product.id"
             :label="product.name"
             :value="product.id"
