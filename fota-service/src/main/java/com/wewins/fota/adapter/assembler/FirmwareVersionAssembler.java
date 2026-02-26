@@ -32,6 +32,7 @@ public class FirmwareVersionAssembler {
                 .productId(req.getProductId())
                 .version(req.getVersion())
                 .fileUrl(req.getFileUrl())
+                .fileName(req.getFileName())
                 .fileSize(req.getFileSize())
                 .md5(req.getMd5())
                 .sha256(req.getSha256());
@@ -61,6 +62,17 @@ public class FirmwareVersionAssembler {
      * 将 FirmwareVersion 实体转换为 FirmwareVersionRespDTO
      */
     public FirmwareVersionRespDTO toFirmwareVersionResp(FirmwareVersion firmwareVersion) {
+        return toFirmwareVersionResp(firmwareVersion, null);
+    }
+
+    /**
+     * 将 FirmwareVersion 实体转换为 FirmwareVersionRespDTO（带产品名称）
+     *
+     * @param firmwareVersion 固件版本实体
+     * @param productName     产品名称（可选）
+     * @return 固件版本响应 DTO
+     */
+    public FirmwareVersionRespDTO toFirmwareVersionResp(FirmwareVersion firmwareVersion, String productName) {
         if (firmwareVersion == null) {
             return null;
         }
@@ -68,11 +80,15 @@ public class FirmwareVersionAssembler {
         FirmwareVersionRespDTO.FirmwareVersionRespDTOBuilder builder = FirmwareVersionRespDTO.builder()
                 .id(firmwareVersion.getId())
                 .productId(firmwareVersion.getProductId())
+                .productName(productName)
                 .version(firmwareVersion.getVersion())
                 .fileUrl(firmwareVersion.getFileUrl())
+                .fileName(firmwareVersion.getFileName())
                 .fileSize(firmwareVersion.getFileSize())
                 .md5(firmwareVersion.getMd5())
                 .sha256(firmwareVersion.getSha256())
+                .packageStatus(firmwareVersion.getPackageStatus())
+                .packageUploadedAt(firmwareVersion.getPackageUploadedAt())
                 .createdAt(firmwareVersion.getCreatedAt())
                 .createdBy(firmwareVersion.getCreatedBy())
                 .updatedAt(firmwareVersion.getUpdatedAt())

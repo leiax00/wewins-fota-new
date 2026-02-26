@@ -29,6 +29,14 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     }
 
     @Override
+    public List<FirmwareVersion> listByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return firmwareVersionMapper.selectBatchIds(ids);
+    }
+
+    @Override
     public List<FirmwareVersion> findByProductIdOrderByVersionDesc(Long productId) {
         return firmwareVersionMapper.selectList(
                 new LambdaQueryWrapper<FirmwareVersion>()

@@ -14,6 +14,14 @@ public interface FirmwareVersionRepository {
     Optional<FirmwareVersion> findById(Long id);
 
     /**
+     * 根据 ID 列表批量查询固件版本
+     *
+     * @param ids 固件版本 ID 列表
+     * @return 固件版本列表
+     */
+    List<FirmwareVersion> listByIds(List<Long> ids);
+
+    /**
      * 根据产品 ID 查询所有固件版本
      *
      * @param productId 产品 ID

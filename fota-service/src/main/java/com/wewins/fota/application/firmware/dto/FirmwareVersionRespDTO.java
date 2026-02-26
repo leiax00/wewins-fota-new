@@ -39,6 +39,11 @@ public class FirmwareVersionRespDTO {
     private String fileUrl;
 
     /**
+     * 固件原始文件名
+     */
+    private String fileName;
+
+    /**
      * 固件文件大小（字节）
      */
     private Long fileSize;
@@ -52,6 +57,19 @@ public class FirmwareVersionRespDTO {
      * SHA-256 校验和
      */
     private String sha256;
+
+    /**
+     * 固件包状态
+     * <p>
+     * 可选值：NONE/UPLOADED/READY/FAILED
+     * </p>
+     */
+    private String packageStatus;
+
+    /**
+     * 固件包上传时间
+     */
+    private LocalDateTime packageUploadedAt;
 
     /**
      * 版本标签（JSON 字符串）

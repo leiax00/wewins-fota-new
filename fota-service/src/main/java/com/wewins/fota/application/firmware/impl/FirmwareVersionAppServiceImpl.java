@@ -107,7 +107,25 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         // 检查固件版本是否存在
-        getById(firmwareVersion.getId());
+        FirmwareVersion existingVersion = getById(firmwareVersion.getId());
+
+        // 检查版本号是否与其他记录冲突（排除自身和已删除的记录）
+        if (firmwareVersion.getVersion() != null && !firmwareVersion.getVersion().isBlank()) {
+            List<FirmwareVersion> conflictingVersions = firmwareVersionRepository.findByProductIdAndVersion(
+                    firmwareVersion.getProductId() != null ? firmwareVersion.getProductId() : existingVersion.getProductId(),
+                    firmwareVersion.getVersion()
+            );
+
+            // 过滤掉自身和已删除的记录，只保留真正的冲突
+            boolean hasConflict = conflictingVersions.stream()
+                    .filter(v -> !v.getId().equals(firmwareVersion.getId()))  // 排除自身
+                    .filter(v -> v.getDeletedAt() == null)  // 排除已删除的记录（双重保险）
+                    .count() > 0;
+
+            if (hasConflict) {
+                throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
+            }
+        }
 
         firmwareVersionRepository.updateById(firmwareVersion);
 

@@ -153,3 +153,36 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260226_01_firmware_package_nullable_status
+      author: fota-team
+      comment: "固件包状态改造：支持无包版本与两阶段上传（字段可空化、状态机、约束、索引）"
+      changes:
+        - sqlFile:
+            path: changes/20260226_01_firmware_package_nullable_status.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260226_02_firmware_add_file_name
+      author: fota-team
+      comment: "firmware_versions 新增 file_name 字段（原始文件名）并增加 READY 状态一致性约束"
+      changes:
+        - sqlFile:
+            path: changes/20260226_02_firmware_add_file_name.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260226_03_firmware_version_partial_unique_index
+      author: fota-team
+      comment: "修复软删除 + 唯一约束冲突：使用部分唯一索引（只对未删除记录生效）"
+      changes:
+        - sqlFile:
+            path: changes/20260226_03_firmware_version_partial_unique_index.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
