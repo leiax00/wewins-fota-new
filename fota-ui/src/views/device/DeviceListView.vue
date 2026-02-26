@@ -194,6 +194,18 @@ const openEditDialog = async (row: DeviceItem) => {
   form.status = row.status
   form.tags = row.tags || ''
   tagsValidationErrors.value = []
+
+  // 将当前产品添加到搜索选项中，确保编辑时能正确显示产品名称
+  if (row.productId && row.productName) {
+    const exists = productSearchOptions.value.some(p => p.id === row.productId)
+    if (!exists) {
+      productSearchOptions.value.unshift({
+        id: row.productId,
+        name: row.productName,
+      })
+    }
+  }
+
   await fetchFirmwareByProduct(row.productId)
   formRef.value?.clearValidate()
   dialogVisible.value = true
@@ -312,8 +324,12 @@ onMounted(() => {
             :value="status"
           />
         </el-select>
-        <el-button @click="handleSearch">{{ t('common.search') }}</el-button>
-        <el-button @click="resetSearch">{{ t('common.refresh') }}</el-button>
+        <el-button @click="handleSearch">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="resetSearch">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="canCreate"
           type="primary"
@@ -324,7 +340,11 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-table v-loading="loading" :data="list" stripe>
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
       <el-table-column
         prop="imei"
         :label="t('device.imei')"
@@ -354,7 +374,10 @@ onMounted(() => {
         width="120"
       >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(deviceStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(deviceStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
@@ -400,23 +423,41 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('device.add') : t('common.edit')" width="680px">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="130px">
-      <el-form-item prop="imei" :label="t('device.imei')">
-        <el-input v-model="form.imei" maxlength="15" />
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('device.add') : t('common.edit')"
+    width="680px"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="130px"
+    >
+      <el-form-item
+        prop="imei"
+        :label="t('device.imei')"
+      >
+        <el-input
+          v-model="form.imei"
+          maxlength="15"
+        />
       </el-form-item>
-      <el-form-item prop="productId" :label="t('device.productId')">
+      <el-form-item
+        prop="productId"
+        :label="t('device.productId')"
+      >
         <el-select
           v-model="form.productId"
           :loading="productSearchLoading"
@@ -436,7 +477,10 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item prop="currentVersionId" :label="t('device.currentVersionId')">
+      <el-form-item
+        prop="currentVersionId"
+        :label="t('device.currentVersionId')"
+      >
         <el-select
           v-model="form.currentVersionId"
           :loading="firmwareLoading"
@@ -453,8 +497,14 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item prop="status" :label="t('device.status')">
-        <el-select v-model="form.status" style="width: 100%">
+      <el-form-item
+        prop="status"
+        :label="t('device.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
           <el-option
             v-for="status in statusOptions"
             :key="status"
@@ -463,7 +513,10 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item prop="tags" :label="t('device.tags')">
+      <el-form-item
+        prop="tags"
+        :label="t('device.tags')"
+      >
         <JsonFieldEditor
           v-model="form.tags"
           dict-type-code="json_schema.device_tags"
@@ -477,8 +530,16 @@ onMounted(() => {
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>
