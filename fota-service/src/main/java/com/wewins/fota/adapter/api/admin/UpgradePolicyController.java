@@ -12,6 +12,7 @@ import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -115,7 +116,7 @@ public class UpgradePolicyController {
      */
     @PostMapping
     @PreAuthorize("@rbac.has('fota:policy:create')")
-    public ApiResponse<UpgradePolicyRespDTO> createPolicy(@RequestBody UpgradePolicyReqDTO reqDTO) {
+    public ApiResponse<UpgradePolicyRespDTO> createPolicy(@Valid @RequestBody UpgradePolicyReqDTO reqDTO) {
         if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
@@ -150,7 +151,7 @@ public class UpgradePolicyController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("@rbac.has('fota:policy:update')")
-    public ApiResponse<UpgradePolicyRespDTO> updatePolicy(@PathVariable Long id, @RequestBody UpgradePolicyReqDTO reqDTO) {
+    public ApiResponse<UpgradePolicyRespDTO> updatePolicy(@PathVariable Long id, @Valid @RequestBody UpgradePolicyReqDTO reqDTO) {
         if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }

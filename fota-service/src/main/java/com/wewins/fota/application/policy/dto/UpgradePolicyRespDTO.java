@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 升级策略响应 DTO
@@ -38,14 +40,44 @@ public class UpgradePolicyRespDTO {
     private Integer grayRate;
 
     /**
-     * 优先级
+     * 优先级（数值越大优先级越高）
      */
     private Integer priority;
 
     /**
-     * 计划时间
+     * 触发模式：AUTO / MANUAL
      */
-    private LocalDateTime planTime;
+    private String triggerMode;
+
+    /**
+     * 时间窗口配置
+     */
+    private TimeWindowDTO timeWindow;
+
+    /**
+     * 允许升级的源版本列表
+     */
+    private List<String> sourceVersions;
+
+    /**
+     * 目标设备模式：ALL / DEVICE_IDS / DEVICE_BATCHES / DEVICE_TAGS
+     */
+    private String targetMode;
+
+    /**
+     * 目标设备 ID 列表
+     */
+    private List<String> targetDeviceIds;
+
+    /**
+     * 目标设备批次 ID 列表
+     */
+    private List<String> targetDeviceBatchIds;
+
+    /**
+     * 目标设备标签条件（AND 逻辑）
+     */
+    private Map<String, Object> targetDeviceTags;
 
     /**
      * 状态（ACTIVE/PAUSED/EXPIRED）
