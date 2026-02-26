@@ -9,14 +9,19 @@ import com.wewins.fota.module.system.dto.menu.RouteMetaDTO;
 import com.wewins.fota.module.system.dto.menu.UserMenuNodeDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 菜单应用服务实现（当前为无缓存版本）
+ * 菜单应用服务实现
  */
 @Slf4j
 @Service
@@ -32,13 +37,16 @@ public class MenuAppServiceImpl implements MenuAppService {
     private final PermissionRepository permissionRepository;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public MenuAppServiceImpl(PermissionRepository permissionRepository,
                               ObjectMapper objectMapper,
-                              RedisTemplate<String, Object> redisTemplate) {
+                              RedisTemplate<String, Object> redisTemplate,
+                              StringRedisTemplate stringRedisTemplate) {
         this.permissionRepository = permissionRepository;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override
@@ -51,12 +59,28 @@ public class MenuAppServiceImpl implements MenuAppService {
             log.debug("查询用户菜单树: userId={}", userId);
         }
 
-        // 1. 先从缓存读取
+        // 1. 先从缓存读取（使用 StringRedisTemplate 绕过自动反序列化）
         String cacheKey = CACHE_KEY_PREFIX + userId;
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached instanceof List) {
-            log.info("菜单缓存命中: userId={}", userId);
-            return (List<UserMenuNodeDTO>) cached;
+        String cachedJson = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cachedJson != null && !cachedJson.isBlank()) {
+            try {
+                if (log.isDebugEnabled()) {
+                    log.debug("菜单缓存命中: userId={}", userId);
+                }
+                return parseCachedMenus(cachedJson);
+            } catch (Exception e) {
+                log.warn("菜单缓存解析失败，执行自愈删除: userId={}, rawLength={}",
+                        userId, cachedJson.length(), e);
+                // 读取失败则删除坏缓存并回源重建（delete 失败不影响回源）
+                try {
+                    stringRedisTemplate.delete(cacheKey);
+                    if (log.isDebugEnabled()) {
+                        log.debug("菜单坏缓存已删除: userId={}", userId);
+                    }
+                } catch (Exception deleteEx) {
+                    log.warn("删除坏缓存失败: userId={}", userId, deleteEx);
+                }
+            }
         }
 
         // 2. 查询用户直接拥有的菜单权限（MODULE/MENU）
@@ -98,9 +122,16 @@ public class MenuAppServiceImpl implements MenuAppService {
                     userId, menuPermissions.size(), result.size());
         }
 
-        // 6. 写入缓存
-        redisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL);
-        log.info("菜单已缓存: userId={}, ttl={}分钟", userId, CACHE_TTL.toMinutes());
+        // 6. 写入缓存（统一使用 StringRedisTemplate + 手动 JSON 序列化）
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            stringRedisTemplate.opsForValue().set(cacheKey, json, CACHE_TTL);
+            if (log.isDebugEnabled()) {
+                log.debug("菜单已缓存: userId={}, ttl={}分钟", userId, CACHE_TTL.toMinutes());
+            }
+        } catch (Exception e) {
+            log.warn("菜单缓存写入失败: userId={}", userId, e);
+        }
 
         return result;
     }
@@ -112,7 +143,7 @@ public class MenuAppServiceImpl implements MenuAppService {
         }
 
         String cacheKey = CACHE_KEY_PREFIX + userId;
-        Boolean deleted = redisTemplate.delete(cacheKey);
+        Boolean deleted = stringRedisTemplate.delete(cacheKey);
 
         if (log.isDebugEnabled()) {
             log.debug("清除用户菜单缓存: userId={}, deleted={}", userId, deleted);
@@ -122,15 +153,74 @@ public class MenuAppServiceImpl implements MenuAppService {
     @Override
     public void evictAllUserMenusCache() {
         // 使用 Redis 的 keys 命令查找所有菜单缓存键，然后批量删除
-        Set<String> keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
+        Set<String> keys = stringRedisTemplate.keys(CACHE_KEY_PREFIX + "*");
         if (keys != null && !keys.isEmpty()) {
-            Long deletedCount = redisTemplate.delete(keys);
+            Long deletedCount = stringRedisTemplate.delete(keys);
             log.info("清除所有用户菜单缓存: count={}", deletedCount);
         } else {
             if (log.isDebugEnabled()) {
                 log.debug("没有找到需要清除的菜单缓存");
             }
         }
+    }
+
+    /**
+     * 兼容读取菜单缓存：
+     * 1) 纯数组：[{...},{...}]
+     * 2) GenericJackson2JsonRedisSerializer 包装数组：["java.util.ArrayList",[{...}]]
+     * 3) 嵌套字符串："[{...}]"
+     *
+     * @param cachedJson Redis 原始字符串
+     * @return 菜单节点列表
+     * @throws Exception 解析失败时抛出异常
+     */
+    private List<UserMenuNodeDTO> parseCachedMenus(String cachedJson) throws Exception {
+        JsonNode root = objectMapper.readTree(cachedJson);
+        if (root == null || root.isNull()) {
+            return List.of();
+        }
+
+        // 历史数据：最外层被序列化成 JSON 字符串
+        if (root.isTextual()) {
+            String innerJson = root.asText();
+            if (innerJson == null || innerJson.isBlank()) {
+                return List.of();
+            }
+            root = objectMapper.readTree(innerJson);
+            if (log.isDebugEnabled()) {
+                log.debug("检测到嵌套字符串缓存，已解包: length={}", innerJson.length());
+            }
+        }
+
+        JsonNode dataNode = root;
+        // GenericJackson2JsonRedisSerializer 可能使用 [typeId, data] 包装
+        if (root.isArray()
+                && root.size() == 2
+                && root.get(0).isTextual()
+                && root.get(1).isArray()) {
+            dataNode = root.get(1);
+            if (log.isDebugEnabled()) {
+                log.debug("检测到类型包装缓存，已兼容解析: typeId={}", root.get(0).asText());
+            }
+        }
+
+        if (dataNode.isArray()) {
+            List<UserMenuNodeDTO> result = new ArrayList<>(dataNode.size());
+            for (JsonNode item : dataNode) {
+                result.add(objectMapper.convertValue(item, UserMenuNodeDTO.class));
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("菜单缓存解析成功: count={}", result.size());
+            }
+            return result;
+        }
+
+        if (dataNode.isObject()) {
+            // 兼容极端情况：单对象缓存
+            return List.of(objectMapper.convertValue(dataNode, UserMenuNodeDTO.class));
+        }
+
+        throw new IllegalStateException("unexpected cache json node type: " + dataNode.getNodeType());
     }
 
     /**
@@ -219,16 +309,6 @@ public class MenuAppServiceImpl implements MenuAppService {
                 .permission(permission.getCode())
                 .externalLink(externalLink)
                 .build();
-    }
-
-    private boolean isHidden(Permission permission) {
-        JsonNode node = readMenuConfig(permission.getMenuConfig());
-        return readBoolean(node, "hidden", false);
-    }
-
-    private boolean isMenuType(Permission permission) {
-        String type = permission.getType();
-        return TYPE_MODULE.equalsIgnoreCase(type) || TYPE_MENU.equalsIgnoreCase(type);
     }
 
     private JsonNode readMenuConfig(String menuConfig) {
