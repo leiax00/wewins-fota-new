@@ -129,8 +129,15 @@ const formRules = {
 
 /**
  * 产品远程搜索（按产品名称和型号）
+ * 只在用户输入内容后触发，获得焦点时不触发
  */
 const handleProductSearch = async (keyword: string) => {
+  // 如果输入为空，不执行搜索（避免获得焦点时触发不必要的请求）
+  const trimmedKeyword = (keyword || '').trim()
+  if (!trimmedKeyword) {
+    return
+  }
+
   if (productSearchTimer !== null) {
     clearTimeout(productSearchTimer)
   }
@@ -138,7 +145,7 @@ const handleProductSearch = async (keyword: string) => {
   productSearchTimer = window.setTimeout(async () => {
     productSearchLoading.value = true
     try {
-      const result = await searchProducts((keyword || '').trim())
+      const result = await searchProducts(trimmedKeyword)
       productSearchOptions.value = result.records || []
     } finally {
       productSearchLoading.value = false
@@ -286,7 +293,6 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <el-select
           v-model="query.productId"
-          :loading="productSearchLoading"
           :placeholder="t('device.productId')"
           clearable
           filterable
@@ -460,7 +466,6 @@ onMounted(() => {
       >
         <el-select
           v-model="form.productId"
-          :loading="productSearchLoading"
           filterable
           remote
           reserve-keyword
