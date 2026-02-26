@@ -21,6 +21,9 @@ mybatis-plus:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Tomcat 最大吞咽大小（用于处理取消上传等场景）
+  tomcat:
+    max-swallow-size: ${TOMCAT_MAX_SWALLOW_SIZE:520MB}
 
 spring:
   application:
@@ -31,6 +34,14 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:main}
     include: security
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      # 单个文件最大大小（默认 200MB）
+      max-file-size: ${SPRING_MULTIPART_MAX_FILE_SIZE:500MB}
+      # 请求最大大小（默认 210MB，略大于单文件限制以容纳其他表单字段）
+      max-request-size: ${SPRING_MULTIPART_MAX_REQUEST_SIZE:520MB}
 
   # PostgreSQL 主数据源配置
   # 注意：DB_URL 环境变量必须包含 TimeZone=UTC 参数，例如：
@@ -189,3 +200,11 @@ app:
     policy-ttl: ${APP_CACHE_POLICY_TTL:1h}
     # 限流默认窗口大小（默认 60 秒）
     default-rate-limit-window: ${APP_CACHE_DEFAULT_RATE_LIMIT_WINDOW:60s}
+
+  # 固件上传清理任务配置
+  firmware-upload:
+    cleanup:
+      # 是否启用清理任务（默认启用）
+      enabled: ${APP_FIRMWARE_UPLOAD_CLEANUP_ENABLED:true}
+      # 清理任务 Cron 表达式（默认每 30 分钟）
+      cleanup-cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}
