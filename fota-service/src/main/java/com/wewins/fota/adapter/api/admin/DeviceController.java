@@ -2,6 +2,7 @@ package com.wewins.fota.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.DeviceAssembler;
+import com.wewins.fota.application.common.ReferenceNameResolver;
 import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
@@ -29,10 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +47,7 @@ public class DeviceController {
     private final DeviceAssembler deviceAssembler;
     private final ProductRepository productRepository;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final ReferenceNameResolver referenceNameResolver;
 
     /**
      * 分页查询设备列表
@@ -71,27 +70,21 @@ public class DeviceController {
         Page<Device> pageResult = deviceAppService.pageDevices(reqDTO);
         List<Device> devices = pageResult.getRecords();
 
+        // 提取当前页中所有不同的产品 ID 和版本 ID
         Set<Long> productIds = devices.stream()
                 .map(Device::getProductId)
-                .filter(id -> id != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Set<Long> versionIds = devices.stream()
                 .map(Device::getCurrentVersionId)
-                .filter(id -> id != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        Map<Long, String> productNameMap = productIds.stream()
-                .map(productRepository::findById)
-                .filter(Optional::isPresent)
-                .map(opt -> opt.get())
-                .collect(Collectors.toMap(Product::getId, Product::getName));
+        // 使用 ReferenceNameResolver 批量查询名称
+        Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
+        Map<Long, String> versionNameMap = referenceNameResolver.resolveFirmwareVersionNames(versionIds);
 
-        Map<Long, String> versionNameMap = versionIds.stream()
-                .map(firmwareVersionRepository::findById)
-                .filter(Optional::isPresent)
-                .map(opt -> opt.get())
-                .collect(Collectors.toMap(FirmwareVersion::getId, FirmwareVersion::getVersion));
-
+        // 转换为 DTO，填充产品名称和版本名称
         List<DeviceRespDTO> records = devices.stream()
                 .map(device -> deviceAssembler.toDeviceResp(
                         device,

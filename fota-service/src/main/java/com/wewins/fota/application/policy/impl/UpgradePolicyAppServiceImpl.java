@@ -26,6 +26,7 @@ import java.util.Set;
 public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
     private static final Set<String> ALLOWED_STATUS = Set.of("ACTIVE", "PAUSED", "EXPIRED");
+    private static final String PACKAGE_STATUS_READY = "READY";
 
     private final UpgradePolicyRepository upgradePolicyRepository;
     private final ProductRepository productRepository;
@@ -148,6 +149,12 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND));
         if (!policy.getProductId().equals(firmwareVersion.getProductId())) {
             throw new BizException(ErrorCode.POLICY_FIRMWARE_PRODUCT_MISMATCH);
+        }
+
+        // 校验目标固件版本是否包含固件包（packageStatus=READY）
+        String packageStatus = firmwareVersion.getPackageStatus();
+        if (packageStatus == null || !PACKAGE_STATUS_READY.equalsIgnoreCase(packageStatus)) {
+            throw new BizException(ErrorCode.POLICY_TARGET_FIRMWARE_NOT_READY);
         }
 
         Long excludeId = creating ? null : policy.getId();
