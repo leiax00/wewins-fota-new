@@ -128,7 +128,7 @@ const fetchFirmwareByProduct = async (productId?: number) => {
   }
   firmwareLoading.value = true
   try {
-    const versions = await getFirmwareVersionsByProduct(productId)
+    const versions = await getFirmwareVersionsByProduct(productId, true) // 仅READY状态
     firmwareOptions.value = versions
     versions.forEach((item) => {
       firmwareLabelMap[item.id] = item.version

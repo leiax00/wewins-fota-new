@@ -13,7 +13,7 @@ import {
   type DeviceItem,
   type DeviceStatus,
 } from '@/api/device'
-import { getProductsByIds, searchProducts, type ProductItem } from '@/api/product'
+import { searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
 
 const { t } = useI18n()
@@ -29,13 +29,6 @@ const query = reactive({
   imei: '',
   status: undefined as DeviceStatus | undefined,
 })
-
-// 产品缓存：productId -> ProductItem
-const productCache = ref<Map<number, ProductItem>>(new Map())
-
-// 产品下拉选项（用于筛选和新增）
-const products = ref<ProductItem[]>([])
-const productsLoading = ref(false)
 
 // 产品远程搜索选项
 const productSearchOptions = ref<ProductItem[]>([])
@@ -135,40 +128,6 @@ const formRules = {
 }
 
 /**
- * 获取产品名称（优先从缓存）
- */
-const getProductName = (productId: number): string => {
-  const product = productCache.value.get(productId)
-  return product?.name || `Product(${productId})`
-}
-
-/**
- * 批量获取缺失的产品信息
- */
-const fetchMissingProducts = async (productIds: number[]) => {
-  const missingIds = productIds.filter(id => !productCache.value.has(id))
-  if (missingIds.length === 0) return
-
-  productsLoading.value = true
-  try {
-    // 使用批量查询接口
-    const fetchedProducts = await getProductsByIds(missingIds)
-
-    fetchedProducts.forEach(product => {
-      productCache.value.set(product.id, product)
-    })
-
-    // 更新产品下拉选项（合并缓存中的所有产品）
-    products.value = Array.from(productCache.value.values())
-  } catch (error) {
-    console.error('Failed to fetch products:', error)
-    ElMessage.warning(t('device.productLoadFailed'))
-  } finally {
-    productsLoading.value = false
-  }
-}
-
-/**
  * 产品远程搜索（按产品名称和型号）
  */
 const handleProductSearch = async (keyword: string) => {
@@ -177,21 +136,10 @@ const handleProductSearch = async (keyword: string) => {
   }
 
   productSearchTimer = window.setTimeout(async () => {
-    if (!keyword || keyword.trim().length === 0) {
-      // 关键词为空时，显示已缓存的产品
-      productSearchOptions.value = Array.from(productCache.value.values())
-      return
-    }
-
     productSearchLoading.value = true
     try {
-      const result = await searchProducts(keyword.trim())
+      const result = await searchProducts((keyword || '').trim())
       productSearchOptions.value = result.records || []
-
-      // 将搜索结果也加入缓存
-      productSearchOptions.value.forEach(product => {
-        productCache.value.set(product.id, product)
-      })
     } finally {
       productSearchLoading.value = false
     }
@@ -204,10 +152,6 @@ const fetchList = async () => {
     const result = await pageDevices(query)
     list.value = result.records || []
     total.value = result.total || 0
-
-    // 提取当前页设备所属的所有产品ID
-    const productIds = [...new Set(list.value.map(d => d.productId))]
-    await fetchMissingProducts(productIds)
   } finally {
     loading.value = false
   }
@@ -330,7 +274,7 @@ onMounted(() => {
       <div class="flex items-center gap-2">
         <el-select
           v-model="query.productId"
-          :loading="productsLoading"
+          :loading="productSearchLoading"
           :placeholder="t('device.productId')"
           clearable
           filterable
@@ -341,7 +285,7 @@ onMounted(() => {
           @change="handleFilterChange"
         >
           <el-option
-            v-for="product in productSearchOptions.length > 0 ? productSearchOptions : products"
+            v-for="product in productSearchOptions"
             :key="product.id"
             :label="product.name"
             :value="product.id"
@@ -392,7 +336,7 @@ onMounted(() => {
         min-width="180"
       >
         <template #default="{ row }">
-          {{ getProductName(row.productId) }}
+          {{ row.productName }}
         </template>
       </el-table-column>
       <el-table-column
@@ -485,7 +429,7 @@ onMounted(() => {
           @change="onFormProductChange"
         >
           <el-option
-            v-for="product in productSearchOptions.length > 0 ? productSearchOptions : products"
+            v-for="product in productSearchOptions"
             :key="product.id"
             :label="product.name"
             :value="product.id"

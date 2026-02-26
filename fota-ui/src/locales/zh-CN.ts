@@ -197,7 +197,7 @@ export default {
     fallbackToCodeMode: '配置加载失败，已降级为代码模式',
     schemaLoadFailed: '字段配置加载失败，请检查字典配置或网络状态',
     schemaEmpty: '当前未配置可用字段，已自动切换为代码模式',
-    codePlaceholder: '请输入 JSON 对象，例如 {"region":"CN","env":"prod"}',
+    codePlaceholder: '请输入 JSON 对象',
     unknownFields: '未知字段（兼容保留）',
     noUnknownFields: '暂无未知字段',
     addUnknownField: '新增未知字段',

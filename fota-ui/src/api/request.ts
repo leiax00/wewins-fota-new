@@ -82,6 +82,11 @@ request.interceptors.response.use(
     return Promise.reject(error)
   },
   (error) => {
+    // 请求被取消（如用户点击取消上传按钮），不显示错误提示
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error)
+    }
+
     if (error.response) {
       const { status, data } = error.response
       const code = data?.code

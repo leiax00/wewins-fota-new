@@ -197,7 +197,7 @@ export default {
     fallbackToCodeMode: 'Schema unavailable, switched to code mode',
     schemaLoadFailed: 'Failed to load field schema. Please check dictionary config or network.',
     schemaEmpty: 'No available schema fields. Switched to code mode.',
-    codePlaceholder: 'Please input a JSON object, e.g. {"region":"CN","env":"prod"}',
+    codePlaceholder: 'Please input a JSON object',
     unknownFields: 'Unknown Fields (compatibility)',
     noUnknownFields: 'No unknown fields',
     addUnknownField: 'Add Unknown Field',
