@@ -284,97 +284,121 @@ const onRemoveLocale = (localeCode: string) => {
   <div class="json-field-item i18n-field">
     <div class="i18n-field__header">
       <div class="i18n-field__header-left">
-        <el-tag size="small" type="info" effect="plain">{{ label }}</el-tag>
+        <el-tag
+          size="small"
+          type="info"
+          effect="plain"
+        >
+          {{ label }}
+        </el-tag>
         <span class="i18n-field__count">{{ localeCountText }}</span>
       </div>
     </div>
 
     <div class="i18n-field__panel">
-      <div v-if="localeEntries.length === 0" class="i18n-field__empty">
+      <div
+        v-if="localeEntries.length === 0"
+        class="i18n-field__empty"
+      >
         {{ tr('jsonField.i18nField.empty', 'No language entries yet.') }}
       </div>
 
       <div class="i18n-field__list">
-          <div
-            v-for="[localeCode, text] in localeEntries"
-            :key="localeCode"
-            class="i18n-locale-card"
-          >
-            <div class="i18n-locale-card__head">
-              <div class="i18n-locale-card__meta">
-                <span class="i18n-locale-card__label">{{ resolveDisplayLocale(localeCode) }}</span>
-                <span class="i18n-locale-card__code">{{ localeCode }}</span>
-              </div>
-
-              <el-button
-                link
-                size="small"
-                class="ui-action-danger i18n-locale-card__delete"
-                :disabled="disabled || !canRemoveLocale"
-                @click="onRemoveLocale(localeCode)"
-              >
-                <el-icon><Close /></el-icon>
-              </el-button>
+        <div
+          v-for="[localeCode, text] in localeEntries"
+          :key="localeCode"
+          class="i18n-locale-card"
+        >
+          <div class="i18n-locale-card__head">
+            <div class="i18n-locale-card__meta">
+              <span class="i18n-locale-card__label">{{ resolveDisplayLocale(localeCode) }}</span>
+              <span class="i18n-locale-card__code">{{ localeCode }}</span>
             </div>
 
-            <el-input
-              class="i18n-locale-card__textarea"
-              type="textarea"
-              :autosize="{ minRows: 2, maxRows: 6 }"
-              :placeholder="placeholder"
-              :model-value="text"
-              :disabled="disabled"
-              @update:model-value="(value) => onUpdateText(localeCode, value)"
-            />
-          </div>
-        </div>
-
-        <div class="i18n-add-panel">
-          <div class="i18n-add-panel__body">
-            <el-select
-              v-model="selectedLocale"
-              class="i18n-add-panel__locale-select"
-              filterable
-              clearable
-              :loading="loadingLocales"
-              :disabled="disabled"
-              :placeholder="tr('jsonField.i18nField.localePlaceholder', 'Select language')"
+            <el-button
+              link
+              size="small"
+              class="ui-action-danger i18n-locale-card__delete"
+              :disabled="disabled || !canRemoveLocale"
+              @click="onRemoveLocale(localeCode)"
             >
-              <el-option
-                v-for="opt in availableLocaleOptions"
-                :key="opt.value"
-                :label="opt.i18nKey && te(opt.i18nKey) ? t(opt.i18nKey) : opt.label"
-                :value="opt.value"
-              />
-              <el-option
-                v-if="allowCustomLocale"
-                :label="tr('jsonField.i18nField.customLocaleOption', 'Custom locale...')"
-                :value="CUSTOM_LOCALE_KEY"
-              />
-            </el-select>
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </div>
 
-            <el-input
-              v-if="allowCustomLocale && selectedLocale === CUSTOM_LOCALE_KEY"
-              v-model="customLocale"
-              class="i18n-add-panel__custom-input"
-              :disabled="disabled"
-              :placeholder="tr('jsonField.i18nField.customLocalePlaceholder', 'e.g. es-MX')"
+          <el-input
+            class="i18n-locale-card__textarea"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 6 }"
+            :placeholder="placeholder"
+            :model-value="text"
+            :disabled="disabled"
+            @update:model-value="(value) => onUpdateText(localeCode, value)"
+          />
+        </div>
+      </div>
+
+      <div class="i18n-add-panel">
+        <div class="i18n-add-panel__body">
+          <el-select
+            v-model="selectedLocale"
+            class="i18n-add-panel__locale-select"
+            filterable
+            clearable
+            :loading="loadingLocales"
+            :disabled="disabled"
+            :placeholder="tr('jsonField.i18nField.localePlaceholder', 'Select language')"
+          >
+            <el-option
+              v-for="opt in availableLocaleOptions"
+              :key="opt.value"
+              :label="opt.i18nKey && te(opt.i18nKey) ? t(opt.i18nKey) : opt.label"
+              :value="opt.value"
             />
+            <el-option
+              v-if="allowCustomLocale"
+              :label="tr('jsonField.i18nField.customLocaleOption', 'Custom locale...')"
+              :value="CUSTOM_LOCALE_KEY"
+            />
+          </el-select>
 
-            <div class="i18n-add-panel__actions">
-              <el-button type="primary" plain :disabled="disabled" @click="onAddLocale">
-                {{ tr('jsonField.i18nField.addLocale', 'Add') }}
-              </el-button>
-            </div>
+          <el-input
+            v-if="allowCustomLocale && selectedLocale === CUSTOM_LOCALE_KEY"
+            v-model="customLocale"
+            class="i18n-add-panel__custom-input"
+            :disabled="disabled"
+            :placeholder="tr('jsonField.i18nField.customLocalePlaceholder', 'e.g. es-MX')"
+          />
+
+          <div class="i18n-add-panel__actions">
+            <el-button
+              type="primary"
+              plain
+              :disabled="disabled"
+              @click="onAddLocale"
+            >
+              {{ tr('jsonField.i18nField.addLocale', 'Add') }}
+            </el-button>
           </div>
         </div>
-
-        <p v-if="addLocaleError" class="i18n-field__error">{{ addLocaleError }}</p>
-        <p class="i18n-field__hint">
-          {{ tr('jsonField.i18nField.localeFormatHint', 'Locale format: BCP-47 (e.g. zh-CN, en-US).') }}
-        </p>
-        <p v-if="helpText" class="i18n-field__help">{{ helpText }}</p>
       </div>
+
+      <p
+        v-if="addLocaleError"
+        class="i18n-field__error"
+      >
+        {{ addLocaleError }}
+      </p>
+      <p class="i18n-field__hint">
+        {{ tr('jsonField.i18nField.localeFormatHint', 'Locale format: BCP-47 (e.g. zh-CN, en-US).') }}
+      </p>
+      <p
+        v-if="helpText"
+        class="i18n-field__help"
+      >
+        {{ helpText }}
+      </p>
+    </div>
   </div>
 </template>
 

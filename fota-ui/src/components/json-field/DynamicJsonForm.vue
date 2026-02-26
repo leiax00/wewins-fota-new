@@ -485,7 +485,11 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
 <template>
   <div class="dynamic-json-form">
     <!-- 已添加的字段列表 -->
-    <transition-group name="field-list" tag="div" class="field-list">
+    <transition-group
+      name="field-list"
+      tag="div"
+      class="field-list"
+    >
       <!-- 简单 primitive 字段（非 textarea）使用 Tag 展示 -->
       <div
         v-for="key in addedFieldKeys.filter(k => isSimplePrimitiveField(getFieldByKey(k)))"
@@ -543,7 +547,10 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
 
     <!-- 可选字段列表 -->
     <transition name="fade">
-      <div v-if="availableFields.length > 0" class="add-field-section">
+      <div
+        v-if="availableFields.length > 0"
+        class="add-field-section"
+      >
         <div class="available-fields">
           <span class="available-fields__label">{{ t('jsonField.availableFields') }}:</span>
           <el-tag
@@ -562,7 +569,10 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
     </transition>
 
     <!-- 未知字段区域 -->
-    <div v-if="unknownKeys.length > 0" class="unknown-fields">
+    <div
+      v-if="unknownKeys.length > 0"
+      class="unknown-fields"
+    >
       <div class="unknown-fields__header">
         <span class="unknown-fields__title">{{ t('jsonField.unknownFields') }}</span>
         <el-button

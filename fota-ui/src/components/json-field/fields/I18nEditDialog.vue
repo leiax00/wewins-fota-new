@@ -85,7 +85,11 @@ const onConfirm = () => {
         <el-button @click="onDialogVisibleChange(false)">
           {{ tr('common.cancel', '取消') }}
         </el-button>
-        <el-button type="primary" :disabled="disabled" @click="onConfirm">
+        <el-button
+          type="primary"
+          :disabled="disabled"
+          @click="onConfirm"
+        >
           {{ tr('common.confirm', '确认') }}
         </el-button>
       </div>

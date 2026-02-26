@@ -39,7 +39,10 @@ const cacheComponents = computed(() => {
     <router-view v-if="isLoginPage" />
     <AppLayout v-else>
       <router-view v-slot="{ Component, route: viewRoute }">
-        <keep-alive v-if="shouldKeepAlive" :include="cacheComponents">
+        <keep-alive
+          v-if="shouldKeepAlive"
+          :include="cacheComponents"
+        >
           <component
             :is="Component"
             :key="viewRoute.fullPath"

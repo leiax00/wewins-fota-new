@@ -57,7 +57,9 @@ const handleMenuClick = () => {
     :index="menu.path"
   >
     <template #title>
-      <el-icon class="menu-icon"><component :is="menuIcon" /></el-icon>
+      <el-icon class="menu-icon">
+        <component :is="menuIcon" />
+      </el-icon>
       <span class="menu-label">{{ menuTitle }}</span>
     </template>
     <MenuItem
@@ -72,7 +74,9 @@ const handleMenuClick = () => {
     :index="menu.path"
     @click="handleMenuClick"
   >
-    <el-icon class="menu-icon"><component :is="menuIcon" /></el-icon>
+    <el-icon class="menu-icon">
+      <component :is="menuIcon" />
+    </el-icon>
     <span class="menu-label">{{ menuTitle }}</span>
   </el-menu-item>
 </template>

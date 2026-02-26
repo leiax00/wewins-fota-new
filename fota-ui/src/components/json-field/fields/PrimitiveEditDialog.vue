@@ -127,21 +127,33 @@ watch(visible, (val) => {
     :close-on-click-modal="false"
     @close="cancel"
   >
-    <div v-if="field" class="primitive-edit-dialog__content">
+    <div
+      v-if="field"
+      class="primitive-edit-dialog__content"
+    >
       <component
         :is="editorComponent"
-        :field="field"
         v-model="internalValue"
+        :field="field"
         :disabled="disabled"
       />
     </div>
-    <div v-else class="primitive-edit-dialog__empty">
+    <div
+      v-else
+      class="primitive-edit-dialog__empty"
+    >
       <el-empty :description="t('jsonField.fieldNotFound')" />
     </div>
 
     <template #footer>
-      <el-button @click="cancel">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" @click="confirm" :disabled="!field">
+      <el-button @click="cancel">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :disabled="!field"
+        @click="confirm"
+      >
         {{ t('common.confirm') }}
       </el-button>
     </template>

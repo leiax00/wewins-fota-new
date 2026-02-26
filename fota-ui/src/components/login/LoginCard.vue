@@ -13,8 +13,12 @@ defineProps<{
           <Promotion />
         </el-icon>
       </div>
-      <h1 class="login-title">{{ title }}</h1>
-      <p class="login-subtitle">{{ subtitle }}</p>
+      <h1 class="login-title">
+        {{ title }}
+      </h1>
+      <p class="login-subtitle">
+        {{ subtitle }}
+      </p>
     </div>
 
     <slot />

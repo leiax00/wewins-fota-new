@@ -493,8 +493,12 @@ onMounted(() => {
           style="width: 140px"
           @keyup.enter="fetchList"
         />
-        <el-button @click="fetchList">{{ t('common.search') }}</el-button>
-        <el-button @click="resetSearch">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchList">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="resetSearch">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('fota:firmware:create')"
           type="primary"
@@ -505,26 +509,65 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="version" :label="t('firmware.version')" min-width="120" />
-      <el-table-column prop="productId" :label="t('firmware.product')" min-width="160">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
+      <el-table-column
+        prop="version"
+        :label="t('firmware.version')"
+        min-width="120"
+      />
+      <el-table-column
+        prop="productId"
+        :label="t('firmware.product')"
+        min-width="160"
+      >
         <template #default="{ row }">
           {{ row.productName || row.productId }}
         </template>
       </el-table-column>
-      <el-table-column prop="packageStatus" label="包状态" min-width="100">
+      <el-table-column
+        prop="packageStatus"
+        label="包状态"
+        min-width="100"
+      >
         <template #default="{ row }">
-          <el-tag v-if="row.packageStatus === 'READY'" type="success">就绪</el-tag>
-          <el-tag v-else-if="row.packageStatus === 'NONE'" type="info">无包</el-tag>
-          <el-tag v-else type="warning">{{ row.packageStatus }}</el-tag>
+          <el-tag
+            v-if="row.packageStatus === 'READY'"
+            type="success"
+          >
+            就绪
+          </el-tag>
+          <el-tag
+            v-else-if="row.packageStatus === 'NONE'"
+            type="info"
+          >
+            无包
+          </el-tag>
+          <el-tag
+            v-else
+            type="warning"
+          >
+            {{ row.packageStatus }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="fileSize" :label="t('firmware.fileSize')" min-width="100">
+      <el-table-column
+        prop="fileSize"
+        :label="t('firmware.fileSize')"
+        min-width="100"
+      >
         <template #default="{ row }">
           {{ row.fileSize ? formatFileSize(row.fileSize) : '-' }}
         </template>
       </el-table-column>
-      <el-table-column prop="createdAt" :label="t('firmware.uploadTime')" width="170" />
+      <el-table-column
+        prop="createdAt"
+        :label="t('firmware.uploadTime')"
+        width="170"
+      />
 
       <el-table-column
         v-if="canShowActions"
@@ -555,20 +598,33 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('firmware.add') : t('common.edit')" width="680px" @closed="handleDialogClosed">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="120px">
-      <el-form-item prop="productId" :label="t('firmware.product')">
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('firmware.add') : t('common.edit')"
+    width="680px"
+    @closed="handleDialogClosed"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="120px"
+    >
+      <el-form-item
+        prop="productId"
+        :label="t('firmware.product')"
+      >
         <el-select
           v-model="form.productId"
           :loading="productSearchLoading"
@@ -587,8 +643,14 @@ onMounted(() => {
         </el-select>
       </el-form-item>
 
-      <el-form-item prop="version" :label="t('firmware.version')">
-        <el-input v-model="form.version" placeholder="1.0.0" />
+      <el-form-item
+        prop="version"
+        :label="t('firmware.version')"
+      >
+        <el-input
+          v-model="form.version"
+          placeholder="1.0.0"
+        />
       </el-form-item>
 
       <el-form-item label="无包版本">
@@ -598,7 +660,11 @@ onMounted(() => {
         </span>
       </el-form-item>
 
-      <el-form-item v-if="!form.noPackage" prop="uploadSessionId" label="固件包上传">
+      <el-form-item
+        v-if="!form.noPackage"
+        prop="uploadSessionId"
+        label="固件包上传"
+      >
         <div class="w-full rounded border border-[var(--el-border-color)] p-4">
           <!-- 上传按钮 -->
           <el-upload
@@ -628,7 +694,10 @@ onMounted(() => {
           </el-upload>
 
           <!-- 文件信息显示 -->
-          <div v-if="uploadState.fileName" class="mt-3 text-sm">
+          <div
+            v-if="uploadState.fileName"
+            class="mt-3 text-sm"
+          >
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <span class="text-gray-500">文件名：</span>
@@ -716,8 +785,15 @@ onMounted(() => {
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" :disabled="uploadState.status === 'UPLOADING'" @click="submitForm">
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        :disabled="uploadState.status === 'UPLOADING'"
+        @click="submitForm"
+      >
         {{ t('common.save') }}
       </el-button>
     </template>

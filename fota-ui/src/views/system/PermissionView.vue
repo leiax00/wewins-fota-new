@@ -261,7 +261,12 @@ onMounted(() => {
           clearable
           style="width: 150px"
         >
-          <el-option v-for="opt in typeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          <el-option
+            v-for="opt in typeOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
         <el-select
           v-model="query.status"
@@ -269,11 +274,21 @@ onMounted(() => {
           clearable
           style="width: 140px"
         >
-          <el-option :label="t('status.active')" value="active" />
-          <el-option :label="t('status.disabled')" value="disabled" />
+          <el-option
+            :label="t('status.active')"
+            value="active"
+          />
+          <el-option
+            :label="t('status.disabled')"
+            value="disabled"
+          />
         </el-select>
-        <el-button @click="fetchTree">{{ t('common.search') }}</el-button>
-        <el-button @click="refreshTree">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchTree">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="refreshTree">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('sys:perm:create')"
           type="primary"
@@ -293,12 +308,35 @@ onMounted(() => {
       :tree-props="{ children: 'children' }"
       @expand-change="handleExpandChange"
     >
-      <el-table-column prop="name" :label="t('system.permission.name')" min-width="180" />
-      <el-table-column prop="code" :label="t('system.permission.code')" min-width="220" />
-      <el-table-column prop="type" :label="t('system.permission.type')" width="110" />
-      <el-table-column prop="path" :label="t('system.permission.path')" min-width="190" />
-      <el-table-column prop="method" :label="t('system.permission.method')" width="100" />
-      <el-table-column :label="t('common.status')" width="140">
+      <el-table-column
+        prop="name"
+        :label="t('system.permission.name')"
+        min-width="180"
+      />
+      <el-table-column
+        prop="code"
+        :label="t('system.permission.code')"
+        min-width="220"
+      />
+      <el-table-column
+        prop="type"
+        :label="t('system.permission.type')"
+        width="110"
+      />
+      <el-table-column
+        prop="path"
+        :label="t('system.permission.path')"
+        min-width="190"
+      />
+      <el-table-column
+        prop="method"
+        :label="t('system.permission.method')"
+        width="100"
+      />
+      <el-table-column
+        :label="t('common.status')"
+        width="140"
+      >
         <template #default="{ row }">
           <el-switch
             v-if="userStore.hasPermission('sys:perm:update')"
@@ -351,45 +389,112 @@ onMounted(() => {
     :title="dialogMode === 'create' ? t('system.permission.add') : t('common.edit')"
     width="560px"
   >
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
-      <el-form-item prop="name" :label="t('system.permission.name')">
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="110px"
+    >
+      <el-form-item
+        prop="name"
+        :label="t('system.permission.name')"
+      >
         <el-input v-model="form.name" />
       </el-form-item>
-      <el-form-item prop="code" :label="t('system.permission.code')">
+      <el-form-item
+        prop="code"
+        :label="t('system.permission.code')"
+      >
         <el-input v-model="form.code" />
       </el-form-item>
-      <el-form-item prop="type" :label="t('system.permission.type')">
-        <el-select v-model="form.type" style="width: 100%">
-          <el-option v-for="opt in typeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+      <el-form-item
+        prop="type"
+        :label="t('system.permission.type')"
+      >
+        <el-select
+          v-model="form.type"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in typeOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
       <el-form-item :label="t('system.permission.parent')">
-        <el-select v-model="form.parentId" clearable style="width: 100%">
-          <el-option v-for="opt in parentOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+        <el-select
+          v-model="form.parentId"
+          clearable
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in parentOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
       <el-form-item :label="t('system.permission.path')">
         <el-input v-model="form.path" />
       </el-form-item>
       <el-form-item :label="t('system.permission.method')">
-        <el-select v-model="form.method" clearable style="width: 100%">
-          <el-option label="GET" value="GET" />
-          <el-option label="POST" value="POST" />
-          <el-option label="PUT" value="PUT" />
-          <el-option label="DELETE" value="DELETE" />
+        <el-select
+          v-model="form.method"
+          clearable
+          style="width: 100%"
+        >
+          <el-option
+            label="GET"
+            value="GET"
+          />
+          <el-option
+            label="POST"
+            value="POST"
+          />
+          <el-option
+            label="PUT"
+            value="PUT"
+          />
+          <el-option
+            label="DELETE"
+            value="DELETE"
+          />
         </el-select>
       </el-form-item>
-      <el-form-item prop="status" :label="t('common.status')">
-        <el-select v-model="form.status" style="width: 100%">
-          <el-option :label="t('status.active')" value="active" />
-          <el-option :label="t('status.disabled')" value="disabled" />
+      <el-form-item
+        prop="status"
+        :label="t('common.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
+          <el-option
+            :label="t('status.active')"
+            value="active"
+          />
+          <el-option
+            :label="t('status.disabled')"
+            value="disabled"
+          />
         </el-select>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

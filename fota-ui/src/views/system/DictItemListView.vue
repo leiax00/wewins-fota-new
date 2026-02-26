@@ -260,10 +260,19 @@ onMounted(async () => {
           clearable
           style="width: 140px"
         >
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
-        <el-button @click="fetchList">{{ t('common.search') }}</el-button>
-        <el-button @click="fetchList">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchList">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="fetchList">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('sys:dict_item:create')"
           type="primary"
@@ -285,12 +294,31 @@ onMounted(async () => {
       </template>
     </el-alert>
 
-    <el-skeleton v-if="contextLoading" :rows="1" animated />
+    <el-skeleton
+      v-if="contextLoading"
+      :rows="1"
+      animated
+    />
 
-    <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="label" :label="t('system.dict.itemLabel')" min-width="160" />
-      <el-table-column prop="value" :label="t('system.dict.itemValue')" min-width="160" />
-      <el-table-column :label="t('system.dict.extra')" min-width="220">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
+      <el-table-column
+        prop="label"
+        :label="t('system.dict.itemLabel')"
+        min-width="160"
+      />
+      <el-table-column
+        prop="value"
+        :label="t('system.dict.itemValue')"
+        min-width="160"
+      />
+      <el-table-column
+        :label="t('system.dict.extra')"
+        min-width="220"
+      >
         <template #default="{ row }">
           <div class="extra-cell">
             <span class="extra-summary">{{ formatExtraSummary(row.extra) }}</span>
@@ -301,17 +329,33 @@ onMounted(async () => {
               width="420"
             >
               <template #reference>
-                <el-button link type="primary">{{ t('system.dict.viewJson') }}</el-button>
+                <el-button
+                  link
+                  type="primary"
+                >
+                  {{ t('system.dict.viewJson') }}
+                </el-button>
               </template>
               <pre class="extra-json-preview">{{ formatExtraPretty(row.extra) }}</pre>
             </el-popover>
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="sortOrder" :label="t('system.dict.sortOrder')" width="100" />
-      <el-table-column prop="status" :label="t('common.status')" width="110">
+      <el-table-column
+        prop="sortOrder"
+        :label="t('system.dict.sortOrder')"
+        width="100"
+      />
+      <el-table-column
+        prop="status"
+        :label="t('common.status')"
+        width="110"
+      >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(roleStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(roleStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
@@ -346,38 +390,64 @@ onMounted(async () => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('system.dict.addItem') : t('common.edit')" width="560px">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('system.dict.addItem') : t('common.edit')"
+    width="560px"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="110px"
+    >
       <el-form-item :label="t('system.dict.type')">
-        <el-input :model-value="dictType ? `${dictType.name} (${dictType.code})` : '-'" disabled />
+        <el-input
+          :model-value="dictType ? `${dictType.name} (${dictType.code})` : '-'"
+          disabled
+        />
       </el-form-item>
-      <el-form-item prop="label" :label="t('system.dict.itemLabel')">
+      <el-form-item
+        prop="label"
+        :label="t('system.dict.itemLabel')"
+      >
         <el-input v-model="form.label" />
       </el-form-item>
-      <el-form-item prop="value" :label="t('system.dict.itemValue')">
+      <el-form-item
+        prop="value"
+        :label="t('system.dict.itemValue')"
+      >
         <el-input v-model="form.value" />
       </el-form-item>
       <el-form-item :label="t('system.dict.i18nKey')">
         <el-input v-model="form.i18nKey" />
       </el-form-item>
       <el-form-item :label="t('system.dict.sortOrder')">
-        <el-input-number v-model="form.sortOrder" :min="0" style="width: 100%" />
+        <el-input-number
+          v-model="form.sortOrder"
+          :min="0"
+          style="width: 100%"
+        />
       </el-form-item>
       <el-form-item :label="t('system.dict.extra')">
         <div style="width: 100%">
           <div class="mb-1 flex justify-end">
-            <el-button link type="primary" @click="formatExtraInput">
+            <el-button
+              link
+              type="primary"
+              @click="formatExtraInput"
+            >
               {{ t('system.dict.formatJson') }}
             </el-button>
           </div>
@@ -389,16 +459,35 @@ onMounted(async () => {
           />
         </div>
       </el-form-item>
-      <el-form-item prop="status" :label="t('common.status')">
-        <el-select v-model="form.status" style="width: 100%">
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+      <el-form-item
+        prop="status"
+        :label="t('common.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

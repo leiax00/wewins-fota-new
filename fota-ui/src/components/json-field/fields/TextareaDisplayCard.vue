@@ -59,9 +59,16 @@ const onEdit = () => {
 </script>
 
 <template>
-  <div class="textarea-display-card" @click="onEdit">
+  <div
+    class="textarea-display-card"
+    @click="onEdit"
+  >
     <div class="textarea-display-card__header">
-      <el-tag size="small" type="info" effect="plain">
+      <el-tag
+        size="small"
+        type="info"
+        effect="plain"
+      >
         {{ field.label }}
       </el-tag>
       <div class="textarea-display-card__actions">
@@ -91,7 +98,10 @@ const onEdit = () => {
         </el-button>
       </div>
     </div>
-    <div class="textarea-display-card__body" :class="{ 'is-collapsed': collapsed }">
+    <div
+      class="textarea-display-card__body"
+      :class="{ 'is-collapsed': collapsed }"
+    >
       {{ displayText }}
     </div>
   </div>

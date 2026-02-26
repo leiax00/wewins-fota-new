@@ -314,8 +314,14 @@ onMounted(() => {
 <template>
   <div class="json-field-editor">
     <!-- 模式切换图标按钮 -->
-    <div v-if="allowModeSwitch" class="json-field-editor__toolbar">
-      <el-tooltip :content="t('jsonField.formMode')" placement="top">
+    <div
+      v-if="allowModeSwitch"
+      class="json-field-editor__toolbar"
+    >
+      <el-tooltip
+        :content="t('jsonField.formMode')"
+        placement="top"
+      >
         <el-button
           :type="currentMode === 'form' ? 'primary' : ''"
           :disabled="!canUseFormMode"
@@ -325,7 +331,10 @@ onMounted(() => {
           <el-icon><Grid /></el-icon>
         </el-button>
       </el-tooltip>
-      <el-tooltip :content="t('jsonField.codeMode')" placement="top">
+      <el-tooltip
+        :content="t('jsonField.codeMode')"
+        placement="top"
+      >
         <el-button
           :type="currentMode === 'code' ? 'primary' : ''"
           size="small"
@@ -349,7 +358,11 @@ onMounted(() => {
     <!-- 内容区域（可滚动） -->
     <div class="json-field-editor__content">
       <!-- 加载骨架屏 -->
-      <el-skeleton v-if="loading" :rows="3" animated />
+      <el-skeleton
+        v-if="loading"
+        :rows="3"
+        animated
+      />
 
       <!-- 表单模式 -->
       <DynamicJsonForm
@@ -374,10 +387,16 @@ onMounted(() => {
       />
 
       <!-- 代码模式 -->
-      <div v-else class="code-mode-wrapper">
+      <div
+        v-else
+        class="code-mode-wrapper"
+      >
         <div class="code-mode-wrapper__toolbar">
           <span class="code-mode-wrapper__title">{{ t('jsonField.codeModeTitle') }}</span>
-          <el-tooltip :content="t('jsonField.formatJson')" placement="top">
+          <el-tooltip
+            :content="t('jsonField.formatJson')"
+            placement="top"
+          >
             <el-button
               class="code-format-btn"
               size="small"

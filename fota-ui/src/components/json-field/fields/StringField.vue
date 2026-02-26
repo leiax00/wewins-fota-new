@@ -83,7 +83,10 @@ const onInput = (value: string) => {
 </script>
 
 <template>
-  <div class="json-field-item" :class="{ 'json-field-item--textarea': isTextarea }">
+  <div
+    class="json-field-item"
+    :class="{ 'json-field-item--textarea': isTextarea }"
+  >
     <el-input
       :model-value="modelValue ?? ''"
       :type="isTextarea ? 'textarea' : 'text'"
@@ -94,14 +97,27 @@ const onInput = (value: string) => {
       class="json-field-item__input"
       @update:model-value="onInput"
     >
-      <template v-if="showHelpIcon && !isTextarea" #suffix>
-        <el-tooltip :content="helpText" placement="top">
-          <el-icon class="json-field-item__help-icon"><InfoFilled /></el-icon>
+      <template
+        v-if="showHelpIcon && !isTextarea"
+        #suffix
+      >
+        <el-tooltip
+          :content="helpText"
+          placement="top"
+        >
+          <el-icon class="json-field-item__help-icon">
+            <InfoFilled />
+          </el-icon>
         </el-tooltip>
       </template>
     </el-input>
-    <div v-if="showHelpIcon && isTextarea" class="json-field-item__help-text">
-      <el-icon class="json-field-item__help-icon"><InfoFilled /></el-icon>
+    <div
+      v-if="showHelpIcon && isTextarea"
+      class="json-field-item__help-text"
+    >
+      <el-icon class="json-field-item__help-icon">
+        <InfoFilled />
+      </el-icon>
       <span>{{ helpText }}</span>
     </div>
   </div>

@@ -80,7 +80,10 @@ const handleThemeChange = (mode: ThemeMode) => {
         </el-icon>
       </button>
 
-      <el-divider direction="vertical" class="header-divider" />
+      <el-divider
+        direction="vertical"
+        class="header-divider"
+      />
 
       <div class="header-breadcrumb-wrap">
         <Breadcrumb />
@@ -122,20 +125,22 @@ const handleThemeChange = (mode: ThemeMode) => {
         >
           <el-icon><Collection /></el-icon>
           <span class="hidden md:inline">{{ currentLocaleLabel }}</span>
-          <el-icon class="hidden md:inline-flex"><ArrowDown /></el-icon>
+          <el-icon class="hidden md:inline-flex">
+            <ArrowDown />
+          </el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item
-                v-for="localeItem in localeOptions"
-                :key="localeItem.value"
-                :command="localeItem.value"
-              >
-                <div class="flex items-center gap-2">
-                  <span>{{ getLocaleLabel(localeItem) }}</span>
-                  <el-icon
-                    v-if="currentLocale === localeItem.value"
-                    class="ui-action-primary"
+              v-for="localeItem in localeOptions"
+              :key="localeItem.value"
+              :command="localeItem.value"
+            >
+              <div class="flex items-center gap-2">
+                <span>{{ getLocaleLabel(localeItem) }}</span>
+                <el-icon
+                  v-if="currentLocale === localeItem.value"
+                  class="ui-action-primary"
                 >
                   <Check />
                 </el-icon>
@@ -155,7 +160,9 @@ const handleThemeChange = (mode: ThemeMode) => {
             <el-icon><User /></el-icon>
           </el-avatar>
           <span class="text-sm hidden md:inline">{{ t('header.admin') }}</span>
-          <el-icon class="hidden md:inline-flex"><ArrowDown /></el-icon>
+          <el-icon class="hidden md:inline-flex">
+            <ArrowDown />
+          </el-icon>
         </div>
         <template #dropdown>
           <el-dropdown-menu>

@@ -133,8 +133,12 @@ onMounted(() => {
           style="width: 180px"
           @keyup.enter="fetchList"
         />
-        <el-button @click="fetchList">{{ t('common.search') }}</el-button>
-        <el-button @click="resetSearch">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchList">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="resetSearch">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('fota:product:create')"
           type="primary"
@@ -145,12 +149,37 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="name" :label="t('product.name')" min-width="180" />
-      <el-table-column prop="manufacturer" :label="t('product.manufacturer')" min-width="160" />
-      <el-table-column prop="model" :label="t('product.model')" min-width="140" />
-      <el-table-column prop="remark" :label="t('common.remark')" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="createdAt" :label="t('common.createTime')" width="170" />
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
+      <el-table-column
+        prop="name"
+        :label="t('product.name')"
+        min-width="180"
+      />
+      <el-table-column
+        prop="manufacturer"
+        :label="t('product.manufacturer')"
+        min-width="160"
+      />
+      <el-table-column
+        prop="model"
+        :label="t('product.model')"
+        min-width="140"
+      />
+      <el-table-column
+        prop="remark"
+        :label="t('common.remark')"
+        min-width="200"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="createdAt"
+        :label="t('common.createTime')"
+        width="170"
+      />
 
       <el-table-column
         v-if="canShowActions"
@@ -181,36 +210,66 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('product.add') : t('common.edit')" width="560px">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
-      <el-form-item prop="name" :label="t('product.name')">
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('product.add') : t('common.edit')"
+    width="560px"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="110px"
+    >
+      <el-form-item
+        prop="name"
+        :label="t('product.name')"
+      >
         <el-input v-model="form.name" />
       </el-form-item>
-      <el-form-item prop="manufacturer" :label="t('product.manufacturer')">
+      <el-form-item
+        prop="manufacturer"
+        :label="t('product.manufacturer')"
+      >
         <el-input v-model="form.manufacturer" />
       </el-form-item>
-      <el-form-item prop="model" :label="t('product.model')">
+      <el-form-item
+        prop="model"
+        :label="t('product.model')"
+      >
         <el-input v-model="form.model" />
       </el-form-item>
       <el-form-item :label="t('common.remark')">
-        <el-input v-model="form.remark" type="textarea" :rows="3" />
+        <el-input
+          v-model="form.remark"
+          type="textarea"
+          :rows="3"
+        />
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

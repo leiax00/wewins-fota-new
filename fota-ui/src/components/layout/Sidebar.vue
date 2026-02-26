@@ -113,13 +113,25 @@ const handleUserCommand = async (command: string) => {
     :width="collapsed ? '64px' : '210px'"
     class="sidebar-shell"
   >
-    <div class="sidebar-brand" :class="{ 'is-collapsed': collapsed }">
+    <div
+      class="sidebar-brand"
+      :class="{ 'is-collapsed': collapsed }"
+    >
       <div class="brand-icon-wrap">
-        <el-icon class="brand-icon"><Promotion /></el-icon>
+        <el-icon class="brand-icon">
+          <Promotion />
+        </el-icon>
       </div>
-      <div v-if="!collapsed" class="brand-copy">
-        <p class="brand-title">{{ t('header.brand') }}</p>
-        <p class="brand-subtitle">Device OTA Console</p>
+      <div
+        v-if="!collapsed"
+        class="brand-copy"
+      >
+        <p class="brand-title">
+          {{ t('header.brand') }}
+        </p>
+        <p class="brand-subtitle">
+          Device OTA Console
+        </p>
       </div>
     </div>
 
@@ -145,7 +157,10 @@ const handleUserCommand = async (command: string) => {
       </template>
     </el-menu>
 
-    <div class="sidebar-mobile-tools" :class="{ 'is-collapsed': collapsed }">
+    <div
+      class="sidebar-mobile-tools"
+      :class="{ 'is-collapsed': collapsed }"
+    >
       <div class="mobile-tools-row">
         <el-dropdown
           trigger="click"

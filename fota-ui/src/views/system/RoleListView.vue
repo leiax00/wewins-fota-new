@@ -276,8 +276,12 @@ onMounted(() => {
             :value="opt.value"
           />
         </el-select>
-        <el-button @click="fetchList">{{ t('common.search') }}</el-button>
-        <el-button @click="refreshList">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchList">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="refreshList">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('sys:role:create')"
           type="primary"
@@ -293,17 +297,40 @@ onMounted(() => {
       :data="list"
       stripe
     >
-      <el-table-column prop="code" :label="t('system.role.code')" min-width="160" />
-      <el-table-column prop="name" :label="t('system.role.name')" min-width="160" />
-      <el-table-column prop="description" :label="t('system.role.description')" min-width="220" />
-      <el-table-column prop="status" :label="t('common.status')" width="110">
+      <el-table-column
+        prop="code"
+        :label="t('system.role.code')"
+        min-width="160"
+      />
+      <el-table-column
+        prop="name"
+        :label="t('system.role.name')"
+        min-width="160"
+      />
+      <el-table-column
+        prop="description"
+        :label="t('system.role.description')"
+        min-width="220"
+      />
+      <el-table-column
+        prop="status"
+        :label="t('common.status')"
+        width="110"
+      >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(roleStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(roleStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createdAt" :label="t('common.createTime')" min-width="170" />
+      <el-table-column
+        prop="createdAt"
+        :label="t('common.createTime')"
+        min-width="170"
+      />
 
       <el-table-column
         v-if="canShowActions"
@@ -342,11 +369,11 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
@@ -364,25 +391,57 @@ onMounted(() => {
       :rules="formRules"
       label-width="110px"
     >
-      <el-form-item prop="code" :label="t('system.role.code')">
-        <el-input v-model="form.code" :disabled="dialogMode === 'edit'" />
+      <el-form-item
+        prop="code"
+        :label="t('system.role.code')"
+      >
+        <el-input
+          v-model="form.code"
+          :disabled="dialogMode === 'edit'"
+        />
       </el-form-item>
-      <el-form-item prop="name" :label="t('system.role.name')">
+      <el-form-item
+        prop="name"
+        :label="t('system.role.name')"
+      >
         <el-input v-model="form.name" />
       </el-form-item>
       <el-form-item :label="t('system.role.description')">
-        <el-input v-model="form.description" type="textarea" :rows="3" />
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="3"
+        />
       </el-form-item>
-      <el-form-item prop="status" :label="t('common.status')">
-        <el-select v-model="form.status" style="width: 100%">
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+      <el-form-item
+        prop="status"
+        :label="t('common.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 
@@ -397,8 +456,18 @@ onMounted(() => {
         :active-text="t('system.role.parentChildLinkage')"
       />
       <div class="permission-toolbar-actions">
-        <el-button size="small" @click="checkAllPermissions">{{ t('system.role.selectAllPermissions') }}</el-button>
-        <el-button size="small" @click="clearAllPermissions">{{ t('system.role.clearAllPermissions') }}</el-button>
+        <el-button
+          size="small"
+          @click="checkAllPermissions"
+        >
+          {{ t('system.role.selectAllPermissions') }}
+        </el-button>
+        <el-button
+          size="small"
+          @click="clearAllPermissions"
+        >
+          {{ t('system.role.clearAllPermissions') }}
+        </el-button>
       </div>
     </div>
 
@@ -417,8 +486,16 @@ onMounted(() => {
     </div>
 
     <template #footer>
-      <el-button @click="permissionDialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="permissionSubmitting" @click="submitPermissions">{{ t('common.save') }}</el-button>
+      <el-button @click="permissionDialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="permissionSubmitting"
+        @click="submitPermissions"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

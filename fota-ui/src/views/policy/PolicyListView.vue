@@ -289,8 +289,12 @@ onMounted(() => {
             :value="status"
           />
         </el-select>
-        <el-button @click="handleSearch">{{ t('common.search') }}</el-button>
-        <el-button @click="resetSearch">{{ t('common.refresh') }}</el-button>
+        <el-button @click="handleSearch">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="resetSearch">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('fota:policy:create')"
           type="primary"
@@ -301,28 +305,63 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="name" :label="t('policy.name')" min-width="180" />
-      <el-table-column prop="productId" :label="t('policy.product')" min-width="180">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
+      <el-table-column
+        prop="name"
+        :label="t('policy.name')"
+        min-width="180"
+      />
+      <el-table-column
+        prop="productId"
+        :label="t('policy.product')"
+        min-width="180"
+      >
         <template #default="{ row }">
           {{ getProductName(row.productId) }}
         </template>
       </el-table-column>
-      <el-table-column prop="firmwareVersionId" :label="t('policy.firmwareVersion')" min-width="180">
+      <el-table-column
+        prop="firmwareVersionId"
+        :label="t('policy.firmwareVersion')"
+        min-width="180"
+      >
         <template #default="{ row }">
           {{ getFirmwareVersionLabel(row.firmwareVersionId) }}
         </template>
       </el-table-column>
-      <el-table-column prop="grayRate" :label="t('policy.grayRate')" width="120">
+      <el-table-column
+        prop="grayRate"
+        :label="t('policy.grayRate')"
+        width="120"
+      >
         <template #default="{ row }">
           {{ row.grayRate }}%
         </template>
       </el-table-column>
-      <el-table-column prop="priority" :label="t('policy.priority')" width="100" />
-      <el-table-column prop="planTime" :label="t('policy.planTime')" width="180" />
-      <el-table-column prop="status" :label="t('policy.status')" width="120">
+      <el-table-column
+        prop="priority"
+        :label="t('policy.priority')"
+        width="100"
+      />
+      <el-table-column
+        prop="planTime"
+        :label="t('policy.planTime')"
+        width="180"
+      />
+      <el-table-column
+        prop="status"
+        :label="t('policy.status')"
+        width="120"
+      >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(policyStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(policyStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
@@ -357,20 +396,32 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('policy.add') : t('common.edit')" width="680px">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="120px">
-      <el-form-item prop="productId" :label="t('policy.product')">
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('policy.add') : t('common.edit')"
+    width="680px"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="120px"
+    >
+      <el-form-item
+        prop="productId"
+        :label="t('policy.product')"
+      >
         <el-select
           v-model="form.productId"
           :loading="productSearchLoading"
@@ -389,7 +440,10 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item prop="firmwareVersionId" :label="t('policy.firmwareVersion')">
+      <el-form-item
+        prop="firmwareVersionId"
+        :label="t('policy.firmwareVersion')"
+      >
         <el-select
           v-model="form.firmwareVersionId"
           :loading="firmwareLoading"
@@ -404,16 +458,37 @@ onMounted(() => {
           />
         </el-select>
       </el-form-item>
-      <el-form-item prop="name" :label="t('policy.name')">
+      <el-form-item
+        prop="name"
+        :label="t('policy.name')"
+      >
         <el-input v-model="form.name" />
       </el-form-item>
-      <el-form-item prop="grayRate" :label="t('policy.grayRate')">
-        <el-input-number v-model="form.grayRate" :min="0" :max="100" style="width: 100%" />
+      <el-form-item
+        prop="grayRate"
+        :label="t('policy.grayRate')"
+      >
+        <el-input-number
+          v-model="form.grayRate"
+          :min="0"
+          :max="100"
+          style="width: 100%"
+        />
       </el-form-item>
-      <el-form-item prop="priority" :label="t('policy.priority')">
-        <el-input-number v-model="form.priority" :min="0" style="width: 100%" />
+      <el-form-item
+        prop="priority"
+        :label="t('policy.priority')"
+      >
+        <el-input-number
+          v-model="form.priority"
+          :min="0"
+          style="width: 100%"
+        />
       </el-form-item>
-      <el-form-item prop="planTime" :label="t('policy.planTime')">
+      <el-form-item
+        prop="planTime"
+        :label="t('policy.planTime')"
+      >
         <el-date-picker
           v-model="form.planTime"
           type="datetime"
@@ -421,8 +496,14 @@ onMounted(() => {
           style="width: 100%"
         />
       </el-form-item>
-      <el-form-item prop="status" :label="t('policy.status')">
-        <el-select v-model="form.status" style="width: 100%">
+      <el-form-item
+        prop="status"
+        :label="t('policy.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
           <el-option
             v-for="status in statusOptions"
             :key="status"
@@ -432,13 +513,25 @@ onMounted(() => {
         </el-select>
       </el-form-item>
       <el-form-item :label="t('policy.remark')">
-        <el-input v-model="form.remark" type="textarea" :rows="3" />
+        <el-input
+          v-model="form.remark"
+          type="textarea"
+          :rows="3"
+        />
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

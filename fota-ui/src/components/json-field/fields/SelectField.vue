@@ -92,9 +92,17 @@ const onChange = (value: string | number) => {
         :value="option.value"
       />
     </el-select>
-    <div v-if="showHelpIcon" class="json-field-item__help-icon-wrapper">
-      <el-tooltip :content="helpText" placement="top">
-        <el-icon class="json-field-item__help-icon"><InfoFilled /></el-icon>
+    <div
+      v-if="showHelpIcon"
+      class="json-field-item__help-icon-wrapper"
+    >
+      <el-tooltip
+        :content="helpText"
+        placement="top"
+      >
+        <el-icon class="json-field-item__help-icon">
+          <InfoFilled />
+        </el-icon>
       </el-tooltip>
     </div>
   </div>

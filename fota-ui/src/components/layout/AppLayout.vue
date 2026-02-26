@@ -14,7 +14,10 @@ const tabsEnabled = computed(() => appStore.multiTabsEnabled)
 <template>
   <el-container class="app-shell">
     <Sidebar :collapsed="layoutStore.collapsed" />
-    <el-container direction="vertical" class="app-right">
+    <el-container
+      direction="vertical"
+      class="app-right"
+    >
       <Header />
       <TabsView v-if="tabsEnabled" />
       <el-main

@@ -79,11 +79,18 @@ const onRemove = (event: MouseEvent) => {
 </script>
 
 <template>
-  <div class="i18n-display-card" @click="onEdit">
+  <div
+    class="i18n-display-card"
+    @click="onEdit"
+  >
     <div v-if="entries.length > 0">
       <!-- 第一行：字段名 + 删除按钮 -->
       <div class="i18n-display-card__header">
-        <el-tag size="small" type="info" effect="plain">
+        <el-tag
+          size="small"
+          type="info"
+          effect="plain"
+        >
           {{ field.label }}
         </el-tag>
         <el-button
@@ -99,7 +106,11 @@ const onRemove = (event: MouseEvent) => {
 
       <!-- 第二行：语言数 + 展开/折叠按钮 -->
       <div class="i18n-display-card__subtitle">
-        <el-tag size="small" type="success" effect="plain">
+        <el-tag
+          size="small"
+          type="success"
+          effect="plain"
+        >
           {{ localeCountText }}
         </el-tag>
         <el-button
@@ -120,10 +131,20 @@ const onRemove = (event: MouseEvent) => {
 
       <!-- 语言列表 -->
       <el-collapse-transition>
-        <div v-show="!collapsed" class="i18n-display-card__list">
-          <div v-for="[locale, text] in entries" :key="locale" class="i18n-display-item">
+        <div
+          v-show="!collapsed"
+          class="i18n-display-card__list"
+        >
+          <div
+            v-for="[locale, text] in entries"
+            :key="locale"
+            class="i18n-display-item"
+          >
             <span class="i18n-display-item__label">{{ resolveLocaleLabel(locale) }}:</span>
-            <span class="i18n-display-item__text" :title="text || ''">{{ text || '-' }}</span>
+            <span
+              class="i18n-display-item__text"
+              :title="text || ''"
+            >{{ text || '-' }}</span>
             <el-button
               link
               size="small"
@@ -138,9 +159,16 @@ const onRemove = (event: MouseEvent) => {
       </el-collapse-transition>
     </div>
 
-    <div v-else class="i18n-display-card__empty">
+    <div
+      v-else
+      class="i18n-display-card__empty"
+    >
       <div class="i18n-display-card__header">
-        <el-tag size="small" type="info" effect="plain">
+        <el-tag
+          size="small"
+          type="info"
+          effect="plain"
+        >
           {{ field.label }}
         </el-tag>
         <el-button
@@ -154,7 +182,11 @@ const onRemove = (event: MouseEvent) => {
         </el-button>
       </div>
       <div class="i18n-display-card__subtitle i18n-display-card__subtitle--empty">
-        <el-tag size="small" type="info" effect="plain">
+        <el-tag
+          size="small"
+          type="info"
+          effect="plain"
+        >
           {{ localeCountText }}
         </el-tag>
         <span class="i18n-display-card__empty-text">

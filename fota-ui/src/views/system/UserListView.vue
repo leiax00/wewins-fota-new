@@ -220,18 +220,45 @@ onMounted(() => {
       :data="list"
       stripe
     >
-      <el-table-column prop="username" :label="t('system.user.username')" min-width="150" />
-      <el-table-column prop="displayName" :label="t('system.user.displayName')" min-width="140" />
-      <el-table-column prop="email" :label="t('system.user.email')" min-width="180" />
-      <el-table-column prop="phone" :label="t('system.user.phone')" min-width="140" />
-      <el-table-column prop="status" :label="t('common.status')" width="110">
+      <el-table-column
+        prop="username"
+        :label="t('system.user.username')"
+        min-width="150"
+      />
+      <el-table-column
+        prop="displayName"
+        :label="t('system.user.displayName')"
+        min-width="140"
+      />
+      <el-table-column
+        prop="email"
+        :label="t('system.user.email')"
+        min-width="180"
+      />
+      <el-table-column
+        prop="phone"
+        :label="t('system.user.phone')"
+        min-width="140"
+      />
+      <el-table-column
+        prop="status"
+        :label="t('common.status')"
+        width="110"
+      >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(userStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(userStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createdAt" :label="t('common.createTime')" min-width="170" />
+      <el-table-column
+        prop="createdAt"
+        :label="t('common.createTime')"
+        min-width="170"
+      />
 
       <el-table-column
         v-if="canShowActions"
@@ -270,11 +297,11 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
@@ -292,10 +319,19 @@ onMounted(() => {
       :rules="formRules"
       label-width="110px"
     >
-      <el-form-item prop="username" :label="t('system.user.username')">
-        <el-input v-model="form.username" :disabled="dialogMode === 'edit'" />
+      <el-form-item
+        prop="username"
+        :label="t('system.user.username')"
+      >
+        <el-input
+          v-model="form.username"
+          :disabled="dialogMode === 'edit'"
+        />
       </el-form-item>
-      <el-form-item prop="displayName" :label="t('system.user.displayName')">
+      <el-form-item
+        prop="displayName"
+        :label="t('system.user.displayName')"
+      >
         <el-input v-model="form.displayName" />
       </el-form-item>
       <el-form-item :label="t('system.user.email')">
@@ -305,18 +341,41 @@ onMounted(() => {
         <el-input v-model="form.phone" />
       </el-form-item>
       <el-form-item :label="t('system.user.password')">
-        <el-input v-model="form.passwordHash" type="password" show-password />
+        <el-input
+          v-model="form.passwordHash"
+          type="password"
+          show-password
+        />
       </el-form-item>
-      <el-form-item prop="status" :label="t('common.status')">
-        <el-select v-model="form.status" style="width: 100%">
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+      <el-form-item
+        prop="status"
+        :label="t('common.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 
@@ -334,8 +393,16 @@ onMounted(() => {
     />
 
     <template #footer>
-      <el-button @click="roleDialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="roleSubmitting" @click="submitRoleAssign">{{ t('common.save') }}</el-button>
+      <el-button @click="roleDialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="roleSubmitting"
+        @click="submitRoleAssign"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>

@@ -151,10 +151,19 @@ onMounted(() => {
           clearable
           style="width: 140px"
         >
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
-        <el-button @click="fetchList">{{ t('common.search') }}</el-button>
-        <el-button @click="fetchList">{{ t('common.refresh') }}</el-button>
+        <el-button @click="fetchList">
+          {{ t('common.search') }}
+        </el-button>
+        <el-button @click="fetchList">
+          {{ t('common.refresh') }}
+        </el-button>
         <el-button
           v-if="userStore.hasPermission('sys:dict_type:create')"
           type="primary"
@@ -165,13 +174,36 @@ onMounted(() => {
       </div>
     </template>
 
-    <el-table v-loading="loading" :data="list" stripe>
-      <el-table-column prop="code" :label="t('system.dict.code')" min-width="150" />
-      <el-table-column prop="name" :label="t('system.dict.name')" min-width="160" />
-      <el-table-column prop="description" :label="t('system.dict.description')" min-width="220" />
-      <el-table-column prop="status" :label="t('common.status')" width="110">
+    <el-table
+      v-loading="loading"
+      :data="list"
+      stripe
+    >
+      <el-table-column
+        prop="code"
+        :label="t('system.dict.code')"
+        min-width="150"
+      />
+      <el-table-column
+        prop="name"
+        :label="t('system.dict.name')"
+        min-width="160"
+      />
+      <el-table-column
+        prop="description"
+        :label="t('system.dict.description')"
+        min-width="220"
+      />
+      <el-table-column
+        prop="status"
+        :label="t('common.status')"
+        width="110"
+      >
         <template #default="{ row }">
-          <el-tag size="small" :type="resolveStatusType(roleStatusTypeMap, row.status)">
+          <el-tag
+            size="small"
+            :type="resolveStatusType(roleStatusTypeMap, row.status)"
+          >
             {{ t(resolveStatusLabelKey(row.status)) }}
           </el-tag>
         </template>
@@ -214,41 +246,82 @@ onMounted(() => {
 
     <div class="mt-4 flex justify-end">
       <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
         background
         layout="total, sizes, prev, pager, next"
         :total="total"
-        v-model:current-page="query.page"
-        v-model:page-size="query.size"
         @current-change="fetchList"
         @size-change="fetchList"
       />
     </div>
   </PageCardTableShell>
 
-  <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? t('system.dict.addType') : t('common.edit')" width="560px">
-    <el-form ref="formRef" :model="form" :rules="formRules" label-width="110px">
-      <el-form-item prop="code" :label="t('system.dict.code')">
-        <el-input v-model="form.code" :disabled="dialogMode === 'edit'" />
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogMode === 'create' ? t('system.dict.addType') : t('common.edit')"
+    width="560px"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="formRules"
+      label-width="110px"
+    >
+      <el-form-item
+        prop="code"
+        :label="t('system.dict.code')"
+      >
+        <el-input
+          v-model="form.code"
+          :disabled="dialogMode === 'edit'"
+        />
       </el-form-item>
-      <el-form-item prop="name" :label="t('system.dict.name')">
+      <el-form-item
+        prop="name"
+        :label="t('system.dict.name')"
+      >
         <el-input v-model="form.name" />
       </el-form-item>
       <el-form-item :label="t('system.dict.i18nKey')">
         <el-input v-model="form.i18nKey" />
       </el-form-item>
       <el-form-item :label="t('system.dict.description')">
-        <el-input v-model="form.description" type="textarea" :rows="3" />
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="3"
+        />
       </el-form-item>
-      <el-form-item prop="status" :label="t('common.status')">
-        <el-select v-model="form.status" style="width: 100%">
-          <el-option v-for="opt in statusOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+      <el-form-item
+        prop="status"
+        :label="t('common.status')"
+      >
+        <el-select
+          v-model="form.status"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :loading="submitting" @click="submitForm">{{ t('common.save') }}</el-button>
+      <el-button @click="dialogVisible = false">
+        {{ t('common.cancel') }}
+      </el-button>
+      <el-button
+        type="primary"
+        :loading="submitting"
+        @click="submitForm"
+      >
+        {{ t('common.save') }}
+      </el-button>
     </template>
   </el-dialog>
 </template>
