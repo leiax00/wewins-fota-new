@@ -292,4 +292,50 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final String REGION_ROTATE_KEY_TEMPLATE = "fota:region:rotate:%s";
+
+    // ========== 固件上传会话常量 ==========
+
+    /**
+     * 固件上传会话 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_UPLOAD_SESSION_KEY_TEMPLATE, sessionId)
+     * </p>
+     * <p>
+     * 示例：fota:fw:upload:sess:a1b2c3d4e5f6
+     * </p>
+     * <p>
+     * 说明：固件上传会话元数据，包含文件哈希、临时路径等信息
+     * </p>
+     */
+    public static final String FIRMWARE_UPLOAD_SESSION_KEY_TEMPLATE = "fota:fw:upload:sess:%s";
+
+    /**
+     * 固件上传版本锁 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_UPLOAD_LOCK_KEY_TEMPLATE, productId, version)
+     * </p>
+     * <p>
+     * 示例：fota:fw:upload:lock:1001:1.0.0
+     * </p>
+     * <p>
+     * 说明：防止并发上传同一版本号的分布式锁
+     * </p>
+     */
+    public static final String FIRMWARE_UPLOAD_LOCK_KEY_TEMPLATE = "fota:fw:upload:lock:%s:%s";
+
+    /**
+     * 固件上传会话 TTL（2 小时）
+     * <p>
+     * 超时后自动清理临时文件和会话数据
+     * </p>
+     */
+    public static final long FIRMWARE_UPLOAD_SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+    /**
+     * 固件上传版本锁 TTL（30 秒）
+     * <p>
+     * 上传完成后自动释放锁
+     * </p>
+     */
+    public static final long FIRMWARE_UPLOAD_LOCK_TTL_SECONDS = 30;
 }
