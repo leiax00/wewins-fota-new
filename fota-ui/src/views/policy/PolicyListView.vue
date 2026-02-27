@@ -667,7 +667,7 @@ onActivated(() => {
       <el-table-column
         prop="productName"
         :label="t('policy.product')"
-        width="200"
+        min-width="200"
         show-overflow-tooltip
       >
         <template #default="{ row }">
@@ -679,7 +679,7 @@ onActivated(() => {
       <el-table-column
         prop="firmwareVersion"
         :label="t('policy.firmwareVersion')"
-        width="200"
+        min-width="200"
         show-overflow-tooltip
       >
         <template #default="{ row }">
