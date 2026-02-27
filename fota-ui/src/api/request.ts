@@ -55,6 +55,13 @@ request.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // 添加客户端时区信息
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (timeZone) {
+      config.headers['Time-Zone'] = timeZone
+    }
+
     return config
   },
   (error) => {

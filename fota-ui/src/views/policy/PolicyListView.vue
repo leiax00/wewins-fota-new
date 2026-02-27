@@ -14,6 +14,7 @@ import {
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
+import { formatLocalDateTime } from '@/utils/date'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -354,16 +355,9 @@ const handleFilterChange = () => {
   void fetchList()
 }
 
-// 格式化日期时间
+// 使用工具函数格式化日期时间
 const formatDateTime = (dateStr: string): string => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  const yyyy = date.getFullYear()
-  const MM = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  const HH = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`
+  return formatLocalDateTime(dateStr, 'YYYY-MM-DD HH:mm')
 }
 
 // 加载产品数据
