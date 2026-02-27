@@ -15,8 +15,8 @@ export type TimeWindowType = 'UNLIMITED' | 'RANGE' | 'DAILY'
 
 export interface TimeWindowDTO {
   type: TimeWindowType
-  startAt: string  // ISO8601 UTC 或空字符串（UNLIMITED 类型）
-  endAt: string    // ISO8601 UTC 或空字符串（UNLIMITED 类型）
+  startAt: string | null  // ISO8601 客户端时间或 null（UNLIMITED 类型）
+  endAt: string | null    // ISO8601 客户端时间或 null（UNLIMITED 类型）
 }
 
 export interface UpgradePolicyItem {

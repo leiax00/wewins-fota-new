@@ -11,6 +11,7 @@ import {
   pagePolicies,
   updatePolicyStatus,
   type PolicyStatus,
+  type TimeWindowDTO,
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
@@ -36,7 +37,6 @@ const query = reactive({
   sortOrder: undefined as 'asc' | 'desc' | undefined,
 })
 
-const products = ref<ProductItem[]>([])
 const productSearchOptions = ref<ProductItem[]>([])
 const productSearchLoading = ref(false)
 
@@ -155,22 +155,8 @@ const getTargetModeLabel = (mode: string): string => {
   return t(labels[mode] || mode)
 }
 
-// 辅助函数：获取目标模式标签类型
-const getTargetModeTagType = (mode: string, status: string): string => {
-  // 测试相关状态：保持特殊颜色
-  if (status === 'TESTING') return 'warning'
-  if (status === 'VERIFIED') return 'primary'
-
-  // 生产状态：ACTIVE 使用绿色，PAUSED 使用橙色
-  if (status === 'ACTIVE') return 'success'
-  if (status === 'PAUSED') return 'warning'
-
-  // 其他状态：使用灰色
-  return 'info'
-}
-
 // 辅助函数：获取时间窗口摘要
-const getTimeWindowSummary = (window: { type: string; startAt: string; endAt: string }): string => {
+const getTimeWindowSummary = (window: { type: string; startAt: string | null; endAt: string | null }): string => {
   if (!window) return '-'
 
   // UNLIMITED 类型
@@ -181,25 +167,9 @@ const getTimeWindowSummary = (window: { type: string; startAt: string; endAt: st
   // RANGE 或 DAILY 类型
   if (!window.startAt || !window.endAt) return '-'
 
-  // 格式化函数：yyyy-MM-dd HH:mm:ss
-  const formatDateTime = (dateStr: string): string => {
-    const date = new Date(dateStr)
-    const yyyy = date.getFullYear()
-    const MM = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-    const HH = String(date.getHours()).padStart(2, '0')
-    const mm = String(date.getMinutes()).padStart(2, '0')
-    const ss = String(date.getSeconds()).padStart(2, '0')
-    return `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`
-  }
-
   // 格式化函数：仅 HH:mm:ss
   const formatTime = (dateStr: string): string => {
-    const date = new Date(dateStr)
-    const HH = String(date.getHours()).padStart(2, '0')
-    const mm = String(date.getMinutes()).padStart(2, '0')
-    const ss = String(date.getSeconds()).padStart(2, '0')
-    return `${HH}:${mm}:${ss}`
+    return formatLocalDateTime(dateStr, 'HH:mm:ss')
   }
 
   const typeLabel = t(`policy.timeWindow${window.type.charAt(0)}${window.type.slice(1).toLowerCase()}`)
@@ -212,8 +182,8 @@ const getTimeWindowSummary = (window: { type: string; startAt: string; endAt: st
   }
 
   // RANGE 类型显示完整日期时间
-  const start = formatDateTime(window.startAt)
-  const end = formatDateTime(window.endAt)
+  const start = formatLocalDateTime(window.startAt)
+  const end = formatLocalDateTime(window.endAt)
   return `${typeLabel}: ${start} ~ ${end}`
 }
 
@@ -358,16 +328,6 @@ const handleFilterChange = () => {
 // 使用工具函数格式化日期时间
 const formatDateTime = (dateStr: string): string => {
   return formatLocalDateTime(dateStr, 'YYYY-MM-DD HH:mm')
-}
-
-// 加载产品数据
-const fillProducts = async () => {
-  try {
-    const result = await searchProducts('')
-    products.value = result.records || []
-  } catch {
-    products.value = []
-  }
 }
 
 // 初始化数据
@@ -650,7 +610,7 @@ onActivated(() => {
                       <!-- DEVICE_TAGS: 显示标签键值对 -->
                       <div v-else-if="row.targetMode === 'DEVICE_TAGS' && row.targetDeviceTags" class="target-tag-pairs compact">
                         <div
-                          v-for="(value, key, idx) in Object.entries(row.targetDeviceTags).slice(0, 3)"
+                          v-for="(value, key) in Object.entries(row.targetDeviceTags).slice(0, 3)"
                           :key="key"
                           class="tag-pair-item"
                         >

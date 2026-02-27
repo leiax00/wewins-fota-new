@@ -4,10 +4,20 @@ import com.wewins.fota.domain.policy.enums.TimeWindowType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * 时间窗口 DTO
  * <p>
- * 统一使用 ISO8601 UTC 时间戳，避免时区问题
+ * 使用 LocalDateTime 类型，利用 Jackson 自动时区转换
+ * </p>
+ * <p>
+ * <strong>时区处理</strong>：
+ * <ul>
+ *   <li>数据库存储：UTC 时间</li>
+ *   <li>前端发送：客户端本地时间</li>
+ *   <li>前端接收：客户端本地时间（Jackson 自动转换）</li>
+ * </ul>
  * </p>
  * <p>
  * 支持三种类型：
@@ -21,7 +31,7 @@ import lombok.Data;
  * 时间区间语义：左闭右开 {@code [startAt, endAt)}
  * </p>
  * <p>
- * 当 {@code type} 为 {@code UNLIMITED} 时，{@code startAt} 和 {@code endAt} 应为空字符串
+ * 当 {@code type} 为 {@code UNLIMITED} 时，{@code startAt} 和 {@code endAt} 应为 null
  * </p>
  */
 @Data
@@ -34,26 +44,26 @@ public class TimeWindowDTO {
     private String type;
 
     /**
-     * 开始时间（ISO8601 UTC）
+     * 开始时间
      * <p>
-     * 格式示例：{@code 2026-02-26T00:00:00Z}
+     * Jackson 会自动根据 Time-Zone header 进行时区转换
      * </p>
      * <p>
-     * 当 {@code type} 为 {@code UNLIMITED} 时，此字段应为空字符串
+     * 当 {@code type} 为 {@code UNLIMITED} 时，此字段应为 null
      * </p>
      */
-    private String startAt;
+    private LocalDateTime startAt;
 
     /**
-     * 结束时间（ISO8601 UTC）
+     * 结束时间
      * <p>
-     * 格式示例：{@code 2026-02-26T23:59:59Z}
+     * Jackson 会自动根据 Time-Zone header 进行时区转换
      * </p>
      * <p>
-     * 当 {@code type} 为 {@code UNLIMITED} 时，此字段应为空字符串
+     * 当 {@code type} 为 {@code UNLIMITED} 时，此字段应为 null
      * </p>
      */
-    private String endAt;
+    private LocalDateTime endAt;
 
     /**
      * 获取时间窗口类型枚举
@@ -70,8 +80,8 @@ public class TimeWindowDTO {
      * 业务规则：
      * <ul>
      *   <li>type 不能为空</li>
-     *   <li>当 type 为 UNLIMITED 时，startAt 和 endAt 必须为空字符串</li>
-     *   <li>当 type 为 RANGE 或 DAILY 时，startAt 和 endAt 不能为空</li>
+     *   <li>当 type 为 UNLIMITED 时，startAt 和 endAt 必须为 null</li>
+     *   <li>当 type 为 RANGE 或 DAILY 时，startAt 和 endAt 不能为 null</li>
      * </ul>
      * </p>
      *
@@ -88,19 +98,19 @@ public class TimeWindowDTO {
         }
 
         if (typeEnum == TimeWindowType.UNLIMITED) {
-            // UNLIMITED 模式下，时间字段必须为空
-            if (startAt != null && !startAt.isBlank()) {
-                return "timeWindow.startAt 在 UNLIMITED 模式下应为空字符串";
+            // UNLIMITED 模式下，时间字段必须为 null
+            if (startAt != null) {
+                return "timeWindow.startAt 在 UNLIMITED 模式下应为 null";
             }
-            if (endAt != null && !endAt.isBlank()) {
-                return "timeWindow.endAt 在 UNLIMITED 模式下应为空字符串";
+            if (endAt != null) {
+                return "timeWindow.endAt 在 UNLIMITED 模式下应为 null";
             }
         } else {
             // RANGE 和 DAILY 模式下，时间字段不能为空
-            if (startAt == null || startAt.isBlank()) {
+            if (startAt == null) {
                 return "timeWindow.startAt 不能为空";
             }
-            if (endAt == null || endAt.isBlank()) {
+            if (endAt == null) {
                 return "timeWindow.endAt 不能为空";
             }
         }

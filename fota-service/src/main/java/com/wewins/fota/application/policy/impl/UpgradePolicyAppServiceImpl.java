@@ -558,20 +558,22 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow.type 仅支持 UNLIMITED、RANGE 或 DAILY");
         }
 
-        // UNLIMITED 模式：时间字段必须为空
+        // UNLIMITED 模式：时间字段必须为 null 或不存在
         if (type == TimeWindowType.UNLIMITED) {
-            String startAt = readOptionalText(timeWindow, "startAt");
-            String endAt = readOptionalText(timeWindow, "endAt");
-            if (startAt != null || endAt != null) {
+            JsonNode startAtNode = timeWindow.get("startAt");
+            JsonNode endAtNode = timeWindow.get("endAt");
+            // 检查是否为 null 或不存在
+            if ((startAtNode != null && !startAtNode.isNull()) ||
+                (endAtNode != null && !endAtNode.isNull())) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
-                        "timeWindow 在 UNLIMITED 模式下 startAt 和 endAt 必须为空字符串");
+                        "timeWindow 在 UNLIMITED 模式下 startAt 和 endAt 必须为 null");
             }
 
-            // 规范化存储
+            // 规范化存储：设置 null 值
             ObjectNode normalized = JsonNodeFactory.instance.objectNode();
             normalized.put("type", type.getCode());
-            normalized.put("startAt", "");
-            normalized.put("endAt", "");
+            normalized.putNull("startAt");
+            normalized.putNull("endAt");
             policy.setTimeWindow(normalized);
             return;
         }

@@ -69,8 +69,8 @@ const createDefaultForm = () => ({
   triggerMode: 'BOTH' as TriggerMode,
   timeWindow: {
     type: 'UNLIMITED' as TimeWindowType,
-    startAt: '',
-    endAt: '',
+    startAt: null as string | null,
+    endAt: null as string | null,
   },
   sourceVersions: [] as number[],
   targetMode: 'ALL' as TargetMode,
@@ -98,11 +98,6 @@ const editingId = computed(() => {
 })
 
 const pageTitle = computed(() => (isEditMode.value ? t('policy.editTitle') : t('policy.createTitle')))
-
-// 检查用户是否有发布到生产的权限
-const canReleaseToProduction = computed(() =>
-  userStore.hasPermission('fota:policy:release')
-)
 
 // 检查用户是否可以编辑生产中的策略
 const canEditProductionPolicy = computed(() =>
@@ -136,11 +131,7 @@ const canEditCurrentPolicy = computed(() => {
   if (!isEditMode.value) return true
 
   // ACTIVE/PAUSED 策略需要发布权限
-  if ((form.status === 'ACTIVE' || form.status === 'PAUSED') && !canEditProductionPolicy.value) {
-    return false
-  }
-
-  return true
+  return !((form.status === 'ACTIVE' || form.status === 'PAUSED') && !canEditProductionPolicy.value);
 })
 
 // 产品下的所有版本选项（用于源版本选择）
@@ -253,7 +244,7 @@ const formRules = {
         }
         const { startAt, endAt, type } = form.timeWindow
         if (!startAt || !endAt) {
-          callback()
+          callback(new Error(t('policy.timeWindowRequired')))
           return
         }
         const start = new Date(startAt)
@@ -423,7 +414,7 @@ const patchFormFromPolicy = async (policy: UpgradePolicyItem) => {
   form.priority = policy.priority
   form.triggerMode = policy.triggerMode || 'BOTH'
   // 如果没有时间窗口，设为 UNLIMITED
-  form.timeWindow = policy.timeWindow || { type: 'UNLIMITED' as TimeWindowType, startAt: '', endAt: '' }
+  form.timeWindow = policy.timeWindow || { type: 'UNLIMITED' as TimeWindowType, startAt: null, endAt: null }
   form.sourceVersions = policy.sourceVersions || []
   form.targetMode = policy.targetMode || 'ALL'
   form.targetDeviceIds = policy.targetDeviceIds || []
@@ -548,13 +539,13 @@ const submitForm = async () => {
 
   submitting.value = true
   try {
-    // timeWindow 始终传值，UNLIMITED 时传类型和空时间
+    // timeWindow 始终传值，UNLIMITED 时传类型和 null 时间
     const timeWindow = form.timeWindow.type === 'UNLIMITED'
-      ? { type: 'UNLIMITED' as TimeWindowType, startAt: '', endAt: '' }
+      ? { type: 'UNLIMITED' as TimeWindowType, startAt: null, endAt: null }
       : {
           type: form.timeWindow.type,
-          startAt: toUtcIso(new Date(form.timeWindow.startAt)),
-          endAt: toUtcIso(new Date(form.timeWindow.endAt)),
+          startAt: toUtcIso(new Date(form.timeWindow.startAt!)),
+          endAt: toUtcIso(new Date(form.timeWindow.endAt!)),
         }
 
     const payload = {
