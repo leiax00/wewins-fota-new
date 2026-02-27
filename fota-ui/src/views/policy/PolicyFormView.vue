@@ -314,8 +314,6 @@ const formRules = {
   status: [{ required: true, message: t('policy.statusRequired'), trigger: 'change' }],
 }
 
-const toUtcIso = (date: Date): string => date.toISOString()
-
 const createSnapshot = () =>
   JSON.stringify({
     productId: form.productId,
@@ -544,8 +542,8 @@ const submitForm = async () => {
       ? { type: 'UNLIMITED' as TimeWindowType, startAt: null, endAt: null }
       : {
           type: form.timeWindow.type,
-          startAt: toUtcIso(new Date(form.timeWindow.startAt!)),
-          endAt: toUtcIso(new Date(form.timeWindow.endAt!)),
+          startAt: form.timeWindow.startAt,
+          endAt: form.timeWindow.endAt,
         }
 
     const payload = {
