@@ -15,7 +15,7 @@ import {
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
-import { formatDateTime as utilsFormatDateTime } from '@/utils/date'
+import {formatDateTime as utilsFormatDateTime, formatLocalDateTime} from '@/utils/date'
 
 const { t } = useI18n()
 const router = useRouter()
