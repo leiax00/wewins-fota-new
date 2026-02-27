@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -20,6 +21,14 @@ public interface FirmwareVersionRepository {
      * @return 固件版本列表
      */
     List<FirmwareVersion> listByIds(List<Long> ids);
+
+    /**
+     * 根据 ID 列表批量查询版本号
+     *
+     * @param ids 固件版本 ID 列表
+     * @return 版本ID到版本号的映射
+     */
+    Map<Long, String> findVersionNamesByIds(List<Long> ids);
 
     /**
      * 根据产品 ID 查询所有固件版本

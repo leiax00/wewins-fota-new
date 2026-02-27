@@ -37,8 +37,15 @@ export interface UpgradePolicyItem {
   remark?: string
   createdAt: string
   createdBy: number
+  createdByName?: string
   updatedAt: string
   updatedBy: number
+  updatedByName?: string
+  // 扩展字段（用于列表展示）
+  productName?: string
+  firmwareVersion?: string
+  // 源版本ID到版本号的映射
+  sourceVersionNames?: Record<number, string>
 }
 
 export interface UpgradePolicyPayload {

@@ -11,7 +11,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * FirmwareVersionRepository 的 MyBatis 实现。
@@ -34,6 +36,25 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
             return List.of();
         }
         return firmwareVersionMapper.selectBatchIds(ids);
+    }
+
+    @Override
+    public Map<Long, String> findVersionNamesByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+
+        List<FirmwareVersion> versions = firmwareVersionMapper.selectList(
+                new LambdaQueryWrapper<FirmwareVersion>()
+                        .in(FirmwareVersion::getId, ids)
+                        .select(FirmwareVersion::getId, FirmwareVersion::getVersion)
+        );
+
+        return versions.stream()
+                .collect(Collectors.toMap(
+                        FirmwareVersion::getId,
+                        FirmwareVersion::getVersion
+                ));
     }
 
     @Override

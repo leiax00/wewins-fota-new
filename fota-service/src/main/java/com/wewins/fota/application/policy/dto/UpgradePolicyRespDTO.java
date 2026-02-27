@@ -117,4 +117,34 @@ public class UpgradePolicyRespDTO {
      * 更新人 ID
      */
     private Long updatedBy;
+
+    // ==================== 扩展字段（用于列表展示） ====================
+
+    /**
+     * 产品名称（扩展字段，不存储）
+     */
+    private String productName;
+
+    /**
+     * 固件版本号（扩展字段，不存储）
+     */
+    private String firmwareVersion;
+
+    /**
+     * 源版本ID到版本号的映射（扩展字段，不存储）
+     * <p>
+     * 用于前端显示源版本列表的版本号
+     * </p>
+     */
+    private Map<Long, String> sourceVersionNames;
+
+    /**
+     * 创建人姓名
+     */
+    private String createdByName;
+
+    /**
+     * 更新人姓名
+     */
+    private String updatedByName;
 }

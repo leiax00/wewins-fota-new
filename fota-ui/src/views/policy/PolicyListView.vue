@@ -14,7 +14,6 @@ import {
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
-import { getFirmwareVersionsByProduct } from '@/api/firmware'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -39,7 +38,6 @@ const query = reactive({
 const products = ref<ProductItem[]>([])
 const productSearchOptions = ref<ProductItem[]>([])
 const productSearchLoading = ref(false)
-const firmwareLabelMap = reactive<Record<number, string>>({})
 
 let productSearchTimer: number | null = null
 
@@ -170,16 +168,6 @@ const getTargetModeTagType = (mode: string, status: string): string => {
   return 'info'
 }
 
-// 辅助函数：获取源版本摘要
-const getSourceVersionsSummary = (versions: number[]): string => {
-  if (!versions || versions.length === 0) return '-'
-  if (versions.length <= 2) {
-    return versions.map(id => getFirmwareVersionLabel(id)).join(', ')
-  }
-  const labels = versions.slice(0, 2).map(id => getFirmwareVersionLabel(id))
-  return `${labels.join(', ')}... (+${versions.length - 2})`
-}
-
 // 辅助函数：获取时间窗口摘要
 const getTimeWindowSummary = (window: { type: string; startAt: string; endAt: string }): string => {
   if (!window) return '-'
@@ -293,30 +281,12 @@ const handleProductSearch = async (keyword: string) => {
   }, 300)
 }
 
-const fillFirmwareVersionLabelMap = async (rows: UpgradePolicyItem[]) => {
-  const productIds = Array.from(new Set(rows.map(item => item.productId).filter(Boolean)))
-  await Promise.all(
-    productIds.map(async (productId) => {
-      try {
-        const versions = await getFirmwareVersionsByProduct(productId)
-        versions.forEach((item) => {
-          firmwareLabelMap[item.id] = item.version
-        })
-      } catch {
-        // ignore
-      }
-    })
-  )
-}
-
 const fetchList = async () => {
   loading.value = true
   try {
     const result = await pagePolicies(query)
     list.value = result.records || []
     total.value = result.total || 0
-    // 异步补齐标签，不阻塞列表渲染
-    void fillFirmwareVersionLabelMap(list.value)
   } finally {
     loading.value = false
   }
@@ -384,15 +354,6 @@ const handleFilterChange = () => {
   void fetchList()
 }
 
-const getProductName = (productId: number) => {
-  const product = products.value.find(item => item.id === productId)
-  return product?.name || t('policy.product') + ` ${productId}`
-}
-
-const getFirmwareVersionLabel = (firmwareVersionId: number) => {
-  return firmwareLabelMap[firmwareVersionId] || `${firmwareVersionId}`
-}
-
 // 格式化日期时间
 const formatDateTime = (dateStr: string): string => {
   if (!dateStr) return '-'
@@ -417,10 +378,6 @@ const fillProducts = async () => {
 
 // 初始化数据
 onMounted(async () => {
-  await Promise.all([
-    handleProductSearch(''),
-    fillProducts(),
-  ])
   void fetchList()
 })
 
@@ -594,14 +551,14 @@ onActivated(() => {
                   <div class="compact-section-body">
                     <div class="version-tags compact">
                       <el-tag
-                        v-for="(versionId, idx) in row.sourceVersions.slice(0, 4)"
+                        v-for="versionId in row.sourceVersions.slice(0, 4)"
                         :key="versionId"
                         size="small"
                         type="info"
                         effect="plain"
                         class="version-tag"
                       >
-                        v{{ getFirmwareVersionLabel(versionId) }}
+                        v{{ row.sourceVersionNames?.[versionId] ?? versionId }}
                       </el-tag>
                       <el-tag
                         v-if="row.sourceVersions.length > 4"
@@ -730,13 +687,13 @@ onActivated(() => {
               <div class="audit-item">
                 <el-icon class="audit-icon"><User /></el-icon>
                 <span class="audit-label">{{ t('policy.createdBy') }}</span>
-                <span class="audit-value">{{ row.createdBy ?? '-' }}</span>
+                <span class="audit-value">{{ row.createdByName ?? '-' }}</span>
                 <span class="audit-time">{{ formatDateTime(row.createdAt) }}</span>
               </div>
               <div class="audit-item">
                 <el-icon class="audit-icon"><User /></el-icon>
                 <span class="audit-label">{{ t('policy.updatedBy') }}</span>
-                <span class="audit-value">{{ row.updatedBy ?? '-' }}</span>
+                <span class="audit-value">{{ row.updatedByName ?? '-' }}</span>
                 <span class="audit-time">{{ formatDateTime(row.updatedAt) }}</span>
               </div>
             </div>
@@ -754,25 +711,25 @@ onActivated(() => {
 
       <!-- 所属产品 -->
       <el-table-column
-        prop="productId"
+        prop="productName"
         :label="t('policy.product')"
         width="200"
         show-overflow-tooltip
       >
         <template #default="{ row }">
-          {{ getProductName(row.productId) }}
+          {{ row.productName || t('policy.product') + ` ${row.productId}` }}
         </template>
       </el-table-column>
 
       <!-- 目标版本 -->
       <el-table-column
-        prop="firmwareVersionId"
+        prop="firmwareVersion"
         :label="t('policy.firmwareVersion')"
         width="200"
         show-overflow-tooltip
       >
         <template #default="{ row }">
-          {{ getFirmwareVersionLabel(row.firmwareVersionId) }}
+          {{ row.firmwareVersion || `v${row.firmwareVersionId}` }}
         </template>
       </el-table-column>
 
