@@ -85,8 +85,7 @@ public class UserCacheService {
                         byte[] keyBytes = redisTemplate.getStringSerializer().serialize(key);
                         byte[] valueBytes = redisTemplate.getStringSerializer().serialize(entry.getValue());
                         if (keyBytes != null && valueBytes != null) {
-                            connection.set(keyBytes, valueBytes);
-                            connection.expire(keyBytes, CACHE_TTL.getSeconds());
+                            connection.stringCommands().setEx(keyBytes, CACHE_TTL.getSeconds(), valueBytes);
                         }
                     }
                     return null;

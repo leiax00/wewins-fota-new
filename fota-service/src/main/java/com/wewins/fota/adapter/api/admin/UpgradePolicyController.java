@@ -66,9 +66,7 @@ public class UpgradePolicyController {
         }
 
         Page<UpgradePolicy> pageResult = upgradePolicyAppService.pagePolicies(reqDTO);
-        List<UpgradePolicyRespDTO> records = pageResult.getRecords().stream()
-                .map(upgradePolicyAssembler::toUpgradePolicyResp)
-                .toList();
+        List<UpgradePolicyRespDTO> records = upgradePolicyAssembler.toUpgradePolicyRespList(pageResult.getRecords());
 
         PageResponse<UpgradePolicyRespDTO> response = PageResponse.of(
                 records,
