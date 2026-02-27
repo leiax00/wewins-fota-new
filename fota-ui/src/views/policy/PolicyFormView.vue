@@ -878,7 +878,7 @@ onMounted(() => {
                 <div
                   v-for="(pair, index) in tagPairs.filter(p => !p.editing && p.key)"
                   :key="index"
-                  class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm"
+                  class="inline-flex items-center gap-1 px-2 py-1 rounded text-sm bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                 >
                   <span class="font-medium">{{ pair.key }}:</span>
                   <span>{{ pair.value }}</span>
@@ -901,7 +901,7 @@ onMounted(() => {
               </div>
 
               <!-- 编辑中的标签输入 -->
-              <div v-if="tagPairs.some(p => p.editing)" class="space-y-2 border rounded-lg p-3 bg-gray-50">
+              <div v-if="tagPairs.some(p => p.editing)" class="space-y-2 border rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
                 <div v-for="(pair, index) in tagPairs.filter(p => p.editing)" :key="index" class="flex gap-2 items-center">
                   <el-input
                     v-model="form.tagKeys[tagPairs.indexOf(pair)]"
@@ -1149,5 +1149,90 @@ onMounted(() => {
   background-color: #f3f4f6;
   color: #9ca3af;
   border: 1px solid #d1d5db;
+}
+
+/* 暗色主题适配 */
+.dark .form-status-draft {
+  background-color: #2a2f3a;
+  color: #9ca3af;
+  border: 1px solid #3c4049;
+}
+
+.dark .form-status-testing {
+  background-color: #3d3a2a;
+  color: #fbbf24;
+  border: 1px solid #4d4938;
+}
+
+.dark .form-status-verified {
+  background-color: #2a2f4a;
+  color: #818cf8;
+  border: 1px solid #3a3f5a;
+}
+
+.dark .form-status-active {
+  background-color: #2a3a35;
+  color: #34d399;
+  border: 1px solid #3a4a40;
+}
+
+.dark .form-status-paused {
+  background-color: #3d3a2a;
+  color: #fbbf24;
+  border: 1px solid #4d4938;
+}
+
+.dark .form-status-expired {
+  background-color: #2a2f3a;
+  color: #6b7280;
+  border: 1px solid #3c4049;
+}
+
+/* Alert 组件暗色主题（组件级别） */
+.dark :deep(.el-alert) {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark :deep(.el-alert--warning) {
+  background-color: rgba(230, 162, 60, 0.1) !important;
+  border-color: rgba(230, 162, 60, 0.3) !important;
+}
+
+.dark :deep(.el-alert--info) {
+  background-color: rgba(144, 147, 153, 0.1) !important;
+  border-color: rgba(144, 147, 153, 0.3) !important;
+}
+
+.dark :deep(.el-alert__title) {
+  color: var(--text-primary) !important;
+}
+
+.dark :deep(.el-alert__description) {
+  color: var(--text-regular) !important;
+}
+
+.dark :deep(.el-alert__content) {
+  color: var(--text-primary) !important;
+}
+
+.dark :deep(.el-alert--warning .el-alert__title) {
+  color: #e6a23c !important;
+}
+
+.dark :deep(.el-alert--info .el-alert__title) {
+  color: #909399 !important;
+}
+
+.dark :deep(.el-alert__icon) {
+  color: inherit !important;
+}
+
+.dark :deep(.el-alert--warning .el-alert__icon) {
+  color: #e6a23c !important;
+}
+
+.dark :deep(.el-alert--info .el-alert__icon) {
+  color: #909399 !important;
 }
 </style>

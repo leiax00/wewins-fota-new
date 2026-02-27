@@ -450,7 +450,7 @@ onActivated(() => {
                           :color="row.grayRate >= 80 ? '#67c23a' : row.grayRate >= 40 ? '#e6a23c' : '#909399'"
                           class="w-16"
                         />
-                        <span class="text-xs text-gray-600">{{ row.grayRate }}%</span>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">{{ row.grayRate }}%</span>
                       </div>
                     </div>
                     <div class="compact-info-item">
@@ -482,7 +482,7 @@ onActivated(() => {
                     </el-tag>
                   </div>
                   <div class="compact-section-body">
-                    <div class="text-xs text-gray-700">
+                    <div class="text-xs text-gray-700 dark:text-gray-300">
                       {{ getTimeWindowSummary(row.timeWindow) }}
                     </div>
                   </div>
@@ -555,7 +555,7 @@ onActivated(() => {
                     <!-- 具体内容 -->
                     <div class="target-details">
                       <!-- ALL: 显示提示 -->
-                      <div v-if="row.targetMode === 'ALL'" class="text-gray-500 text-xs">
+                      <div v-if="row.targetMode === 'ALL'" class="text-gray-500 dark:text-gray-400 text-xs">
                         <el-icon class="mr-1"><Grid /></el-icon>
                         {{ t('policy.targetAllDevices') }}
                       </div>
@@ -732,7 +732,7 @@ onActivated(() => {
             </div>
             <template #dropdown>
               <el-dropdown-menu class="status-dropdown-menu">
-                <div class="px-3 py-2 text-xs text-gray-500 border-b">
+                <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b">
                   {{ t('policy.selectTargetStatus') }}
                 </div>
                 <el-dropdown-item
@@ -869,10 +869,51 @@ onActivated(() => {
   border: 1px solid #d1d5db;
 }
 
+/* 暗色主题适配 */
+.dark .status-badge-draft {
+  background-color: #2a2f3a;
+  color: #9ca3af;
+  border: 1px solid #3c4049;
+}
+
+.dark .status-badge-testing {
+  background-color: #3d3a2a;
+  color: #fbbf24;
+  border: 1px solid #4d4938;
+}
+
+.dark .status-badge-verified {
+  background-color: #2a2f4a;
+  color: #818cf8;
+  border: 1px solid #3a3f5a;
+}
+
+.dark .status-badge-active {
+  background-color: #2a3a35;
+  color: #34d399;
+  border: 1px solid #3a4a40;
+}
+
+.dark .status-badge-paused {
+  background-color: #3d3a2a;
+  color: #fbbf24;
+  border: 1px solid #4d4938;
+}
+
+.dark .status-badge-expired {
+  background-color: #2a2f3a;
+  color: #6b7280;
+  border: 1px solid #3c4049;
+}
+
 /* 展开行内容样式 */
 .policy-expand-content {
   padding: 12px 16px;
-  background: #fafbfc;
+  background: var(--bg-hover);
+}
+
+.dark .policy-expand-content {
+  background: var(--surface-fill);
 }
 
 .expand-grid {
@@ -890,21 +931,25 @@ onActivated(() => {
 
 .expand-section {
   padding: 10px 12px;
-  background: #ffffff;
+  background: var(--bg-card);
   border-radius: 6px;
-  border: 1px solid #e8eaed;
+  border: 1px solid var(--border-light);
   transition: all 0.2s ease;
 }
 
 .expand-section:hover {
-  border-color: #dcdfe6;
+  border-color: var(--border-color);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dark .expand-section:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .compact-section-title {
   font-size: 12px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
 }
@@ -924,7 +969,7 @@ onActivated(() => {
 
 .compact-section-body {
   font-size: 12px;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .compact-info-item {
@@ -940,7 +985,7 @@ onActivated(() => {
 
 .compact-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   min-width: 50px;
   text-align: right;
 }
@@ -971,12 +1016,6 @@ onActivated(() => {
 .target-tag-pairs.compact .tag-pair-item {
   padding: 3px 6px;
   font-size: 11px;
-}
-
-/* 展开行内容样式 */
-.policy-expand-content {
-  padding: 12px 16px;
-  background: #fafbfc;
 }
 
 .info-item {
@@ -1079,6 +1118,10 @@ onActivated(() => {
   font-size: 12px;
 }
 
+.dark .tag-pair-item {
+  background: #3d3a2a;
+}
+
 .tag-pair-key {
   font-weight: 600;
   font-family: 'Courier New', monospace;
@@ -1089,7 +1132,7 @@ onActivated(() => {
 }
 
 .tag-pair-value {
-  color: #606266;
+  color: var(--text-regular);
   font-family: 'Courier New', monospace;
 }
 
@@ -1106,7 +1149,7 @@ onActivated(() => {
 }
 
 .status-dropdown-trigger:hover {
-  background-color: #f5f7fa;
+  background-color: var(--bg-hover);
 }
 
 .status-text {
@@ -1283,7 +1326,7 @@ onActivated(() => {
   gap: 24px;
   padding-top: 8px;
   margin-top: 8px;
-  border-top: 1px dashed #e8eaed;
+  border-top: 1px dashed var(--border-light);
 }
 
 .audit-item {
@@ -1304,12 +1347,12 @@ onActivated(() => {
 }
 
 .audit-value {
-  color: #303133;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
 .audit-time {
-  color: #9ca3af;
+  color: var(--text-secondary);
   font-family: 'Courier New', monospace;
 }
 </style>

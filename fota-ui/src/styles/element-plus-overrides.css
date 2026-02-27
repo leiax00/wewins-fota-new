@@ -223,3 +223,85 @@
   background-color: var(--el-color-primary);
   color: #ffffff;
 }
+
+/* Alert 组件暗色主题 */
+.dark .el-alert {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark .el-alert--success {
+  background-color: rgba(103, 194, 58, 0.1) !important;
+  border-color: rgba(103, 194, 58, 0.3) !important;
+}
+
+.dark .el-alert--warning {
+  background-color: rgba(230, 162, 60, 0.1) !important;
+  border-color: rgba(230, 162, 60, 0.3) !important;
+}
+
+.dark .el-alert--info {
+  background-color: rgba(144, 147, 153, 0.1) !important;
+  border-color: rgba(144, 147, 153, 0.3) !important;
+}
+
+.dark .el-alert--error {
+  background-color: rgba(245, 108, 108, 0.1) !important;
+  border-color: rgba(245, 108, 108, 0.3) !important;
+}
+
+.dark .el-alert__title {
+  color: var(--text-primary) !important;
+}
+
+.dark .el-alert__description {
+  color: var(--text-regular) !important;
+}
+
+.dark .el-alert__content {
+  color: var(--text-primary) !important;
+}
+
+.dark .el-alert--success .el-alert__title {
+  color: #67c23a !important;
+}
+
+.dark .el-alert--warning .el-alert__title {
+  color: #e6a23c !important;
+}
+
+.dark .el-alert--info .el-alert__title {
+  color: #909399 !important;
+}
+
+.dark .el-alert--error .el-alert__title {
+  color: #f56c6c !important;
+}
+
+.dark .el-alert__icon {
+  color: inherit !important;
+}
+
+.dark .el-alert--success .el-alert__icon {
+  color: #67c23a !important;
+}
+
+.dark .el-alert--warning .el-alert__icon {
+  color: #e6a23c !important;
+}
+
+.dark .el-alert--info .el-alert__icon {
+  color: #909399 !important;
+}
+
+.dark .el-alert--error .el-alert__icon {
+  color: #f56c6c !important;
+}
+
+.dark .el-alert__close-btn {
+  color: var(--text-secondary) !important;
+}
+
+.dark .el-alert__close-btn:hover {
+  color: var(--text-primary) !important;
+}
