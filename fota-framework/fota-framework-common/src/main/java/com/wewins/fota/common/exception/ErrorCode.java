@@ -74,6 +74,8 @@ public enum ErrorCode {
     POLICY_STATUS_INVALID(47004, "Upgrade Policy Status Invalid"),
     POLICY_FIRMWARE_PRODUCT_MISMATCH(47005, "Firmware Version Does Not Belong To Product"),
     POLICY_TARGET_FIRMWARE_NOT_READY(47006, "Target Firmware Package Not Ready"),
+    POLICY_INVALID_STATUS_TRANSITION(47007, "Invalid Status Transition"),
+    POLICY_IN_USE(47008, "Policy In Use"),
 
     // 设备错误码 (480xx)
     DEVICE_NOT_FOUND(48001, "Device Not Found"),

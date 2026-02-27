@@ -63,6 +63,24 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     }
 
     @Override
+    public UpgradePolicy updateWithStatusCheck(Long id, String expectedStatus, UpgradePolicy policy) {
+        // 使用 MyBatis-Plus 的 LambdaQueryWrapper 实现带状态校验的 UPDATE
+        LambdaQueryWrapper<UpgradePolicy> queryWrapper = new LambdaQueryWrapper<UpgradePolicy>()
+                .eq(UpgradePolicy::getId, id)
+                .eq(UpgradePolicy::getStatus, expectedStatus.toUpperCase())
+                .isNull(UpgradePolicy::getDeletedAt);
+
+        int updated = upgradePolicyMapper.update(policy, queryWrapper);
+
+        if (updated == 0) {
+            // 状态不匹配或记录不存在，返回 null 表示更新失败
+            return null;
+        }
+
+        return policy;
+    }
+
+    @Override
     public boolean deleteById(Long id) {
         return upgradePolicyMapper.deleteById(id) > 0;
     }

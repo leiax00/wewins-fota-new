@@ -72,7 +72,7 @@ public class UpgradePolicyAssembler {
                 .priority(policy.getPriority())
                 .triggerMode(policy.getTriggerMode())
                 .timeWindow(toTimeWindow(policy.getTimeWindow()))
-                .sourceVersions(toList(policy.getSourceVersions(), new TypeReference<List<String>>() {}))
+                .sourceVersions(toList(policy.getSourceVersions(), new TypeReference<List<Long>>() {}))
                 .targetMode(policy.getTargetMode())
                 .targetDeviceIds(toList(policy.getTargetDeviceIds(), new TypeReference<List<String>>() {}))
                 .targetDeviceBatchIds(toList(policy.getTargetDeviceBatchIds(), new TypeReference<List<String>>() {}))

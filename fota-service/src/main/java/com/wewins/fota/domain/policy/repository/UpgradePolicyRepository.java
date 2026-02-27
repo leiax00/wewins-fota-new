@@ -20,6 +20,16 @@ public interface UpgradePolicyRepository {
 
     UpgradePolicy updateById(UpgradePolicy policy);
 
+    /**
+     * 带状态校验的策略更新（用于防止状态流转竞态条件）
+     *
+     * @param id 策略 ID
+     * @param expectedStatus 期望的当前状态（UPDATE 的 WHERE 条件）
+     * @param policy 要更新的策略实体
+     * @return 更新后的策略，如果状态不匹配则返回 null
+     */
+    UpgradePolicy updateWithStatusCheck(Long id, String expectedStatus, UpgradePolicy policy);
+
     boolean deleteById(Long id);
 
     long countByProductIdAndNameExcludingId(Long productId, String name, Long excludeId);

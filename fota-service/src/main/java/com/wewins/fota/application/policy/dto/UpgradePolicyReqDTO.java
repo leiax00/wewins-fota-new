@@ -71,14 +71,14 @@ public class UpgradePolicyReqDTO {
     private TimeWindowDTO timeWindow;
 
     /**
-     * 允许升级的源版本列表
+     * 允许升级的源版本 ID 列表
      * <p>
-     * 必须非空，至少包含一个版本号
+     * 必须非空，至少包含一个版本 ID
      * </p>
      */
     @NotNull(message = "sourceVersions 不能为空")
     @Size(min = 1, max = 50, message = "sourceVersions 数量必须在 1-50 之间")
-    private List<@NotBlank(message = "sourceVersions 不允许包含空字符串") String> sourceVersions;
+    private List<@NotNull(message = "sourceVersions 不允许包含 null") Long> sourceVersions;
 
     /**
      * 目标设备模式：ALL / DEVICE_IDS / DEVICE_BATCHES / DEVICE_TAGS
@@ -129,7 +129,16 @@ public class UpgradePolicyReqDTO {
     private Map<String, Object> targetDeviceTags;
 
     /**
-     * 状态（ACTIVE/PAUSED/EXPIRED）
+     * 策略状态
+     * <p>可选值：</p>
+     * <ul>
+     *   <li>DRAFT - 草稿</li>
+     *   <li>TESTING - 测试中</li>
+     *   <li>VERIFIED - 已验证</li>
+     *   <li>ACTIVE - 生产中</li>
+     *   <li>PAUSED - 暂停</li>
+     *   <li>EXPIRED - 过期</li>
+     * </ul>
      */
     private String status;
 

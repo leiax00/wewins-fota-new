@@ -204,4 +204,55 @@ public class UpgradePolicyController {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
     }
+
+    /**
+     * 更新策略状态（允许任意状态之间的自由切换）
+     *
+     * @param id 策略 ID
+     * @param reqDTO 状态更新请求
+     * @return 更新后的策略
+     */
+    @PutMapping("/{id}/status")
+    @PreAuthorize("@rbac.has('fota:policy:update')")
+    public ApiResponse<UpgradePolicyRespDTO> updateStatus(
+            @PathVariable Long id,
+            @RequestBody StatusUpdateReqDTO reqDTO) {
+        if (id == null || id <= 0) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
+        }
+        if (reqDTO == null || reqDTO.getStatus() == null || reqDTO.getStatus().isBlank()) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "状态不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("更新策略状态: policyId={}, status={}", id, reqDTO.getStatus());
+        }
+
+        try {
+            UpgradePolicy updated = upgradePolicyAppService.updateStatus(id, reqDTO.getStatus());
+            log.info("策略状态更新成功: policyId={}, newStatus={}", id, reqDTO.getStatus());
+            return ApiResponse.success(upgradePolicyAssembler.toUpgradePolicyResp(updated));
+        } catch (BizException e) {
+            log.warn("更新策略状态失败: policyId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("更新策略状态参数错误: policyId={}, message={}", id, e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 状态更新请求 DTO
+     */
+    public static class StatusUpdateReqDTO {
+        private String status;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
 }

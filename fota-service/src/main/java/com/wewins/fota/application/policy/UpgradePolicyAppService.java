@@ -48,4 +48,13 @@ public interface UpgradePolicyAppService {
      * @return 是否成功
      */
     boolean deletePolicy(Long id);
+
+    /**
+     * 更新策略状态（允许任意状态之间的自由切换）
+     *
+     * @param id 策略 ID
+     * @param newStatus 新状态
+     * @return 更新后的策略
+     */
+    UpgradePolicy updateStatus(Long id, String newStatus);
 }

@@ -12,6 +12,14 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum TimeWindowType {
 
     /**
+     * 不限制
+     * <p>
+     * 不限制执行时间，随时可以触发升级
+     * </p>
+     */
+    UNLIMITED("不限制", "UNLIMITED"),
+
+    /**
      * 固定范围
      * <p>
      * 一次性的时间范围，可跨越多天

@@ -197,3 +197,36 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260227_01_add_policy_test_flow_permissions
+      author: fota-team
+      comment: "添加策略测试流程权限：start_test、verify、release，并创建测试人员和项目经理角色"
+      changes:
+        - sqlFile:
+            path: changes/20260227_01_add_policy_test_flow_permissions.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260227_02_update_source_versions_to_id_array
+      author: fota-team
+      comment: "更新 upgrade_policies.source_versions 字段注释，说明存储版本 ID 数组而非版本号数组"
+      changes:
+        - sqlFile:
+            path: changes/20260227_02_update_source_versions_to_id_array.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260227_03_add_policy_lifecycle_states
+      author: fota-team
+      comment: "添加策略生命周期状态：DRAFT、TESTING、VERIFIED"
+      changes:
+        - sqlFile:
+            path: changes/20260227_03_add_policy_lifecycle_states.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

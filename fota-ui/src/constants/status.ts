@@ -22,6 +22,9 @@ export const policyStatusTypeMap: Record<string, StatusTagType> = {
   PAUSED: 'warning',
   EXPIRED: 'info',
   failed: 'danger',
+  DRAFT: 'info',
+  TESTING: 'warning',
+  VERIFIED: 'info',
 }
 
 export const userStatusTypeMap: Record<string, StatusTagType> = {
@@ -56,12 +59,20 @@ export const statusLabelKeyMap: Record<string, string> = {
   active: 'status.active',
   paused: 'status.paused',
   expired: 'status.expired',
-  ACTIVE: 'status.active',
-  PAUSED: 'status.paused',
-  EXPIRED: 'status.expired',
   enabled: 'status.enabled',
   disabled: 'status.disabled',
   locked: 'status.locked',
+  // 策略状态使用 policy 前缀
+  DRAFT: 'policy.statusDraft',
+  TESTING: 'policy.statusTesting',
+  VERIFIED: 'policy.statusVerified',
+  ACTIVE: 'policy.statusActive',
+  PAUSED: 'status.paused',
+  EXPIRED: 'status.expired',
+  // 兼容旧的小写形式（如果需要）
+  draft: 'policy.statusDraft',
+  testing: 'policy.statusTesting',
+  verified: 'policy.statusVerified',
 }
 
 export const resolveStatusLabelKey = (status?: string): string => {

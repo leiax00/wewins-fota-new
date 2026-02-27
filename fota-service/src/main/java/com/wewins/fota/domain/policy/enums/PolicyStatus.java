@@ -12,9 +12,24 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum PolicyStatus {
 
     /**
-     * 激活状态
+     * 草稿状态
      */
-    ACTIVE("激活", "ACTIVE"),
+    DRAFT("草稿", "DRAFT"),
+
+    /**
+     * 测试中状态
+     */
+    TESTING("测试中", "TESTING"),
+
+    /**
+     * 已验证状态
+     */
+    VERIFIED("已验证", "VERIFIED"),
+
+    /**
+     * 生产中状态
+     */
+    ACTIVE("生产中", "ACTIVE"),
 
     /**
      * 暂停状态
@@ -57,12 +72,13 @@ public enum PolicyStatus {
      * 根据编码获取枚举值
      *
      * @param code 编码
-     * @return 枚举值，如果编码无效返回 ACTIVE（默认值）
+     * @return 枚举值
+     * @throws IllegalArgumentException 如果编码无效
      */
     @JsonCreator
     public static PolicyStatus of(String code) {
         if (code == null || code.isBlank()) {
-            return ACTIVE; // 默认值
+            throw new IllegalArgumentException("策略状态不能为空");
         }
 
         String normalized = code.trim().toUpperCase();
@@ -72,8 +88,7 @@ public enum PolicyStatus {
             }
         }
 
-        // 无效输入返回默认值，避免系统崩溃
-        return ACTIVE;
+        throw new IllegalArgumentException("无效的策略状态: " + code);
     }
 
     /**
@@ -83,6 +98,42 @@ public enum PolicyStatus {
      */
     public boolean isActive() {
         return this == ACTIVE;
+    }
+
+    /**
+     * 判断是否为草稿状态
+     *
+     * @return true 如果状态为 DRAFT
+     */
+    public boolean isDraft() {
+        return this == DRAFT;
+    }
+
+    /**
+     * 判断是否为测试中状态
+     *
+     * @return true 如果状态为 TESTING
+     */
+    public boolean isTesting() {
+        return this == TESTING;
+    }
+
+    /**
+     * 判断是否为已验证状态
+     *
+     * @return true 如果状态为 VERIFIED
+     */
+    public boolean isVerified() {
+        return this == VERIFIED;
+    }
+
+    /**
+     * 判断是否为暂停状态
+     *
+     * @return true 如果状态为 PAUSED
+     */
+    public boolean isPaused() {
+        return this == PAUSED;
     }
 
     /**

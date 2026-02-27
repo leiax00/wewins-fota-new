@@ -46,6 +46,32 @@ const baseRoutes: RouteRecordRaw[] = [
     meta: { titleKey: 'login.login', requiresAuth: false },
   },
   {
+    path: '/policy/create',
+    name: 'policy-create',
+    component: () => import('@/views/policy/PolicyFormView.vue'),
+    meta: {
+      i18nKey: 'policy.createTitle',
+      permission: 'fota:policy:create',
+      activeMenu: '/policy',
+      hidden: true,
+      tabHidden: true,
+      breadcrumbHidden: false
+    },
+  },
+  {
+    path: '/policy/edit/:id(\\d+)',
+    name: 'policy-edit',
+    component: () => import('@/views/policy/PolicyFormView.vue'),
+    meta: {
+      i18nKey: 'policy.editTitle',
+      permission: 'fota:policy:update',
+      activeMenu: '/policy',
+      hidden: true,
+      tabHidden: true,
+      breadcrumbHidden: false
+    },
+  },
+  {
     path: '/forbidden',
     name: 'forbidden',
     component: () => import('@/views/error/NotFoundView.vue'),

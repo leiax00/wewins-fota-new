@@ -49,18 +49,18 @@ public class UpgradePolicy extends BaseEntity {
     private Long targetVersionId;
 
     /**
-     * 允许升级的源版本列表（JSONB 数组）
+     * 允许升级的源版本 ID 列表（JSONB 数组）
      * <p>
-     * 指定哪些源版本可以升级到此目标版本
+     * 指定哪些源版本（通过 ID）可以升级到此目标版本
      * </p>
      * <p>
      * 示例：
      * <pre>
-     * ["1.0.0", "1.0.1", "1.0.2-beta"]
+     * [10, 11, 12]
      * </pre>
      * </p>
      * <p>
-     * 业务规则：必须非空，至少包含一个版本
+     * 业务规则：必须非空，至少包含一个版本 ID
      * </p>
      */
     @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
@@ -77,7 +77,16 @@ public class UpgradePolicy extends BaseEntity {
     private Integer grayRate;
 
     /**
-     * 策略状态（ACTIVE/PAUSED/EXPIRED）
+     * 策略状态
+     * <p>可选值：</p>
+     * <ul>
+     *   <li>DRAFT - 草稿</li>
+     *   <li>TESTING - 测试中</li>
+     *   <li>VERIFIED - 已验证</li>
+     *   <li>ACTIVE - 生产中</li>
+     *   <li>PAUSED - 暂停</li>
+     *   <li>EXPIRED - 过期</li>
+     * </ul>
      */
     private String status;
 

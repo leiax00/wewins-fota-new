@@ -18,6 +18,7 @@ import com.wewins.fota.domain.policy.enums.TimeWindowType;
 import com.wewins.fota.domain.policy.enums.TriggerMode;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.module.system.security.RbacExpressionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -59,6 +60,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     private final UpgradePolicyRepository upgradePolicyRepository;
     private final ProductRepository productRepository;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final RbacExpressionService rbacExpressionService;
 
     // ==================== 查询方法 ====================
 
@@ -103,9 +105,25 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
                     policy.getGrayRate(), policy.getPriority(), policy.getTriggerMode(), policy.getTargetMode());
         }
 
+        // 解析请求的状态
+        PolicyStatus requestedStatus;
+        try {
+            requestedStatus = PolicyStatus.of(policy.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
+                "请求的状态无效: " + e.getMessage());
+        }
+
+        // 涉及 ACTIVE/PAUSED 的状态需要 release 权限
+        if ((requestedStatus.isActive() || requestedStatus.isPaused()) &&
+            !rbacExpressionService.has("fota:policy:release")) {
+            throw new BizException(ErrorCode.FORBIDDEN.getCode(),
+                String.format("创建 %s 状态的策略需要发布权限", requestedStatus.getDisplayName()));
+        }
+
         normalizeAndValidate(policy, true);
         upgradePolicyRepository.create(policy);
-        log.info("升级策略创建成功: policyId={}, name={}", policy.getId(), policy.getName());
+        log.info("升级策略创建成功: policyId={}, name={}, status={}", policy.getId(), policy.getName(), policy.getStatus());
         return policy;
     }
 
@@ -120,10 +138,70 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             log.debug("更新升级策略: policyId={}", policy.getId());
         }
 
-        getById(policy.getId());
+        // 先获取策略检查当前状态和权限
+        UpgradePolicy existingPolicy = getById(policy.getId());
+        PolicyStatus currentStatus;
+        try {
+            currentStatus = PolicyStatus.of(existingPolicy.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
+                "当前策略状态无效: " + e.getMessage());
+        }
+
+        // 检查是否有状态变更
+        PolicyStatus targetStatus = currentStatus;
+        if (policy.getStatus() != null && !policy.getStatus().isBlank()) {
+            try {
+                targetStatus = PolicyStatus.of(policy.getStatus());
+            } catch (IllegalArgumentException e) {
+                throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
+                    "请求的目标状态无效: " + e.getMessage());
+            }
+        }
+
+        // 如果状态有变更，需要检查切换权限并使用并发保护
+        if (!currentStatus.getCode().equals(targetStatus.getCode())) {
+            boolean hasReleasePermission = rbacExpressionService.has("fota:policy:release");
+
+            // 涉及 ACTIVE/PAUSED 的状态切换需要 release 权限
+            if (requiresReleaseForTransition(currentStatus, targetStatus) && !hasReleasePermission) {
+                throw new BizException(ErrorCode.FORBIDDEN.getCode(),
+                    String.format("从 %s 切换到 %s 需要发布权限",
+                        currentStatus.getDisplayName(), targetStatus.getDisplayName()));
+            }
+
+            log.info("策略状态通过更新接口变更: policyId={}, from={}, to={}",
+                policy.getId(), currentStatus.getCode(), targetStatus.getCode());
+
+            // 使用带状态校验的更新方法，防止并发冲突
+            normalizeAndValidate(policy, false);
+            UpgradePolicy updated = upgradePolicyRepository.updateWithStatusCheck(
+                policy.getId(), currentStatus.getCode(), policy);
+
+            if (updated == null) {
+                throw new BizException(
+                    ErrorCode.POLICY_INVALID_STATUS_TRANSITION.getCode(),
+                    String.format("状态更新失败: 策略状态已发生变化，请刷新后重试（当前状态: %s）",
+                        currentStatus.getDisplayName())
+                );
+            }
+
+            log.info("升级策略更新成功: policyId={}, statusChanged=true", policy.getId());
+            return updated;
+        }
+
+        // 无状态变更时，检查修改权限
+        if (requiresReleaseForUpdate(currentStatus) && !rbacExpressionService.has("fota:policy:release")) {
+            throw new BizException(ErrorCode.FORBIDDEN.getCode(),
+                String.format("%s 状态的策略不能修改，需要发布权限", currentStatus.getDisplayName()));
+        }
+
+        // 保持原状态不变（防止被篡改）
+        policy.setStatus(currentStatus.getCode());
+
         normalizeAndValidate(policy, false);
         upgradePolicyRepository.updateById(policy);
-        log.info("升级策略更新成功: policyId={}", policy.getId());
+        log.info("升级策略更新成功: policyId={}, statusChanged=false", policy.getId());
         return policy;
     }
 
@@ -138,13 +216,144 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             log.debug("删除升级策略: policyId={}", id);
         }
 
-        getById(id);
+        UpgradePolicy policy = getById(id);
+        PolicyStatus currentStatus = PolicyStatus.of(policy.getStatus());
+
+        // 检查用户权限
+        boolean hasReleasePermission = rbacExpressionService.has("fota:policy:release");
+
+        // 统一删除权限检查
+        if (!canDelete(currentStatus, hasReleasePermission)) {
+            if (currentStatus.isActive()) {
+                throw new BizException(ErrorCode.POLICY_IN_USE.getCode(),
+                    "生产中的策略不能删除，请先切换到其他状态后再删除");
+            }
+            throw new BizException(ErrorCode.FORBIDDEN.getCode(),
+                String.format("%s 状态的策略删除需要发布权限", currentStatus.getDisplayName()));
+        }
+
         boolean result = upgradePolicyRepository.deleteById(id);
-        log.info("升级策略删除成功: policyId={}, result={}", id, result);
+        log.info("升级策略删除成功: policyId={}, status={}, result={}", id, currentStatus.getCode(), result);
         return result;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UpgradePolicy updateStatus(Long id, String newStatus) {
+        if (id == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "升级策略 ID 不能为空");
+        }
+
+        if (newStatus == null || newStatus.isBlank()) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "新状态不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("更新策略状态: policyId={}, newStatus={}", id, newStatus);
+        }
+
+        // 获取策略
+        UpgradePolicy policy = getById(id);
+
+        // 解析当前状态
+        final PolicyStatus currentStatus;
+        try {
+            currentStatus = PolicyStatus.of(policy.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "当前策略状态无效: " + e.getMessage());
+        }
+
+        // 解析目标状态
+        final PolicyStatus targetStatus;
+        try {
+            targetStatus = PolicyStatus.of(newStatus);
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "目标状态无效: " + e.getMessage());
+        }
+
+        // ==================== 权限检查 ====================
+        // 检查是否涉及受保护的状态（ACTIVE 和 PAUSED 需要特殊权限）
+        boolean hasReleasePermission = rbacExpressionService.has("fota:policy:release");
+
+        // 涉及 ACTIVE/PAUSED 状态的操作需要 release 权限
+        if (requiresReleaseForTransition(currentStatus, targetStatus) && !hasReleasePermission) {
+            throw new BizException(ErrorCode.FORBIDDEN.getCode(),
+                "当前状态切换需要发布权限");
+        }
+
+        // ==================== 执行状态切换 ====================
+        // 使用带状态校验的更新方法，防止并发冲突
+        policy.setStatus(targetStatus.getCode());
+        UpgradePolicy updated = upgradePolicyRepository.updateWithStatusCheck(id, currentStatus.getCode(), policy);
+
+        if (updated == null) {
+            // 状态已被其他事务修改，抛出异常
+            throw new BizException(
+                    ErrorCode.POLICY_INVALID_STATUS_TRANSITION.getCode(),
+                    String.format("状态更新失败: 策略状态已发生变化，请刷新后重试（当前状态: %s）",
+                            currentStatus.getDisplayName())
+            );
+        }
+
+        log.info("策略状态更新成功: policyId={}, from={}, to={}",
+                id, currentStatus.getCode(), targetStatus.getCode());
+
+        return updated;
+    }
+
     // ==================== 校验方法 ====================
+
+    /**
+     * 状态切换是否需要 release 权限
+     * <p>
+     * 规则：只要当前状态或目标状态涉及 ACTIVE/PAUSED，就需要 release 权限
+     * </p>
+     *
+     * @param from 当前状态
+     * @param to 目标状态
+     * @return true 如果需要 release 权限
+     */
+    private boolean requiresReleaseForTransition(PolicyStatus from, PolicyStatus to) {
+        return from.isActive() || from.isPaused() || to.isActive() || to.isPaused();
+    }
+
+    /**
+     * 当前状态修改是否需要 release 权限
+     * <p>
+     * 规则：ACTIVE 或 PAUSED 状态的策略修改需要 release 权限
+     * </p>
+     *
+     * @param current 当前状态
+     * @return true 如果需要 release 权限
+     */
+    private boolean requiresReleaseForUpdate(PolicyStatus current) {
+        return current.isActive() || current.isPaused();
+    }
+
+    /**
+     * 删除权限判定
+     * <p>
+     * 规则：
+     * <ul>
+     *   <li>ACTIVE：永不允许删除（必须先切换到其他状态）</li>
+     *   <li>PAUSED：需要 release 权限</li>
+     *   <li>其他状态：允许删除（前置已有 delete 基础权限检查）</li>
+     * </ul>
+     * </p>
+     *
+     * @param current 当前状态
+     * @param hasRelease 是否有 release 权限
+     * @return true 如果允许删除
+     */
+    private boolean canDelete(PolicyStatus current, boolean hasRelease) {
+        if (current.isActive()) {
+            return false;
+        }
+        if (current.isPaused()) {
+            return hasRelease;
+        }
+        return true;
+    }
 
     /**
      * 规范化并校验策略数据
@@ -217,8 +426,12 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * 校验并规范化状态
      */
     private void validateAndNormalizeStatus(UpgradePolicy policy) {
-        PolicyStatus status = PolicyStatus.of(policy.getStatus());
-        policy.setStatus(status.getCode());
+        try {
+            PolicyStatus status = PolicyStatus.of(policy.getStatus());
+            policy.setStatus(status.getCode());
+        } catch (IllegalArgumentException e) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), e.getMessage());
+        }
     }
 
     /**
@@ -232,7 +445,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     /**
      * 校验并规范化源版本列表
      * <p>
-     * 强制要求至少包含一个版本号
+     * 强制要求至少包含一个版本 ID（数字）
      * </p>
      */
     private void normalizeAndValidateSourceVersions(UpgradePolicy policy) {
@@ -242,21 +455,21 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         ArrayNode normalized = JsonNodeFactory.instance.arrayNode();
-        LinkedHashSet<String> deduplicated = new LinkedHashSet<>();
+        LinkedHashSet<Long> deduplicated = new LinkedHashSet<>();
 
         for (JsonNode item : sourceVersions) {
-            if (item == null || !item.isTextual()) {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 仅支持字符串版本号");
+            if (item == null || !item.isIntegralNumber()) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 仅支持数字版本 ID");
             }
-            String version = item.asText().trim();
-            if (version.isEmpty()) {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 不允许包含空字符串");
+            Long versionId = item.asLong();
+            if (versionId <= 0) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 版本 ID 必须为正整数");
             }
-            deduplicated.add(version);
+            deduplicated.add(versionId);
         }
 
         if (deduplicated.isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 至少包含一个版本");
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 至少包含一个版本 ID");
         }
         if (deduplicated.size() > MAX_SOURCE_VERSIONS) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 数量不能超过 " + MAX_SOURCE_VERSIONS);
@@ -330,6 +543,9 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * <p>
      * 时间区间语义：左闭右开 [startAt, endAt)
      * </p>
+     * <p>
+     * 支持三种类型：UNLIMITED（不限制）、RANGE（固定范围）、DAILY（每日周期）
+     * </p>
      */
     private void normalizeAndValidateTimeWindow(UpgradePolicy policy) {
         JsonNode timeWindow = policy.getTimeWindow();
@@ -339,9 +555,28 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         TimeWindowType type = TimeWindowType.of(readRequiredText(timeWindow, "type"));
         if (type == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow.type 仅支持 RANGE 或 DAILY");
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow.type 仅支持 UNLIMITED、RANGE 或 DAILY");
         }
 
+        // UNLIMITED 模式：时间字段必须为空
+        if (type == TimeWindowType.UNLIMITED) {
+            String startAt = readOptionalText(timeWindow, "startAt");
+            String endAt = readOptionalText(timeWindow, "endAt");
+            if (startAt != null || endAt != null) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
+                        "timeWindow 在 UNLIMITED 模式下 startAt 和 endAt 必须为空字符串");
+            }
+
+            // 规范化存储
+            ObjectNode normalized = JsonNodeFactory.instance.objectNode();
+            normalized.put("type", type.getCode());
+            normalized.put("startAt", "");
+            normalized.put("endAt", "");
+            policy.setTimeWindow(normalized);
+            return;
+        }
+
+        // RANGE 和 DAILY 模式：时间字段不能为空
         OffsetDateTime startAt = parseUtcOffsetDateTime(readRequiredText(timeWindow, "startAt"));
         OffsetDateTime endAt = parseUtcOffsetDateTime(readRequiredText(timeWindow, "endAt"));
 
@@ -531,6 +766,22 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow." + fieldName + " 不能为空");
         }
         return valueNode.asText().trim();
+    }
+
+    /**
+     * 从 JsonNode 中读取可选文本字段
+     *
+     * @param parent 父节点
+     * @param fieldName 字段名称
+     * @return 字段值（已 trim），如果字段不存在或为空则返回 null
+     */
+    private String readOptionalText(JsonNode parent, String fieldName) {
+        JsonNode valueNode = parent.get(fieldName);
+        if (valueNode == null || !valueNode.isTextual()) {
+            return null;
+        }
+        String text = valueNode.asText().trim();
+        return text.isEmpty() ? null : text;
     }
 
     /**
