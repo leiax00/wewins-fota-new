@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -43,6 +43,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     // ==================== 常量定义 ====================
 
     private static final String PACKAGE_STATUS_READY = "READY";
+    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     // 校验上限常量
     private static final int MAX_SOURCE_VERSIONS = 50;
@@ -604,11 +605,11 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
         }
 
-        // 规范化存储（转为带 Z 后缀的 UTC 字符串）
+        // 规范化存储（LocalDateTime 约定为 UTC，存储为 ISO8601 字符串）
         ObjectNode normalized = JsonNodeFactory.instance.objectNode();
         normalized.put("type", type.getCode());
-        normalized.put("startAt", startAt.atZone(ZoneOffset.UTC).toString());
-        normalized.put("endAt", endAt.atZone(ZoneOffset.UTC).toString());
+        normalized.put("startAt", startAt.format(ISO_FORMATTER));
+        normalized.put("endAt", endAt.format(ISO_FORMATTER));
         policy.setTimeWindow(normalized);
     }
 

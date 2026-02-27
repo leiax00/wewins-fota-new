@@ -3,6 +3,8 @@ package com.wewins.fota.adapter.assembler;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.policy.dto.TimeWindowDTO;
 import com.wewins.fota.application.policy.dto.UpgradePolicyReqDTO;
 import com.wewins.fota.application.policy.dto.UpgradePolicyRespDTO;
@@ -15,6 +17,8 @@ import com.wewins.fota.module.system.service.user.UserCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -245,6 +249,10 @@ public class UpgradePolicyAssembler {
 
     /**
      * 将对象转换为 JsonNode
+     * <p>
+     * 对 TimeWindowDTO 特殊处理：直接将 LocalDateTime 转为 ISO 字符串
+     * 避免 Jackson 的自定义序列化器把 UTC 时间再转回客户端时区
+     * </p>
      *
      * @param value 源对象
      * @return JsonNode，如果源对象为 null 则返回 null
@@ -253,7 +261,46 @@ public class UpgradePolicyAssembler {
         if (value == null) {
             return null;
         }
+        // 特殊处理 TimeWindowDTO，绕过 Jackson 的 LocalDateTime 序列化器
+        if (value instanceof TimeWindowDTO) {
+            return timeWindowToJsonNode((TimeWindowDTO) value);
+        }
         return objectMapper.valueToTree(value);
+    }
+
+    /**
+     * 将 TimeWindowDTO 转换为 JsonNode
+     * <p>
+     * LocalDateTime 已约定为 UTC，直接转为 ISO 字符串存储，不做时区转换
+     * </p>
+     *
+     * @param timeWindow 时间窗口 DTO
+     * @return JsonNode
+     */
+    private JsonNode timeWindowToJsonNode(TimeWindowDTO timeWindow) {
+        if (timeWindow == null) {
+            return null;
+        }
+
+        ObjectNode node = JsonNodeFactory.instance.objectNode();
+        node.put("type", timeWindow.getType());
+
+        LocalDateTime startAt = timeWindow.getStartAt();
+        LocalDateTime endAt = timeWindow.getEndAt();
+
+        if (startAt != null) {
+            node.put("startAt", startAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        } else {
+            node.putNull("startAt");
+        }
+
+        if (endAt != null) {
+            node.put("endAt", endAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        } else {
+            node.putNull("endAt");
+        }
+
+        return node;
     }
 
     /**
@@ -286,6 +333,10 @@ public class UpgradePolicyAssembler {
 
     /**
      * 将 JsonNode 转换为 TimeWindowDTO
+     * <p>
+     * 直接读取时间字符串并解析为 LocalDateTime（约定为 UTC）
+     * 避免 Jackson 的自定义反序列化器把 UTC 当作客户端时区再转换
+     * </p>
      *
      * @param node JsonNode
      * @return TimeWindowDTO，如果 JsonNode 为 null 或空则返回 null
@@ -294,6 +345,27 @@ public class UpgradePolicyAssembler {
         if (node == null || node.isNull()) {
             return null;
         }
-        return objectMapper.convertValue(node, TimeWindowDTO.class);
+
+        // 直接从 JsonNode 读取字段，绕过 Jackson 的反序列化器
+        TimeWindowDTO dto = new TimeWindowDTO();
+        dto.setType(node.get("type").asText());
+
+        JsonNode startAtNode = node.get("startAt");
+        if (startAtNode != null && !startAtNode.isNull()) {
+            String startAtStr = startAtNode.asText();
+            dto.setStartAt(LocalDateTime.parse(startAtStr));
+        } else {
+            dto.setStartAt(null);
+        }
+
+        JsonNode endAtNode = node.get("endAt");
+        if (endAtNode != null && !endAtNode.isNull()) {
+            String endAtStr = endAtNode.asText();
+            dto.setEndAt(LocalDateTime.parse(endAtStr));
+        } else {
+            dto.setEndAt(null);
+        }
+
+        return dto;
     }
 }
