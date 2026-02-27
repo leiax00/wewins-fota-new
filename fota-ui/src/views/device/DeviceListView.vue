@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { deviceStatusTypeMap, resolveStatusLabelKey, resolveStatusType } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
+import { formatDateTime } from '@/utils/date'
 import {
   createDevice,
   deleteDevice,
@@ -389,10 +390,13 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column
-        prop="lastSeenAt"
         :label="t('device.lastSeenAt')"
-        width="180"
-      />
+        width="170"
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.lastSeenAt) }}
+        </template>
+      </el-table-column>
       <el-table-column
         prop="tags"
         :label="t('device.tags')"

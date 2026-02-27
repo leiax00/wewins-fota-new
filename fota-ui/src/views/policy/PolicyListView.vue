@@ -15,7 +15,7 @@ import {
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
-import { formatLocalDateTime } from '@/utils/date'
+import { formatDateTime as utilsFormatDateTime } from '@/utils/date'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -327,7 +327,7 @@ const handleFilterChange = () => {
 
 // 使用工具函数格式化日期时间
 const formatDateTime = (dateStr: string): string => {
-  return formatLocalDateTime(dateStr, 'YYYY-MM-DD HH:mm')
+  return utilsFormatDateTime(dateStr)
 }
 
 // 初始化数据

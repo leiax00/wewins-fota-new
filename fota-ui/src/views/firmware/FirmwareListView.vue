@@ -5,6 +5,7 @@ import type { UploadProps, UploadRequestOptions } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
+import { formatDateTime } from '@/utils/date'
 import {
   cancelUploadSession,
   createFirmwareVersion,
@@ -564,10 +565,13 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column
-        prop="createdAt"
         :label="t('firmware.uploadTime')"
         width="170"
-      />
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
 
       <el-table-column
         v-if="canShowActions"

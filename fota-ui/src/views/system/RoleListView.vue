@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { resolveStatusLabelKey, resolveStatusType, roleStatusTypeMap } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/date'
 import {
   assignRolePermissions,
   createRole,
@@ -327,10 +328,13 @@ onMounted(() => {
         </template>
       </el-table-column>
       <el-table-column
-        prop="createdAt"
         :label="t('common.createTime')"
-        min-width="170"
-      />
+        width="170"
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
 
       <el-table-column
         v-if="canShowActions"

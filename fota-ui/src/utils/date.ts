@@ -1,9 +1,42 @@
 /**
  * 日期时间工具函数
  * <p>
- * 处理前后端时区转换和格式化
+ * 处理前后端时区转换和格式化，统一使用 yyyy-MM-dd HH:mm:ss 格式
  * </p>
  */
+
+/**
+ * 标准日期时间格式：yyyy-MM-dd HH:mm:ss
+ */
+export const DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss'
+
+/**
+ * 短日期时间格式：yyyy-MM-dd HH:mm
+ */
+export const DATETIME_SHORT_FORMAT = 'yyyy-MM-dd HH:mm'
+
+/**
+ * 仅时间格式：HH:mm:ss
+ */
+export const TIME_FORMAT = 'HH:mm:ss'
+
+/**
+ * 仅日期格式：yyyy-MM-dd
+ */
+export const DATE_FORMAT = 'yyyy-MM-dd'
+
+/**
+ * 格式化日期时间为标准格式 (yyyy-MM-dd HH:mm:ss)
+ * <p>
+ * 将后端返回的 UTC 时间字符串转换为客户端本地时间并格式化
+ * </p>
+ *
+ * @param isoString ISO8601 时间字符串（UTC）
+ * @returns 格式化后的本地时间字符串，如果输入无效则返回 '-'
+ */
+export function formatDateTime(isoString: string | null | undefined): string {
+  return formatLocalDateTime(isoString, DATETIME_FORMAT)
+}
 
 /**
  * 格式化日期时间为本地字符串
@@ -12,10 +45,10 @@
  * </p>
  *
  * @param isoString ISO8601 时间字符串（UTC）
- * @param format 格式模板，默认 'YYYY-MM-DD HH:mm:ss'
+ * @param format 格式模板，默认 'yyyy-MM-dd HH:mm:ss'
  * @returns 格式化后的本地时间字符串，如果输入无效则返回 '-'
  */
-export function formatLocalDateTime(isoString: string | null | undefined, format = 'YYYY-MM-DD HH:mm:ss'): string {
+export function formatLocalDateTime(isoString: string | null | undefined, format = DATETIME_FORMAT): string {
   if (!isoString || isoString === '') {
     return '-'
   }
@@ -28,7 +61,6 @@ export function formatLocalDateTime(isoString: string | null | undefined, format
       return '-'
     }
 
-    // 简单格式化实现
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
@@ -37,15 +69,36 @@ export function formatLocalDateTime(isoString: string | null | undefined, format
     const seconds = String(date.getSeconds()).padStart(2, '0')
 
     return format
-      .replace('YYYY', String(year))
+      .replace('yyyy', String(year))
       .replace('MM', month)
-      .replace('DD', day)
+      .replace('dd', day)
       .replace('HH', hours)
       .replace('mm', minutes)
       .replace('ss', seconds)
   } catch {
     return '-'
   }
+}
+
+/**
+ * 格式化日期时间为短格式 (yyyy-MM-dd HH:mm)
+ */
+export function formatDateTimeShort(isoString: string | null | undefined): string {
+  return formatLocalDateTime(isoString, DATETIME_SHORT_FORMAT)
+}
+
+/**
+ * 格式化仅时间 (HH:mm:ss)
+ */
+export function formatTime(isoString: string | null | undefined): string {
+  return formatLocalDateTime(isoString, TIME_FORMAT)
+}
+
+/**
+ * 格式化仅日期 (yyyy-MM-dd)
+ */
+export function formatDate(isoString: string | null | undefined): string {
+  return formatLocalDateTime(isoString, DATE_FORMAT)
 }
 
 /**
@@ -85,3 +138,4 @@ export function getClientTimeZone(): string {
 export function getClientTimeZoneOffset(): number {
   return -new Date().getTimezoneOffset() / 60
 }
+

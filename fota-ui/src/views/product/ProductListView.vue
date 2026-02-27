@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/date'
 import {
   createProduct,
   deleteProduct,
@@ -176,10 +177,13 @@ onMounted(() => {
         show-overflow-tooltip
       />
       <el-table-column
-        prop="createdAt"
         :label="t('common.createTime')"
         width="170"
-      />
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
 
       <el-table-column
         v-if="canShowActions"
