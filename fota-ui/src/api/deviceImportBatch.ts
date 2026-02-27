@@ -46,3 +46,33 @@ export const pageBatches = (params: DeviceImportBatchPageParams) => {
 export const getBatchById = (id: number) => {
   return get<DeviceImportBatchItem>(`/admin/device-import-batches/${id}`)
 }
+
+/**
+ * 获取批次下的设备列表
+ */
+export const getBatchDevices = (batchId: number, params: {
+  page?: number
+  size?: number
+}) => {
+  return get<PageResult<DeviceItem>>(`/admin/device-import-batches/${batchId}/devices`, { params })
+}
+
+/**
+ * 设备项类型（从device.ts复用）
+ */
+export interface DeviceItem {
+  id: number
+  imei: string
+  productId: number
+  productName?: string
+  currentVersionId?: number
+  versionName?: string
+  status: 'ONLINE' | 'OFFLINE' | 'LOST'
+  lastSeenAt?: string
+  tags?: string
+  importBatchId?: number
+  createdAt: string
+  createdBy: number
+  updatedAt: string
+  updatedBy: number
+}

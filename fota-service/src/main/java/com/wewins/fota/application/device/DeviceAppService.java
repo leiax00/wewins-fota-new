@@ -1,8 +1,14 @@
 package com.wewins.fota.application.device;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
+import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
+import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.domain.device.entity.Device;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * 设备应用服务接口
@@ -48,4 +54,31 @@ public interface DeviceAppService {
      * @return 是否成功
      */
     boolean deleteDevice(Long id);
+
+    /**
+     * 批量导入设备
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @param productId 产品ID
+     * @param batchName 批次名称（可选）
+     * @return 导入结果
+     * @throws IOException 文件读取失败
+     */
+    DeviceImportRespDTO importDevices(MultipartFile file, Long productId, String batchName) throws IOException;
+
+    /**
+     * 预估批量操作影响的设备数
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 影响的设备数
+     */
+    int estimateBatchOperation(BatchOperationReqDTO reqDTO);
+
+    /**
+     * 执行批量操作
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 操作结果
+     */
+    BatchOperationResultDTO executeBatchOperation(BatchOperationReqDTO reqDTO);
 }

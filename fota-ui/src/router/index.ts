@@ -83,6 +83,17 @@ const baseRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/device-import-batches',
+    name: 'device-import-batches',
+    component: () => import('@/views/device/DeviceImportBatchListView.vue'),
+    meta: {
+      titleKey: 'device.importBatchTitle',
+      hidden: true,
+      tabHidden: false,
+      breadcrumbHidden: false,
+    },
+  },
+  {
     path: '/',
     redirect: '/dashboard',
   },

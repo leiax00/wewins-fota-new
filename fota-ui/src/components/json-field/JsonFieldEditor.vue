@@ -168,6 +168,12 @@ const loadSchema = async () => {
     }
 
     syncFormStateFromModel()
+
+    // 同步默认值到父组件
+    // 如果 modelValue 为空，应用默认值后需要立即同步出去
+    if (!props.modelValue || !props.modelValue.trim()) {
+      emitFromForm()
+    }
   } catch (error) {
     // 加载失败，降级到代码模式
     loadError.value = t('jsonField.schemaLoadFailed')

@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.DeviceAssembler;
 import com.wewins.fota.application.common.ReferenceNameResolver;
 import com.wewins.fota.application.device.DeviceAppService;
+import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
+import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
+import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
@@ -13,6 +16,7 @@ import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.product.entity.Product;
@@ -28,7 +32,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +53,7 @@ public class DeviceController {
     private final DeviceAssembler deviceAssembler;
     private final ProductRepository productRepository;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final DeviceImportBatchRepository deviceImportBatchRepository;
     private final ReferenceNameResolver referenceNameResolver;
 
     /**
@@ -70,7 +77,7 @@ public class DeviceController {
         Page<Device> pageResult = deviceAppService.pageDevices(reqDTO);
         List<Device> devices = pageResult.getRecords();
 
-        // 提取当前页中所有不同的产品 ID 和版本 ID
+        // 提取当前页中所有不同的产品 ID、版本 ID 和批次 ID
         Set<Long> productIds = devices.stream()
                 .map(Device::getProductId)
                 .filter(Objects::nonNull)
@@ -79,17 +86,23 @@ public class DeviceController {
                 .map(Device::getCurrentVersionId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+        Set<Long> batchIds = devices.stream()
+                .map(Device::getImportBatchId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         // 使用 ReferenceNameResolver 批量查询名称
         Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
         Map<Long, String> versionNameMap = referenceNameResolver.resolveFirmwareVersionNames(versionIds);
+        Map<Long, String> batchNameMap = referenceNameResolver.resolveImportBatchNames(batchIds);
 
-        // 转换为 DTO，填充产品名称和版本名称
+        // 转换为 DTO，填充产品名称、版本名称和批次名称
         List<DeviceRespDTO> records = devices.stream()
                 .map(device -> deviceAssembler.toDeviceResp(
                         device,
                         productNameMap.get(device.getProductId()),
-                        versionNameMap.get(device.getCurrentVersionId())
+                        versionNameMap.get(device.getCurrentVersionId()),
+                        batchNameMap.get(device.getImportBatchId())
                 ))
                 .toList();
 
@@ -130,13 +143,64 @@ public class DeviceController {
                         .map(FirmwareVersion::getVersion)
                         .orElse(null);
             }
-            return ApiResponse.success(deviceAssembler.toDeviceResp(device, productName, versionName));
+            String importBatchName = null;
+            if (device.getImportBatchId() != null) {
+                importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
+                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
+                        .orElse(null);
+            }
+            return ApiResponse.success(deviceAssembler.toDeviceResp(device, productName, versionName, importBatchName));
         } catch (BizException e) {
             log.warn("获取设备详情失败: deviceId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
             log.warn("获取设备详情参数错误: deviceId={}, message={}", id, e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 批量导入设备
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @param productId 产品ID
+     * @param batchName 批次名称（可选）
+     * @return 导入结果
+     */
+    @PostMapping("/import")
+    @PreAuthorize("@rbac.has('fota:device:import')")
+    public ApiResponse<DeviceImportRespDTO> importDevices(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("productId") Long productId,
+            @RequestParam(value = "batchName", required = false) String batchName) {
+
+        if (file == null || file.isEmpty()) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "导入文件不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("批量导入设备: productId={}, batchName={}, filename={}",
+                    productId, batchName, file.getOriginalFilename());
+        }
+
+        try {
+            // 文件大小限制 10MB
+            long maxSize = 10 * 1024 * 1024;
+            if (file.getSize() > maxSize) {
+                return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "文件大小超过10MB限制");
+            }
+
+            DeviceImportRespDTO result = deviceAppService.importDevices(file, productId, batchName);
+            log.info("设备导入成功: batchId={}, totalCount={}, successCount={}, failedCount={}",
+                    result.getBatchId(), result.getTotalCount(), result.getSuccessCount(), result.getFailedCount());
+            return ApiResponse.success(result);
+        } catch (BizException e) {
+            log.warn("设备导入失败: productId={}, errorCode={}, message={}",
+                    productId, e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("设备导入失败: productId={}, message={}", productId, e.getMessage(), e);
+            return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "设备导入失败: " + e.getMessage());
         }
     }
 
@@ -171,8 +235,14 @@ public class DeviceController {
                         .map(FirmwareVersion::getVersion)
                         .orElse(null);
             }
+            String importBatchName = null;
+            if (createdDevice.getImportBatchId() != null) {
+                importBatchName = deviceImportBatchRepository.findById(createdDevice.getImportBatchId())
+                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
+                        .orElse(null);
+            }
             log.info("设备创建成功: deviceId={}, imei={}", createdDevice.getId(), createdDevice.getImei());
-            return ApiResponse.success(deviceAssembler.toDeviceResp(createdDevice, productName, versionName));
+            return ApiResponse.success(deviceAssembler.toDeviceResp(createdDevice, productName, versionName, importBatchName));
         } catch (BizException e) {
             log.warn("创建设备失败: imei={}, errorCode={}, message={}",
                     reqDTO.getImei(), e.getCode(), e.getMessage());
@@ -214,8 +284,14 @@ public class DeviceController {
                         .map(FirmwareVersion::getVersion)
                         .orElse(null);
             }
+            String importBatchName = null;
+            if (updatedDevice.getImportBatchId() != null) {
+                importBatchName = deviceImportBatchRepository.findById(updatedDevice.getImportBatchId())
+                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
+                        .orElse(null);
+            }
             log.info("设备更新成功: deviceId={}", updatedDevice.getId());
-            return ApiResponse.success(deviceAssembler.toDeviceResp(updatedDevice, productName, versionName));
+            return ApiResponse.success(deviceAssembler.toDeviceResp(updatedDevice, productName, versionName, importBatchName));
         } catch (BizException e) {
             log.warn("更新设备失败: deviceId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -251,6 +327,72 @@ public class DeviceController {
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (IllegalArgumentException e) {
             log.warn("删除设备参数错误: deviceId={}, message={}", id, e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 预估批量操作影响的设备数
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 影响的设备数
+     */
+    @PostMapping("/batch/estimate")
+    @PreAuthorize("@rbac.has('fota:device:read')")
+    public ApiResponse<Integer> estimateBatchOperation(@RequestBody BatchOperationReqDTO reqDTO) {
+        if (reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "请求参数不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("预估批量操作: operationType={}", reqDTO.getOperationType());
+        }
+
+        try {
+            reqDTO.validate();
+            int count = deviceAppService.estimateBatchOperation(reqDTO);
+            log.info("批量操作预估完成: operationType={}, count={}", reqDTO.getOperationType(), count);
+            return ApiResponse.success(count);
+        } catch (BizException e) {
+            log.warn("批量操作预估失败: operationType={}, errorCode={}, message={}",
+                    reqDTO.getOperationType(), e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("批量操作预估参数错误: operationType={}, message={}",
+                    reqDTO.getOperationType(), e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 执行批量操作
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 操作结果
+     */
+    @PostMapping("/batch/execute")
+    @PreAuthorize("@rbac.has('fota:device:update')")
+    public ApiResponse<BatchOperationResultDTO> executeBatchOperation(@RequestBody BatchOperationReqDTO reqDTO) {
+        if (reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "请求参数不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("执行批量操作: operationType={}", reqDTO.getOperationType());
+        }
+
+        try {
+            BatchOperationResultDTO result = deviceAppService.executeBatchOperation(reqDTO);
+            log.info("批量操作执行完成: operationType={}, totalCount={}, successCount={}, failedCount={}",
+                    reqDTO.getOperationType(), result.getTotalCount(), result.getSuccessCount(), result.getFailedCount());
+            return ApiResponse.success(result);
+        } catch (BizException e) {
+            log.warn("批量操作执行失败: operationType={}, errorCode={}, message={}",
+                    reqDTO.getOperationType(), e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("批量操作执行参数错误: operationType={}, message={}",
+                    reqDTO.getOperationType(), e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
     }

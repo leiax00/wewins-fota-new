@@ -50,4 +50,71 @@ public interface DeviceRepository {
      * 逻辑删除设备
      */
     boolean softDeleteById(Long id);
+
+    /**
+     * 批量创建设备
+     *
+     * @param devices 设备列表
+     */
+    void batchCreate(List<Device> devices);
+
+    /**
+     * 分页查询批次下的设备
+     *
+     * @param page 分页对象
+     * @param importBatchId 导入批次ID
+     * @return 分页结果
+     */
+    Page<Device> pageByImportBatchId(Page<Device> page, Long importBatchId);
+
+    /**
+     * 查询批次下所有设备（用于批量操作）
+     *
+     * @param importBatchId 导入批次ID
+     * @return 设备列表
+     */
+    List<Device> findAllByImportBatchId(Long importBatchId);
+
+    /**
+     * 根据IMEI列表查询设备（用于批量操作）
+     *
+     * @param imeis IMEI列表
+     * @return 设备列表
+     */
+    List<Device> findByImeis(List<String> imeis);
+
+    /**
+     * 根据条件查询设备（用于批量操作预览）
+     *
+     * @param productId 产品ID（可选）
+     * @param imeiKeyword IMEI关键词（可选）
+     * @param status 设备状态（可选）
+     * @param importBatchId 导入批次ID（可选）
+     * @return 设备列表
+     */
+    List<Device> findByConditions(Long productId, String imeiKeyword, String status, Long importBatchId);
+
+    /**
+     * 批量更新设备标签
+     *
+     * @param deviceIds 设备ID列表
+     * @param tagsJson 标签JSON字符串
+     */
+    void batchUpdateTags(List<Long> deviceIds, String tagsJson);
+
+    /**
+     * 批量更新设备批次ID
+     *
+     * @param deviceIds 设备ID列表
+     * @param batchId 新批次ID
+     */
+    void batchUpdateImportBatchId(List<Long> deviceIds, Long batchId);
+
+    /**
+     * 批量软删除设备
+     *
+     * @param deviceIds 设备ID列表
+     * @return 删除数量
+     */
+    int batchSoftDelete(List<Long> deviceIds);
 }

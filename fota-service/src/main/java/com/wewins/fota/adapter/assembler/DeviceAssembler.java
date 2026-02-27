@@ -46,13 +46,20 @@ public class DeviceAssembler {
      * 将 Device 实体转换为 DeviceRespDTO（不含关联名称）
      */
     public DeviceRespDTO toDeviceResp(Device device) {
-        return toDeviceResp(device, null, null);
+        return toDeviceResp(device, null, null, null);
     }
 
     /**
-     * 将 Device 实体转换为 DeviceRespDTO（含关联名称）
+     * 将 Device 实体转换为 DeviceRespDTO（含关联名称，3参数版本）
      */
     public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName) {
+        return toDeviceResp(device, productName, versionName, null);
+    }
+
+    /**
+     * 将 Device 实体转换为 DeviceRespDTO（含关联名称，4参数版本）
+     */
+    public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName, String importBatchName) {
         if (device == null) {
             return null;
         }
@@ -67,6 +74,7 @@ public class DeviceAssembler {
                 .status(device.getStatus())
                 .lastSeenAt(device.getLastSeenAt())
                 .importBatchId(device.getImportBatchId())
+                .importBatchName(importBatchName)
                 .createdAt(device.getCreatedAt())
                 .createdBy(device.getCreatedBy())
                 .updatedAt(device.getUpdatedAt())

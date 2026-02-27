@@ -63,6 +63,11 @@ public class DeviceRespDTO {
     private Long importBatchId;
 
     /**
+     * 导入批次名称
+     */
+    private String importBatchName;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

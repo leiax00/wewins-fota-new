@@ -3,6 +3,7 @@ package com.wewins.fota.domain.device.repository;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.domain.device.entity.DeviceImportBatch;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,4 +31,26 @@ public interface DeviceImportBatchRepository {
      * @return 分页结果
      */
     Page<DeviceImportBatch> pageBatches(Page<DeviceImportBatch> page, String batchName, String status);
+
+    /**
+     * 批量查询批次列表
+     *
+     * @param ids 批次ID列表
+     * @return 批次列表
+     */
+    List<DeviceImportBatch> listByIds(List<Long> ids);
+
+    /**
+     * 创建批次
+     *
+     * @param batch 批次实体
+     */
+    void create(DeviceImportBatch batch);
+
+    /**
+     * 更新批次
+     *
+     * @param batch 批次实体
+     */
+    void updateById(DeviceImportBatch batch);
 }

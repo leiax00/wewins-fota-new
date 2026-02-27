@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -50,5 +52,28 @@ public class DeviceImportBatchRepositoryImpl implements DeviceImportBatchReposit
         queryWrapper.orderByDesc(DeviceImportBatch::getCreatedAt);
 
         return deviceImportBatchMapper.selectPage(page, queryWrapper);
+    }
+
+    @Override
+    public void create(DeviceImportBatch batch) {
+        deviceImportBatchMapper.insert(batch);
+    }
+
+    @Override
+    public void updateById(DeviceImportBatch batch) {
+        deviceImportBatchMapper.updateById(batch);
+    }
+
+    @Override
+    public List<DeviceImportBatch> listByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return deviceImportBatchMapper.selectList(
+                new LambdaQueryWrapper<DeviceImportBatch>()
+                        .in(DeviceImportBatch::getId, ids)
+                        .orderByDesc(DeviceImportBatch::getCreatedAt)
+        );
     }
 }

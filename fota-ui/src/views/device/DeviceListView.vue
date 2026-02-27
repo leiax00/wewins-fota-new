@@ -15,7 +15,10 @@ import {
   type DeviceStatus,
 } from '@/api/device'
 import { searchProducts, type ProductItem } from '@/api/product'
+import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
+import DeviceImportDialog from './DeviceImportDialog.vue'
+import DeviceBatchOperationDialog from './DeviceBatchOperationDialog.vue'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -29,7 +32,20 @@ const query = reactive({
   productId: undefined as number | undefined,
   imei: '',
   status: undefined as DeviceStatus | undefined,
+  importBatchId: undefined as number | undefined,
 })
+
+// 导入对话框
+const importDialogVisible = ref(false)
+
+// 批量操作对话框
+const batchOperationDialogVisible = ref(false)
+
+// 批次搜索选项
+const batchSearchOptions = ref<DeviceImportBatchItem[]>([])
+const batchSearchLoading = ref(false)
+
+let batchSearchTimer: number | null = null
 
 // 产品远程搜索选项
 const productSearchOptions = ref<ProductItem[]>([])
@@ -154,6 +170,65 @@ const handleProductSearch = async (keyword: string) => {
   }, 300)
 }
 
+/**
+ * 批次远程搜索（按批次名称）
+ */
+const handleBatchSearch = async (keyword: string) => {
+  const trimmedKeyword = (keyword || '').trim()
+  if (!trimmedKeyword) {
+    batchSearchOptions.value = []
+    return
+  }
+
+  if (batchSearchTimer !== null) {
+    clearTimeout(batchSearchTimer)
+  }
+
+  batchSearchTimer = window.setTimeout(async () => {
+    batchSearchLoading.value = true
+    try {
+      const result = await pageBatches({
+        batchName: trimmedKeyword,
+        page: 1,
+        size: 50,
+      })
+      batchSearchOptions.value = result.records || []
+    } finally {
+      batchSearchLoading.value = false
+    }
+  }, 300)
+}
+
+/**
+ * 打开导入对话框
+ */
+const openImportDialog = () => {
+  importDialogVisible.value = true
+}
+
+/**
+ * 导入成功回调
+ */
+const handleImportSuccess = () => {
+  importDialogVisible.value = false
+  void fetchList()
+}
+
+/**
+ * 打开批量操作对话框
+ */
+const openBatchOperationDialog = () => {
+  batchOperationDialogVisible.value = true
+}
+
+/**
+ * 批量操作成功回调
+ */
+const handleBatchOperationSuccess = () => {
+  batchOperationDialogVisible.value = false
+  void fetchList()
+}
+
 const fetchList = async () => {
   loading.value = true
   try {
@@ -273,6 +348,7 @@ const resetSearch = () => {
   query.productId = undefined
   query.imei = ''
   query.status = undefined
+  query.importBatchId = undefined
   void fetchList()
 }
 
@@ -331,11 +407,42 @@ onMounted(() => {
             :value="status"
           />
         </el-select>
+        <el-select
+          v-model="query.importBatchId"
+          :placeholder="t('device.importBatch')"
+          clearable
+          filterable
+          remote
+          reserve-keyword
+          :remote-method="handleBatchSearch"
+          :loading="batchSearchLoading"
+          style="width: 180px"
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="batch in batchSearchOptions"
+            :key="batch.id"
+            :label="batch.batchName"
+            :value="batch.id"
+          />
+        </el-select>
         <el-button @click="handleSearch">
           {{ t('common.search') }}
         </el-button>
         <el-button @click="resetSearch">
           {{ t('common.refresh') }}
+        </el-button>
+        <el-button
+          v-if="canCreate"
+          @click="openImportDialog"
+        >
+          {{ t('device.import') }}
+        </el-button>
+        <el-button
+          v-if="canShowActions"
+          @click="openBatchOperationDialog"
+        >
+          {{ t('device.batchOperation') }}
         </el-button>
         <el-button
           v-if="canCreate"
@@ -403,6 +510,21 @@ onMounted(() => {
         min-width="220"
         show-overflow-tooltip
       />
+      <el-table-column
+        :label="t('device.importBatch')"
+        min-width="150"
+      >
+        <template #default="{ row }">
+          <el-tag
+            v-if="row.importBatchName"
+            size="small"
+            type="info"
+          >
+            {{ row.importBatchName }}
+          </el-tag>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
 
       <el-table-column
         v-if="canShowActions"
@@ -551,4 +673,14 @@ onMounted(() => {
       </el-button>
     </template>
   </el-dialog>
+
+  <DeviceImportDialog
+    v-model="importDialogVisible"
+    @success="handleImportSuccess"
+  />
+
+  <DeviceBatchOperationDialog
+    v-model="batchOperationDialogVisible"
+    @success="handleBatchOperationSuccess"
+  />
 </template>
