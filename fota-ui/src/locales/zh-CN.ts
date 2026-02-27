@@ -367,8 +367,6 @@ export default {
     batchOperationPartial: '部分设备操作失败',
     batchOperationFailed: '批量操作失败',
     totalCount: '总数',
-    successCount: '成功',
-    failedCount: '失败',
   },
   jsonField: {
     formMode: '表单模式',
