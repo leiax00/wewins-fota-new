@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashSet;
@@ -579,8 +579,8 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         // RANGE 和 DAILY 模式：时间字段不能为空
-        OffsetDateTime startAt = parseUtcOffsetDateTime(readRequiredText(timeWindow, "startAt"));
-        OffsetDateTime endAt = parseUtcOffsetDateTime(readRequiredText(timeWindow, "endAt"));
+        LocalDateTime startAt = parseLocalDateTime(readRequiredText(timeWindow, "startAt"));
+        LocalDateTime endAt = parseLocalDateTime(readRequiredText(timeWindow, "endAt"));
 
         // 左闭右开区间：startAt 必须 < endAt
         if (!startAt.isBefore(endAt)) {
@@ -604,11 +604,11 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
         }
 
-        // 规范化存储（转为 UTC Instant 字符串）
+        // 规范化存储（转为带 Z 后缀的 UTC 字符串）
         ObjectNode normalized = JsonNodeFactory.instance.objectNode();
         normalized.put("type", type.getCode());
-        normalized.put("startAt", startAt.toInstant().toString());
-        normalized.put("endAt", endAt.toInstant().toString());
+        normalized.put("startAt", startAt.atZone(ZoneOffset.UTC).toString());
+        normalized.put("endAt", endAt.atZone(ZoneOffset.UTC).toString());
         policy.setTimeWindow(normalized);
     }
 
@@ -787,20 +787,16 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     }
 
     /**
-     * 解析 UTC OffsetDateTime
+     * 解析 LocalDateTime（输入已被 Jackson 转换为 UTC）
      *
-     * @param dateTimeStr ISO8601 格式的时间字符串
-     * @return OffsetDateTime
+     * @param dateTimeStr ISO8601 格式的时间字符串（不带时区）
+     * @return LocalDateTime（UTC）
      */
-    private OffsetDateTime parseUtcOffsetDateTime(String dateTimeStr) {
+    private LocalDateTime parseLocalDateTime(String dateTimeStr) {
         try {
-            OffsetDateTime parsed = OffsetDateTime.parse(dateTimeStr);
-            if (!ZoneOffset.UTC.equals(parsed.getOffset())) {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "时间必须是 UTC（例如 2026-02-26T00:00:00Z）");
-            }
-            return parsed;
+            return LocalDateTime.parse(dateTimeStr);
         } catch (DateTimeParseException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "时间格式必须为 ISO8601 UTC: " + dateTimeStr);
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "时间格式必须为 ISO8601: " + dateTimeStr);
         }
     }
 }
