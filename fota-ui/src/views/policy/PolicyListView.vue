@@ -560,26 +560,26 @@ onActivated(() => {
                         {{ t('policy.targetAllDevices') }}
                       </div>
 
-                      <!-- DEVICE_IDS: 显示设备ID列表 -->
-                      <div v-else-if="row.targetMode === 'DEVICE_IDS' && row.targetDeviceIds?.length" class="target-tags compact">
+                      <!-- DEVICE_IDS: 显示设备IMEI列表 -->
+                      <div v-else-if="row.targetMode === 'DEVICE_IDS' && row.targetImeis?.length" class="target-tags compact">
                         <el-tag
-                          v-for="(deviceId, idx) in row.targetDeviceIds.slice(0, 4)"
+                          v-for="(imei, idx) in row.targetImeis.slice(0, 4)"
                           :key="idx"
                           size="small"
                           type="primary"
                           effect="plain"
                           class="target-tag"
                         >
-                          {{ deviceId }}
+                          {{ imei }}
                         </el-tag>
                         <el-tag
-                          v-if="row.targetDeviceIds.length > 4"
+                          v-if="row.targetImeis.length > 4"
                           size="small"
                           type="info"
                           effect="plain"
                           class="target-tag-more"
                         >
-                          +{{ row.targetDeviceIds.length - 4 }}
+                          +{{ row.targetImeis.length - 4 }}
                         </el-tag>
                       </div>
 

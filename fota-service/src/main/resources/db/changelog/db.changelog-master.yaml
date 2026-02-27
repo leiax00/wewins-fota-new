@@ -230,3 +230,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260227_04_change_device_ids_to_imeis
+      author: fota-team
+      comment: "将策略管理的 target_device_ids 改为 target_imeis，因为外部系统无法获取设备ID"
+      changes:
+        - sqlFile:
+            path: changes/20260227_04_change_device_ids_to_imeis.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

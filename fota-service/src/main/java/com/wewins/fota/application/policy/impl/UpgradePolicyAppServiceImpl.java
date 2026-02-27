@@ -56,6 +56,9 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     // 标签 key 格式验证（字母开头，允许字母数字下划线，最长64字符）
     private static final Pattern TAG_KEY_PATTERN = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]{0,63}$");
 
+    // IMEI 格式验证：15位数字
+    private static final Pattern IMEI_PATTERN = Pattern.compile("^\\d{15}$");
+
     // ==================== 依赖注入 ====================
 
     private final UpgradePolicyRepository upgradePolicyRepository;
@@ -490,27 +493,27 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         TargetMode targetMode = TargetMode.of(policy.getTargetMode());
         policy.setTargetMode(targetMode.getCode());
 
-        ArrayNode deviceIds = normalizePositiveStringArray(policy.getTargetDeviceIds(), MAX_TARGET_DEVICE_IDS, "targetDeviceIds");
+        ArrayNode imeis = normalizeImeiArray(policy.getTargetImeis(), MAX_TARGET_DEVICE_IDS, "targetImeis");
         ArrayNode batchIds = normalizePositiveStringArray(policy.getTargetDeviceBatchIds(), MAX_TARGET_DEVICE_BATCH_IDS, "targetDeviceBatchIds");
         ObjectNode tags = normalizeTagObject(policy.getTargetDeviceTags());
 
         switch (targetMode) {
             case ALL -> {
-                if (deviceIds != null || batchIds != null || tags != null) {
+                if (imeis != null || batchIds != null || tags != null) {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=ALL 时不能传目标设备筛选字段");
                 }
-                policy.setTargetDeviceIds(null);
+                policy.setTargetImeis(null);
                 policy.setTargetDeviceBatchIds(null);
                 policy.setTargetDeviceTags(null);
             }
             case DEVICE_IDS -> {
-                if (deviceIds == null) {
-                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_IDS 时 targetDeviceIds 必填");
+                if (imeis == null) {
+                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_IDS 时 targetImeis 必填");
                 }
                 if (batchIds != null || tags != null) {
-                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_IDS 时仅允许 targetDeviceIds");
+                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_IDS 时仅允许 targetImeis");
                 }
-                policy.setTargetDeviceIds(deviceIds);
+                policy.setTargetImeis(imeis);
                 policy.setTargetDeviceBatchIds(null);
                 policy.setTargetDeviceTags(null);
             }
@@ -518,10 +521,10 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
                 if (batchIds == null) {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_BATCHES 时 targetDeviceBatchIds 必填");
                 }
-                if (deviceIds != null || tags != null) {
+                if (imeis != null || tags != null) {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_BATCHES 时仅允许 targetDeviceBatchIds");
                 }
-                policy.setTargetDeviceIds(null);
+                policy.setTargetImeis(null);
                 policy.setTargetDeviceBatchIds(batchIds);
                 policy.setTargetDeviceTags(null);
             }
@@ -529,10 +532,10 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
                 if (tags == null) {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_TAGS 时 targetDeviceTags 必填");
                 }
-                if (deviceIds != null || batchIds != null) {
+                if (imeis != null || batchIds != null) {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "targetMode=DEVICE_TAGS 时仅允许 targetDeviceTags");
                 }
-                policy.setTargetDeviceIds(null);
+                policy.setTargetImeis(null);
                 policy.setTargetDeviceBatchIds(null);
                 policy.setTargetDeviceTags(tags);
             }
@@ -692,6 +695,61 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
                 }
             } catch (NumberFormatException e) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持正整数");
+            }
+
+            deduplicated.add(value);
+        }
+
+        if (deduplicated.size() > maxSize) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 数量不能超过 " + maxSize);
+        }
+
+        ArrayNode normalized = JsonNodeFactory.instance.arrayNode();
+        deduplicated.forEach(normalized::add);
+        return normalized;
+    }
+
+    /**
+     * 规范化IMEI数组
+     * <p>
+     * IMEI必须是15位数字
+     * </p>
+     *
+     * @param node JsonNode 数组
+     * @param maxSize 最大数量
+     * @param fieldName 字段名称（用于错误消息）
+     * @return 规范化后的 ArrayNode，如果输入为空则返回 null
+     */
+    private ArrayNode normalizeImeiArray(JsonNode node, int maxSize, String fieldName) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isArray()) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 必须为数组");
+        }
+        if (node.isEmpty()) {
+            return null;
+        }
+
+        LinkedHashSet<String> deduplicated = new LinkedHashSet<>();
+        for (JsonNode item : node) {
+            String value;
+            if (item.isTextual()) {
+                value = item.asText().trim();
+            } else if (item.isIntegralNumber()) {
+                value = String.valueOf(item.asLong());
+            } else {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持字符串");
+            }
+
+            if (value.isEmpty()) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 不允许包含空值");
+            }
+
+            // 验证IMEI格式：15位数字
+            if (!IMEI_PATTERN.matcher(value).matches()) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
+                    fieldName + " 必须为15位数字（IMEI格式）: " + value);
             }
 
             deduplicated.add(value);

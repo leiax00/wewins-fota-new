@@ -74,8 +74,8 @@ const createDefaultForm = () => ({
   },
   sourceVersions: [] as number[],
   targetMode: 'ALL' as TargetMode,
-  targetDeviceIds: [] as string[],
-  targetDeviceIdsInput: '',
+  targetImeis: [] as string[],
+  targetImeisInput: '',
   targetDeviceBatchIds: [] as string[],
   targetDeviceTags: {} as Record<string, unknown>,
   // KV 形式的标签
@@ -200,11 +200,11 @@ const saveTagPair = (index: number) => {
   form.tagEditing[index] = false
 }
 
-const targetDeviceIdsComputed = computed({
-  get: () => form.targetDeviceIdsInput,
+const targetImeisComputed = computed({
+  get: () => form.targetImeisInput,
   set: (val: string) => {
-    form.targetDeviceIdsInput = val
-    form.targetDeviceIds = val
+    form.targetImeisInput = val
+    form.targetImeis = val
       .split(/[,\n]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
@@ -269,10 +269,10 @@ const formRules = {
     },
   ],
   targetMode: [{ required: true, message: t('policy.targetModeRequired'), trigger: 'change' }],
-  targetDeviceIds: [
+  targetImeis: [
     {
       validator: (_rule: unknown, _value: unknown, callback: any) => {
-        if (form.targetMode === 'DEVICE_IDS' && (!form.targetDeviceIds || form.targetDeviceIds.length === 0)) {
+        if (form.targetMode === 'DEVICE_IDS' && (!form.targetImeis || form.targetImeis.length === 0)) {
           callback(new Error(t('policy.targetDeviceIdsRequired')))
         } else {
           callback()
@@ -325,7 +325,7 @@ const createSnapshot = () =>
     timeWindow: form.timeWindow,
     sourceVersions: form.sourceVersions,
     targetMode: form.targetMode,
-    targetDeviceIds: form.targetDeviceIds,
+    targetImeis: form.targetImeis,
     targetDeviceBatchIds: form.targetDeviceBatchIds,
     targetDeviceTags: form.targetDeviceTags,
     status: form.status,
@@ -415,8 +415,8 @@ const patchFormFromPolicy = async (policy: UpgradePolicyItem) => {
   form.timeWindow = policy.timeWindow || { type: 'UNLIMITED' as TimeWindowType, startAt: null, endAt: null }
   form.sourceVersions = policy.sourceVersions || []
   form.targetMode = policy.targetMode || 'ALL'
-  form.targetDeviceIds = policy.targetDeviceIds || []
-  form.targetDeviceIdsInput = (policy.targetDeviceIds || []).join('\n')
+  form.targetImeis = policy.targetImeis || []
+  form.targetImeisInput = (policy.targetImeis || []).join('\n')
   form.targetDeviceBatchIds = policy.targetDeviceBatchIds || []
   form.targetDeviceTags = policy.targetDeviceTags || {}
   // 将 targetDeviceTags 转换为 KV 数组
@@ -472,13 +472,16 @@ const handleCancel = () => goBackWithConfirm()
 
 const handleTargetModeChange = (newMode: TargetMode | string) => {
   form.targetMode = newMode as TargetMode
-  form.targetDeviceIds = []
-  form.targetDeviceIdsInput = ''
+  form.targetImeis = []
+  form.targetImeisInput = ''
   form.targetDeviceBatchIds = []
   form.targetDeviceTags = {}
   form.tagKeys = []
   form.tagValues = []
   form.tagEditing = []
+
+  // 清除表单验证状态
+  formRef.value?.clearValidate(['targetImeis', 'targetDeviceBatchIds', 'targetDeviceTags'])
 
   // 切换到批次模式时，加载批次列表
   if (form.targetMode === 'DEVICE_BATCHES') {
@@ -556,7 +559,7 @@ const submitForm = async () => {
       timeWindow,
       sourceVersions: form.sourceVersions,
       targetMode: form.targetMode,
-      targetDeviceIds: form.targetMode === 'DEVICE_IDS' ? form.targetDeviceIds : undefined,
+      targetImeis: form.targetMode === 'DEVICE_IDS' ? form.targetImeis : undefined,
       targetDeviceBatchIds: form.targetMode === 'DEVICE_BATCHES' ? form.targetDeviceBatchIds : undefined,
       targetDeviceTags: form.targetMode === 'DEVICE_TAGS' ? form.targetDeviceTags : undefined,
       status: form.status,
@@ -843,9 +846,9 @@ onMounted(() => {
 
         <!-- 动态目标字段 -->
         <template v-if="form.targetMode === 'DEVICE_IDS'">
-          <el-form-item prop="targetDeviceIds" :label="t('policy.targetDeviceIdsInput')">
+          <el-form-item prop="targetImeis" :label="t('policy.targetDeviceIdsInput')">
             <el-input
-              v-model="targetDeviceIdsComputed"
+              v-model="targetImeisComputed"
               type="textarea"
               :rows="2"
               :placeholder="t('policy.deviceIdsPlaceholder')"

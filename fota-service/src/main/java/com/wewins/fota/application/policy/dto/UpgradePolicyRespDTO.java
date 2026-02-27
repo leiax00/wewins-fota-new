@@ -65,9 +65,9 @@ public class UpgradePolicyRespDTO {
     private String targetMode;
 
     /**
-     * 目标设备 ID 列表
+     * 目标设备 IMEI 列表
      */
-    private List<String> targetDeviceIds;
+    private List<String> targetImeis;
 
     /**
      * 目标设备批次 ID 列表

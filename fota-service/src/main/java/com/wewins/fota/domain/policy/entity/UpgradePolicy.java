@@ -110,7 +110,7 @@ public class UpgradePolicy extends BaseEntity {
      * </p>
      * <ul>
      *   <li>ALL：全量设备</li>
-     *   <li>DEVICE_IDS：指定设备ID列表</li>
+     *   <li>DEVICE_IDS：指定设备IMEI列表</li>
      *   <li>DEVICE_BATCHES：指定设备批次列表</li>
      *   <li>DEVICE_TAGS：按标签筛选（AND 逻辑）</li>
      * </ul>
@@ -118,19 +118,23 @@ public class UpgradePolicy extends BaseEntity {
     private String targetMode;
 
     /**
-     * 指定设备ID列表（JSONB 数组）
+     * 指定设备IMEI列表（JSONB 数组）
      * <p>
      * 当 targetMode = DEVICE_IDS 时使用
      * </p>
      * <p>
      * 示例：
      * <pre>
-     * ["1001", "1002", "1003"]
+     * ["869123456789012", "869123456789013", "869123456789014"]
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private JsonNode targetDeviceIds;
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
+    private JsonNode targetImeis;
 
     /**
      * 指定设备批次ID列表（JSONB 数组）
@@ -144,7 +148,11 @@ public class UpgradePolicy extends BaseEntity {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
     private JsonNode targetDeviceBatchIds;
 
     /**
@@ -162,7 +170,11 @@ public class UpgradePolicy extends BaseEntity {
      * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
     private JsonNode targetDeviceTags;
 
     /**

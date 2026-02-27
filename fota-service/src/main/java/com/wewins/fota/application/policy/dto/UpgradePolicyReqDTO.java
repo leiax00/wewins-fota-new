@@ -86,7 +86,7 @@ public class UpgradePolicyReqDTO {
      * 目标模式互斥，只能选择一种：
      * <ul>
      *   <li>ALL: 全量设备</li>
-     *   <li>DEVICE_IDS: 指定设备ID列表</li>
+     *   <li>DEVICE_IDS: 指定设备IMEI列表</li>
      *   <li>DEVICE_BATCHES: 指定设备批次列表</li>
      *   <li>DEVICE_TAGS: 按标签筛选（AND 逻辑）</li>
      * </ul>
@@ -102,13 +102,13 @@ public class UpgradePolicyReqDTO {
     }
 
     /**
-     * 目标设备 ID 列表
+     * 目标设备 IMEI 列表
      * <p>
      * 当 targetMode = DEVICE_IDS 时使用
      * </p>
      */
-    @Size(max = 1000, message = "targetDeviceIds 数量不能超过 1000")
-    private List<@NotBlank(message = "targetDeviceIds 不允许包含空字符串") String> targetDeviceIds;
+    @Size(max = 1000, message = "targetImeis 数量不能超过 1000")
+    private List<@NotBlank(message = "targetImeis 不允许包含空字符串") String> targetImeis;
 
     /**
      * 目标设备批次 ID 列表

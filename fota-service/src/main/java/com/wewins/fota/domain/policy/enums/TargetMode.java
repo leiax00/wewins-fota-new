@@ -20,12 +20,12 @@ public enum TargetMode {
     ALL("全量设备", "ALL"),
 
     /**
-     * 指定设备ID列表
+     * 指定设备IMEI列表
      * <p>
-     * 策略仅适用于指定的设备ID列表
+     * 策略仅适用于指定的设备IMEI列表
      * </p>
      */
-    DEVICE_IDS("设备ID列表", "DEVICE_IDS"),
+    DEVICE_IDS("设备IMEI列表", "DEVICE_IDS"),
 
     /**
      * 指定设备批次列表
@@ -109,7 +109,7 @@ public enum TargetMode {
      */
     public String getFilterFieldName() {
         return switch (this) {
-            case DEVICE_IDS -> "targetDeviceIds";
+            case DEVICE_IDS -> "targetImeis";
             case DEVICE_BATCHES -> "targetDeviceBatchIds";
             case DEVICE_TAGS -> "targetDeviceTags";
             default -> null;

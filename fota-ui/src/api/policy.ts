@@ -30,7 +30,7 @@ export interface UpgradePolicyItem {
   timeWindow?: TimeWindowDTO
   sourceVersions: number[]  // 后端返回版本 ID 数组
   targetMode: TargetMode
-  targetDeviceIds?: string[]
+  targetImeis?: string[]
   targetDeviceBatchIds?: string[]
   targetDeviceTags?: Record<string, unknown>
   status: PolicyStatus
@@ -58,7 +58,7 @@ export interface UpgradePolicyPayload {
   timeWindow: TimeWindowDTO
   sourceVersions: number[]
   targetMode: TargetMode
-  targetDeviceIds?: string[]
+  targetImeis?: string[]
   targetDeviceBatchIds?: string[]
   targetDeviceTags?: Record<string, unknown>
   status: PolicyStatus
