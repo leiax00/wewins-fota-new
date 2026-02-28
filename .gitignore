@@ -63,3 +63,5 @@ fota-ui/yarn-error.log
 fota-ui/.DS_Store
 fota-ui/tsconfig.tsbuildinfo
 fota-ui/.eslintrc-auto-import.json
+
+*.local.*

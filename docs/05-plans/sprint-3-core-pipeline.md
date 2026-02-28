@@ -5,8 +5,9 @@
 > **范围**: 核心链路最小可用版本
 
 **Sprint Owner**: FOTA 后端组
-**文档版本**: v1.0
+**文档版本**: v1.3
 **创建日期**: 2026-02-28
+**最后更新**: 2026-02-28
 
 ---
 
@@ -28,48 +29,70 @@
 ### 验收标准
 
 - [ ] 设备升级检查 API 完整可用
-- [ ] **老 API `/fota/version/query` 完全兼容**
-- [ ] 灰度发布算法正确实现
+- [ ] 新老 API `/fota/version/query` 和 `/v1/upgrade/check` 使用相同逻辑
+- [ ] 灰度发布算法正确实现（哈希分布均匀性验证通过）
 - [ ] 策略匹配支持版本、标签、时间窗口、配额
+- [ ] dev 参数临时标注测试设备功能
 - [ ] 签名下载 URL 生成功能
 - [ ] 上报事件异步写入 ClickHouse
 - [ ] Redis 策略快照缓存生效
 - [ ] 单元测试覆盖率 ≥ 60%
+- [ ] 性能测试达标（P99 < 50ms）
 
 ---
 
-## 📅 阶段 0: API 参数实现 (Day 0.5)
+## 📅 阶段 0: API 参数实现 (Day 1-2)
 
-**预计时间**: 0.5天
+**预计时间**: 2天
 **优先级**: ⚡⚡⚡ 最高 (必须优先完成)
 **分支**: `feature/sprint-3-api-params`
 
 ### 设计目标
 
-实现 `/fota/version/query` 和 `/v1/upgrade/check` 两个路径的 API，它们使用**完全相同的参数和业务逻辑**。设备侧可以使用任一路径进行升级检查。
+实现 `/fota/version/query` 和 `/v1/upgrade/check` 两个路径的 API，它们使用**完全相同的参数和业务逻辑**。
+
+> **重要说明**: 新系统要求设备必须预先导入，设备不存在时**拒绝升级**。老业务继续在老服务运行，新业务迁移到新系统前需先导入设备。
 
 ### API 参数定义 (新老接口通用)
 
-| 参数 | 含义 | 新系统映射 | 数据类型 | 必填 |
-|------|------|-----------|----------|------|
-| `product` | **产品型号** (非产品名称) | 通过 Product.model 查找 product_id | String | ✅ |
-| `imei` | 设备 IMEI | 查找设备（必须存在，不存在则拒绝升级） | String | ✅ |
-| `version` | 当前固件版本号 | 字符串，用于版本匹配 | String | ✅ |
-| `tag` | 设备内部版本 (build tag) | 存入 tags.internal_version | String | ❌ |
-| `auto` | 触发模式 (0=手动, 1=自动) | 影响 checkInterval 返回值 | Integer | ❌ |
-| `lang` | 语言 (en/zh 等) | 影响 release_note 语言 | String | ❌ |
-| `dev` | 环境标识 (1=开发环境) | 存入 tags.env = 'dev' | Integer | ❌ |
+| 参数 | 含义 | 新系统映射                                 | 数据类型 | 必填 |
+|------|------|---------------------------------------|----------|------|
+| `product` | **产品型号** (非产品名称) | 通过 Product.model 查找 product_id        | String | ✅ |
+| `imei` | 设备 IMEI | 查找设备（必须存在，不存在则拒绝升级）                   | String | ✅ |
+| `version` | 当前固件版本号 | 字符串，用于版本范围匹配                          | String | ✅ |
+| `tag` | 设备内部版本 (build tag) | **临时匹配条件**，如果存在则和version一起匹配源版本       | String | ❌ |
+| `auto` | 触发模式 (0=手动, 1=自动) | 对应策略的 triggerMode | Integer | ❌ |
+| `lang` | 语言 (en/zh 等) | 从固件包元数据中匹配对应语言的 release_note          | String | ❌ |
+| `dev` | 临时测试设备标识 (1=测试设备) | **临时标注**本次请求为测试设备，匹配测试策略              | Integer | ❌ |
 
 ### 重要说明
 
-1. **设备必须预先导入**：imei 不存在时，**不创建设备**，直接返回无更新/错误
-2. **dev 参数不存储**：dev=1 仅用于本次请求的策略匹配判断，不更新到设备标签
-3. **tag 参数不存储**：tag 也是策略匹配的条件，不存储到设备标签
-4. **策略匹配条件**：
-  - 设备的当前版本号 (version)
-  - 设备的内部版本 (tag)
-  - 是否测试设备 (dev)
-  - 设备的标签 (tags - 已存储在设备表中的标签)
+1. **设备必须预先导入**：
+   - imei 不存在时，**不创建设备**，返回 `NOT_FOUND`
+   - 新系统要求设备预先通过管理后台或 API 导入
+   - 老业务继续在老服务运行，新业务迁移前需先导入设备
+
+2. **dev 参数是临时标注**：
+   - `dev=1` 表示本次请求**临时**将设备标注为测试设备
+   - 类似于在数据库中临时设置 `tags.env='test'` 或 `tags.env='dev'`
+   - 仅用于本次请求的策略匹配，**不修改**设备表中的标签
+   - 用于测试场景：生产设备临时接收测试固件
+
+3. **tag 参数是临时匹配条件**：
+   - tag 是设备的内部版本号（如 `ASR_YEMEN_M476_V11_B03_Build02`）
+   - **重要**: 由于历史设计缺陷，version号可能重复，需要tag组合来唯一确定固件版本
+   - tag和version组合使用：通过 `(versionNumber, internalVersion)` 查找唯一版本ID
+   - **不存储**到设备标签
+
+4. **auto 参数对应触发模式**：
+   - `auto=0`: 手动检查
+   - `auto=1`: 自动检查
+   - 对应策略中的 `triggerMode` 字段
+
+5. **语言参数处理**：
+   - 语言信息存储在固件包元数据中
+   - 根据lang参数选择对应语言的 release_note
+   - 如果指定语言不存在，降级到默认语言
 
 
 ### API 接口对比
@@ -100,12 +123,18 @@ dev     = 1                            # 开发环境
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 0.1 | 实现 ProductRepository.findByModel() | 0.5h | ⏸️ |
-| 0.2 | 实现 FirmwareVersionRepository.findByVersionNumberAndProductId() | 0.5h | ⏸️ |
-| 0.3 | 统一新老接口的 UpgradeCheckService 参数处理 | 1.5h | ⏸️ |
-| 0.4 | 实现设备不存在时的拒绝逻辑 | 0.5h | ⏸️ |
-| 0.5 | 实现 dev/tag 参数的策略匹配判断 | 1h | ⏸️ |
-| 0.6 | 新老接口统一测试 | 1h | ⏸️ |
+| 0.1 | 实现 ProductRepository.findByModel() | 1h | ⏸️ |
+| 0.2 | 实现 FirmwareVersionRepository.findByVersionNumberAndProductId() | 1h | ⏸️ |
+| 0.3 | 实现 FirmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId() | 1h | ⏸️ |
+| 0.4 | 重构 UpgradeCheckService 支持新参数 | 3h | ⏸️ |
+| 0.5 | 实现设备不存在时的拒绝逻辑 | 1h | ⏸️ |
+| 0.6 | 实现 dev 参数临时测试设备标注 | 2h | ⏸️ |
+| 0.7 | 实现 version+tag 组合查找逻辑 | 2h | ⏸️ |
+| 0.8 | 实现 auto 参数对 checkInterval 的影响 | 1h | ⏸️ |
+| 0.9 | 实现参数校验（imei格式、grayRate范围等） | 2h | ⏸️ |
+| 0.10 | 新老接口统一测试 | 3h | ⏸️ |
+
+**预计总计**: 17小时 ≈ 2天
 
 ### 技术要点
 
@@ -154,6 +183,9 @@ public class UpgradeCheckService {
             String lang,
             Integer dev) {
 
+        // 0. 参数校验
+        validateParams(productModel, imei, version);
+
         // 1. 通过产品型号查找产品
         Product product = productRepository.findByModel(productModel)
             .orElseThrow(() -> new BusinessException("产品型号不存在: " + productModel));
@@ -163,22 +195,38 @@ public class UpgradeCheckService {
             .orElse(null);
 
         if (device == null) {
-            log.warn("设备不存在，拒绝升级: imei={}", imei);
-            return CheckResult.notFound("设备未注册");
+            log.warn("设备不存在，拒绝升级: imei={}, product={}", imei, productModel);
+            return CheckResult.notFound("设备未注册，请联系管理员");
         }
 
-        // 3. 标记设备活跃度
-        bitmapRepository.markActive(LocalDate.now(), device.getId());
+        // 3. 标记设备活跃度（尽力而为，失败不影响主流程）
+        try {
+            bitmapRepository.markActive(LocalDate.now(), device.getId());
+        } catch (Exception e) {
+            log.warn("标记设备活跃度失败: deviceId={}", device.getId(), e);
+            // 继续处理，不影响主流程
+        }
 
         // 4. 查找固件版本 ID（用于策略匹配）
+        // 重要：version和tag组合使用，由于历史设计缺陷version可能重复
         Long versionId = firmwareVersionRepository
-            .findByVersionNumberAndProductId(version, product.getId())
+            .findByVersionNumberAndInternalVersionAndProductId(
+                version, tag, product.getId()
+            )
             .map(FirmwareVersion::getId)
             .orElse(null);
 
-        // 5. 匹配升级策略（dev 和 tag 参数用于匹配）
+        // 如果组合查找失败，尝试只用version查找（向后兼容）
+        if (versionId == null && tag == null) {
+            versionId = firmwareVersionRepository
+                .findByVersionNumberAndProductId(version, product.getId())
+                .map(FirmwareVersion::getId)
+                .orElse(null);
+        }
+
+        // 5. 匹配升级策略（dev 参数作为临时匹配条件，tag已用于版本查找）
         List<UpgradePolicy> policies = findApplicablePolicies(
-            device, versionId, tag, dev
+            device, versionId, dev, auto
         );
 
         if (policies.isEmpty()) {
@@ -193,38 +241,110 @@ public class UpgradeCheckService {
     }
 
     /**
-     * 策略匹配 - dev 参数用于判断测试/生产策略
+     * 参数校验
+     */
+    private void validateParams(String productModel, String imei, String version) {
+        if (!StringUtils.hasText(productModel)) {
+            throw new BusinessException("product 参数不能为空");
+        }
+        if (!StringUtils.hasText(imei)) {
+            throw new BusinessException("imei 参数不能为空");
+        }
+        if (!StringUtils.hasText(version)) {
+            throw new BusinessException("version 参数不能为空");
+        }
+        // IMEI 格式校验（15位数字）
+        if (!imei.matches("\\d{15}")) {
+            throw new BusinessException("imei 格式错误：必须是15位数字");
+        }
+    }
+
+    /**
+     * 策略匹配 - dev/auto 作为临时匹配条件
+     * 注意：tag参数已在versionId查找时使用，此处不再需要
      */
     private List<UpgradePolicy> findApplicablePolicies(
-            Device device, Long versionId, String tag, Integer dev) {
+            Device device, Long versionId, Integer dev, Integer auto) {
 
         return upgradePolicyRepository
             .findActiveByProductIdOrderByPriorityDesc(device.getProductId())
             .stream()
-            .filter(policy -> matchesDev(policy, dev))  // dev 参数匹配
-            .filter(policy -> matchesTag(policy, tag))  // tag 参数匹配
-            .filter(policy -> matchesVersion(policy, versionId))
+            .filter(policy -> matchesDevMode(policy, dev))     // dev 参数匹配
+            .filter(policy -> matchesTriggerMode(policy, auto)) // auto 参数匹配
+            .filter(policy -> matchesSourceVersion(policy, versionId))
             .filter(policy -> matchesDeviceTags(policy, device.getTags()))
+            .filter(policy -> matchesTimeWindow(policy))
+            .filter(policy -> matchesGrayRelease(policy, device.getImei()))
+            .filter(policy -> matchesQuota(policy.getId()))
             .toList();
     }
 
     /**
-     * dev 参数匹配：dev=1 只匹配测试策略
+     * dev 参数匹配：dev=1 临时标注为测试设备
+     *
+     * 说明：dev=1 表示本次请求临时将设备标注为测试设备
+     * 类似于在数据库中临时设置 tags.env='test' 或 tags.env='dev'
+     * 不修改设备表，仅用于本次策略匹配
      */
-    private boolean matchesDev(UpgradePolicy policy, Integer dev) {
-        boolean isTestDevice = (dev != null && dev == 1);
-        boolean isTestPolicy = policy.getTestMode();
-        return isTestDevice == isTestPolicy;
+    private boolean matchesDevMode(UpgradePolicy policy, Integer dev) {
+        // 如果策略没有环境限制，则匹配
+        if (policy.getTargetEnvironment() == null) {
+            return true;
+        }
+
+        // dev=1 表示临时测试设备，匹配 test/dev 环境
+        boolean isTemporaryTestDevice = (dev != null && dev == 1);
+        String policyEnv = policy.getTargetEnvironment();
+
+        if ("test".equalsIgnoreCase(policyEnv) || "dev".equalsIgnoreCase(policyEnv)) {
+            return isTemporaryTestDevice;
+        }
+
+        // 生产环境策略
+        if ("prod".equalsIgnoreCase(policyEnv) || "production".equalsIgnoreCase(policyEnv)) {
+            return !isTemporaryTestDevice;
+        }
+
+        return true;
     }
 
     /**
-     * tag 参数匹配：用于策略过滤
+     * auto 参数匹配：对应策略的 triggerMode
      */
-    private boolean matchesTag(UpgradePolicy policy, String tag) {
-        if (policy.getRequiredTags() == null || policy.getRequiredTags().isEmpty()) {
-            return true;
+    private boolean matchesTriggerMode(UpgradePolicy policy, Integer auto) {
+        if (policy.getTriggerMode() == null) {
+            return true; // 策略没有触发模式限制
         }
-        return policy.getRequiredTags().contains(tag);
+
+        boolean isAutoCheck = (auto != null && auto == 1);
+        boolean isAutoTriggerPolicy = "AUTO".equalsIgnoreCase(policy.getTriggerMode());
+
+        return isAutoCheck == isAutoTriggerPolicy;
+    }
+
+    /**
+     * 版本范围匹配
+     */
+    private boolean matchesSourceVersion(UpgradePolicy policy, Long versionId) {
+        JsonNode sourceVersions = policy.getSourceVersions();
+        if (sourceVersions == null || sourceVersions.isEmpty()) {
+            return true; // 策略没有版本限制
+        }
+
+        if (versionId == null) {
+            return false; // 设备版本无法识别，不匹配有限制的策略
+        }
+
+        // 检查 versionId 是否在 sourceVersions 数组中
+        if (sourceVersions.isArray()) {
+            for (JsonNode node : sourceVersions) {
+                if (versionId.equals(node.asLong())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
 ```
@@ -232,22 +352,19 @@ public class UpgradeCheckService {
 
 ```java
 // auto 参数影响设备下次检查间隔
-// auto=0 (手动检查): 用户主动触发，不影响检测周期，后面根据系统负载直接给出间隔即可
-// auto=1 (自动检查): 系统自动触发，返回较长间隔，如 86400 (24小时)
+// auto=0 (手动检查): 用户主动触发，返回较短间隔 (如 3600秒 = 1小时)
+// auto=1 (自动检查): 系统自动触发，返回较长间隔 (如 86400秒 = 24小时)
 
 private void adjustCheckInterval(CheckResult result, Integer auto) {
     if (result.getResponseCheckInterval() == null) {
-        int defaultInterval = (auto != null && auto == 1) ? 86400 : 3600;
+        boolean isAutoCheck = (auto != null && auto == 1);
+        int defaultInterval = isAutoCheck ? 86400 : 3600;
         result.setResponseCheckInterval(defaultInterval);
     }
 }
 ```
 
 #### 0.4 版本号查找与映射
-
-老 API 的 `version` 参数是**版本字符串** (如 "Mobile.Router.B03")，需要：
-1. 查找对应的 FirmwareVersion 记录
-2. 获取 version_id 用于策略匹配
 
 ```java
 // FirmwareVersionRepository
@@ -263,6 +380,104 @@ FirmwareVersion firmwareVersion = firmwareVersionRepository
 
 Long versionId = firmwareVersion != null ? firmwareVersion.getId() : null;
 ```
+
+#### 0.5 语言参数处理
+
+```java
+// lang 参数影响返回的 release_note 语言
+// 语言信息存储在固件包元数据中
+// 如果指定语言不存在，降级到默认语言
+
+private String selectReleaseNote(FirmwareVersion firmware, String lang) {
+    // 从固件元数据中获取多语言 release_note
+    Map<String, String> releaseNotes = firmware.getReleaseNotes();
+
+    if (releaseNotes == null || releaseNotes.isEmpty()) {
+        return firmware.getReleaseNote(); // 降级到单语言版本
+    }
+
+    // 优先使用请求的语言
+    if (StringUtils.hasText(lang)) {
+        String note = releaseNotes.get(lang.toLowerCase());
+        if (StringUtils.hasText(note)) {
+            return note;
+        }
+    }
+
+    // 降级到默认语言
+    String defaultLang = firmware.getDefaultLanguage();
+    if (StringUtils.hasText(defaultLang)) {
+        String note = releaseNotes.get(defaultLang.toLowerCase());
+        if (StringUtils.hasText(note)) {
+            return note;
+        }
+    }
+
+    // 最后降级到英文
+    return releaseNotes.getOrDefault("en", firmware.getReleaseNote());
+}
+```
+
+> **说明**: 固件元数据结构示例
+> ```json
+> {
+>   "defaultLanguage": "zh",
+>   "releaseNotes": {
+>     "zh": "修复Bug并改进性能",
+>     "en": "Bug fixes and improvements",
+>     "ja": "バグ修正と改善"
+>   }
+> }
+> ```
+
+#### 0.4 版本号查找与映射
+
+老 API 的 `version` 参数是**版本字符串** (如 "Mobile.Router.B03")，但由于历史设计缺陷，version号可能重复。
+
+**因此需要 tag (内部版本号) 组合使用来唯一确定固件版本**：
+
+1. 优先使用 `(versionNumber, internalVersion, productId)` 组合查找
+2. 如果未提供 tag 或组合查找失败，降级到只用 versionNumber 查找（向后兼容）
+
+```java
+// FirmwareVersionRepository - 新增方法
+/**
+ * 通过版本号、内部版本号、产品ID查找固件版本
+ * 用于处理 versionNumber 可能重复的情况
+ */
+Optional<FirmwareVersion> findByVersionNumberAndInternalVersionAndProductId(
+    String versionNumber,
+    String internalVersion,
+    Long productId
+);
+
+// 原有方法（向后兼容）
+Optional<FirmwareVersion> findByVersionNumberAndProductId(
+    String versionNumber,
+    Long productId
+);
+
+// 使用示例
+Long versionId = null;
+
+// 1. 优先：version + tag 组合查找（精确匹配）
+if (StringUtils.hasText(tag)) {
+    versionId = firmwareVersionRepository
+        .findByVersionNumberAndInternalVersionAndProductId(version, tag, product.getId())
+        .map(FirmwareVersion::getId)
+        .orElse(null);
+}
+
+// 2. 降级：只用 version 查找（向后兼容，但可能返回多个结果中的第一个）
+if (versionId == null) {
+    versionId = firmwareVersionRepository
+        .findByVersionNumberAndProductId(version, product.getId())
+        .map(FirmwareVersion::getId)
+        .orElse(null);
+}
+```
+
+> **重要**: 固件表的 `internal_version` 字段用于存储内部版本号（如 `ASR_YEMEN_M476_V11_B03_Build02`）
 
 #### 0.5 语言参数处理
 
@@ -316,12 +531,17 @@ private String determineLanguage(String lang, Product product) {
 |------|----------|
 | **product 型号不存在** | 抛出 BusinessException, 返回 400 |
 | **imei 不存在** | 返回 NOT_FOUND, **不创建设备** |
-| **version 号不匹配任何固件** | versionId=null, 仍可检查更新 |
-| **tag 为空** | 不过滤 tag, 匹配所有策略 |
-| **dev=0 或不传** | 只匹配生产策略 (testMode=false) |
-| **dev=1** | 只匹配测试策略 (testMode=true) |
-| **auto 参数缺失** | 默认按手动模式 (auto=0) 处理 |
-| **lang 参数缺失** | 使用产品默认语言 |
+| **imei 格式错误** | 抛出 BusinessException, 返回 400 |
+| **version 号不匹配任何固件** | versionId=null, 只匹配无版本限制的策略 |
+| **version+tag 组合不匹配** | 降级到只用 version 查找（向后兼容） |
+| **tag 为空或 null** | 只用 version 查找固件版本 |
+| **version+tag 精确匹配** | 返回唯一确定的版本ID |
+| **dev=0 或不传** | 只匹配生产环境策略 (targetEnvironment=prod/production) |
+| **dev=1** | 临时标注为测试设备，匹配测试环境策略 (targetEnvironment=test/dev) |
+| **auto=0 或不传** | 匹配手动触发策略，checkInterval=3600 |
+| **auto=1** | 匹配自动触发策略，checkInterval=86400 |
+| **lang 参数缺失** | 使用固件默认语言，降级到英文 |
+| **lang 参数不支持** | 使用固件默认语言，降级到英文 |
 
 
 ### 响应格式兼容
@@ -363,26 +583,36 @@ private String determineLanguage(String lang, Product product) {
 ```java
 // 测试用例清单
 @Test
-void testLegacyApi_ExistingDevice() { }
+void testApi_ExistingDevice_Success() { }
 @Test
-void testLegacyApi_NewDevice_Created() { }
+void testApi_NewDevice_NotFound() { }  // 设备不存在返回 NOT_FOUND
 @Test
-void testLegacyApi_ProductNotFound() { }
+void testApi_ProductNotFound_400Error() { }
 @Test
-void testLegacyApi_AutoMode_CheckInterval() { }
+void testApi_ImeiInvalidFormat_400Error() { }
 @Test
-void testLegacyApi_ManualMode_CheckInterval() { }
+void testApi_AutoMode_CheckInterval_86400() { }
 @Test
-void testLegacyApi_DevMode_EnvTag() { }
+void testApi_ManualMode_CheckInterval_3600() { }
 @Test
-void testLegacyApi_TagInternalVersion() { }
+void testApi_DevMode_MatchesTestPolicy() { }
 @Test
-void testLegacyApi_LanguageSelection() { }
+void testApi_NoDevMode_MatchesProdPolicy() { }
+@Test
+void testApi_VersionAndTag_ExactMatch() { }  // version+tag 精确匹配
+@Test
+void testApi_VersionOnly_Fallback() { }      // 无tag时降级到version查找
+@Test
+void testApi_DuplicateVersion_WithTag() { }   // version重复时用tag区分
+@Test
+void testApi_LanguageSelection_Fallback() { }
+@Test
+void testApi_VersionNotFound_MatchesNoVersionRestriction() { }
 ```
 
 ---
 
-## 📅 阶段 1: 灰度发布与策略匹配 (Day 1-3)
+## 📅 阶段 1: 灰度发布与策略匹配 (Day 3-5)
 
 **预计时间**: 3天
 **分支**: `feature/sprint-3-gray-policy`
@@ -394,19 +624,75 @@ void testLegacyApi_LanguageSelection() { }
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
 | 1.1 | 实现灰度算法服务 (GrayReleaseService) | 2h | ⏸️ |
-| 1.2 | 实现 Hash(imei) 灰度桶计算 | 1h | ⏸️ |
+| 1.2 | 实现 MurmurHash3 灰度桶计算 | 2h | ⏸️ |
 | 1.3 | 集成到 UpgradeCheckService | 1h | ⏸️ |
-| 1.4 | 单元测试 | 1h | ⏸️ |
+| 1.4 | 灰度分布均匀性验证测试 | 2h | ⏸️ |
 
 #### 技术要点
 
 ```java
-// 灰度算法
-public boolean hitsGrayBucket(String imei, int grayRate) {
-    int bucket = Math.abs(hash(imei) % 100);
-    return bucket < grayRate;
+// 使用 Guava 的 MurmurHash3 保证分布均匀
+import com.google.common.hash.Hashing;
+import com.google.common.hash.HashFunction;
+import java.nio.charset.StandardCharsets;
+
+@Service
+public class GrayReleaseService {
+
+    private static final HashFunction HASH_FUNC = Hashing.murmur3_32();
+    private static final int BUCKET_COUNT = 10000; // 使用 10000 桶提高精度
+
+    /**
+     * 判断设备是否命中灰度发布
+     *
+     * @param imei 设备 IMEI
+     * @param grayRate 灰度比例 (0-100)
+     * @return true=命中灰度，false=未命中
+     */
+    public boolean hitsGrayBucket(String imei, int grayRate) {
+        // 边界值校验
+        if (grayRate <= 0) {
+            return false;
+        }
+        if (grayRate >= 100) {
+            return true;
+        }
+
+        // 空值保护
+        if (imei == null || imei.isEmpty()) {
+            return false;
+        }
+
+        // 使用 MurmurHash3 计算哈希值
+        int hash = HASH_FUNC.hashString(imei, StandardCharsets.UTF_8).asInt();
+
+        // 正确的取模运算（处理负数）
+        int bucket = (hash & Integer.MAX_VALUE) % BUCKET_COUNT;
+        int threshold = (int) (BUCKET_COUNT * grayRate / 100.0);
+
+        return bucket < threshold;
+    }
+
+    /**
+     * 策略匹配中的灰度检查
+     */
+    private boolean matchesGrayRelease(UpgradePolicy policy, String imei) {
+        JsonNode grayConfig = policy.getGrayConfig();
+        if (grayConfig == null || grayConfig.isNull()) {
+            return true; // 没有灰度限制，全部命中
+        }
+
+        int grayRate = grayConfig.path("rate").asInt(100);
+        return hitsGrayBucket(imei, grayRate);
+    }
 }
 ```
+
+> **重要**: 灰度算法验收标准
+> - 使用 10000 个真实 IMEI 样本进行分布测试
+> - 灰度比例 50% 时，实际命中率应在 [49%, 51%] 区间
+> - 灰度比例 10% 时，实际命中率应在 [9%, 11%] 区间
+> - 输出哈希分布报告作为交付物
 
 ### Day 2: 策略匹配增强
 
@@ -438,7 +724,7 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 
 ---
 
-## 📅 阶段 2: 下载 URL 与响应构建 (Day 4-5)
+## 📅 阶段 2: 下载 URL 与响应构建 (Day 6-7)
 
 **预计时间**: 2天
 **分支**: `feature/sprint-3-download-url`
@@ -452,13 +738,15 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 | 4.1 | 实现签名服务 (SignedUrlService) | 2h | ⏸️ |
 | 4.2 | 集成 RustFS/S3 SDK | 2h | ⏸️ |
 | 4.3 | 实现 Pre-signed URL 生成 | 2h | ⏸️ |
-| 4.4 | 单元测试 | 1h | ⏸️ |
+| 4.4 | 定义签名算法规范文档 | 1h | ⏸️ |
+| 4.5 | 单元测试 | 1h | ⏸️ |
 
 #### 技术要点
 
 - 使用 HMAC-SHA256 签名
-- URL 包含 policy_id 用于日志溯源
+- URL 包含 policy_id、device_id、timestamp 用于溯源和验证
 - 设置过期时间 (如 24 小时)
+- 密钥管理方案（存储、轮换）
 
 ### Day 5: 响应构建
 
@@ -466,14 +754,14 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 5.1 | 实固件元数据加载 | 1h | ⏸️ |
+| 5.1 | 实现固件元数据加载 | 1h | ⏸️ |
 | 5.2 | 实现控制参数计算 (checkInterval, downloadDelay) | 1h | ⏸️ |
 | 5.3 | 构建完整响应 DTO | 1h | ⏸️ |
 | 5.4 | 单元测试 | 1h | ⏸️ |
 
 ---
 
-## 📅 阶段 3: 上报事件处理 (Day 6-7)
+## 📅 阶段 3: 上报事件处理 (Day 8-9)
 
 **预计时间**: 2天
 **分支**: `feature/sprint-3-reporting`
@@ -486,8 +774,9 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 |---|------|------|------|
 | 6.1 | 创建 MQ 消费者 (UpgradeReportConsumer) | 2h | ⏸️ |
 | 6.2 | 实现批量处理逻辑 | 2h | ⏸️ |
-| 6.3 | 实现 DLQ (死信队列) 处理 | 1h | ⏸️ |
-| 6.4 | 单元测试 | 1h | ⏸️ |
+| 6.3 | 实现幂等性去重机制 | 2h | ⏸️ |
+| 6.4 | 实现 DLQ (死信队列) 处理 | 1h | ⏸️ |
+| 6.5 | 单元测试 | 1h | ⏸️ |
 
 ### Day 7: ClickHouse 写入
 
@@ -497,14 +786,15 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 |---|------|------|------|
 | 7.1 | 创建 ClickHouse Repository | 1h | ⏸️ |
 | 7.2 | 实现事件批量写入 | 2h | ⏸️ |
-| 7.3 | 实现设备版本异步更新 | 1h | ⏸️ |
-| 7.4 | 集成测试 | 1h | ⏸️ |
+| 7.3 | 实现本地文件降级方案 | 1h | ⏸️ |
+| 7.4 | 实现设备版本异步更新 | 1h | ⏸️ |
+| 7.5 | 集成测试 | 1h | ⏸️ |
 
 ---
 
-## 📅 阶段 4: 策略缓存与优化 (Day 8-9)
+## 📅 阶段 4: 策略缓存与优化 (Day 10-12)
 
-**预计时间**: 2天
+**预计时间**: 3天
 **分支**: `feature/sprint-3-cache`
 
 ### Day 8: Redis 策略快照
@@ -516,18 +806,22 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 | 8.1 | 设计策略快照数据结构 | 1h | ⏸️ |
 | 8.2 | 实现快照写入服务 | 2h | ⏸️ |
 | 8.3 | 实现快照读取服务 | 1h | ⏸️ |
-| 8.4 | 版本指针原子切换 | 1h | ⏸️ |
+| 8.4 | 实现版本指针原子切换 | 2h | ⏸️ |
+| 8.5 | 实现降级策略（Redis 不可用时） | 2h | ⏸️ |
 
-### Day 9: 集成测试与验收
+### Day 9-10: 集成测试与验收
 
 #### 任务清单
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 9.1 | 端到端测试 | 2h | ⏸️ |
-| 9.2 | 性能测试 (目标: 50ms P99) | 2h | ⏸️ |
-| 9.3 | 代码审查与重构 | 1h | ⏸️ |
-| 9.4 | 文档更新 | 1h | ⏸️ |
+| 9.1 | 端到端测试 | 3h | ⏸️ |
+| 9.2 | 性能测试 (目标: P99 < 50ms) | 3h | ⏸️ |
+| 9.3 | 灰度分布均匀性测试 | 2h | ⏸️ |
+| 9.4 | 边界场景测试 | 2h | ⏸️ |
+| 9.5 | 数据一致性验证 | 2h | ⏸️ |
+| 9.6 | 代码审查与重构 | 2h | ⏸️ |
+| 9.7 | 文档更新 | 1h | ⏸️ |
 
 ---
 
@@ -536,11 +830,13 @@ public boolean hitsGrayBucket(String imei, int grayRate) {
 ```
 Sprint 3: [░░░░░░░░░░░░░░░░░] 0%
 
-阶段 0: 老 API 兼容            ⏸️ Day 0.5 (优先级最高)
-阶段 1: 灰度发布与策略匹配    ⏸️ Day 1-3
-阶段 2: 下载 URL 与响应构建    ⏸️ Day 4-5
-阶段 3: 上报事件处理          ⏸️ Day 6-7
-阶段 4: 策略缓存与优化        ⏸️ Day 8-9
+阶段 0: API 参数实现           ⏸️ Day 1-2 (优先级最高)
+阶段 1: 灰度发布与策略匹配     ⏸️ Day 3-5
+阶段 2: 下载 URL 与响应构建    ⏸️ Day 6-7
+阶段 3: 上报事件处理           ⏸️ Day 8-9
+阶段 4: 策略缓存与优化         ⏸️ Day 10-12
+
+总计: 12 天 (约 2.5 周)
 ```
 
 ---
@@ -585,15 +881,40 @@ Sprint 3: [░░░░░░░░░░░░░░░░░] 0%
 
 | 风险 | 影响 | 概率 | 缓解措施 |
 |------|------|------|----------|
-| 灰度算法不均匀 | 高 | 中 | 使用一致性哈希,充分测试 |
-| 配额超卖 | 中 | 中 | 使用 Redis 分布式锁 |
-| ClickHouse 写入失败 | 中 | 低 | DLQ 重试机制 |
-| 策略缓存不一致 | 高 | 中 | 版本号 + 原子切换 |
-| 性能不达标 | 高 | 中 | Redis 缓存 + 批量处理 |
+| 灰度算法不均匀 | 高 | 中 | 使用 MurmurHash3，充分测试，输出分布报告 |
+| 配额超卖 | 中 | 中 | 使用 Redis Lua 脚本保证原子性 |
+| ClickHouse 写入失败 | 中 | 低 | DLQ 重试 + 本地文件降级 |
+| 策略缓存不一致 | 高 | 中 | 版本号 + 原子切换 + 降级到 DB |
+| 性能不达标 | 高 | 中 | Redis 缓存 + 批量处理 + 性能压测 |
+| Redis 不可用 | 高 | 低 | 降级到数据库查询，尽力而为标记活跃度 |
+| 策略匹配冲突 | 中 | 中 | 明确优先级规则，多策略同时匹配时取第一个 |
+| 设备不存在拒绝升级 | 高 | 高 | 提前导入设备，清晰的错误提示 |
 
 ---
 
 ## 📝 变更日志
+
+### 2026-02-28 (评审修复 - v1.3)
+- ✅ **统一设备不存在逻辑**: 明确拒绝升级，不创建设备，删除矛盾描述
+- ✅ **修正 dev 参数语义**: 临时标注测试设备，类似 `tags.env='test'`，不修改设备表
+- ✅ **修正 tag 参数语义**: 设备内部版本，临时匹配条件，匹配策略的 requiredTags
+- ✅ **新增 auto 参数说明**: 对应策略的 triggerMode，影响 checkInterval
+- ✅ **删除 testMode 相关**: 不需要 testMode 字段，使用 targetEnvironment 替代
+- ✅ **删除 defaultLanguage**: 语言存储在固件包元数据中
+- ✅ **修复灰度算法 bug**:
+  - 使用 MurmurHash3 替代简单哈希
+  - 修复负数处理：`(hash & Integer.MAX_VALUE) % BUCKET_COUNT`
+  - 增加边界值校验（grayRate <= 0 或 >= 100）
+  - 使用 10000 桶提高精度
+- ✅ **调整时间估算**: 从 9.5天 调整为 12天 (更现实)
+- ✅ **补充任务**:
+  - 参数校验任务 (imei 格式、grayRate 范围)
+  - 幂等性去重机制
+  - 本地文件降级方案
+  - 签名算法规范文档
+- ✅ **更新边界情况表**: 补充 IMEI 格式错误、tag 处理等
+- ✅ **更新测试用例**: 删除矛盾用例，增加边界测试
+- ✅ **新增灰度验收标准**: 分布均匀性验证要求
 
 ### 2026-02-28 (简化 - v1.2)
 - ✅ **简化文档定位**: 不再区分"老 API"和"新 API"，统一为 API 实现
@@ -609,7 +930,6 @@ Sprint 3: [░░░░░░░░░░░░░░░░░] 0%
 - ✅ **新增兼容性设计章节**:
   - 完整数据流图
   - 边界情况处理表
-  - 设备自动创建逻辑
   - 响应格式兼容说明
   - 老 vs 新 API 对比
   - 测试用例清单
