@@ -34,6 +34,11 @@ public class FirmwareVersionRespDTO {
     private String version;
 
     /**
+     * 内部版本号（build tag）
+     */
+    private String internalVersion;
+
+    /**
      * 固件文件下载地址
      */
     private String fileUrl;

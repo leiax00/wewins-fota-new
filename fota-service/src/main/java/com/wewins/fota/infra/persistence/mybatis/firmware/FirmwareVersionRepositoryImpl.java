@@ -95,7 +95,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     }
 
     @Override
-    public Optional<FirmwareVersion> findByVersionNumberAndInternalVersionAndProductId(
+    public Optional<FirmwareVersion> findByUniqueKey(
             String versionNumber,
             String internalVersion,
             Long productId) {
@@ -150,5 +150,25 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     @Override
     public boolean deleteById(Long id) {
         return firmwareVersionMapper.deleteById(id) > 0;
+    }
+
+    @Override
+    public boolean existsByUnique(Long productId, String version, String internalVersion) {
+        if (productId == null || version == null || version.isBlank()) {
+            return false;
+        }
+
+        LambdaQueryWrapper<FirmwareVersion> wrapper = new LambdaQueryWrapper<FirmwareVersion>()
+                .eq(FirmwareVersion::getProductId, productId)
+                .eq(FirmwareVersion::getVersion, version)
+                .isNull(FirmwareVersion::getDeletedAt);
+
+        // 如果提供了 internalVersion，检查 product + version + internalVersion 组合
+        if (StringUtils.hasText(internalVersion)) {
+            wrapper.eq(FirmwareVersion::getInternalVersion, internalVersion);
+        }
+
+        Long count = firmwareVersionMapper.selectCount(wrapper);
+        return count != null && count > 0;
     }
 }

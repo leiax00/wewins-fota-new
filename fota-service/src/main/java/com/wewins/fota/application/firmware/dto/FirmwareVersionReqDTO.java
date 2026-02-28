@@ -20,6 +20,14 @@ public class FirmwareVersionReqDTO {
     private String version;
 
     /**
+     * 内部版本号（build tag）
+     * <p>
+     * 用于与 version 组合唯一确定固件版本
+     * </p>
+     */
+    private String internalVersion;
+
+    /**
      * 上传会话 ID（可选）
      * <p>
      * 若提供则优先使用上传会话中的包信息，忽略 fileUrl/fileSize/md5/sha256 字段。

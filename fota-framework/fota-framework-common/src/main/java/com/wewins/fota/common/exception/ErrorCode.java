@@ -66,6 +66,7 @@ public enum ErrorCode {
     // 固件版本错误码 (460xx)
     FIRMWARE_VERSION_NOT_FOUND(46001, "Firmware Version Not Found"),
     FIRMWARE_VERSION_EXISTS(46002, "Firmware Version Already Exists"),
+    FIRMWARE_VERSION_UPDATE_CHANGE_UNIQUE(46003, "Firmware Version has changed unique key"),
 
     // 升级策略错误码 (470xx)
     POLICY_NOT_FOUND(47001, "Upgrade Policy Not Found"),

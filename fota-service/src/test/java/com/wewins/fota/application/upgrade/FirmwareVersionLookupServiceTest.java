@@ -79,7 +79,7 @@ class FirmwareVersionLookupServiceTest {
             String tag = "Build01";
             Long productId = 100L;
 
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     eq(version), eq(tag), eq(productId)))
                     .thenReturn(Optional.of(firmwareV1Build01));
 
@@ -88,7 +88,7 @@ class FirmwareVersionLookupServiceTest {
 
             // Then
             assertThat(versionId).isEqualTo(1L);
-            verify(firmwareVersionRepository).findByVersionNumberAndInternalVersionAndProductId(
+            verify(firmwareVersionRepository).findByUniqueKey(
                     eq(version), eq(tag), eq(productId));
             // 没有降级到仅 version 查找
             verify(firmwareVersionRepository, never()).findByVersionNumberAndProductId(any(), anyLong());
@@ -102,7 +102,7 @@ class FirmwareVersionLookupServiceTest {
             String tag = "Build99"; // 不存在的 tag
             Long productId = 100L;
 
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     eq(version), eq(tag), eq(productId)))
                     .thenReturn(Optional.empty());
             when(firmwareVersionRepository.findByVersionNumberAndProductId(eq(version), eq(productId)))
@@ -113,7 +113,7 @@ class FirmwareVersionLookupServiceTest {
 
             // Then
             assertThat(versionId).isEqualTo(1L);
-            verify(firmwareVersionRepository).findByVersionNumberAndInternalVersionAndProductId(
+            verify(firmwareVersionRepository).findByUniqueKey(
                     eq(version), eq(tag), eq(productId));
             verify(firmwareVersionRepository).findByVersionNumberAndProductId(eq(version), eq(productId));
         }
@@ -135,7 +135,7 @@ class FirmwareVersionLookupServiceTest {
             // Then
             assertThat(versionId).isEqualTo(3L);
             verify(firmwareVersionRepository).findByVersionNumberAndProductId(eq(version), eq(productId));
-            verify(firmwareVersionRepository, never()).findByVersionNumberAndInternalVersionAndProductId(
+            verify(firmwareVersionRepository, never()).findByUniqueKey(
                     any(), any(), anyLong());
         }
 
@@ -166,7 +166,7 @@ class FirmwareVersionLookupServiceTest {
             String tag = "Build01";
             Long productId = 100L;
 
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     eq(version), eq(tag), eq(productId)))
                     .thenReturn(Optional.empty());
             when(firmwareVersionRepository.findByVersionNumberAndProductId(eq(version), eq(productId)))
@@ -210,7 +210,7 @@ class FirmwareVersionLookupServiceTest {
         @DisplayName("精确匹配：返回完整的固件版本实体")
         void shouldReturnFirmwareByVersionAndTag() {
             // Given
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     eq("v1.0.0"), eq("Build01"), eq(100L)))
                     .thenReturn(Optional.of(firmwareV1Build01));
 
@@ -228,7 +228,7 @@ class FirmwareVersionLookupServiceTest {
         @DisplayName("降级查找：返回第一个匹配的固件版本实体")
         void shouldReturnFirmwareByVersionOnly() {
             // Given
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     any(), any(), anyLong()))
                     .thenReturn(Optional.empty());
             when(firmwareVersionRepository.findByVersionNumberAndProductId(eq("v1.0.0"), eq(100L)))
@@ -272,7 +272,7 @@ class FirmwareVersionLookupServiceTest {
 
             when(firmwareVersionRepository.findByVersionNumberAndProductId(eq("v1.0.0"), eq(100L)))
                     .thenReturn(Optional.of(firmwareV1Build01));
-            when(firmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId(
+            when(firmwareVersionRepository.findByUniqueKey(
                     eq("v2.0.0"), eq("Build01"), eq(100L)))
                     .thenReturn(Optional.of(firmwareV2));
 

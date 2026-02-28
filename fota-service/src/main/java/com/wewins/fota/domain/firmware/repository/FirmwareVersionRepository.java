@@ -67,15 +67,28 @@ public interface FirmwareVersionRepository {
      * </p>
      *
      * @param versionNumber 版本号
-     * @param internalVersion 内部版本号（tag）
+     * @param internalVersion 内部版本号（build tag）
      * @param productId 产品 ID
      * @return 固件版本（如果存在）
      */
-    Optional<FirmwareVersion> findByVersionNumberAndInternalVersionAndProductId(
+    Optional<FirmwareVersion> findByUniqueKey(
             String versionNumber,
             String internalVersion,
             Long productId
     );
+
+    /**
+     * 检查固件版本组合是否已存在
+     * <p>
+     * 用于创建/更新时检查唯一性约束
+     * </p>
+     *
+     * @param productId 产品 ID
+     * @param version 版本号
+     * @param internalVersion 内部版本号（可选）
+     * @return 是否存在冲突
+     */
+    boolean existsByUnique(Long productId, String version, String internalVersion);
 
     /**
      * 分页查询固件版本

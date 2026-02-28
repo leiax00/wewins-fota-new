@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 固件版本应用服务实现
@@ -75,23 +76,24 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("创建固件版本: productId={}, version={}",
-                    firmwareVersion.getProductId(), firmwareVersion.getVersion());
+            log.debug("创建固件版本: productId={}, version={}, internalVersion={}",
+                    firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
         }
 
-        // 检查版本是否已存在
-        List<FirmwareVersion> existingVersions = firmwareVersionRepository.findByProductIdAndVersion(
+        // 检查 product + version + internalVersion 组合是否已存在
+        boolean exists = firmwareVersionRepository.existsByUnique(
                 firmwareVersion.getProductId(),
-                firmwareVersion.getVersion()
+                firmwareVersion.getVersion(),
+                firmwareVersion.getInternalVersion()
         );
-        if (!existingVersions.isEmpty()) {
+        if (exists) {
             throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
         }
 
         firmwareVersionRepository.create(firmwareVersion);
 
-        log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}",
-                firmwareVersion.getId(), firmwareVersion.getProductId(), firmwareVersion.getVersion());
+        log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}, internalVersion={}",
+                firmwareVersion.getId(), firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
         return firmwareVersion;
     }
 
@@ -109,22 +111,19 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         // 检查固件版本是否存在
         FirmwareVersion existingVersion = getById(firmwareVersion.getId());
 
-        // 检查版本号是否与其他记录冲突（排除自身和已删除的记录）
-        if (firmwareVersion.getVersion() != null && !firmwareVersion.getVersion().isBlank()) {
-            List<FirmwareVersion> conflictingVersions = firmwareVersionRepository.findByProductIdAndVersion(
-                    firmwareVersion.getProductId() != null ? firmwareVersion.getProductId() : existingVersion.getProductId(),
-                    firmwareVersion.getVersion()
-            );
+        if (existingVersion == null) {
+            throw new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND);
+        }
 
-            // 过滤掉自身和已删除的记录，只保留真正的冲突
-            boolean hasConflict = conflictingVersions.stream()
-                    .filter(v -> !v.getId().equals(firmwareVersion.getId()))  // 排除自身
-                    .filter(v -> v.getDeletedAt() == null)  // 排除已删除的记录（双重保险）
-                    .count() > 0;
+        Long productId = firmwareVersion.getProductId();
+        String version = firmwareVersion.getVersion();
+        String internalVersion = firmwareVersion.getInternalVersion();
 
-            if (hasConflict) {
-                throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
-            }
+        if (!Objects.equals(productId, existingVersion.getProductId()) ||
+                !Objects.equals(version, existingVersion.getVersion()) ||
+                !Objects.equals(internalVersion, existingVersion.getInternalVersion())
+        ) {
+            throw new BizException(ErrorCode.FIRMWARE_VERSION_UPDATE_CHANGE_UNIQUE);
         }
 
         firmwareVersionRepository.updateById(firmwareVersion);

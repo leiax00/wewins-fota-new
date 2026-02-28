@@ -94,7 +94,7 @@ public class FirmwareVersionLookupService {
      */
     private Long findByVersionAndTag(String version, String tag, Long productId) {
         Optional<FirmwareVersion> firmware = firmwareVersionRepository
-                .findByVersionNumberAndInternalVersionAndProductId(version, tag, productId);
+                .findByUniqueKey(version, tag, productId);
         return firmware.map(FirmwareVersion::getId).orElse(null);
     }
 
@@ -130,7 +130,7 @@ public class FirmwareVersionLookupService {
         // 1. 优先：version + tag 组合查找
         if (StringUtils.hasText(tag)) {
             Optional<FirmwareVersion> firmware = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(version, tag, productId);
+                    .findByUniqueKey(version, tag, productId);
             if (firmware.isPresent()) {
                 return firmware.get();
             }

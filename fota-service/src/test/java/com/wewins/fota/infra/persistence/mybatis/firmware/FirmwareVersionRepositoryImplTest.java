@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -164,7 +163,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -187,7 +186,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -207,7 +206,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -227,7 +226,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -247,7 +246,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -265,7 +264,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -283,7 +282,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion, productId);
 
             // Then
@@ -320,7 +319,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result1 = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             versionNumber, internalVersion1, productId);
 
             // Then
@@ -349,7 +348,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When - 使用 version + tag 组合查询
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             version, tag, productId);
 
             // Then
@@ -391,7 +390,7 @@ class FirmwareVersionRepositoryImplTest {
 
             // When
             Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByVersionNumberAndInternalVersionAndProductId(
+                    .findByUniqueKey(
                             version, internalVersion, productId);
 
             // Then

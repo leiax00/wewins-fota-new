@@ -252,3 +252,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260228_02_add_internal_version_to_firmware
+      author: fota-team
+      comment: "firmware_versions 新增 internal_version 字段，支持 version + internal_version 组合唯一确定固件版本"
+      changes:
+        - sqlFile:
+            path: changes/20260228_02_add_internal_version_to_firmware.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
