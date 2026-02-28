@@ -168,7 +168,7 @@ app:
     enabled: ${MQ_ENABLED:true}
     queues:
       upgrade-events:
-        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events.v1}
+        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events}
         durable: true
       check-logs:
         name: ${MQ_CHECK_LOG_QUEUE:fota.device.check.logs}

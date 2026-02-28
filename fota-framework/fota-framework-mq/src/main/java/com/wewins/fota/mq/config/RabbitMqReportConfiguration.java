@@ -9,7 +9,6 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -51,6 +50,10 @@ public class RabbitMqReportConfiguration {
         private boolean durable = true;
         private int ttl = 86400000; // 24 小时（毫秒）
         private int maxLength = 100000; // DLQ 最大长度
+
+        // 批量消费配置
+        private int batchSize = 100;           // 批量大小
+        private long receiveTimeoutMs = 5000;  // 接收超时（毫秒）
     }
 
     /**
@@ -143,26 +146,9 @@ public class RabbitMqReportConfiguration {
         factory.setMessageConverter(messageConverter);
         factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
         factory.setBatchListener(true);
-        factory.setBatchSize(100);
+        factory.setBatchSize(properties.getBatchSize());
         factory.setConsumerBatchEnabled(true);
-        factory.setReceiveTimeout(5000L);
-
-        return factory;
-    }
-
-    /**
-     * 简单监听器容器工厂（单条消息）
-     */
-    @Bean
-    public SimpleRabbitListenerContainerFactory simpleRabbitListenerContainerFactory(
-            ConnectionFactory connectionFactory,
-            MessageConverter messageConverter) {
-
-        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-        factory.setConnectionFactory(connectionFactory);
-        factory.setMessageConverter(messageConverter);
-        factory.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-        factory.setPrefetchCount(100);
+        factory.setReceiveTimeout(properties.getReceiveTimeoutMs());
 
         return factory;
     }

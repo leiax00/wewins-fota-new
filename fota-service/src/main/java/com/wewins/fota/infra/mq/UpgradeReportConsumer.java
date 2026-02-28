@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -55,12 +54,6 @@ public class UpgradeReportConsumer {
     private final DeviceUpgradeEventAppService deviceUpgradeEventAppService;
     private final UpgradeEventDeduplicationService deduplicationService;
     private final DeviceVersionUpdateService deviceVersionUpdateService;
-
-    @Value("${app.mq.consumer.batch.size:100}")
-    private int batchSize;
-
-    @Value("${app.mq.consumer.batch.timeout-ms:1000}")
-    private long batchTimeoutMs;
 
     /**
      * 批量处理升级上报事件
