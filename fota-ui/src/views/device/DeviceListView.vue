@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import {
+  Delete,
+  Document,
+  Edit,
+  Filter,
+  FolderOpened,
+  MoreFilled,
+  Plus,
+  Refresh,
+  Upload,
+} from '@element-plus/icons-vue'
 import { deviceStatusTypeMap, resolveStatusLabelKey, resolveStatusType } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
@@ -11,6 +22,7 @@ import {
   deleteDevice,
   pageDevices,
   updateDevice,
+  type BatchOperationType,
   type DeviceItem,
   type DeviceStatus,
 } from '@/api/device'
@@ -40,6 +52,10 @@ const importDialogVisible = ref(false)
 
 // 批量操作对话框
 const batchOperationDialogVisible = ref(false)
+const batchOperationDefaultType = ref<BatchOperationType | null>(null)
+
+// 高级筛选抽屉状态
+const advancedFilterVisible = ref(false)
 
 // 批次搜索选项
 const batchSearchOptions = ref<DeviceImportBatchItem[]>([])
@@ -215,13 +231,6 @@ const handleImportSuccess = () => {
 }
 
 /**
- * 打开批量操作对话框
- */
-const openBatchOperationDialog = () => {
-  batchOperationDialogVisible.value = true
-}
-
-/**
  * 批量操作成功回调
  */
 const handleBatchOperationSuccess = () => {
@@ -285,7 +294,7 @@ const openEditDialog = async (row: DeviceItem) => {
       productSearchOptions.value.unshift({
         id: row.productId,
         name: row.productName,
-      })
+      } as ProductItem)
     }
   }
 
@@ -338,9 +347,9 @@ const handleSearch = () => {
   void fetchList()
 }
 
-const handleFilterChange = () => {
+// 高级筛选中的 change 事件，不立即搜索
+const handleAdvancedFilterChange = () => {
   query.page = 1
-  void fetchList()
 }
 
 const resetSearch = () => {
@@ -351,6 +360,41 @@ const resetSearch = () => {
   query.importBatchId = undefined
   void fetchList()
 }
+
+/**
+ * 高级筛选搜索
+ */
+const handleAdvancedSearch = () => {
+  handleSearch()
+  // 搜索后不关闭弹窗，让用户可以继续筛选
+}
+
+/**
+ * 重置高级筛选
+ */
+const resetAdvancedFilter = () => {
+  query.productId = undefined
+  query.imei = ''
+  query.status = undefined
+  query.importBatchId = undefined
+  query.page = 1
+  void fetchList()
+}
+
+/**
+ * 打开批量操作对话框（指定类型）
+ */
+const openBatchOperationWithType = (type: BatchOperationType) => {
+  batchOperationDefaultType.value = type
+  batchOperationDialogVisible.value = true
+}
+
+// 监听批量操作对话框关闭，重置默认类型
+watch(batchOperationDialogVisible, (val) => {
+  if (!val) {
+    batchOperationDefaultType.value = null
+  }
+})
 
 const getVersionName = (row: DeviceItem) => {
   if (row.versionName) return row.versionName
@@ -368,89 +412,185 @@ onMounted(() => {
   <PageCardTableShell :title="t('device.title')">
     <template #actions>
       <div class="flex items-center gap-2">
-        <el-select
-          v-model="query.productId"
-          :placeholder="t('device.productId')"
-          clearable
-          filterable
-          remote
-          reserve-keyword
-          :remote-method="handleProductSearch"
-          style="width: 180px"
-          @change="handleFilterChange"
-        >
-          <el-option
-            v-for="product in productSearchOptions"
-            :key="product.id"
-            :label="product.name"
-            :value="product.id"
-          />
-        </el-select>
-        <el-input
-          v-model="query.imei"
-          :placeholder="t('device.imei')"
-          clearable
-          style="width: 180px"
-          @keyup.enter="handleSearch"
-        />
-        <el-select
-          v-model="query.status"
-          :placeholder="t('device.statusPlaceholder')"
-          clearable
-          style="width: 180px"
-          @change="handleFilterChange"
-        >
-          <el-option
-            v-for="status in statusOptions"
-            :key="status"
-            :label="t(resolveStatusLabelKey(status))"
-            :value="status"
-          />
-        </el-select>
-        <el-select
-          v-model="query.importBatchId"
-          :placeholder="t('device.importBatch')"
-          clearable
-          filterable
-          remote
-          reserve-keyword
-          :remote-method="handleBatchSearch"
-          :loading="batchSearchLoading"
-          style="width: 180px"
-          @change="handleFilterChange"
-        >
-          <el-option
-            v-for="batch in batchSearchOptions"
-            :key="batch.id"
-            :label="batch.batchName"
-            :value="batch.id"
-          />
-        </el-select>
-        <el-button @click="handleSearch">
-          {{ t('common.search') }}
-        </el-button>
-        <el-button @click="resetSearch">
+        <!-- 刷新按钮 -->
+        <el-button :icon="Refresh" @click="resetSearch">
           {{ t('common.refresh') }}
         </el-button>
-        <el-button
-          v-if="canCreate"
-          @click="openImportDialog"
+
+        <!-- 高级筛选弹出层 -->
+        <el-popover
+          v-model:visible="advancedFilterVisible"
+          :title="t('device.advancedFilter')"
+          placement="bottom-end"
+          :width="360"
+          trigger="click"
+          :show-arrow="true"
+          popper-class="advanced-filter-popper"
+          :popper-options="{
+            modifiers: [
+              {
+                name: 'eventListeners',
+                enabled: true,
+              },
+            ],
+          }"
         >
-          {{ t('device.import') }}
-        </el-button>
-        <el-button
-          v-if="canShowActions"
-          @click="openBatchOperationDialog"
-        >
-          {{ t('device.batchOperation') }}
-        </el-button>
-        <el-button
-          v-if="canCreate"
-          type="primary"
-          @click="openCreateDialog"
-        >
-          {{ t('device.add') }}
-        </el-button>
+          <template #reference>
+            <el-button :icon="Filter">
+              {{ t('device.advancedFilter') }}
+            </el-button>
+          </template>
+
+          <el-form
+            :model="query"
+            label-width="70px"
+            class="advanced-filter-form"
+            @click.stop
+            @mousedown.stop
+          >
+            <el-form-item :label="t('device.productId')">
+              <el-select
+                v-model="query.productId"
+                :placeholder="t('device.productId')"
+                clearable
+                filterable
+                remote
+                reserve-keyword
+                :teleported="false"
+                :remote-method="handleProductSearch"
+                :loading="productSearchLoading"
+                style="width: 100%"
+                @change="handleAdvancedFilterChange"
+                popper-class="advanced-filter-select-dropdown"
+              >
+                <el-option
+                  v-for="product in productSearchOptions"
+                  :key="product.id"
+                  :label="product.name"
+                  :value="product.id"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item :label="t('device.imei')">
+              <el-input
+                v-model="query.imei"
+                :placeholder="t('device.imei')"
+                clearable
+                @keyup.enter="handleAdvancedSearch"
+              />
+            </el-form-item>
+
+            <el-form-item :label="t('device.status')">
+              <el-select
+                v-model="query.status"
+                :placeholder="t('device.statusPlaceholder')"
+                :teleported="false"
+                clearable
+                style="width: 100%"
+                @change="handleAdvancedFilterChange"
+                popper-class="advanced-filter-select-dropdown"
+              >
+                <el-option
+                  v-for="status in statusOptions"
+                  :key="status"
+                  :label="t(resolveStatusLabelKey(status))"
+                  :value="status"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item :label="t('device.importBatch')">
+              <el-select
+                v-model="query.importBatchId"
+                :placeholder="t('device.importBatch')"
+                :teleported="false"
+                clearable
+                filterable
+                remote
+                reserve-keyword
+                :remote-method="handleBatchSearch"
+                :loading="batchSearchLoading"
+                style="width: 100%"
+                @change="handleAdvancedFilterChange"
+                popper-class="advanced-filter-select-dropdown"
+              >
+                <el-option
+                  v-for="batch in batchSearchOptions"
+                  :key="batch.id"
+                  :label="batch.batchName"
+                  :value="batch.id"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item class="mb-0">
+              <div class="flex justify-end gap-2 w-full">
+                <el-button size="small" @click="resetAdvancedFilter">
+                  {{ t('common.reset') }}
+                </el-button>
+                <el-button size="small" type="primary" @click="handleAdvancedSearch">
+                  {{ t('common.search') }}
+                </el-button>
+              </div>
+            </el-form-item>
+          </el-form>
+        </el-popover>
+
+        <!-- 更多操作下拉菜单 -->
+        <el-dropdown trigger="click">
+          <el-button :icon="MoreFilled">
+            {{ t('common.moreActions') }}
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <!-- 新增和导入 -->
+              <el-dropdown-item
+                v-if="canCreate"
+                :icon="Plus"
+                @click="openCreateDialog"
+              >
+                {{ t('device.add') }}
+              </el-dropdown-item>
+              <el-dropdown-item
+                v-if="canCreate"
+                :icon="Upload"
+                @click="openImportDialog"
+              >
+                {{ t('device.import') }}
+              </el-dropdown-item>
+
+              <!-- 批量操作组 -->
+              <template v-if="canShowActions">
+                <el-dropdown-item
+                  :icon="Delete"
+                  divided
+                  @click="openBatchOperationWithType('DELETE_BY_BATCH')"
+                >
+                  {{ t('device.opDeleteByBatch') }}
+                </el-dropdown-item>
+                <el-dropdown-item
+                  :icon="Edit"
+                  @click="openBatchOperationWithType('UPDATE_TAG_BY_BATCH')"
+                >
+                  {{ t('device.opUpdateTagByBatch') }}
+                </el-dropdown-item>
+                <el-dropdown-item
+                  :icon="Document"
+                  @click="openBatchOperationWithType('UPDATE_TAG_BY_IMEI')"
+                >
+                  {{ t('device.opUpdateTagByImei') }}
+                </el-dropdown-item>
+                <el-dropdown-item
+                  :icon="FolderOpened"
+                  @click="openBatchOperationWithType('UPDATE_BATCH_BY_IMEI')"
+                >
+                  {{ t('device.opUpdateBatchByImei') }}
+                </el-dropdown-item>
+              </template>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </template>
 
@@ -681,6 +821,28 @@ onMounted(() => {
 
   <DeviceBatchOperationDialog
     v-model="batchOperationDialogVisible"
+    :default-operation-type="batchOperationDefaultType"
     @success="handleBatchOperationSuccess"
   />
 </template>
+
+<style scoped>
+.advanced-filter-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+
+.advanced-filter-form :deep(.el-form-item__label) {
+  font-size: 13px;
+}
+
+.advanced-filter-form :deep(.el-select),
+.advanced-filter-form :deep(.el-input) {
+  font-size: 13px;
+}
+
+/* 确保弹出层内的元素点击不会关闭弹出层 */
+.advanced-filter-form,
+.advanced-filter-form * {
+  pointer-events: auto !important;
+}
+</style>

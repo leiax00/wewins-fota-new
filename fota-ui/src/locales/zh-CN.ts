@@ -24,6 +24,7 @@ export default {
     updateSuccess: '更新成功',
     deleteSuccess: '删除成功',
     more: '更多',
+    moreActions: '更多操作',
   },
   login: {
     title: 'FOTA 管理后台',
@@ -276,6 +277,7 @@ export default {
   device: {
     title: '设备列表',
     detail: '设备详情',
+    advancedFilter: '高级筛选',
     imei: 'IMEI',
     imeiRequired: '请输入 IMEI',
     imeiInvalid: 'IMEI 必须为 15 位数字',

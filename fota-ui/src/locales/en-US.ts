@@ -24,6 +24,7 @@ export default {
     updateSuccess: 'Updated successfully',
     deleteSuccess: 'Deleted successfully',
     more: 'More',
+    moreActions: 'More',
   },
   login: {
     title: 'FOTA Admin',
@@ -276,6 +277,7 @@ export default {
   device: {
     title: 'Device List',
     detail: 'Device Detail',
+    advancedFilter: 'Advanced Filter',
     imei: 'IMEI',
     imeiRequired: 'Please enter IMEI',
     imeiInvalid: 'IMEI must be exactly 15 digits',
@@ -395,7 +397,7 @@ export default {
     availableFields: 'Available Fields',
     formatJson: 'Format JSON',
     noContentToFormat: 'No content to format',
-    editField: "Edit Filed",
+    editField: 'Edit Field',
     i18nField: {
       localeCount: '{count} locales',
       expand: 'Expand',

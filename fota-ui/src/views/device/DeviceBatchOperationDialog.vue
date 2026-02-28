@@ -29,6 +29,7 @@ import {searchProducts, type ProductItem} from '@/api/product'
 
 interface Props {
   modelValue: boolean
+  defaultOperationType?: BatchOperationType | null
 }
 
 interface Emits {
@@ -451,6 +452,18 @@ const selectOperationType = (type: BatchOperationType) => {
     tagsValidationErrors.value = []
   }
 }
+
+/**
+ * 监听默认操作类型变化
+ */
+watch(() => props.defaultOperationType, (newType) => {
+  if (newType && !form.operationType) {
+    selectOperationType(newType)
+  } else if (!newType && form.operationType) {
+    // 当 defaultOperationType 被清空时，也清空当前选择
+    form.operationType = null
+  }
+}, { immediate: true })
 
 /**
  * 操作类型变化时重置相关字段
