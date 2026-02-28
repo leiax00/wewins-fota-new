@@ -48,6 +48,36 @@ public interface FirmwareVersionRepository {
     List<FirmwareVersion> findByProductIdAndVersion(Long productId, String version);
 
     /**
+     * 根据版本号和产品 ID 查询单个固件版本
+     * <p>
+     * 用于升级检查时的版本匹配，返回第一个匹配的版本
+     * </p>
+     *
+     * @param versionNumber 版本号
+     * @param productId 产品 ID
+     * @return 固件版本（如果存在）
+     */
+    Optional<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId);
+
+    /**
+     * 根据版本号、内部版本号和产品 ID 查询固件版本
+     * <p>
+     * 用于精确匹配固件版本，当 version 号可能重复时，
+     * 通过 internalVersion 进行区分
+     * </p>
+     *
+     * @param versionNumber 版本号
+     * @param internalVersion 内部版本号（tag）
+     * @param productId 产品 ID
+     * @return 固件版本（如果存在）
+     */
+    Optional<FirmwareVersion> findByVersionNumberAndInternalVersionAndProductId(
+            String versionNumber,
+            String internalVersion,
+            Long productId
+    );
+
+    /**
      * 分页查询固件版本
      *
      * @param page 分页参数

@@ -78,6 +78,46 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     }
 
     @Override
+    public Optional<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId) {
+        if (versionNumber == null || productId == null) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                firmwareVersionMapper.selectOne(
+                        new LambdaQueryWrapper<FirmwareVersion>()
+                                .eq(FirmwareVersion::getProductId, productId)
+                                .eq(FirmwareVersion::getVersion, versionNumber)
+                                .isNull(FirmwareVersion::getDeletedAt)
+                                .last("LIMIT 1")
+                )
+        );
+    }
+
+    @Override
+    public Optional<FirmwareVersion> findByVersionNumberAndInternalVersionAndProductId(
+            String versionNumber,
+            String internalVersion,
+            Long productId) {
+        if (versionNumber == null || productId == null) {
+            return Optional.empty();
+        }
+
+        LambdaQueryWrapper<FirmwareVersion> wrapper = new LambdaQueryWrapper<FirmwareVersion>()
+                .eq(FirmwareVersion::getProductId, productId)
+                .eq(FirmwareVersion::getVersion, versionNumber)
+                .isNull(FirmwareVersion::getDeletedAt)
+                .last("LIMIT 1");
+
+        // 如果提供了 internalVersion，则作为查询条件
+        if (StringUtils.hasText(internalVersion)) {
+            wrapper.eq(FirmwareVersion::getInternalVersion, internalVersion);
+        }
+
+        return Optional.ofNullable(firmwareVersionMapper.selectOne(wrapper));
+    }
+
+    @Override
     public Page<FirmwareVersion> pageFirmwareVersions(Page<FirmwareVersion> page, Long productId, String version) {
         LambdaQueryWrapper<FirmwareVersion> queryWrapper = new LambdaQueryWrapper<FirmwareVersion>()
                 .isNull(FirmwareVersion::getDeletedAt);

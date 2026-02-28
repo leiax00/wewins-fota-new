@@ -67,4 +67,13 @@ public interface ProductRepository {
      * @return 存在的数量
      */
     long countByNameExcludingId(String name, Long excludeId);
+
+    /**
+     * 根据产品型号查询产品
+     * 用于兼容老 API，通过产品型号查找产品
+     *
+     * @param model 产品型号
+     * @return 产品信息（如果存在）
+     */
+    Optional<Product> findByModel(String model);
 }

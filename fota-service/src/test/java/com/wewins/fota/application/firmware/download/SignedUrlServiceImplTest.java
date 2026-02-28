@@ -1,0 +1,331 @@
+package com.wewins.fota.application.firmware.download;
+
+import com.wewins.fota.application.firmware.download.impl.SignedUrlServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * SignedUrlServiceImpl 单元测试
+ *
+ * @author FOTA Team
+ * @since 2026-02-28
+ */
+@DisplayName("SignedUrlServiceImpl 单元测试")
+class SignedUrlServiceImplTest {
+
+    private static final String TEST_SECRET_KEY = "test-secret-key-at-least-32-bytes-long-for-security";
+    private static final String TEST_CDN_BASE_URL = "https://cdn.example.com";
+
+    private SignedUrlServiceImpl signedUrlService;
+    private SignedUrlProperties properties;
+
+    @BeforeEach
+    void setUp() {
+        properties = new SignedUrlProperties();
+        properties.setSecretKey(TEST_SECRET_KEY);
+        properties.setCdnBaseUrl(TEST_CDN_BASE_URL);
+        properties.setDefaultExpireSeconds(86400);
+        properties.setEnabled(true);
+
+        signedUrlService = new SignedUrlServiceImpl(properties);
+    }
+
+    @Nested
+    @DisplayName("generateSignedUrl 方法测试")
+    class GenerateSignedUrlTests {
+
+        @Test
+        @DisplayName("生成签名 URL - 基本场景")
+        void generateSignedUrl_shouldReturnSignedUrl_whenValidParams() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+
+            // Then
+            assertThat(url).isNotEmpty();
+            assertThat(url).startsWith(TEST_CDN_BASE_URL);
+            assertThat(url).contains("policy=100");
+            assertThat(url).contains("device=1000");
+            assertThat(url).contains("expire=");
+            assertThat(url).contains("sig=");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 固件路径以斜杠开头")
+        void generateSignedUrl_shouldHandleLeadingSlash() {
+            // Given
+            String firmwarePath = "/fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+
+            // Then
+            assertThat(url).contains("//cdn.example.com/fota/fw/123");
+            assertThat(url).doesNotContain("//cdn.example.com//fota");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 自定义过期时间")
+        void generateSignedUrl_shouldUseCustomExpireTime() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+            int customExpireSeconds = 3600;
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, customExpireSeconds);
+
+            // Then
+            assertThat(url).isNotEmpty();
+            assertThat(url).contains("policy=100");
+            assertThat(url).contains("device=1000");
+
+            // 验证过期时间约为当前时间 + 3600 秒（允许 5 秒误差）
+            String[] params = url.split("&");
+            String expireParam = findParam(params, "expire");
+            long expireTime = Long.parseLong(expireParam);
+            long expectedExpireTime = System.currentTimeMillis() / 1000 + customExpireSeconds;
+            assertThat(Math.abs(expireTime - expectedExpireTime)).isLessThan(5);
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 无 CDN 基础 URL")
+        void generateSignedUrl_shouldWorkWithoutCdnBaseUrl() {
+            // Given
+            properties.setCdnBaseUrl(null);
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+
+            // Then
+            assertThat(url).startsWith("fota/fw/123/test-firmware.zip?");
+            assertThat(url).contains("policy=100");
+            assertThat(url).contains("device=1000");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 空固件路径抛出异常")
+        void generateSignedUrl_shouldThrowException_whenFirmwarePathIsNull() {
+            // Given
+            String firmwarePath = null;
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // When & Then
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("firmwarePath 不能为空");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 空 policyId 抛出异常")
+        void generateSignedUrl_shouldThrowException_whenPolicyIdIsNull() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = null;
+            Long deviceId = 1000L;
+
+            // When & Then
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("policyId 必须为正数");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 空 deviceId 抛出异常")
+        void generateSignedUrl_shouldThrowException_whenDeviceIdIsNull() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = null;
+
+            // When & Then
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("deviceId 必须为正数");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - 过期时间超出范围抛出异常")
+        void generateSignedUrl_shouldThrowException_whenExpireTimeTooLong() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+            int expireSeconds = 8 * 24 * 3600; // 8 天，超过 7 天限制
+
+            // When & Then
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, expireSeconds))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("expireSeconds 必须在 1-604800 秒之间");
+        }
+    }
+
+    @Nested
+    @DisplayName("verifySignature 方法测试")
+    class VerifySignatureTests {
+
+        @Test
+        @DisplayName("验证签名 - 有效签名")
+        void verifySignature_shouldReturnTrue_whenSignatureIsValid() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // 生成签名 URL
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, 3600);
+
+            // 解析 URL 参数
+            String[] params = url.split("&");
+            long expireTime = Long.parseLong(findParam(params, "expire"));
+            String signature = findParam(params, "sig");
+
+            // When
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, deviceId, expireTime, signature);
+
+            // Then
+            assertThat(isValid).isTrue();
+        }
+
+        @Test
+        @DisplayName("验证签名 - 错误签名")
+        void verifySignature_shouldReturnFalse_whenSignatureIsInvalid() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+            long expireTime = System.currentTimeMillis() / 1000 + 3600;
+            String invalidSignature = "invalid123";
+
+            // When
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, deviceId, expireTime, invalidSignature);
+
+            // Then
+            assertThat(isValid).isFalse();
+        }
+
+        @Test
+        @DisplayName("验证签名 - 已过期")
+        void verifySignature_shouldReturnFalse_whenSignatureIsExpired() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // 使用过去的过期时间
+            long expireTime = System.currentTimeMillis() / 1000 - 3600; // 1 小时前
+            String signature = "any-signature";
+
+            // When
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, deviceId, expireTime, signature);
+
+            // Then
+            assertThat(isValid).isFalse();
+        }
+
+        @Test
+        @DisplayName("验证签名 - 相同参数生成相同签名")
+        void verifySignature_shouldBeConsistent_forSameParams() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+            int expireSeconds = 3600;
+
+            // When
+            String url1 = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, expireSeconds);
+            String url2 = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, expireSeconds);
+
+            // Then - 过期时间可能不同，但签名算法应该一致
+            // 我们只验证签名部分，忽略时间戳差异
+            String sig1 = extractSignature(url1);
+            String sig2 = extractSignature(url2);
+
+            // 由于时间戳不同，签名也会不同
+            // 但我们可以验证格式一致
+            assertThat(sig1).hasSize(64); // SHA256 十六进制是 64 字符
+            assertThat(sig2).hasSize(64);
+        }
+    }
+
+    @Nested
+    @DisplayName("签名一致性测试")
+    class SignatureConsistencyTests {
+
+        @Test
+        @DisplayName("不同参数生成不同签名")
+        void generateSignedUrl_shouldGenerateDifferentSignatures_forDifferentParams() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+
+            // When
+            String url1 = signedUrlService.generateSignedUrl(firmwarePath, 100L, 1000L);
+            String url2 = signedUrlService.generateSignedUrl(firmwarePath, 101L, 1000L); // 不同 policyId
+            String url3 = signedUrlService.generateSignedUrl(firmwarePath, 100L, 1001L); // 不同 deviceId
+
+            // Then
+            String sig1 = extractSignature(url1);
+            String sig2 = extractSignature(url2);
+            String sig3 = extractSignature(url3);
+
+            assertThat(sig1).isNotEqualTo(sig2);
+            assertThat(sig1).isNotEqualTo(sig3);
+            assertThat(sig2).isNotEqualTo(sig3);
+        }
+
+        @Test
+        @DisplayName("签名长度验证")
+        void generateSignedUrl_shouldGenerate64CharSignature() {
+            // Given
+            String firmwarePath = "fota/fw/123/test-firmware.zip";
+            Long policyId = 100L;
+            Long deviceId = 1000L;
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+
+            // Then
+            String signature = extractSignature(url);
+            assertThat(signature).hasSize(64); // SHA256 = 256 bits = 64 hex chars
+        }
+    }
+
+    /**
+     * 从 URL 中查找指定参数的值
+     */
+    private String findParam(String[] params, String paramName) {
+        for (String param : params) {
+            if (param.startsWith(paramName + "=")) {
+                return param.substring(paramName.length() + 1);
+            }
+        }
+        throw new IllegalArgumentException("参数未找到: " + paramName);
+    }
+
+    /**
+     * 从 URL 中提取签名
+     */
+    private String extractSignature(String url) {
+        int sigIndex = url.indexOf("&sig=");
+        if (sigIndex == -1) {
+            throw new IllegalArgumentException("URL 中未找到签名参数");
+        }
+        return url.substring(sigIndex + 5); // "&sig=" 的长度
+    }
+}

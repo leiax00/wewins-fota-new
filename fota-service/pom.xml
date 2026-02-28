@@ -74,6 +74,12 @@
             <artifactId>poi-ooxml</artifactId>
         </dependency>
 
+        <!-- Guava for MurmurHash3 (灰度发布算法) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

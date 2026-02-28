@@ -77,6 +77,21 @@ public class UpgradePolicy extends BaseEntity {
     private Integer grayRate;
 
     /**
+     * 每日配额限制
+     * <p>
+     * 限制该策略每天最多允许升级的设备数量
+     * </p>
+     * <p>
+     * 业务规则：
+     * </p>
+     * <ul>
+     *   <li>null 或 0：无配额限制</li>
+     *   <li>大于 0：每日最多升级 N 台设备</li>
+     * </ul>
+     */
+    private Integer quota;
+
+    /**
      * 策略状态
      * <p>可选值：</p>
      * <ul>

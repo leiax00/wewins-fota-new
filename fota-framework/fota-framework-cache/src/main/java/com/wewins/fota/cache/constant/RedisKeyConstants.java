@@ -201,6 +201,52 @@ public final class RedisKeyConstants {
      */
     public static final String POLICY_ACTIVE_VER_KEY_TEMPLATE = "fota:pol:active_ver:%s";
 
+    /**
+     * 策略快照同步时间戳 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_SYNC_TS_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:pol:sync_ts:1001
+     * </p>
+     * <p>
+     * 说明：记录最后一次成功同步的时间戳，用于判断是否需要降级
+     * </p>
+     */
+    public static final String POLICY_SYNC_TS_KEY_TEMPLATE = "fota:pol:sync_ts:%s";
+
+    /**
+     * 策略快照写入锁 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_WRITE_LOCK_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:pol:write_lock:1001
+     * </p>
+     * <p>
+     * 说明：防止多个版本同时写入快照的分布式锁
+     * </p>
+     */
+    public static final String POLICY_WRITE_LOCK_KEY_TEMPLATE = "fota:pol:write_lock:%s";
+
+    /**
+     * 策略快照 TTL（7 天）
+     * <p>
+     * 快照保留时间，超过此时间自动过期
+     * </p>
+     */
+    public static final long POLICY_SNAPSHOT_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /**
+     * 策略快照同步时间戳 TTL（30 天）
+     */
+    public static final long POLICY_SYNC_TS_TTL_SECONDS = 30L * 24 * 60 * 60;
+
+    /**
+     * 策略快照写入锁 TTL（30 秒）
+     */
+    public static final long POLICY_WRITE_LOCK_TTL_SECONDS = 30;
+
     // ========== 限流配额常量 ==========
 
     /**

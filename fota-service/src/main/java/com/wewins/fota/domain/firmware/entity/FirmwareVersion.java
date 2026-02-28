@@ -40,6 +40,19 @@ public class FirmwareVersion extends BaseEntity implements Serializable {
     private String version;
 
     /**
+     * 内部版本号（build tag）
+     * <p>
+     * 用于与 version 字段组合唯一确定固件版本
+     * 由于历史设计缺陷，version 号可能在不同构建中重复
+     * 通过 internal_version 可精确区分不同的构建版本
+     * </p>
+     * <p>
+     * 示例：ASR_YEMEN_M476_V11_B03_Build02
+     * </p>
+     */
+    private String internalVersion;
+
+    /**
      * 固件文件下载地址（可空，支持无包版本）
      * <p>
      * 存储对象存储的 objectKey（如：fota/fw/2/a1b2c3d4e5f6.zip）

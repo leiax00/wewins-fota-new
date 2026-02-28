@@ -122,4 +122,19 @@ public class ProductRepositoryImpl implements ProductRepository {
 
         return productMapper.selectCount(queryWrapper);
     }
+
+    @Override
+    public Optional<Product> findByModel(String model) {
+        if (!StringUtils.hasText(model)) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(
+                productMapper.selectOne(
+                        new LambdaQueryWrapper<Product>()
+                                .eq(Product::getModel, model)
+                                .isNull(Product::getDeletedAt)
+                )
+        );
+    }
 }
