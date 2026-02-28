@@ -13,6 +13,7 @@ export interface FirmwareVersionItem {
   productId: number
   productName?: string
   version: string
+  internalVersion?: string
   fileUrl?: string
   fileSize?: number
   md5?: string
@@ -30,6 +31,8 @@ export interface FirmwareVersionItem {
 export interface FirmwareVersionPayload {
   productId: number
   version: string
+  internalVersion?: string
+  packageStatus?: string
   uploadSessionId?: string
   fileUrl?: string
   fileSize?: number

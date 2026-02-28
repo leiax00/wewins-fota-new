@@ -36,7 +36,8 @@ public class FirmwareVersionAssembler {
                 .fileName(req.getFileName())
                 .fileSize(req.getFileSize())
                 .md5(req.getMd5())
-                .sha256(req.getSha256());
+                .sha256(req.getSha256())
+                .packageStatus(req.getPackageStatus());
 
         // 转换 tags JSON 字符串为 JsonNode
         if (req.getTags() != null && !req.getTags().isBlank()) {

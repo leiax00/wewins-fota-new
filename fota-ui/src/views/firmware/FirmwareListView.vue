@@ -43,6 +43,7 @@ const query = reactive({
   size: 20,
   productId: undefined as number | undefined,
   version: '',
+  internalVersion: '',
 })
 
 const productSearchOptions = ref<ProductItem[]>([])
@@ -67,6 +68,7 @@ const formRef = ref()
 const form = reactive({
   productId: undefined as number | undefined,
   version: '',
+  internalVersion: '',
   noPackage: false,
   uploadSessionId: '',
   tags: '',
@@ -320,6 +322,7 @@ const openCreateDialog = () => {
   editingId.value = null
   form.productId = undefined
   form.version = ''
+  form.internalVersion = ''
   form.noPackage = false
   form.uploadSessionId = ''
   form.tags = ''
@@ -336,6 +339,7 @@ const openEditDialog = (row: FirmwareVersionItem) => {
   editingId.value = row.id
   form.productId = row.productId
   form.version = row.version
+  form.internalVersion = row.internalVersion || ''
   form.noPackage = row.packageStatus === 'NONE'
   form.uploadSessionId = ''
   form.tags = row.tags || ''
@@ -354,6 +358,7 @@ const submitForm = async () => {
     const payload: Record<string, unknown> = {
       productId: form.productId!,
       version: form.version,
+      internalVersion: form.internalVersion || undefined,
       tags: form.tags || undefined,
       meta: form.meta || undefined,
     }
@@ -423,6 +428,7 @@ const resetSearch = () => {
   query.page = 1
   query.productId = undefined
   query.version = ''
+  query.internalVersion = ''
   void fetchList()
 }
 
@@ -494,6 +500,13 @@ onMounted(() => {
           style="width: 140px"
           @keyup.enter="fetchList"
         />
+        <el-input
+          v-model="query.internalVersion"
+          placeholder="内部版本"
+          clearable
+          style="width: 140px"
+          @keyup.enter="fetchList"
+        />
         <el-button @click="fetchList">
           {{ t('common.search') }}
         </el-button>
@@ -516,11 +529,6 @@ onMounted(() => {
       stripe
     >
       <el-table-column
-        prop="version"
-        :label="t('firmware.version')"
-        min-width="120"
-      />
-      <el-table-column
         prop="productId"
         :label="t('firmware.product')"
         min-width="160"
@@ -529,6 +537,16 @@ onMounted(() => {
           {{ row.productName || row.productId }}
         </template>
       </el-table-column>
+      <el-table-column
+        prop="version"
+        :label="t('firmware.version')"
+        min-width="120"
+      />
+      <el-table-column
+        prop="internalVersion"
+        label="内部版本"
+        min-width="120"
+      />
       <el-table-column
         prop="packageStatus"
         label="包状态"
@@ -654,6 +672,16 @@ onMounted(() => {
         <el-input
           v-model="form.version"
           placeholder="1.0.0"
+        />
+      </el-form-item>
+
+      <el-form-item
+        prop="internalVersion"
+        label="内部版本"
+      >
+        <el-input
+          v-model="form.internalVersion"
+          placeholder="如：v1.0.0-rc.1"
         />
       </el-form-item>
 

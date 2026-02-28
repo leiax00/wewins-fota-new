@@ -415,6 +415,12 @@ public class FirmwareVersionController {
      * @return 包状态（READY/NONE）
      */
     private String determinePackageStatus(FirmwareVersionReqDTO reqDTO) {
+        String packageStatus = reqDTO.getPackageStatus();
+        // 用户提供了 packageStatus，直接使用
+        if (packageStatus != null && !packageStatus.isBlank()) {
+            return packageStatus;
+        }
+        // 用户未提供，自动判断
         boolean hasPackageInfo = reqDTO.getFileUrl() != null && !reqDTO.getFileUrl().isBlank()
                 && reqDTO.getFileSize() != null && reqDTO.getFileSize() > 0
                 && reqDTO.getMd5() != null && !reqDTO.getMd5().isBlank()
