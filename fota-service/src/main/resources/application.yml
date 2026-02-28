@@ -168,7 +168,7 @@ app:
     enabled: ${MQ_ENABLED:true}
     queues:
       upgrade-events:
-        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events}
+        name: ${MQ_UPGRADE_EVENT_QUEUE:fota.upgrade.events.v1}
         durable: true
       check-logs:
         name: ${MQ_CHECK_LOG_QUEUE:fota.device.check.logs}
@@ -208,3 +208,6 @@ app:
       enabled: ${APP_FIRMWARE_UPLOAD_CLEANUP_ENABLED:true}
       # 清理任务 Cron 表达式（默认每 30 分钟）
       cleanup-cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}
+  firmware:
+    signed-url:
+      secret-key: ${FIRMWARE_SIGNED_SECRET:-}

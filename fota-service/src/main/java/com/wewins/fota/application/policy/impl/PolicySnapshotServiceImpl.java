@@ -5,8 +5,8 @@ import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.policy.snapshot.PolicySnapshot;
 import com.wewins.fota.domain.policy.snapshot.PolicySnapshotRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -32,11 +32,18 @@ import java.util.stream.StreamSupport;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PolicySnapshotServiceImpl implements PolicySnapshotService {
 
     private final PolicySnapshotRepository snapshotRepository;
     private final UpgradePolicyRepository policyRepository;
+
+    public PolicySnapshotServiceImpl(
+            @Qualifier("redisPolicySnapshotRepository") PolicySnapshotRepository snapshotRepository,
+            @Qualifier("upgradePolicyRepositoryImpl") UpgradePolicyRepository policyRepository
+    ) {
+        this.snapshotRepository = snapshotRepository;
+        this.policyRepository = policyRepository;
+    }
 
     /**
      * 同步滞后阈值（24 小时）

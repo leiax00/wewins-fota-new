@@ -11,10 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -67,81 +65,55 @@ public class UpgradeReportConsumer {
     /**
      * 批量处理升级上报事件
      * <p>
-     * 支持单条和批量消息，使用 @RabbitListener 的 containerFactory 配置
+     * Spring AMQP 批量模式下，第一个参数必须是 List&lt;?&gt;
+     * 支持单条消息（List.size() == 1）和批量消息
      * </p>
      *
-     * @param payload 消息体（JSON 字符串或 JSON 数组）
-     * @param message RabbitMQ 消息对象
-     * @param channel RabbitMQ 通道
-     * @param deliveryTag 投递标签
+     * @param messages 批量消息列表
      * @throws IOException 消息处理失败时抛出
      */
     @RabbitListener(
             queues = "${app.mq.queues.upgrade-events.name:fota.upgrade.events}",
             containerFactory = "batchRabbitListenerContainerFactory"
     )
-    public void onUpgradeReports(
-            Object payload,
-            Message message,
-            Channel channel,
-            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
-
-        List<UpgradeEventMessage> messages = parseMessages(payload);
+    public void onUpgradeReports(List<Message> messages, Channel channel) throws IOException {
         if (messages.isEmpty()) {
-            log.warn("解析消息为空，跳过处理: deliveryTag={}", deliveryTag);
-            channel.basicAck(deliveryTag, false);
+            log.warn("批量消息列表为空，跳过处理");
             return;
         }
 
-        try {
-            processMessages(messages);
-            channel.basicAck(deliveryTag, false);
-            log.debug("批量消息处理成功: deliveryTag={}, count={}", deliveryTag, messages.size());
-
-        } catch (Exception ex) {
-            log.error("批量消息处理失败，拒绝并进入 DLQ: deliveryTag={}, count={}",
-                    deliveryTag, messages.size(), ex);
-            // 拒绝消息，不重新入队，进入 DLQ
-            channel.basicNack(deliveryTag, false, false);
-        }
-    }
-
-    /**
-     * 单条消息兼容处理
-     * <p>
-     * 当发送方发送单条消息时（非批量），使用此方法处理
-     * </p>
-     *
-     * @param payload 消息体（JSON 字符串）
-     * @param message RabbitMQ 消息对象
-     * @param channel RabbitMQ 通道
-     * @throws IOException 消息处理失败时抛出
-     */
-    @RabbitListener(
-            queues = "${app.mq.queues.upgrade-events.name:fota.upgrade.events}",
-            containerFactory = "simpleRabbitListenerContainerFactory"
-    )
-    public void onUpgradeReport(
-            String payload,
-            Message message,
-            Channel channel) throws IOException {
-
-        UpgradeEventMessage eventMessage = parseMessage(payload);
-        if (eventMessage == null) {
-            log.warn("解析消息为空，跳过处理");
-            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-            return;
-        }
+        // 获取通道（用于 ACK）
+        long deliveryTag = messages.getFirst().getMessageProperties().getDeliveryTag();
+        long lastDeliveryTag = messages.getLast().getMessageProperties().getDeliveryTag();
 
         try {
-            processMessages(List.of(eventMessage));
-            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-            log.debug("单条消息处理成功: eventIdCount={}",
-                    eventMessage.getEvents() != null ? eventMessage.getEvents().size() : 0);
+            // 解析所有消息
+            List<UpgradeEventMessage> parsedMessages = new ArrayList<>();
+            for (Message message : messages) {
+                String payload = new String(message.getBody());
+                UpgradeEventMessage msg = parseMessage(payload);
+                if (msg != null) {
+                    parsedMessages.add(msg);
+                }
+            }
+
+            if (parsedMessages.isEmpty()) {
+                log.warn("所有消息解析失败，ACK 并跳过: deliveryTag={}", deliveryTag);
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
+
+            // 处理消息
+            processMessages(parsedMessages);
+
+            // 批量 ACK（使用最后一个 deliveryTag，multiple=true）
+            channel.basicAck(lastDeliveryTag, true);
+            log.debug("批量消息处理成功: count={}", parsedMessages.size());
 
         } catch (Exception ex) {
-            log.error("单条消息处理失败，拒绝并进入 DLQ", ex);
-            channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+            log.error("批量消息处理失败，拒绝并进入 DLQ: count={}", messages.size(), ex);
+            // 拒绝消息
+            channel.basicNack(lastDeliveryTag, true, false);
         }
     }
 
@@ -195,58 +167,6 @@ public class UpgradeReportConsumer {
         deviceVersionUpdateService.processUpgradeSuccessEvents(newEvents);
 
         log.info("事件处理完成: processed={}", newEvents.size());
-    }
-
-    /**
-     * 解析消息（支持单条和批量）
-     *
-     * @param payload 消息体
-     * @return 消息列表
-     */
-    private List<UpgradeEventMessage> parseMessages(Object payload) {
-        if (payload == null) {
-            return List.of();
-        }
-
-        // 如果是 List，说明是批量消息
-        if (payload instanceof List) {
-            List<?> list = (List<?>) payload;
-            List<UpgradeEventMessage> result = new ArrayList<>();
-
-            for (Object item : list) {
-                if (item instanceof String) {
-                    UpgradeEventMessage msg = parseMessage((String) item);
-                    if (msg != null) {
-                        result.add(msg);
-                    }
-                } else if (item instanceof byte[]) {
-                    try {
-                        String json = new String((byte[]) item);
-                        UpgradeEventMessage msg = parseMessage(json);
-                        if (msg != null) {
-                            result.add(msg);
-                        }
-                    } catch (Exception e) {
-                        log.error("解析批量消息项失败", e);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        // 单条消息
-        String jsonPayload;
-        if (payload instanceof String) {
-            jsonPayload = (String) payload;
-        } else if (payload instanceof byte[]) {
-            jsonPayload = new String((byte[]) payload);
-        } else {
-            jsonPayload = payload.toString();
-        }
-
-        UpgradeEventMessage msg = parseMessage(jsonPayload);
-        return msg != null ? List.of(msg) : List.of();
     }
 
     /**
