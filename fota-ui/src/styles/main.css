@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./element-plus-overrides.css";

@@ -120,6 +120,15 @@ public class AdminApiAssembler {
                 .method(req.getMethod())
                 .parentId(req.getParentId())
                 .status(req.getStatus())
+                // 菜单路由字段
+                .routePath(req.getRoutePath())
+                .routeName(req.getRouteName())
+                .componentKey(req.getComponentKey())
+                .redirectPath(req.getRedirectPath())
+                // 菜单显示字段
+                .icon(req.getIcon())
+                .menuSort(req.getMenuSort())
+                .externalLink(req.getExternalLink())
                 .build();
     }
 
@@ -140,6 +149,15 @@ public class AdminApiAssembler {
                 .createdBy(permission.getCreatedBy())
                 .updatedAt(permission.getUpdatedAt())
                 .updatedBy(permission.getUpdatedBy())
+                // 菜单路由字段
+                .routePath(permission.getRoutePath())
+                .routeName(permission.getRouteName())
+                .componentKey(permission.getComponentKey())
+                .redirectPath(permission.getRedirectPath())
+                // 菜单显示字段
+                .icon(permission.getIcon())
+                .menuSort(permission.getMenuSort())
+                .externalLink(permission.getExternalLink())
                 .build();
     }
 

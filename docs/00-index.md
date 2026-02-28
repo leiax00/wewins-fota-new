@@ -2,8 +2,8 @@
 
 > 本项目文档采用分类管理，便于查找、维护和归档。
 
-**最后更新**: 2026-02-10
-**文档版本**: v1.0
+**最后更新**: 2026-02-28
+**文档版本**: v1.5
 
 ---
 
@@ -20,10 +20,12 @@
 系统架构、技术选型、设计决策
 
 - [FOTA 系统架构及技术说明书](02-architecture/fota-architecture.md)
-- [DDD 架构设计文档](02-architecture/ddd-architecture.md) 🆕
-- [DDD 实施指南](02-architecture/ddd-implementation-guide.md) 🆕
-- [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md) 🆕
-- [文件存储策略说明](02-architecture/storage-strategy.md) 🆕
+- [DDD 架构设计文档](02-architecture/ddd-architecture.md)
+- [DDD 实施指南](02-architecture/ddd-implementation-guide.md)
+- [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md)
+- [文件存储策略说明](02-architecture/storage-strategy.md)
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
+- [前端移动端策略 ADR](02-architecture/frontend-mobile-strategy-adr.md) 🆕
 
 ---
 
@@ -40,6 +42,7 @@
 ### 4️⃣ 指南与知识 (`04-guides/`)
 技术指南、知识沉淀、最佳实践
 
+- [策略权限控制指南](04-guides/policy-permissions.md) 🆕
 - [时区语义设计](04-guides/time-semantics.md)
 
 ---
@@ -47,7 +50,9 @@
 ### 5️⃣ 计划与里程碑 (`05-plans/`)
 Sprint 计划、里程碑、风险评估
 
-- [Sprint 1 计划](05-plans/sprint-1.md)
+- [Sprint 1 计划 - 后端基础平台](05-plans/sprint-1.md)
+- [Sprint 2 计划 - 管理后台前端](05-plans/sprint-2-frontend.md)
+- [feature/fota-ui-console 功能完成清单](05-plans/feature-fota-ui-console-summary.md) 🆕
 
 ---
 
@@ -84,7 +89,12 @@ Sprint 计划、里程碑、风险评估
 
 **架构师/技术负责人**:
 - [系统架构文档](02-architecture/fota-architecture.md)
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
 - [时区语义设计](04-guides/time-semantics.md)
+
+**前端工程师**:
+- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
+- [Sprint 2 前端计划](05-plans/sprint-2-frontend.md) 🆕
 
 **开发工程师**:
 - [Git Flow 工作流](03-standards/git-workflow.md)
@@ -103,6 +113,7 @@ Sprint 计划、里程碑、风险评估
 
 ```
 Sprint 1: 基础平台搭建 [██████████████████] 100% (Day 1-5 完成 ✅)
+Sprint 2: 管理后台前端 [████████████████░░] 85% (核心功能完成，表单待完善)
 
 Day 1: ✅ 项目基础架构搭建 (2026-02-05)
 Day 2: ✅ PostgreSQL 数据库架构 (2026-02-06)
@@ -112,10 +123,32 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 ```
 
 **Sprint 1 状态**: ✅ 圆满完成！所有核心功能已实现并集成。
+**Sprint 2 状态**: 🔄 进行中（85%）- 核心功能基本完成，部分表单和交互待完善
 
 ---
 
 ## 📝 文档更新日志
+
+### 2026-02-28
+- ✅ 更新 Sprint 2 进度为 85%
+- ✅ 更新 Sprint 2 任务状态清单
+- ✅ 补充已完成的设备管理功能（导入、批量操作、批次管理）
+- ✅ 补充后端增强功能（固件分步上传、动态菜单、权限控制）
+- ✅ 更新项目进度显示
+
+### 2026-02-27
+- ✅ 新增策略权限控制指南文档
+- ✅ 记录状态切换、策略修改、策略删除的权限规则
+- ✅ 添加测试人员和发布人员的权限矩阵
+- ✅ 提供前端实现建议和常见问题解答
+
+### 2026-02-20
+- ✅ 更新 Sprint 2 状态为进行中（约 40%）
+- ✅ 同步前端登录页主题重构与主题切换入口进度
+- ✅ 更新前端架构文档为“规划 + 实现快照”
+- ✅ 同步 TabsView / Breadcrumb / Header-Sidebar 联动实现
+- ✅ 记录当前“桌面优先（min-width: 1024）”策略
+- ✅ 新增前端移动端策略 ADR（桌面优先）
 
 ### 2026-02-18
 - ✅ Day 5 完成：集成测试与验收
@@ -123,6 +156,11 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 - ✅ Week 1 验收总结
 - ✅ 更新文档导航索引
 - ✅ 更新 Sprint 1 进度
+
+### 2026-02-17
+- ✅ 创建前端架构设计文档
+- ✅ 创建 Sprint 2 前端迭代计划
+- ✅ 更新文档导航，添加前端相关链接
 
 ### 2026-02-17
 - ✅ Day 4 完成：Redis 缓存架构

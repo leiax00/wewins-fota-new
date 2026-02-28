@@ -32,17 +32,20 @@ public class UserAppService  {
     private final PermissionRepository permissionRepository;
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final MenuAppService menuAppService;
 
     public UserAppService(UserRepository userRepository,
                            RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
                            UserRoleRepository userRoleRepository,
-                           RolePermissionRepository rolePermissionRepository) {
+                           RolePermissionRepository rolePermissionRepository,
+                           MenuAppService menuAppService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.userRoleRepository = userRoleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
+        this.menuAppService = menuAppService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -95,6 +98,10 @@ public class UserAppService  {
 
         userRoleRepository.deleteByUserId(userId);
         boolean result = userRepository.deleteById(userId);
+
+        // 清除用户菜单缓存
+        menuAppService.evictUserMenuCache(userId);
+
         log.info("用户删除成功: userId={}, result={}", userId, result);
         return result;
     }
@@ -155,6 +162,10 @@ public class UserAppService  {
                 .toList();
 
         userRoleRepository.saveBatch(userRoles);
+
+        // 清除用户菜单缓存
+        menuAppService.evictUserMenuCache(userId);
+
         log.info("用户角色分配成功: userId={}, roleCount={}", userId, distinctRoleIds.size());
     }
 
@@ -164,6 +175,37 @@ public class UserAppService  {
             return Collections.emptyList();
         }
         return roleRepository.findByIds(roleIds);
+    }
+
+    /**
+     * 获取用户角色 code 列表
+     *
+     * @param userId 用户ID
+     * @return 角色 code 列表
+     */
+    public List<String> getUserRoleCodes(Long userId) {
+        if (log.isDebugEnabled()) {
+            log.debug("查询用户角色编码: userId={}", userId);
+        }
+
+        List<Role> roles = getUserRoles(userId);
+        return roles.stream()
+                .map(Role::getCode)
+                .toList();
+    }
+
+    /**
+     * 获取用户权限 code 列表
+     *
+     * @param userId 用户ID
+     * @return 权限 code 列表
+     */
+    public List<String> getUserPermissionCodes(Long userId) {
+        if (log.isDebugEnabled()) {
+            log.debug("查询用户权限编码: userId={}", userId);
+        }
+        List<Permission> permissions = getUserPermissions(userId);
+        return permissions.stream().map(Permission::getCode).toList();
     }
 
     public List<Permission> getUserPermissions(Long userId) {

@@ -1,0 +1,70 @@
+package com.wewins.fota.application.firmware.dto;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Data;
+
+/**
+ * 固件版本创建/更新请求 DTO
+ */
+@Data
+public class FirmwareVersionReqDTO {
+
+    /**
+     * 关联的产品 ID
+     */
+    private Long productId;
+
+    /**
+     * 版本号（如 1.0.0）
+     */
+    private String version;
+
+    /**
+     * 上传会话 ID（可选）
+     * <p>
+     * 若提供则优先使用上传会话中的包信息，忽略 fileUrl/fileSize/md5/sha256 字段。
+     * </p>
+     */
+    private String uploadSessionId;
+
+    /**
+     * 固件文件下载地址（可选）
+     * <p>
+     * 兼容手动填写场景（未提供 uploadSessionId 时使用）。
+     * </p>
+     */
+    private String fileUrl;
+
+    /**
+     * 固件原始文件名（可选）
+     * <p>
+     * 保存用户上传时的原始文件名，便于追溯。
+     * </p>
+     */
+    private String fileName;
+
+    /**
+     * 固件文件大小（字节，可选）
+     */
+    private Long fileSize;
+
+    /**
+     * MD5 校验和（可选）
+     */
+    private String md5;
+
+    /**
+     * SHA-256 校验和（可选）
+     */
+    private String sha256;
+
+    /**
+     * 版本标签（JSON 字符串）
+     */
+    private String tags;
+
+    /**
+     * 扩展元数据（JSON 字符串）
+     */
+    private String meta;
+}

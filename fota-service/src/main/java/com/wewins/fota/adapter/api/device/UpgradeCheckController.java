@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/v1/upgrade")
 @ConditionalOnAppMode({"main", "region"})
 @RequiredArgsConstructor
 public class UpgradeCheckController {
@@ -38,7 +37,7 @@ public class UpgradeCheckController {
      * @param tags 设备标签（JSON 字符串）
      * @return 检查结果
      */
-    @GetMapping("/check")
+    @GetMapping("/v1/upgrade/check")
     public ResponseEntity<CheckResult> checkUpgrade(
             @RequestParam String imei,
             @RequestParam(required = false) String version,
@@ -53,6 +52,19 @@ public class UpgradeCheckController {
     }
 
     /**
+     * 兼容老系统的版本检测
+     */
+    @GetMapping("/fota/version/query")
+    public ResponseEntity<CheckResult> checkUpgradeOld(
+            @RequestParam String imei,
+            @RequestParam(required = false) String version,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String tags
+    ) {
+        return checkUpgrade(imei, version, language, tags);
+    }
+
+    /**
      * 检查设备升级（POST 方法）
      * <p>
      * 支持 POST 请求，可传递扩展载荷（如设备标签、环境信息等）
@@ -61,7 +73,7 @@ public class UpgradeCheckController {
      * @param requestBody 扩展请求体
      * @return 检查结果
      */
-    @PostMapping("/check")
+    @PostMapping("/v1/upgrade/check")
     public ResponseEntity<CheckResult> checkUpgradePost(@RequestBody UpgradeCheckRequestBody requestBody) {
 
         log.debug("收到设备检查 POST 请求: imei={}", requestBody.getImei());

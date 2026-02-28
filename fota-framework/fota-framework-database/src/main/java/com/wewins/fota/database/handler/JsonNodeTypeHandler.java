@@ -24,7 +24,7 @@ import java.sql.SQLException;
  * <p>
  * 使用方式：
  * <pre>
- * &#64;TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+ * &#64;TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
  * private JsonNode meta;
  * </pre>
  * </p>
@@ -40,7 +40,7 @@ import java.sql.SQLException;
  */
 @Slf4j
 @MappedTypes(JsonNode.class)
-@MappedJdbcTypes(JdbcType.VARCHAR)
+@MappedJdbcTypes(JdbcType.OTHER)
 public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
 
     private static final String JSON_NULL_SUMMARY = "null";
@@ -54,7 +54,10 @@ public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
     public void setNonNullParameter(PreparedStatement ps, int i, JsonNode parameter, JdbcType jdbcType)
             throws SQLException {
         try {
-            ps.setString(i, OBJECT_MAPPER.writeValueAsString(parameter));
+            String jsonString = OBJECT_MAPPER.writeValueAsString(parameter);
+            // 使用 setObject 配合 PGobject 来处理 jsonb 类型
+            // 这样 PostgreSQL 驱动会自动将字符串转换为 jsonb 类型
+            ps.setObject(i, jsonString, java.sql.Types.OTHER);
         } catch (JsonProcessingException e) {
             log.error("JsonNode 序列化失败: message={}", e.getMessage(), e);
             throw new SQLException("Failed to serialize JsonNode to JSON string: " + e.getMessage(), e);

@@ -57,7 +57,32 @@ public enum ErrorCode {
     DICT_TYPE_IN_USE(44003, "Dictionary Type Is In Use"),
     DICT_ITEM_NOT_FOUND(44004, "Dictionary Item Not Found"),
     DICT_ITEM_VALUE_EXISTS(44005, "Dictionary Item Value Already Exists"),
-    DICT_ITEM_LABEL_EXISTS(44006, "Dictionary Item Label Already Exists");
+    DICT_ITEM_LABEL_EXISTS(44006, "Dictionary Item Label Already Exists"),
+
+    // 产品错误码 (450xx)
+    PRODUCT_NOT_FOUND(45001, "Product Not Found"),
+    PRODUCT_NAME_EXISTS(45002, "Product Name Already Exists"),
+
+    // 固件版本错误码 (460xx)
+    FIRMWARE_VERSION_NOT_FOUND(46001, "Firmware Version Not Found"),
+    FIRMWARE_VERSION_EXISTS(46002, "Firmware Version Already Exists"),
+
+    // 升级策略错误码 (470xx)
+    POLICY_NOT_FOUND(47001, "Upgrade Policy Not Found"),
+    POLICY_NAME_EXISTS(47002, "Upgrade Policy Name Already Exists"),
+    POLICY_GRAY_RATE_INVALID(47003, "Upgrade Policy Gray Rate Invalid"),
+    POLICY_STATUS_INVALID(47004, "Upgrade Policy Status Invalid"),
+    POLICY_FIRMWARE_PRODUCT_MISMATCH(47005, "Firmware Version Does Not Belong To Product"),
+    POLICY_TARGET_FIRMWARE_NOT_READY(47006, "Target Firmware Package Not Ready"),
+    POLICY_INVALID_STATUS_TRANSITION(47007, "Invalid Status Transition"),
+    POLICY_IN_USE(47008, "Policy In Use"),
+
+    // 设备错误码 (480xx)
+    DEVICE_NOT_FOUND(48001, "Device Not Found"),
+    DEVICE_IMEI_EXISTS(48002, "Device IMEI Already Exists"),
+    DEVICE_STATUS_INVALID(48003, "Device Status Invalid"),
+    DEVICE_FIRMWARE_PRODUCT_MISMATCH(48004, "Device Firmware Version Does Not Belong To Product"),
+    DEVICE_IMEI_INVALID(48005, "Device IMEI Invalid");
 
     private final int code;
     private final String message;

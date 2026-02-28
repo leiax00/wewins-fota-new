@@ -15,9 +15,9 @@
 --   - ID 200-249: FOTA 业务子模块
 --     - ID 200: 仪表盘
 --     - ID 210: 产品管理
---     - ID 220: 固件管理
---     - ID 230: 策略管理
---     - ID 240: 设备管理
+--     - ID 220: 设备管理
+--     - ID 230: 固件管理
+--     - ID 240: 策略管理
 --   - ID 250-299: 预留给未来业务模块
 --
 -- 三级节点（API/BUTTON）：1000-1999
@@ -81,14 +81,14 @@ VALUES
   -- 产品管理
   (210, 'fota:product', '产品管理', 'MENU', 20, 'active', now(), now()),
 
+  -- 设备管理
+  (220, 'fota:device', '设备管理', 'MENU', 20, 'active', now(), now()),
+
   -- 固件管理
-  (220, 'fota:firmware', '固件管理', 'MENU', 20, 'active', now(), now()),
+  (230, 'fota:firmware', '固件管理', 'MENU', 20, 'active', now(), now()),
 
   -- 策略管理
-  (230, 'fota:policy', '策略管理', 'MENU', 20, 'active', now(), now()),
-
-  -- 设备管理
-  (240, 'fota:device', '设备管理', 'MENU', 20, 'active', now(), now())
+  (240, 'fota:policy', '策略管理', 'MENU', 20, 'active', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -106,25 +106,25 @@ VALUES
   (1113, 'fota:product:update', '产品管理-更新', 'API', 210, 'active', now(), now()),
   (1114, 'fota:product:delete', '产品管理-删除', 'API', 210, 'active', now(), now()),
 
+  -- 设备管理操作（4个）
+  (1141, 'fota:device:read',   '设备管理-查询',  'API', 220, 'active', now(), now()),
+  (1142, 'fota:device:detail', '设备管理-详情',  'API', 220, 'active', now(), now()),
+  (1143, 'fota:device:import', '设备管理-导入',  'API', 220, 'active', now(), now()),
+  (1144, 'fota:device:update', '设备管理-更新',  'API', 220, 'active', now(), now()),
+
   -- 固件管理操作（5个）
-  (1121, 'fota:firmware:read',     '固件管理-查询',   'API', 220, 'active', now(), now()),
-  (1122, 'fota:firmware:create',   '固件管理-创建',   'API', 220, 'active', now(), now()),
-  (1123, 'fota:firmware:update',   '固件管理-更新',   'API', 220, 'active', now(), now()),
-  (1124, 'fota:firmware:delete',   '固件管理-删除',   'API', 220, 'active', now(), now()),
-  (1125, 'fota:firmware:download', '固件管理-下载',   'API', 220, 'active', now(), now()),
+  (1121, 'fota:firmware:read',     '固件管理-查询',   'API', 230, 'active', now(), now()),
+  (1122, 'fota:firmware:create',   '固件管理-创建',   'API', 230, 'active', now(), now()),
+  (1123, 'fota:firmware:update',   '固件管理-更新',   'API', 230, 'active', now(), now()),
+  (1124, 'fota:firmware:delete',   '固件管理-删除',   'API', 230, 'active', now(), now()),
+  (1125, 'fota:firmware:download', '固件管理-下载',   'API', 230, 'active', now(), now()),
 
   -- 策略管理操作（5个）
-  (1131, 'fota:policy:read',   '策略管理-查询',  'API', 230, 'active', now(), now()),
-  (1132, 'fota:policy:create', '策略管理-创建',  'API', 230, 'active', now(), now()),
-  (1133, 'fota:policy:update', '策略管理-更新',  'API', 230, 'active', now(), now()),
-  (1134, 'fota:policy:delete', '策略管理-删除',  'API', 230, 'active', now(), now()),
-  (1135, 'fota:policy:pause',  '策略管理-暂停',  'API', 230, 'active', now(), now()),
-
-  -- 设备管理操作（4个）
-  (1141, 'fota:device:read',   '设备管理-查询',  'API', 240, 'active', now(), now()),
-  (1142, 'fota:device:detail', '设备管理-详情',  'API', 240, 'active', now(), now()),
-  (1143, 'fota:device:import', '设备管理-导入',  'API', 240, 'active', now(), now()),
-  (1144, 'fota:device:update', '设备管理-更新',  'API', 240, 'active', now(), now())
+  (1131, 'fota:policy:read',   '策略管理-查询',  'API', 240, 'active', now(), now()),
+  (1132, 'fota:policy:create', '策略管理-创建',  'API', 240, 'active', now(), now()),
+  (1133, 'fota:policy:update', '策略管理-更新',  'API', 240, 'active', now(), now()),
+  (1134, 'fota:policy:delete', '策略管理-删除',  'API', 240, 'active', now(), now()),
+  (1135, 'fota:policy:pause',  '策略管理-暂停',  'API', 240, 'active', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -132,16 +132,16 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================================================
 
 -- 超级管理员 -> FOTA 业务权限（全量）
-INSERT INTO sys_role_permission (role_id, permission_id, created_at, updated_at)
-SELECT r.id, p.id, now(), now()
+INSERT INTO sys_role_permission (role_id, permission_id)
+SELECT r.id, p.id
 FROM sys_roles r
 JOIN sys_permissions p ON p.type = 'API' AND p.id >= 1100 AND p.id < 1200
 WHERE r.code = 'super_wewins'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 系统管理员 -> FOTA 业务只读权限
-INSERT INTO sys_role_permission (role_id, permission_id, created_at, updated_at)
-SELECT r.id, p.id, now(), now()
+INSERT INTO sys_role_permission (role_id, permission_id)
+SELECT r.id, p.id
 FROM sys_roles r
 JOIN sys_permissions p ON p.code IN (
   -- 仪表盘（只读）

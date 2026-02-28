@@ -8,11 +8,13 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.module.system.application.RoleAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
+import com.wewins.fota.module.system.domain.entity.rbac.Role;
 import com.wewins.fota.module.system.dto.PermissionRespDTO;
 import com.wewins.fota.module.system.dto.RolePageReqDTO;
 import com.wewins.fota.module.system.dto.RoleReqDTO;
 import com.wewins.fota.module.system.dto.RoleRespDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -43,6 +45,7 @@ public class RoleController {
     }
 
     @GetMapping
+    @PreAuthorize("@rbac.has('sys:role:read')")
     public ApiResponse<PageResponse<RoleRespDTO>> listRoles(@ModelAttribute RolePageReqDTO reqDTO) {
         if (reqDTO == null) {
             reqDTO = new RolePageReqDTO();
@@ -52,8 +55,8 @@ public class RoleController {
             log.debug("分页查询角色: status={}, page={}, size={}", reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        Page<?> pageResult = roleService.pageRoles(reqDTO);
-        List<RoleRespDTO> records = adminApiAssembler.toRoleRespListFromUnknown(pageResult.getRecords());
+        Page<Role> pageResult = roleService.pageRoles(reqDTO);
+        List<RoleRespDTO> records = adminApiAssembler.toRoleRespList(pageResult.getRecords());
 
         PageResponse<RoleRespDTO> response = PageResponse.of(
                 records,
@@ -65,6 +68,7 @@ public class RoleController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:role:read')")
     public ApiResponse<RoleRespDTO> getRole(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -90,6 +94,7 @@ public class RoleController {
     }
 
     @PostMapping
+    @PreAuthorize("@rbac.has('sys:role:create')")
     public ApiResponse<RoleRespDTO> createRole(@RequestBody RoleReqDTO reqDTO) {
         if (reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -116,6 +121,7 @@ public class RoleController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:role:update')")
     public ApiResponse<RoleRespDTO> updateRole(@PathVariable Long id, @RequestBody RoleReqDTO reqDTO) {
         if (id == null || id <= 0 || reqDTO == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -147,6 +153,7 @@ public class RoleController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@rbac.has('sys:role:delete')")
     public ApiResponse<Void> deleteRole(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -175,6 +182,7 @@ public class RoleController {
     }
 
     @GetMapping("/{id}/permissions")
+    @PreAuthorize("@rbac.has('sys:role:read')")
     public ApiResponse<List<PermissionRespDTO>> getRolePermissions(@PathVariable Long id) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
@@ -202,6 +210,7 @@ public class RoleController {
     }
 
     @PostMapping("/{id}/permissions")
+    @PreAuthorize("@rbac.has('sys:role:update')")
     public ApiResponse<Void> assignPermissions(@PathVariable Long id, @RequestBody List<Long> permissionIds) {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());

@@ -45,4 +45,15 @@ public class UserRoleRepositoryImpl implements UserRoleRepository {
         return userRoleMapper.selectList(new LambdaQueryWrapper<UserRole>()
                 .eq(UserRole::getUserId, userId));
     }
+
+    @Override
+    public List<Long> findUserIdsByRoleId(Long roleId) {
+        List<UserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<UserRole>()
+                .select(UserRole::getUserId)
+                .eq(UserRole::getRoleId, roleId));
+        return userRoles.stream()
+                .map(UserRole::getUserId)
+                .distinct()
+                .toList();
+    }
 }

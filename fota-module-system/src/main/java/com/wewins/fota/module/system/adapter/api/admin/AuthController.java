@@ -4,15 +4,18 @@ import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.context.UserContext;
 import com.wewins.fota.common.exception.ErrorCode;
+import com.wewins.fota.module.system.application.MenuAppService;
 import com.wewins.fota.module.system.application.UserAppService;
 import com.wewins.fota.module.system.application.assembler.AdminApiAssembler;
 import com.wewins.fota.module.system.dto.LoginReqDTO;
 import com.wewins.fota.module.system.dto.LoginRespDTO;
+import com.wewins.fota.module.system.dto.menu.UserMenuNodeDTO;
 import com.wewins.fota.module.system.dto.UserRespDTO;
 import com.wewins.fota.security.jwt.JwtUtil;
 import com.wewins.fota.security.jwt.SysUserDetails;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,15 +42,18 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserAppService userService;
     private final AdminApiAssembler adminApiAssembler;
+    private final MenuAppService menuAppService;
 
     public AuthController(AuthenticationManager authenticationManager,
                           JwtUtil jwtUtil,
                           UserAppService userService,
-                          AdminApiAssembler adminApiAssembler) {
+                          AdminApiAssembler adminApiAssembler,
+                          MenuAppService menuAppService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
         this.adminApiAssembler = adminApiAssembler;
+        this.menuAppService = menuAppService;
     }
 
     @PostMapping("/login")
@@ -81,6 +88,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> logout() {
         Long userId = UserContext.getCurrentUserId();
 
@@ -98,6 +106,7 @@ public class AuthController {
     }
 
     @GetMapping("/current")
+    @PreAuthorize("isAuthenticated()")
     public ApiResponse<UserRespDTO> current() {
         Long userId = UserContext.getCurrentUserId();
 
@@ -116,6 +125,36 @@ public class AuthController {
             return ApiResponse.error(ErrorCode.USER_NOT_FOUND.getCode(), ErrorCode.USER_NOT_FOUND.getMessage());
         }
 
-        return ApiResponse.success(adminApiAssembler.toUserResp(user));
+        // 获取角色和权限编码
+        List<String> roles = userService.getUserRoleCodes(userId);
+        List<String> permissions = userService.getUserPermissionCodes(userId);
+
+        UserRespDTO dto = adminApiAssembler.toUserResp(user);
+        dto.setRoles(roles);
+        dto.setPermissions(permissions);
+
+        return ApiResponse.success(dto);
+    }
+
+    @GetMapping("/user-menu")
+    @PreAuthorize("isAuthenticated()")
+    public ApiResponse<List<UserMenuNodeDTO>> userMenu() {
+        Long userId = UserContext.getCurrentUserId();
+
+        if (userId == null) {
+            log.warn("获取用户菜单：未登录");
+            return ApiResponse.error(ErrorCode.UNAUTHORIZED.getCode(), ErrorCode.UNAUTHORIZED.getMessage());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("获取用户菜单: userId={}", userId);
+        }
+
+        List<UserMenuNodeDTO> menus = menuAppService.getUserMenuTree(userId);
+
+        if (log.isDebugEnabled()) {
+            log.debug("获取用户菜单成功: userId={}, menuCount={}", userId, menus.size());
+        }
+        return ApiResponse.success(menus);
     }
 }

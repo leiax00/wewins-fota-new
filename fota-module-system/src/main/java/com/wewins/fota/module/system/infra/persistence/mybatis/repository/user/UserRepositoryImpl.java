@@ -9,6 +9,9 @@ import com.wewins.fota.module.system.infra.persistence.mybatis.mapper.user.UserM
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Repository
 public class UserRepositoryImpl implements UserRepository {
@@ -79,5 +82,38 @@ public class UserRepositoryImpl implements UserRepository {
         }
         Long count = userMapper.selectCount(wrapper);
         return count == null ? 0L : count;
+    }
+
+    // ==================== 批量查询方法实现 ====================
+
+    @Override
+    public Map<Long, String> findNameByIds(Set<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<User> users = userMapper.selectList(
+                new LambdaQueryWrapper<User>()
+                        .in(User::getId, userIds)
+                        .select(User::getId, User::getDisplayName, User::getUsername)
+        );
+
+        return users.stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        user -> user.getDisplayName() != null ? user.getDisplayName() : user.getUsername()
+                ));
+    }
+
+    @Override
+    public String findNameById(Long userId) {
+        if (userId == null || userId <= 0) {
+            return null;
+        }
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        return user.getDisplayName() != null ? user.getDisplayName() : user.getUsername();
     }
 }

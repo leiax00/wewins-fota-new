@@ -3,13 +3,9 @@ package com.wewins.fota.domain.policy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.ibatis.type.JdbcType;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -22,12 +18,13 @@ import java.time.LocalDateTime;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("upgrade_policies")
-public class UpgradePolicy extends BaseEntity implements Serializable {
+@TableName(value = "upgrade_policies", autoResultMap = true)
+public class UpgradePolicy extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
@@ -52,21 +49,21 @@ public class UpgradePolicy extends BaseEntity implements Serializable {
     private Long targetVersionId;
 
     /**
-     * 允许升级的源版本列表（JSONB 数组）
+     * 允许升级的源版本 ID 列表（JSONB 数组）
      * <p>
-     * 指定哪些源版本可以升级到此目标版本
+     * 指定哪些源版本（通过 ID）可以升级到此目标版本
      * </p>
      * <p>
      * 示例：
      * <pre>
-     * ["1.0.0", "1.0.1", "1.0.2-beta"]
+     * [10, 11, 12]
      * </pre>
      * </p>
      * <p>
-     * 如果为空，表示不限制源版本
+     * 业务规则：必须非空，至少包含一个版本 ID
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode sourceVersions;
 
     /**
@@ -80,89 +77,143 @@ public class UpgradePolicy extends BaseEntity implements Serializable {
     private Integer grayRate;
 
     /**
+     * 策略状态
+     * <p>可选值：</p>
+     * <ul>
+     *   <li>DRAFT - 草稿</li>
+     *   <li>TESTING - 测试中</li>
+     *   <li>VERIFIED - 已验证</li>
+     *   <li>ACTIVE - 生产中</li>
+     *   <li>PAUSED - 暂停</li>
+     *   <li>EXPIRED - 过期</li>
+     * </ul>
+     */
+    private String status;
+
+    /**
      * 触发模式
      * <p>
      * 可选值：
      * </p>
      * <ul>
-     *   <li>AUTO：系统自动触发推送</li>
-     *   <li>MANUAL：人工确认触发推送</li>
+     *   <li>AUTO：仅允许系统自动触发推送</li>
+     *   <li>MANUAL：仅允许人工确认触发推送</li>
+     *   <li>BOTH：不限制，自动和手动都可以触发</li>
      * </ul>
      */
     private String triggerMode;
 
     /**
-     * 指定设备ID列表（JSONB 数组）
+     * 目标设备模式
      * <p>
-     * 当设备数量 ≤10 个时，使用此字段直接指定设备
+     * 可选值：
+     * </p>
+     * <ul>
+     *   <li>ALL：全量设备</li>
+     *   <li>DEVICE_IDS：指定设备IMEI列表</li>
+     *   <li>DEVICE_BATCHES：指定设备批次列表</li>
+     *   <li>DEVICE_TAGS：按标签筛选（AND 逻辑）</li>
+     * </ul>
+     */
+    private String targetMode;
+
+    /**
+     * 指定设备IMEI列表（JSONB 数组）
+     * <p>
+     * 当 targetMode = DEVICE_IDS 时使用
      * </p>
      * <p>
      * 示例：
      * <pre>
-     * [1001, 1002, 1003]
+     * ["869123456789012", "869123456789013", "869123456789014"]
      * </pre>
      * </p>
+     */
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
+    private JsonNode targetImeis;
+
+    /**
+     * 指定设备批次ID列表（JSONB 数组）
      * <p>
-     * 如果为空，表示不限制设备ID
+     * 当 targetMode = DEVICE_BATCHES 时使用
+     * </p>
+     * <p>
+     * 示例：
+     * <pre>
+     * ["1", "2", "3"]
+     * </pre>
      * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
-    private JsonNode targetDeviceIds;
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
+    private JsonNode targetDeviceBatchIds;
 
     /**
      * 设备标签过滤条件（JSONB 对象）
      * <p>
-     * 当设备数量 >10 个时，使用此字段通过标签筛选设备
+     * 当 targetMode = DEVICE_TAGS 时使用，AND 逻辑
      * </p>
      * <p>
      * 示例：
      * <pre>
      * {
-     *   "all": ["CN", "VIP"],
-     *   "any": ["beta", "pilot"],
-     *   "none": ["blocked"]
+     *   "env": "test",
+     *   "region": "CN"
      * }
      * </pre>
      * </p>
-     * <p>
-     * 如果为空，表示不限制设备标签
-     * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(
+        typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class,
+        jdbcType = JdbcType.OTHER,
+        updateStrategy = FieldStrategy.ALWAYS
+    )
     private JsonNode targetDeviceTags;
 
     /**
      * 时间窗口配置（JSONB）
      * <p>
+     * 统一使用 ISO8601 UTC 时间戳
+     * </p>
+     * <p>
      * 支持两种类型：
      * </p>
      * <ul>
-     *   <li>固定日期范围（type: range）</li>
-     *   <li>每天固定时间段（type: daily）</li>
+     *   <li>RANGE：固定范围（可跨越多天）</li>
+     *   <li>DAILY：每日周期（约定不超过 24 小时）</li>
      * </ul>
      * <p>
-     * 示例1 - 固定日期范围：
+     * 示例1 - RANGE 固定范围：
      * <pre>
      * {
-     *   "type": "range",
-     *   "start_at": "2025-02-01T00:00:00+08:00",
-     *   "end_at": "2025-02-10T23:59:59+08:00"
+     *   "type": "RANGE",
+     *   "startAt": "2026-02-01T00:00:00Z",
+     *   "endAt": "2026-02-10T23:59:59Z"
      * }
      * </pre>
      * </p>
      * <p>
-     * 示例2 - 每天固定时间段：
+     * 示例2 - DAILY 每日周期：
      * <pre>
      * {
-     *   "type": "daily",
-     *   "timezone": "Asia/Shanghai",
-     *   "start_time": "02:00",
-     *   "end_time": "06:00"
+     *   "type": "DAILY",
+     *   "startAt": "2026-02-01T02:00:00Z",
+     *   "endAt": "2026-02-01T06:00:00Z"
      * }
      * </pre>
      * </p>
+     * <p>
+     * 时间区间语义：左闭右开 [startAt, endAt)
+     * </p>
      */
-    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.VARCHAR)
+    @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode timeWindow;
 
     /**

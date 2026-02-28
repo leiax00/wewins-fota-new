@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 public class PermissionRespDTO {
 
+    // 基础字段
     private Long id;
     private String code;
     private String name;
@@ -24,4 +25,15 @@ public class PermissionRespDTO {
     private Long createdBy;
     private LocalDateTime updatedAt;
     private Long updatedBy;
+
+    // 菜单路由字段
+    private String routePath;
+    private String routeName;
+    private String componentKey;
+    private String redirectPath;
+
+    // 菜单显示字段
+    private String icon;
+    private Integer menuSort;
+    private String externalLink;
 }

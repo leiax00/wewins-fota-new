@@ -87,4 +87,12 @@ public class PermissionRepositoryImpl implements PermissionRepository {
                 .eq(Permission::getParentId, parentId));
         return count == null ? 0L : count;
     }
+
+    @Override
+    public List<Permission> findMenuPermissionsByUserId(Long userId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        return permissionMapper.findMenuPermissionsByUserId(userId);
+    }
 }

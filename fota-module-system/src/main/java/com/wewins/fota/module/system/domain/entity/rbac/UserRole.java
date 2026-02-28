@@ -1,19 +1,18 @@
 package com.wewins.fota.module.system.domain.entity.rbac;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.wewins.fota.database.entity.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 /**
  * 用户-角色关联实体
  * <p>
  * 存储用户与角色的多对多关联关系
+ * 关联表不需要继承 BaseEntity，只需要两个外键字段
  * </p>
  *
  * @author FOTA Team
@@ -24,7 +23,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("sys_user_role")
-public class UserRole extends BaseEntity implements Serializable {
+public class UserRole implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -37,10 +36,4 @@ public class UserRole extends BaseEntity implements Serializable {
      * 角色ID
      */
     private Long roleId;
-
-    /**
-     * 软删除时间
-     */
-    @TableLogic(value = "NULL", delval = "now()")
-    private LocalDateTime deletedAt;
 }

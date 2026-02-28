@@ -1,50 +1,101 @@
 package com.wewins.fota.application.device;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
+import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
+import com.wewins.fota.application.device.dto.DeviceImportEstimateRespDTO;
+import com.wewins.fota.application.device.dto.DeviceImportExecuteReqDTO;
+import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
+import com.wewins.fota.application.device.dto.DevicePageReqDTO;
+import com.wewins.fota.cache.dto.DeviceImportSession;
 import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.repository.DeviceRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
 
 /**
- * 设备应用服务
- * <p>
- * 承接管理端设备请求，编排设备领域能力。
- * </p>
+ * 设备应用服务接口
  */
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class DeviceAppService {
+public interface DeviceAppService {
 
-    private final DeviceRepository deviceRepository;
+    /**
+     * 分页查询设备列表
+     *
+     * @param reqDTO 分页查询参数
+     * @return 分页结果
+     */
+    Page<Device> pageDevices(DevicePageReqDTO reqDTO);
 
-    public List<Device> listDevices(Long productId, String imei) {
-        log.debug("查询设备列表: productId={}, imei={}", productId, imei);
-        return deviceRepository.findByConditions(productId, imei);
-    }
+    /**
+     * 根据 ID 获取设备
+     *
+     * @param id 设备 ID
+     * @return 设备实体
+     */
+    Device getById(Long id);
 
-    public Device getDevice(Long id) {
-        log.debug("查询设备详情: id={}", id);
-        return deviceRepository.findById(id).orElse(null);
-    }
+    /**
+     * 创建设备
+     *
+     * @param device 设备实体
+     * @return 创建后的设备
+     */
+    Device createDevice(Device device);
 
-    public String importDevices(String request) {
-        log.debug("批量导入设备: payloadLength={}", request == null ? 0 : request.length());
-        // TODO: 实现设备批量导入（批次创建、解析、入库）
-        return "设备导入待实现";
-    }
+    /**
+     * 更新设备
+     *
+     * @param device 设备实体
+     * @return 更新后的设备
+     */
+    Device updateDevice(Device device);
 
-    public String updateDevice(Long id) {
-        log.debug("更新设备: id={}", id);
-        // TODO: 实现设备更新
-        return "设备更新待实现";
-    }
+    /**
+     * 删除设备（逻辑删除）
+     *
+     * @param id 设备 ID
+     * @return 是否成功
+     */
+    boolean deleteDevice(Long id);
 
-    public boolean deleteDevice(Long id) {
-        log.debug("删除设备: id={}", id);
-        return deviceRepository.softDeleteById(id);
-    }
+    /**
+     * 预估设备导入 - 解析文件返回预估信息
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @return 预估结果（包含 sessionId 和统计信息）
+     */
+    DeviceImportEstimateRespDTO estimateImportDevices(MultipartFile file) throws IOException;
+
+    /**
+     * 执行设备导入
+     *
+     * @param reqDTO 导入请求（包含 sessionId 或 imeiList）
+     * @return 导入结果
+     */
+    DeviceImportRespDTO executeImportDevices(DeviceImportExecuteReqDTO reqDTO);
+
+    /**
+     * 解析文件获取 IMEI 列表（不创建记录）
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @return 解析后的 IMEI 列表
+     * @throws IOException 文件读取失败
+     */
+    DeviceImportSession parseImeiFile(MultipartFile file) throws IOException;
+
+    /**
+     * 预估批量操作影响的设备数
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 影响的设备数
+     */
+    int estimateBatchOperation(BatchOperationReqDTO reqDTO);
+
+    /**
+     * 执行批量操作
+     *
+     * @param reqDTO 批量操作请求参数
+     * @return 操作结果
+     */
+    BatchOperationResultDTO executeBatchOperation(BatchOperationReqDTO reqDTO);
 }

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 
 /**
  * Default file transfer implementation based on local staging files.
@@ -61,5 +62,55 @@ public class DefaultFileTransferService implements FileTransferService {
         } catch (IOException ex) {
             throw new IllegalStateException("Delete staging file failed", ex);
         }
+    }
+
+    @Override
+    public String getDownloadUrl(String objectKey, Duration ttl) {
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("Object key must not be blank");
+        }
+        if (ttl == null || ttl.isNegative() || ttl.isZero()) {
+            throw new IllegalArgumentException("TTL must be positive");
+        }
+        return storageClient.getDownloadUrl(objectKey, ttl);
+    }
+
+    @Override
+    public void deleteStorageObject(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+
+        // 安全校验：防止路径遍历攻击
+        if (!isValidObjectKey(objectKey)) {
+            throw new IllegalArgumentException("Invalid object key format: " + objectKey);
+        }
+
+        storageClient.delete(objectKey);
+    }
+
+    /**
+     * 校验对象存储键是否安全。
+     * <p>
+     * 只允许字母、数字、斜杠、点、短横线、下划线，防止路径遍历攻击。
+     * </p>
+     *
+     * @param objectKey 对象存储键
+     * @return 是否安全
+     */
+    private boolean isValidObjectKey(String objectKey) {
+        // 基本格式校验：允许字母、数字、斜杠、点、短横线、下划线
+        if (!objectKey.matches("^[a-zA-Z0-9/._-]+$")) {
+            return false;
+        }
+        // 防止路径遍历
+        if (objectKey.contains("..")) {
+            return false;
+        }
+        // 防止绝对路径
+        if (objectKey.startsWith("/")) {
+            return false;
+        }
+        return true;
     }
 }

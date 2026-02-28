@@ -5,6 +5,9 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
+import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -13,6 +16,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scripting.support.ResourceScriptSource;
 
@@ -123,7 +127,8 @@ public class RedisConfiguration {
      * <p>
      * 基于 Spring 管理的 ObjectMapper 创建自定义配置的序列化器：
      * <ul>
-     *   <li>禁用 Default Typing：避免反序列化安全风险</li>
+     *   <li>启用 Default Typing（带白名单）：支持多态类型反序列化</li>
+     *   <li>包级白名单：只允许业务包和必要的 JDK 类型</li>
      *   <li>忽略未知属性：避免缓存结构演进时反序列化失败</li>
      *   <li>不将日期写为时间戳：使用 ISO-8601 字符串格式</li>
      * </ul>
@@ -149,9 +154,21 @@ public class RedisConfiguration {
         // 忽略未知属性，避免缓存结构演进时反序列化失败
         redisObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        // 安全基线：不启用 Default Typing，避免反序列化风险
-        // GenericJackson2JsonRedisSerializer 会添加 @class 字段用于类型信息
-        // 但不需要启用全局 Default Typing
+        // 配置白名单：只允许业务包 + 必要 JDK 类型
+        // 这是反序列化安全的关键：避免恶意类注入攻击
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.wewins.fota.")  // 允许所有业务类
+                .allowIfSubType("java.util.")        // 允许集合类（List, Map, Set 等）
+                .allowIfSubType("java.time.")        // 允许时间类（LocalDateTime 等）
+                .build();
+
+        // 启用 Default Typing：在 JSON 中写入 @class 字段，用于类型信息
+        // NON_FINAL：只对非 final 字段和类启用类型信息
+        redisObjectMapper.activateDefaultTypingAsProperty(
+                ptv,
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                "@class"
+        );
 
         return new GenericJackson2JsonRedisSerializer(redisObjectMapper);
     }
