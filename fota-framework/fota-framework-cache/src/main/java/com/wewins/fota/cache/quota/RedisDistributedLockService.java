@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
@@ -57,7 +58,7 @@ public class RedisDistributedLockService implements DistributedLockService {
             // NX: 仅当 key 不存在时设置
             // EX: 设置过期时间（秒）
             Boolean acquired = redisTemplate.opsForValue()
-                    .setIfAbsent(key, token, expireSeconds, java.util.concurrent.TimeUnit.SECONDS);
+                    .setIfAbsent(key, token, expireSeconds, TimeUnit.SECONDS);
 
             if (Boolean.TRUE.equals(acquired)) {
                 log.debug("获取锁成功: lockName={}, token={}", lockName, token);
@@ -95,7 +96,7 @@ public class RedisDistributedLockService implements DistributedLockService {
                     token
             );
 
-            boolean released = result != null && result == 1L;
+            boolean released = result == 1L;
 
             if (released) {
                 log.debug("释放锁成功: lockName={}, token={}", lockName, token);
@@ -144,12 +145,16 @@ public class RedisDistributedLockService implements DistributedLockService {
 
     /**
      * 构建锁 Redis Key
+     * <p>
+     * 注意：锁 Key 必须是固定的，不能包含时间戳等动态值，
+     * 否则每次调用会生成不同的 Key，导致无法实现互斥锁。
+     * </p>
      *
      * @param lockName 锁名称
      * @return Redis Key
      */
     private String buildLockKey(String lockName) {
-        return String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName, System.currentTimeMillis());
+        return String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName);
     }
 
     /**

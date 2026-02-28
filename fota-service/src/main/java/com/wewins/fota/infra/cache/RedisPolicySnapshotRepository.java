@@ -63,15 +63,19 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
      *   <li>写入快照内容（Hash）</li>
      *   <li>更新同步时间戳</li>
      *   <li>切换版本指针</li>
+     *   <li>将版本号添加到版本列表（SET）</li>
      *   <li>清理旧版本（保留最近 3 个）</li>
      * </ol>
+     * </p>
+     * <p>
+     * 注意：使用 SET 维护版本列表，避免使用 KEYS 命令导致 Redis 阻塞
      * </p>
      */
     private static final String WRITE_AND_SWITCH_SCRIPT = """
             local snapKey = KEYS[1]           -- fota:pol:snap:{productId}:v{ver}
             local verKey = KEYS[2]            -- fota:pol:active_ver:{productId}
             local tsKey = KEYS[3]             -- fota:pol:sync_ts:{productId}
-            local snapPattern = KEYS[4]       -- fota:pol:snap:{productId}:v*
+            local verListKey = KEYS[4]        -- fota:pol:versions:{productId} (SET)
             local timestamp = ARGV[1]         -- 当前时间戳
             local version = ARGV[2]           -- 新版本号
             local ttl = ARGV[3]               -- 快照 TTL
@@ -92,26 +96,29 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
             -- 切换版本指针
             redis.call('SET', verKey, version)
 
-            -- 清理旧版本（保留最近 keepCount 个）
-            local currentVer = tonumber(version)
-            local keys = redis.call('KEYS', snapPattern)
-            local verList = {}
+            -- 将版本号添加到版本列表（使用 SET 存储）
+            redis.call('SADD', verListKey, version)
+            redis.call('EXPIRE', verListKey, 2592000)  -- 30 天
 
-            for _, key in ipairs(keys) do
-                local verStr = string.match(key, 'v(%d+)$')
-                if verStr then
-                    local verNum = tonumber(verStr)
-                    table.insert(verList, verNum)
+            -- 从版本列表获取所有版本并清理旧版本
+            local verList = redis.call('SMEMBERS', verListKey)
+            local numVerList = {}
+
+            for _, v in ipairs(verList) do
+                local verNum = tonumber(v)
+                if verNum then
+                    table.insert(numVerList, verNum)
                 end
             end
 
-            table.sort(verList, function(a, b) return a > b end)
+            table.sort(numVerList, function(a, b) return a > b end)
 
             -- 删除超出保留数量的旧版本
-            for i = keepCount + 1, #verList do
-                local oldVer = verList[i]
+            for i = keepCount + 1, #numVerList do
+                local oldVer = numVerList[i]
                 local oldKey = string.gsub(snapKey, 'v' .. version, 'v' .. oldVer)
                 redis.call('DEL', oldKey)
+                redis.call('SREM', verListKey, tostring(oldVer))
             end
 
             return 1  -- 成功
@@ -183,10 +190,10 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
             String snapKey = buildSnapshotKey(snapshot.getProductId(), snapshot.getVersion());
             String verKey = buildActiveVersionKey(snapshot.getProductId());
             String tsKey = buildSyncTimestampKey(snapshot.getProductId());
-            String snapPattern = buildSnapshotPattern(snapshot.getProductId());
+            String verListKey = buildVersionListKey(snapshot.getProductId());
 
             // 准备 Lua 脚本参数
-            List<String> keys = List.of(snapKey, verKey, tsKey, snapPattern);
+            List<String> keys = List.of(snapKey, verKey, tsKey, verListKey);
             List<String> args = new ArrayList<>();
 
             // ARGV[1] = 当前时间戳
@@ -208,7 +215,7 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
             // 执行 Lua 脚本
             Long result = redisTemplate.execute(writeAndSwitchScript(), keys, args);
 
-            boolean success = result != null && result == 1L;
+            boolean success = result == 1L;
             if (success) {
                 log.info("策略快照写入并切换成功: productId={}, version={}",
                         snapshot.getProductId(), snapshot.getVersion());
@@ -337,9 +344,10 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
 
         try {
             String pattern = buildSnapshotPattern(productId);
-            var keys = redisTemplate.keys(pattern);
+            // 使用 SCAN 替代 KEYS 命令，避免阻塞 Redis
+            List<String> keys = scanKeys(pattern);
 
-            if (keys == null || keys.isEmpty()) {
+            if (keys.isEmpty()) {
                 return 0;
             }
 
@@ -364,7 +372,7 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
             int deleted = 0;
             for (int i = keepVersions; i < versionKeys.size(); i++) {
                 Boolean result = redisTemplate.delete(versionKeys.get(i).key());
-                if (Boolean.TRUE.equals(result)) {
+                if (result) {
                     deleted++;
                 }
             }
@@ -389,15 +397,17 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
 
         try {
             String pattern = buildSnapshotPattern(productId);
-            var keys = redisTemplate.keys(pattern);
+            // 使用 SCAN 替代 KEYS 命令，避免阻塞 Redis
+            List<String> keys = scanKeys(pattern);
 
-            if (keys != null && !keys.isEmpty()) {
+            if (!keys.isEmpty()) {
                 redisTemplate.delete(keys);
             }
 
-            // 删除版本指针和同步时间戳
+            // 删除版本指针、同步时间戳和版本列表
             redisTemplate.delete(buildActiveVersionKey(productId));
             redisTemplate.delete(buildSyncTimestampKey(productId));
+            redisTemplate.delete(buildVersionListKey(productId));
 
             log.info("已删除所有快照: productId={}", productId);
             return true;
@@ -497,6 +507,16 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
     }
 
     /**
+     * 构建版本列表键（SET）
+     * <p>
+     * 用于存储产品的所有快照版本号，替代 KEYS 命令扫描
+     * </p>
+     */
+    private String buildVersionListKey(Long productId) {
+        return "fota:pol:versions:" + productId;
+    }
+
+    /**
      * 从键中提取版本号
      */
     private String extractVersionFromKey(String key) {
@@ -505,6 +525,27 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
             return key.substring(idx + 2);
         }
         return null;
+    }
+
+    /**
+     * 使用 SCAN 命令扫描匹配的 Key
+     * <p>
+     * 替代 KEYS 命令，避免在大规模数据时阻塞 Redis
+     * </p>
+     *
+     * @param pattern Key 匹配模式
+     * @return 匹配的 Key 列表
+     */
+    private List<String> scanKeys(String pattern) {
+        List<String> keys = new ArrayList<>();
+        try (var cursor = redisTemplate.scan(
+                org.springframework.data.redis.core.ScanOptions.scanOptions()
+                        .match(pattern)
+                        .count(100)
+                        .build())) {
+            cursor.forEachRemaining(key -> keys.add((String) key));
+        }
+        return keys;
     }
 
     /**

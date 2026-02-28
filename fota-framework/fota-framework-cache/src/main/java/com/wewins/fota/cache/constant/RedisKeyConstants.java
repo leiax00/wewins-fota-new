@@ -74,13 +74,13 @@ public final class RedisKeyConstants {
     /**
      * 分布式锁 Key 模板
      * <p>
-     * 使用方式：String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName, lockValue)
+     * 使用方式：String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName)
      * </p>
      * <p>
-     * 示例：fota:lock:device_import:batch_123
+     * 示例：fota:lock:device_import
      * </p>
      */
-    public static final String LOCK_KEY_TEMPLATE = "fota:lock:%s:%s";
+    public static final String LOCK_KEY_TEMPLATE = "fota:lock:%s";
 
     /**
      * 限流 Key 模板
