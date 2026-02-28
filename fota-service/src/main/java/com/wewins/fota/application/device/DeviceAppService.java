@@ -3,8 +3,11 @@ package com.wewins.fota.application.device;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
 import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
+import com.wewins.fota.application.device.dto.DeviceImportEstimateRespDTO;
+import com.wewins.fota.application.device.dto.DeviceImportExecuteReqDTO;
 import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
+import com.wewins.fota.cache.dto.DeviceImportSession;
 import com.wewins.fota.domain.device.entity.Device;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -56,15 +59,29 @@ public interface DeviceAppService {
     boolean deleteDevice(Long id);
 
     /**
-     * 批量导入设备
+     * 预估设备导入 - 解析文件返回预估信息
      *
      * @param file 导入文件（Excel或TXT）
-     * @param productId 产品ID
-     * @param batchName 批次名称（可选）
+     * @return 预估结果（包含 sessionId 和统计信息）
+     */
+    DeviceImportEstimateRespDTO estimateImportDevices(MultipartFile file) throws IOException;
+
+    /**
+     * 执行设备导入
+     *
+     * @param reqDTO 导入请求（包含 sessionId 或 imeiList）
      * @return 导入结果
+     */
+    DeviceImportRespDTO executeImportDevices(DeviceImportExecuteReqDTO reqDTO);
+
+    /**
+     * 解析文件获取 IMEI 列表（不创建记录）
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @return 解析后的 IMEI 列表
      * @throws IOException 文件读取失败
      */
-    DeviceImportRespDTO importDevices(MultipartFile file, Long productId, String batchName) throws IOException;
+    DeviceImportSession parseImeiFile(MultipartFile file) throws IOException;
 
     /**
      * 预估批量操作影响的设备数

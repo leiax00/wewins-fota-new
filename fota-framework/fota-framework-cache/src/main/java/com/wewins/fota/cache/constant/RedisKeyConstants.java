@@ -338,4 +338,28 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long FIRMWARE_UPLOAD_LOCK_TTL_SECONDS = 30;
+
+    // ========== 设备导入会话常量 ==========
+
+    /**
+     * 设备导入会话 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.DEVICE_IMPORT_SESSION_KEY_TEMPLATE, sessionId)
+     * </p>
+     * <p>
+     * 示例：fota:device:import:sess:a1b2c3d4e5f6
+     * </p>
+     * <p>
+     * 说明：设备导入会话数据，包含解析后的 IMEI 列表和统计信息
+     * </p>
+     */
+    public static final String DEVICE_IMPORT_SESSION_KEY_TEMPLATE = "fota:device:import:sess:%s";
+
+    /**
+     * 设备导入会话 TTL（2 小时）
+     * <p>
+     * 超时后自动清理会话数据
+     * </p>
+     */
+    public static final long DEVICE_IMPORT_SESSION_TTL_SECONDS = 2 * 60 * 60;
 }

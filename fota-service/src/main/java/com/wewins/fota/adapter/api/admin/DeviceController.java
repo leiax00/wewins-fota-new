@@ -6,6 +6,8 @@ import com.wewins.fota.application.common.ReferenceNameResolver;
 import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
 import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
+import com.wewins.fota.application.device.dto.DeviceImportEstimateRespDTO;
+import com.wewins.fota.application.device.dto.DeviceImportExecuteReqDTO;
 import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
@@ -134,22 +136,8 @@ public class DeviceController {
 
         try {
             Device device = deviceAppService.getById(id);
-            String productName = productRepository.findById(device.getProductId())
-                    .map(Product::getName)
-                    .orElse(null);
-            String versionName = null;
-            if (device.getCurrentVersionId() != null) {
-                versionName = firmwareVersionRepository.findById(device.getCurrentVersionId())
-                        .map(FirmwareVersion::getVersion)
-                        .orElse(null);
-            }
-            String importBatchName = null;
-            if (device.getImportBatchId() != null) {
-                importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
-                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
-                        .orElse(null);
-            }
-            return ApiResponse.success(deviceAssembler.toDeviceResp(device, productName, versionName, importBatchName));
+            DeviceRespDTO deviceResp = fillName(device);
+            return ApiResponse.success(deviceResp);
         } catch (BizException e) {
             log.warn("获取设备详情失败: deviceId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -160,27 +148,22 @@ public class DeviceController {
     }
 
     /**
-     * 批量导入设备
+     * 预估设备导入 - 上传文件解析
      *
      * @param file 导入文件（Excel或TXT）
-     * @param productId 产品ID
-     * @param batchName 批次名称（可选）
-     * @return 导入结果
+     * @return 预估结果（包含 sessionId 和统计信息）
      */
-    @PostMapping("/import")
+    @PostMapping("/import/estimate")
     @PreAuthorize("@rbac.has('fota:device:import')")
-    public ApiResponse<DeviceImportRespDTO> importDevices(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("productId") Long productId,
-            @RequestParam(value = "batchName", required = false) String batchName) {
+    public ApiResponse<DeviceImportEstimateRespDTO> estimateImport(
+            @RequestParam("file") MultipartFile file) {
 
         if (file == null || file.isEmpty()) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "导入文件不能为空");
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("批量导入设备: productId={}, batchName={}, filename={}",
-                    productId, batchName, file.getOriginalFilename());
+            log.debug("预估设备导入: filename={}", file.getOriginalFilename());
         }
 
         try {
@@ -190,16 +173,50 @@ public class DeviceController {
                 return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "文件大小超过10MB限制");
             }
 
-            DeviceImportRespDTO result = deviceAppService.importDevices(file, productId, batchName);
+            DeviceImportEstimateRespDTO result = deviceAppService.estimateImportDevices(file);
+            log.info("设备导入预估成功: sessionId={}, totalCount={}, validCount={}, invalidCount={}",
+                    result.getSessionId(), result.getTotalCount(), result.getValidCount(), result.getInvalidCount());
+            return ApiResponse.success(result);
+        } catch (BizException e) {
+            log.warn("设备导入预估失败: errorCode={}, message={}", e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("设备导入预估失败: message={}", e.getMessage(), e);
+            return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "文件解析失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 执行设备导入
+     *
+     * @param reqDTO 导入请求（包含 sessionId 或 imeiList）
+     * @return 导入结果
+     */
+    @PostMapping("/import/execute")
+    @PreAuthorize("@rbac.has('fota:device:import')")
+    public ApiResponse<DeviceImportRespDTO> executeImport(@RequestBody DeviceImportExecuteReqDTO reqDTO) {
+
+        if (reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("执行设备导入: productId={}, batchName={}, hasSessionId={}, hasImeis={}",
+                    reqDTO.getProductId(), reqDTO.getBatchName(),
+                    reqDTO.getSessionId() != null, reqDTO.getImeis() != null);
+        }
+
+        try {
+            DeviceImportRespDTO result = deviceAppService.executeImportDevices(reqDTO);
             log.info("设备导入成功: batchId={}, totalCount={}, successCount={}, failedCount={}",
                     result.getBatchId(), result.getTotalCount(), result.getSuccessCount(), result.getFailedCount());
             return ApiResponse.success(result);
         } catch (BizException e) {
             log.warn("设备导入失败: productId={}, errorCode={}, message={}",
-                    productId, e.getCode(), e.getMessage());
+                    reqDTO.getProductId(), e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
         } catch (Exception e) {
-            log.error("设备导入失败: productId={}, message={}", productId, e.getMessage(), e);
+            log.error("设备导入失败: productId={}, message={}", reqDTO.getProductId(), e.getMessage(), e);
             return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "设备导入失败: " + e.getMessage());
         }
     }
@@ -226,23 +243,9 @@ public class DeviceController {
             Device device = deviceAssembler.toDeviceEntity(reqDTO);
             device.setId(null);
             Device createdDevice = deviceAppService.createDevice(device);
-            String productName = productRepository.findById(createdDevice.getProductId())
-                    .map(Product::getName)
-                    .orElse(null);
-            String versionName = null;
-            if (createdDevice.getCurrentVersionId() != null) {
-                versionName = firmwareVersionRepository.findById(createdDevice.getCurrentVersionId())
-                        .map(FirmwareVersion::getVersion)
-                        .orElse(null);
-            }
-            String importBatchName = null;
-            if (createdDevice.getImportBatchId() != null) {
-                importBatchName = deviceImportBatchRepository.findById(createdDevice.getImportBatchId())
-                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
-                        .orElse(null);
-            }
+            DeviceRespDTO deviceResp = fillName(createdDevice);
             log.info("设备创建成功: deviceId={}, imei={}", createdDevice.getId(), createdDevice.getImei());
-            return ApiResponse.success(deviceAssembler.toDeviceResp(createdDevice, productName, versionName, importBatchName));
+            return ApiResponse.success(deviceResp);
         } catch (BizException e) {
             log.warn("创建设备失败: imei={}, errorCode={}, message={}",
                     reqDTO.getImei(), e.getCode(), e.getMessage());
@@ -275,23 +278,10 @@ public class DeviceController {
             Device device = deviceAssembler.toDeviceEntity(reqDTO);
             device.setId(id);
             Device updatedDevice = deviceAppService.updateDevice(device);
-            String productName = productRepository.findById(updatedDevice.getProductId())
-                    .map(Product::getName)
-                    .orElse(null);
-            String versionName = null;
-            if (updatedDevice.getCurrentVersionId() != null) {
-                versionName = firmwareVersionRepository.findById(updatedDevice.getCurrentVersionId())
-                        .map(FirmwareVersion::getVersion)
-                        .orElse(null);
-            }
-            String importBatchName = null;
-            if (updatedDevice.getImportBatchId() != null) {
-                importBatchName = deviceImportBatchRepository.findById(updatedDevice.getImportBatchId())
-                        .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
-                        .orElse(null);
-            }
+
+            DeviceRespDTO deviceResp = fillName(updatedDevice);
             log.info("设备更新成功: deviceId={}", updatedDevice.getId());
-            return ApiResponse.success(deviceAssembler.toDeviceResp(updatedDevice, productName, versionName, importBatchName));
+            return ApiResponse.success(deviceResp);
         } catch (BizException e) {
             log.warn("更新设备失败: deviceId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());
             return ApiResponse.error(e.getCode(), e.getMessage());
@@ -299,6 +289,25 @@ public class DeviceController {
             log.warn("更新设备参数错误: deviceId={}, message={}", id, e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
+    }
+
+    private DeviceRespDTO fillName(Device device) {
+        String productName = productRepository.findById(device.getProductId())
+                .map(Product::getName)
+                .orElse(null);
+        String versionName = null;
+        if (device.getCurrentVersionId() != null) {
+            versionName = firmwareVersionRepository.findById(device.getCurrentVersionId())
+                    .map(FirmwareVersion::getVersion)
+                    .orElse(null);
+        }
+        String importBatchName = null;
+        if (device.getImportBatchId() != null) {
+            importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
+                    .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
+                    .orElse(null);
+        }
+        return deviceAssembler.toDeviceResp(device, productName, versionName, importBatchName);
     }
 
     /**
@@ -328,6 +337,42 @@ public class DeviceController {
         } catch (IllegalArgumentException e) {
             log.warn("删除设备参数错误: deviceId={}, message={}", id, e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 解析 IMEI 文件（用于批量操作等场景）
+     *
+     * @param file 导入文件（Excel或TXT）
+     * @return 解析后的 IMEI 列表
+     */
+    @PostMapping("/parse-imei-file")
+    @PreAuthorize("@rbac.has('fota:device:read')")
+    public ApiResponse<List<String>> parseImeiFile(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "导入文件不能为空");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("解析IMEI文件: filename={}", file.getOriginalFilename());
+        }
+
+        try {
+            // 文件大小限制 10MB
+            long maxSize = 10 * 1024 * 1024;
+            if (file.getSize() > maxSize) {
+                return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "文件大小超过10MB限制");
+            }
+
+            List<String> imeis = deviceAppService.parseImeiFile(file).getImeis();
+            log.info("IMEI文件解析成功: filename={}, count={}", file.getOriginalFilename(), imeis.size());
+            return ApiResponse.success(imeis);
+        } catch (BizException e) {
+            log.warn("IMEI文件解析失败: errorCode={}, message={}", e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("IMEI文件解析失败: message={}", e.getMessage(), e);
+            return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "文件解析失败: " + e.getMessage());
         }
     }
 

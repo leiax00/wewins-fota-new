@@ -70,6 +70,22 @@ public class DeviceImportBatchRepositoryImpl implements DeviceImportBatchReposit
     }
 
     @Override
+    public Optional<DeviceImportBatch> findByBatchNameAndProductId(String batchName, Long productId) {
+        if (StringUtils.isBlank(batchName) || productId == null) {
+            return Optional.empty();
+        }
+
+        DeviceImportBatch batch = deviceImportBatchMapper.selectOne(
+                new LambdaQueryWrapper<DeviceImportBatch>()
+                        .eq(DeviceImportBatch::getBatchName, batchName.trim())
+                        .eq(DeviceImportBatch::getProductId, productId)
+                        .orderByDesc(DeviceImportBatch::getCreatedAt)
+                        .last("LIMIT 1")
+        );
+        return Optional.ofNullable(batch);
+    }
+
+    @Override
     public List<DeviceImportBatch> listByIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyList();

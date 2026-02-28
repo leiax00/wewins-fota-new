@@ -54,4 +54,13 @@ public interface DeviceImportBatchRepository {
      * @param batch 批次实体
      */
     void updateById(DeviceImportBatch batch);
+
+    /**
+     * 根据批次名称和产品ID查询批次
+     *
+     * @param batchName 批次名称
+     * @param productId 产品ID
+     * @return 批次实体
+     */
+    java.util.Optional<DeviceImportBatch> findByBatchNameAndProductId(String batchName, Long productId);
 }

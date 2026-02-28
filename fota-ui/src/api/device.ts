@@ -43,7 +43,8 @@ export interface DevicePayload {
 }
 
 export interface DeviceImportParams {
-  file: File
+  file?: File
+  imeis?: string[]
   productId: number
   batchName?: string
 }
@@ -56,6 +57,14 @@ export interface DeviceImportResult {
   successCount: number
   failedCount: number
   errorMessage?: string
+}
+
+export interface DeviceImportExecuteParams {
+  productId: number
+  batchName?: string
+  sessionId?: string
+  imeis?: string[]
+  sourceFile?: string
 }
 
 export const pageDevices = (params: Record<string, unknown>) => {
@@ -79,9 +88,12 @@ export const deleteDevice = (id: number) => {
 }
 
 /**
- * 批量导入设备
+ * 批量导入设备（文件方式）
  */
 export const importDevices = (params: DeviceImportParams) => {
+  if (!params.file) {
+    throw new Error('文件不能为空')
+  }
   const formData = new FormData()
   formData.append('file', params.file)
   formData.append('productId', params.productId.toString())
@@ -94,6 +106,13 @@ export const importDevices = (params: DeviceImportParams) => {
       'Content-Type': 'multipart/form-data',
     },
   })
+}
+
+/**
+ * 执行设备导入
+ */
+export const executeImportDevices = (params: DeviceImportExecuteParams) => {
+  return post<DeviceImportResult>('/admin/devices/import/execute', params)
 }
 
 // ==================== 批量操作相关 ====================

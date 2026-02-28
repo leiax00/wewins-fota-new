@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useI18n } from 'vue-i18n'
+import {computed, reactive, ref, watch} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {useI18n} from 'vue-i18n'
 import {
+  Box,
+  Check,
+  CircleCheck,
+  CircleCloseFilled,
   Delete,
   Document,
-  FolderOpened,
   Edit,
-  CircleCheck,
-  CircleCheckFilled,
-  CircleCloseFilled,
+  FolderOpened,
   SuccessFilled,
-  WarningFilled,
   TrendCharts,
-  Upload,
-  Check,
+  WarningFilled,
 } from '@element-plus/icons-vue'
-import type { UploadFile } from 'element-plus'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
+import ImeiInputPanel from '@/components/imei-input/ImeiInputPanel.vue'
 import {
-  estimateBatchOperation,
-  executeBatchOperation,
   type BatchOperationRequest,
   type BatchOperationResult,
   type BatchOperationType,
+  estimateBatchOperation,
+  executeBatchOperation,
 } from '@/api/device'
-import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch'
+import {type DeviceImportBatchItem, pageBatches} from '@/api/deviceImportBatch'
+import {searchProducts, type ProductItem} from '@/api/product'
 
 interface Props {
   modelValue: boolean
@@ -33,13 +33,14 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
+
   (e: 'success'): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { t } = useI18n()
+const {t} = useI18n()
 const dialogVisible = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val),
@@ -52,6 +53,9 @@ const currentStep = computed(() => {
   if (estimateCount.value !== null) return 3
   return 2
 })
+
+// IMEI 输入组件引用
+const imeiInputRef = ref()
 
 // 表单数据
 const form = reactive<{
@@ -116,25 +120,29 @@ const needBatchId = computed(() => {
   return form.operationType === 'DELETE_BY_BATCH' || form.operationType === 'UPDATE_TAG_BY_BATCH'
 })
 
+const needProductId = computed(() => {
+  return form.operationType === 'DELETE_BY_BATCH' || form.operationType === 'UPDATE_TAG_BY_BATCH'
+})
+
 const needImeis = computed(() => {
   return form.operationType === 'UPDATE_TAG_BY_IMEI' || form.operationType === 'UPDATE_BATCH_BY_IMEI'
 })
 
 const needTags = computed(() => {
   return (
-    form.operationType === 'UPDATE_TAG_BY_BATCH' ||
-    form.operationType === 'UPDATE_TAG_BY_IMEI' ||
-    form.operationType === 'UPDATE_TAG_BY_QUERY'
+      form.operationType === 'UPDATE_TAG_BY_BATCH' ||
+      form.operationType === 'UPDATE_TAG_BY_IMEI'
   )
 })
 
 const needNewBatchId = computed(() => {
-  return form.operationType === 'UPDATE_BATCH_BY_IMEI' || form.operationType === 'UPDATE_BATCH_BY_QUERY'
+  return form.operationType === 'UPDATE_BATCH_BY_IMEI'
 })
 
-const needQuery = computed(() => {
-  return false
-})
+// 产品搜索选项
+const productSearchOptions = ref<ProductItem[]>([])
+const productSearchLoading = ref(false)
+let productSearchTimer: number | null = null
 
 // 批次搜索选项
 const batchSearchOptions = ref<DeviceImportBatchItem[]>([])
@@ -155,6 +163,35 @@ const result = ref<BatchOperationResult | null>(null)
 const executing = ref(false)
 
 /**
+ * 产品远程搜索
+ */
+const handleProductSearch = async (keyword: string) => {
+  const trimmedKeyword = (keyword || '').trim()
+
+  if (productSearchTimer !== null) {
+    clearTimeout(productSearchTimer)
+  }
+
+  productSearchTimer = window.setTimeout(async () => {
+    productSearchLoading.value = true
+    try {
+      const result = await searchProducts(trimmedKeyword)
+      productSearchOptions.value = result.records || []
+    } finally {
+      productSearchLoading.value = false
+    }
+  }, 300)
+}
+
+/**
+ * 产品变化时清空批次选择
+ */
+const handleProductChange = () => {
+  form.batchId = undefined
+  batchSearchOptions.value = []
+}
+
+/**
  * 批次远程搜索
  */
 const handleBatchSearch = async (keyword: string) => {
@@ -173,6 +210,7 @@ const handleBatchSearch = async (keyword: string) => {
     try {
       const result = await pageBatches({
         batchName: trimmedKeyword,
+        productId: form.productId, // 添加产品筛选
         page: 1,
         size: 50,
       })
@@ -220,44 +258,6 @@ const handleTagsValidationChange = (errors: string[]) => {
 }
 
 /**
- * IMEI文件上传处理
- */
-const handleImeiFileUpload = async (uploadFile: UploadFile) => {
-  const file = uploadFile.raw
-  if (!file) return
-
-  // 根据文件扩展名判断类型
-  const extension = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase()
-
-  try {
-    let imeis: string[] = []
-
-    if (extension === 'txt') {
-      // TXT文件：每行一个IMEI
-      const text = await file.text()
-      imeis = text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-    } else if (extension === 'xlsx' || extension === 'xls') {
-      // Excel文件：需要读取IMEI列
-      // 这里简化处理，使用已有的解析器
-      // 由于前端直接解析Excel较复杂，这里提示用户使用TXT或手动输入
-      ElMessage.warning(t('device.excelImeiUploadTip'))
-      return
-    } else {
-      ElMessage.error(t('device.fileFormatInvalid'))
-      return
-    }
-
-    form.imeisText = imeis.join('\n')
-    ElMessage.success(t('device.imeiFileParsed', { count: imeis.length }))
-  } catch {
-    ElMessage.error(t('device.imeiFileParseFailed'))
-  }
-}
-
-/**
  * 预估影响设备数
  */
 const handleEstimate = async () => {
@@ -293,21 +293,27 @@ const buildRequestParams = (): BatchOperationRequest | null => {
 
   // 按批次操作
   if (needBatchId.value) {
+    if (!form.productId) {
+      ElMessage.warning(t('device.pleaseSelectProduct'))
+      return null
+    }
     if (!form.batchId) {
       ElMessage.warning(t('device.pleaseSelectBatch'))
       return null
     }
+    params.productId = form.productId
     params.batchId = form.batchId
   }
 
   // 按IMEI列表操作
   if (needImeis.value) {
-    const imeis = form.imeisText
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
+    if (!imeiInputRef.value?.canSubmit) {
+      ElMessage.warning(t('device.noValidImei'))
+      return null
+    }
 
-    if (imeis.length === 0) {
+    const imeis = imeiInputRef.value?.getImeis()
+    if (!imeis || imeis.length === 0) {
       ElMessage.warning(t('device.pleaseInputImeis'))
       return null
     }
@@ -369,9 +375,9 @@ const handleExecute = async () => {
   // 确认操作
   try {
     await ElMessageBox.confirm(
-      t('device.confirmBatchOperation', { count: estimateCount.value }),
-      t('common.tip'),
-      { type: 'warning' }
+        t('device.confirmBatchOperation', {count: estimateCount.value}),
+        t('common.tip'),
+        {type: 'warning'}
     )
   } catch {
     return
@@ -421,8 +427,10 @@ const resetForm = () => {
   tagsValidationErrors.value = []
   estimateCount.value = null
   result.value = null
+  productSearchOptions.value = []
   batchSearchOptions.value = []
   newBatchSearchOptions.value = []
+  imeiInputRef.value?.clearInput()
 }
 
 /**
@@ -435,8 +443,8 @@ const selectOperationType = (type: BatchOperationType) => {
 
   // 如果切换到不需要标签的操作类型，清空标签相关状态
   const typeNeedsTags =
-    type === 'UPDATE_TAG_BY_BATCH' ||
-    type === 'UPDATE_TAG_BY_IMEI'
+      type === 'UPDATE_TAG_BY_BATCH' ||
+      type === 'UPDATE_TAG_BY_IMEI'
 
   if (!typeNeedsTags) {
     form.tags = ''
@@ -448,21 +456,21 @@ const selectOperationType = (type: BatchOperationType) => {
  * 操作类型变化时重置相关字段
  */
 watch(
-  () => form.operationType,
-  (newType) => {
-    estimateCount.value = null
-    result.value = null
+    () => form.operationType,
+    (newType) => {
+      estimateCount.value = null
+      result.value = null
 
-    // 如果切换到不需要标签的操作类型，清空标签相关状态
-    const newTypeNeedsTags =
-      newType === 'UPDATE_TAG_BY_BATCH' ||
-      newType === 'UPDATE_TAG_BY_IMEI'
+      // 如果切换到不需要标签的操作类型，清空标签相关状态
+      const newTypeNeedsTags =
+          newType === 'UPDATE_TAG_BY_BATCH' ||
+          newType === 'UPDATE_TAG_BY_IMEI'
 
-    if (!newTypeNeedsTags) {
-      form.tags = ''
-      tagsValidationErrors.value = []
+      if (!newTypeNeedsTags) {
+        form.tags = ''
+        tagsValidationErrors.value = []
+      }
     }
-  }
 )
 
 // 对话框关闭时重置表单
@@ -475,11 +483,11 @@ watch(dialogVisible, (val) => {
 
 <template>
   <el-dialog
-    v-model="dialogVisible"
-    :title="t('device.batchOperation')"
-    width="760px"
-    :close-on-click-modal="false"
-    class="batch-operation-dialog-wrapper"
+      v-model="dialogVisible"
+      :title="t('device.batchOperation')"
+      width="760px"
+      :close-on-click-modal="false"
+      class="batch-operation-dialog-wrapper"
   >
     <!-- 步骤指示器 -->
     <div class="steps-container">
@@ -513,15 +521,15 @@ watch(dialogVisible, (val) => {
         </div>
         <div class="operation-type-grid">
           <div
-            v-for="op in operationTypes"
-            :key="op.value"
-            class="operation-type-card"
-            :class="{ selected: form.operationType === op.value }"
-            @click="selectOperationType(op.value)"
+              v-for="op in operationTypes"
+              :key="op.value"
+              class="operation-type-card"
+              :class="{ selected: form.operationType === op.value }"
+              @click="selectOperationType(op.value)"
           >
             <div class="card-icon" :style="{ backgroundColor: op.color + '20', color: op.color }">
               <el-icon :size="24">
-                <component :is="op.icon" />
+                <component :is="op.icon"/>
               </el-icon>
             </div>
             <div class="card-content">
@@ -529,7 +537,9 @@ watch(dialogVisible, (val) => {
               <div class="card-desc">{{ op.description }}</div>
             </div>
             <div v-if="form.operationType === op.value" class="card-check">
-              <el-icon><CircleCheck /></el-icon>
+              <el-icon>
+                <CircleCheck/>
+              </el-icon>
             </div>
           </div>
         </div>
@@ -544,27 +554,57 @@ watch(dialogVisible, (val) => {
           </div>
 
           <div class="params-container">
+            <!-- 产品选择器（按批次操作时需要） -->
+            <div v-if="needProductId" class="param-item">
+              <label class="param-label">
+                <el-icon>
+                  <component :is="Box"></component>
+                </el-icon>
+                {{ t('device.productId') }}
+              </label>
+              <el-select
+                  v-model="form.productId"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="handleProductSearch"
+                  :loading="productSearchLoading"
+                  :placeholder="t('device.productId')"
+                  class="param-input"
+                  @change="handleProductChange"
+              >
+                <el-option
+                    v-for="product in productSearchOptions"
+                    :key="product.id"
+                    :label="product.name"
+                    :value="product.id"
+                />
+              </el-select>
+            </div>
+
             <!-- 批次选择器 -->
             <div v-if="needBatchId" class="param-item">
               <label class="param-label">
-                <el-icon><FolderOpened /></el-icon>
+                <el-icon>
+                  <FolderOpened/>
+                </el-icon>
                 {{ t('device.selectBatch') }}
               </label>
               <el-select
-                v-model="form.batchId"
-                filterable
-                remote
-                reserve-keyword
-                :remote-method="handleBatchSearch"
-                :loading="batchSearchLoading"
-                :placeholder="t('device.selectBatch')"
-                class="param-input"
+                  v-model="form.batchId"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="handleBatchSearch"
+                  :loading="batchSearchLoading"
+                  :placeholder="t('device.selectBatch')"
+                  class="param-input"
               >
                 <el-option
-                  v-for="batch in batchSearchOptions"
-                  :key="batch.id"
-                  :label="batch.batchName"
-                  :value="batch.id"
+                    v-for="batch in batchSearchOptions"
+                    :key="batch.id"
+                    :label="batch.batchName"
+                    :value="batch.id"
                 />
               </el-select>
             </div>
@@ -572,70 +612,64 @@ watch(dialogVisible, (val) => {
             <!-- IMEI输入 -->
             <div v-if="needImeis" class="param-item">
               <label class="param-label">
-                <el-icon><Document /></el-icon>
+                <el-icon>
+                  <Document/>
+                </el-icon>
                 {{ t('device.inputImeis') }}
               </label>
-              <el-input
-                v-model="form.imeisText"
-                type="textarea"
-                :rows="6"
-                :placeholder="t('device.imeisPlaceholder')"
-                class="param-input"
+              <ImeiInputPanel
+                  ref="imeiInputRef"
+                  v-model="form.imeisText"
+                  mode="both"
+                  :max-count="10000"
+                  :disabled="executing"
+                  :placeholder="t('device.imeisPlaceholder')"
+                  class="param-input"
               />
-              <div class="param-actions">
-                <span class="param-tip">{{ t('device.supportedImeiFormats') }}</span>
-                <el-upload
-                  :auto-upload="false"
-                  :show-file-list="false"
-                  :on-change="handleImeiFileUpload"
-                  accept=".txt,.xlsx,.xls"
-                >
-                  <el-button type="primary" link>
-                    <el-icon><Upload /></el-icon>
-                    {{ t('device.uploadImeiFile') }}
-                  </el-button>
-                </el-upload>
-              </div>
             </div>
 
             <!-- 标签编辑器 -->
             <div v-if="needTags" class="param-item">
               <label class="param-label">
-                <el-icon><Edit /></el-icon>
+                <el-icon>
+                  <Edit/>
+                </el-icon>
                 {{ t('device.tags') }}
               </label>
               <JsonFieldEditor
-                v-model="form.tags"
-                dict-type-code="json_schema.device_tags"
-                class="param-input json-editor-wrapper"
-                mode="form"
-                :allow-mode-switch="true"
-                :disabled="executing"
-                @validation-change="handleTagsValidationChange"
+                  v-model="form.tags"
+                  dict-type-code="json_schema.device_tags"
+                  class="param-input json-editor-wrapper"
+                  mode="form"
+                  :allow-mode-switch="true"
+                  :disabled="executing"
+                  @validation-change="handleTagsValidationChange"
               />
             </div>
 
             <!-- 新批次选择器 -->
             <div v-if="needNewBatchId" class="param-item">
               <label class="param-label">
-                <el-icon><FolderOpened /></el-icon>
+                <el-icon>
+                  <FolderOpened/>
+                </el-icon>
                 {{ t('device.selectNewBatch') }}
               </label>
               <el-select
-                v-model="form.newBatchId"
-                filterable
-                remote
-                reserve-keyword
-                :remote-method="handleNewBatchSearch"
-                :loading="newBatchSearchLoading"
-                :placeholder="t('device.selectNewBatch')"
-                class="param-input"
+                  v-model="form.newBatchId"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="handleNewBatchSearch"
+                  :loading="newBatchSearchLoading"
+                  :placeholder="t('device.selectNewBatch')"
+                  class="param-input"
               >
                 <el-option
-                  v-for="batch in newBatchSearchOptions"
-                  :key="batch.id"
-                  :label="batch.batchName"
-                  :value="batch.id"
+                    v-for="batch in newBatchSearchOptions"
+                    :key="batch.id"
+                    :label="batch.batchName"
+                    :value="batch.id"
                 />
               </el-select>
             </div>
@@ -735,7 +769,9 @@ watch(dialogVisible, (val) => {
           <div class="estimate-card">
             <div class="estimate-info">
               <div class="estimate-icon">
-                <el-icon :size="32"><TrendCharts /></el-icon>
+                <el-icon :size="32">
+                  <TrendCharts/>
+                </el-icon>
               </div>
               <div class="estimate-content">
                 <div class="estimate-title">{{ t('device.estimateAffected') }}</div>
@@ -747,12 +783,14 @@ watch(dialogVisible, (val) => {
               </div>
             </div>
             <el-button
-              type="primary"
-              size="large"
-              :loading="estimating"
-              @click="handleEstimate"
+                type="primary"
+                size="large"
+                :loading="estimating"
+                @click="handleEstimate"
             >
-              <el-icon v-if="!estimating"><TrendCharts /></el-icon>
+              <el-icon v-if="!estimating">
+                <TrendCharts/>
+              </el-icon>
               {{ estimating ? '计算中...' : '开始预估' }}
             </el-button>
           </div>
@@ -762,15 +800,24 @@ watch(dialogVisible, (val) => {
       <!-- 步骤4：执行结果 -->
       <Transition name="fade-slide">
         <div v-if="result" class="result-section">
-          <div class="result-card" :class="result.failedCount === 0 ? 'success' : result.successCount > 0 ? 'warning' : 'error'">
+          <div class="result-card"
+               :class="result.failedCount === 0 ? 'success' : result.successCount > 0 ? 'warning' : 'error'">
             <div class="result-icon">
-              <el-icon v-if="result.failedCount === 0" :size="48"><SuccessFilled /></el-icon>
-              <el-icon v-else-if="result.successCount > 0" :size="48"><WarningFilled /></el-icon>
-              <el-icon v-else :size="48"><CircleCloseFilled /></el-icon>
+              <el-icon v-if="result.failedCount === 0" :size="48">
+                <SuccessFilled/>
+              </el-icon>
+              <el-icon v-else-if="result.successCount > 0" :size="48">
+                <WarningFilled/>
+              </el-icon>
+              <el-icon v-else :size="48">
+                <CircleCloseFilled/>
+              </el-icon>
             </div>
             <div class="result-content">
               <div class="result-title">
-                {{ result.failedCount === 0 ? t('device.batchOperationSuccess') : result.successCount > 0 ? t('device.batchOperationPartial') : t('device.batchOperationFailed') }}
+                {{
+                  result.failedCount === 0 ? t('device.batchOperationSuccess') : result.successCount > 0 ? t('device.batchOperationPartial') : t('device.batchOperationFailed')
+                }}
               </div>
               <div class="result-stats">
                 <div class="stat-item">
@@ -799,13 +846,15 @@ watch(dialogVisible, (val) => {
         {{ t('common.cancel') }}
       </el-button>
       <el-button
-        type="primary"
-        :loading="executing"
-        :disabled="!form.operationType"
-        size="large"
-        @click="handleExecute"
+          type="primary"
+          :loading="executing"
+          :disabled="!form.operationType"
+          size="large"
+          @click="handleExecute"
       >
-        <el-icon v-if="!executing"><Check /></el-icon>
+        <el-icon v-if="!executing">
+          <Check/>
+        </el-icon>
         {{ executing ? t('device.executing') : t('device.execute') }}
       </el-button>
     </template>

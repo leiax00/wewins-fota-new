@@ -9,9 +9,15 @@ ADD COLUMN IF NOT EXISTS product_id BIGINT;
 -- 2. 添加字段注释
 COMMENT ON COLUMN device_import_batches.product_id IS '关联的产品ID（导入时指定的产品）';
 
--- 3. 创建索引（支持按产品筛选批次）
-CREATE INDEX IF NOT EXISTS idx_device_import_batches_product_id
-ON device_import_batches(product_id);
+-- 3. 重建唯一键约束 (product_id, batch_name)
+-- 确保同一产品的批次名称唯一
+DROP INDEX IF EXISTS uk_device_import_batches_name;
+ALTER TABLE device_import_batches
+    ADD CONSTRAINT uk_device_import_batches_product_batch
+        UNIQUE (product_id, batch_name);
+
+COMMENT ON CONSTRAINT uk_device_import_batches_product_batch ON device_import_batches
+IS '同一产品的批次名称唯一约束';
 
 -- 4. 数据迁移: 从 devices 表反推 productId
 -- 由于批次是导入快照，我们从属于该批次的设备中获取产品ID

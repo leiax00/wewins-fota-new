@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { UploadProps } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { importDevices, type DeviceImportResult } from '@/api/device'
+import {
+  executeImportDevices,
+  type DeviceImportResult,
+} from '@/api/device'
 import { searchProducts, type ProductItem } from '@/api/product'
+import ImeiInputPanel from '@/components/imei-input/ImeiInputPanel.vue'
 
 const { t } = useI18n()
 
@@ -23,16 +26,15 @@ const dialogVisible = computed({
 })
 
 const uploading = ref(false)
-const uploadPercent = ref(0)
 const uploadResult = ref<DeviceImportResult | null>(null)
 const uploadError = ref('')
 
+const imeiInputRef = ref()
+const imeisText = ref('')
 const formRef = ref()
-const uploadRef = ref()
 const form = reactive({
   productId: undefined as number | undefined,
   batchName: '',
-  file: null as File | null,
 })
 
 const productSearchOptions = ref<ProductItem[]>([])
@@ -42,32 +44,6 @@ let productSearchTimer: number | null = null
 
 const formRules = {
   productId: [{ required: true, message: t('device.productIdRequired'), trigger: 'change' }],
-  file: [
-    {
-      validator: (_rule: unknown, value: File | null, callback: (error?: Error) => void) => {
-        if (!value) {
-          callback(new Error(t('device.fileRequired')))
-          return
-        }
-        // 检查文件大小 10MB
-        const maxSize = 10 * 1024 * 1024
-        if (value.size > maxSize) {
-          callback(new Error(t('device.fileSizeExceeded')))
-          return
-        }
-        // 检查文件格式
-        const fileName = value.name.toLowerCase()
-        const allowedExtensions = ['.xlsx', '.xls', '.txt']
-        const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
-        if (!isValidExtension) {
-          callback(new Error(t('device.fileFormatInvalid')))
-          return
-        }
-        callback()
-      },
-      trigger: 'change',
-    },
-  ],
 }
 
 /**
@@ -83,7 +59,6 @@ const handleProductSearch = async (keyword: string) => {
   productSearchTimer = window.setTimeout(async () => {
     productSearchLoading.value = true
     try {
-      // 空字符串时也会搜索，返回所有产品
       const result = await searchProducts(trimmedKeyword)
       productSearchOptions.value = result.records || []
     } finally {
@@ -93,54 +68,12 @@ const handleProductSearch = async (keyword: string) => {
 }
 
 /**
- * 产品选择框获得焦点时触发搜索（加载前20个产品）
+ * 产品选择框获得焦点时触发搜索
  */
 const handleProductFocus = () => {
   if (productSearchOptions.value.length === 0 && !productSearchLoading.value) {
     handleProductSearch('')
   }
-}
-
-/**
- * 文件选择变化
- */
-const handleFileChange: UploadProps['onChange'] = (uploadFile) => {
-  if (uploadFile.raw) {
-    form.file = uploadFile.raw
-    formRef.value?.validateField('file')
-  }
-}
-
-/**
- * 文件移除
- */
-const handleFileRemove = () => {
-  form.file = null
-  uploadResult.value = null
-  uploadError.value = ''
-}
-
-/**
- * 清理上传组件的文件列表
- */
-const clearUploadFiles = () => {
-  uploadRef.value?.clearFiles()
-  form.file = null
-}
-
-/**
- * 上传前校验
- */
-const beforeUpload: UploadProps['beforeUpload'] = () => {
-  if (!form.productId) {
-    ElMessage.warning(t('device.productIdRequired'))
-    return false
-  }
-  if (!form.file) {
-    ElMessage.warning(t('device.fileRequired'))
-    return false
-  }
-  return true
 }
 
 /**
@@ -153,24 +86,29 @@ const handleImport = async () => {
     return
   }
 
-  if (!form.file) {
-    ElMessage.warning(t('device.fileRequired'))
+  if (!form.productId) {
+    ElMessage.warning(t('device.productIdRequired'))
+    return
+  }
+
+  const imeis = imeiInputRef.value?.getImeis()
+  if (!imeis || imeis.length === 0) {
+    ElMessage.warning(t('device.noValidImei'))
     return
   }
 
   uploading.value = true
-  uploadPercent.value = 0
   uploadResult.value = null
   uploadError.value = ''
 
   try {
-    const result = await importDevices({
-      file: form.file,
-      productId: form.productId!,
+    const result = await executeImportDevices({
+      imeis,
+      productId: form.productId,
       batchName: form.batchName || undefined,
+      sourceFile: imeiInputRef.value?.getSourceName(),
     })
 
-    uploadPercent.value = 100
     uploadResult.value = result
 
     if (result.status === 'SUCCESS') {
@@ -181,8 +119,8 @@ const handleImport = async () => {
       ElMessage.error(t('device.importFailed'))
     }
 
-    // 清理文件
-    clearUploadFiles()
+    // 清空输入
+    imeiInputRef.value?.clearInput()
     emit('success')
   } catch (error: any) {
     uploadError.value = error?.message || t('device.importFailed')
@@ -206,15 +144,13 @@ const handleClose = () => {
  * 对话框关闭后重置
  */
 const handleClosed = () => {
-  // 清理上传组件文件列表
-  clearUploadFiles()
   formRef.value?.resetFields()
   form.productId = undefined
   form.batchName = ''
-  uploadPercent.value = 0
   uploadResult.value = null
   uploadError.value = ''
   productSearchOptions.value = []
+  imeiInputRef.value?.clearInput()
 }
 
 /**
@@ -254,7 +190,7 @@ const getStatusText = (status: string) => {
   <el-dialog
     :model-value="dialogVisible"
     :title="t('device.import')"
-    width="600px"
+    width="700px"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     @close="handleClose"
@@ -306,84 +242,54 @@ const getStatusText = (status: string) => {
       </el-form-item>
 
       <el-form-item
-        prop="file"
-        :label="t('device.uploadFile')"
+        required
+        :label="t('device.inputImeis')"
       >
-        <el-upload
-          ref="uploadRef"
-          :auto-upload="false"
-          :show-file-list="true"
-          :limit="1"
-          :on-change="handleFileChange"
-          :on-remove="handleFileRemove"
-          :before-upload="beforeUpload"
+        <ImeiInputPanel
+          ref="imeiInputRef"
+          v-model="imeisText"
+          mode="both"
+          :max-count="100000"
           :disabled="uploading"
-          drag
-        >
-          <div class="el-upload__text">
-            {{ t('device.uploadTip') }}
-          </div>
-          <template #tip>
-            <div class="el-upload__tip">
-              {{ t('device.supportedFormats') }}
-            </div>
-          </template>
-        </el-upload>
+          :placeholder="t('device.imeisPlaceholder')"
+        />
       </el-form-item>
 
-      <!-- 导入进度 -->
+      <!-- 导入结果 -->
       <div
-        v-if="uploading || uploadResult"
-        class="mb-4"
+        v-if="uploadResult"
+        class="result-panel"
       >
-        <div class="text-sm font-medium mb-2">
-          {{ t('device.importProgress') }}
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-sm font-medium">{{ t('device.importResult') }}:</span>
+          <el-tag
+            :type="getStatusType(uploadResult.status)"
+            size="small"
+          >
+            {{ getStatusText(uploadResult.status) }}
+          </el-tag>
         </div>
 
-        <!-- 进度条 -->
-        <el-progress
-          v-if="uploading"
-          :percentage="uploadPercent"
-          :status="uploadError ? 'exception' : undefined"
-          :indeterminate="uploading && uploadPercent === 0"
-        />
+        <div class="grid grid-cols-3 gap-4 text-sm">
+          <div class="result-item">
+            <span class="text-gray-500">{{ t('device.totalDevices') }}:</span>
+            <span class="ml-1 font-medium">{{ uploadResult.totalCount }}</span>
+          </div>
+          <div class="result-item">
+            <span class="text-gray-500">{{ t('device.successCount') }}:</span>
+            <span class="ml-1 font-medium text-green-600">{{ uploadResult.successCount }}</span>
+          </div>
+          <div class="result-item">
+            <span class="text-gray-500">{{ t('device.failedCount') }}:</span>
+            <span class="ml-1 font-medium text-red-600">{{ uploadResult.failedCount }}</span>
+          </div>
+        </div>
 
-        <!-- 结果展示 -->
         <div
-          v-if="uploadResult"
-          class="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded"
+          v-if="uploadResult.errorMessage"
+          class="mt-3 text-sm text-red-600"
         >
-          <div class="flex items-center gap-2 mb-2">
-            <span class="text-sm font-medium">{{ t('device.importResult') }}:</span>
-            <el-tag
-              :type="getStatusType(uploadResult.status)"
-              size="small"
-            >
-              {{ getStatusText(uploadResult.status) }}
-            </el-tag>
-          </div>
-
-          <div class="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <span class="text-gray-500">{{ t('device.totalDevices') }}:</span>
-              <span class="ml-1 font-medium">{{ uploadResult.totalCount }}</span>
-            </div>
-            <div>
-              <span class="text-gray-500">{{ t('device.successCount') }}:</span>
-              <span class="ml-1 font-medium text-green-600">{{ uploadResult.successCount }}</span>
-            </div>
-            <div>
-              <span class="text-gray-500">{{ t('device.failedCount') }}:</span>
-              <span class="ml-1 font-medium text-red-600">{{ uploadResult.failedCount }}</span>
-            </div>
-          </div>
-
-          <div
-            v-if="uploadResult.errorMessage"
-            class="mt-2 text-sm text-red-600"
-          >
-            {{ uploadResult.errorMessage }}
-          </div>
+          {{ uploadResult.errorMessage }}
         </div>
       </div>
     </el-form>
@@ -393,7 +299,7 @@ const getStatusText = (status: string) => {
         :disabled="uploading"
         @click="handleClose"
       >
-        {{ uploading ? t('device.importing') : t('common.cancel') }}
+        {{ t('common.cancel') }}
       </el-button>
       <el-button
         type="primary"
@@ -405,3 +311,17 @@ const getStatusText = (status: string) => {
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.result-panel {
+  padding: 16px;
+  margin-top: 16px;
+  background: var(--el-fill-color-light);
+  border-radius: 4px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+}
+</style>
