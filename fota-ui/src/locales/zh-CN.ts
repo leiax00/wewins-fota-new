@@ -395,6 +395,7 @@ export default {
     availableFields: '可选字段',
     formatJson: '格式化 JSON',
     noContentToFormat: '没有可格式化的内容',
+    editField: "编辑字段",
     i18nField: {
       localeCount: '{count} 个语言',
       expand: '展开',

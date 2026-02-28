@@ -395,6 +395,7 @@ export default {
     availableFields: 'Available Fields',
     formatJson: 'Format JSON',
     noContentToFormat: 'No content to format',
+    editField: "Edit Filed",
     i18nField: {
       localeCount: '{count} locales',
       expand: 'Expand',
