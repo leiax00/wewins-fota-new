@@ -122,22 +122,6 @@ export const validateBySchema = (
         break
       }
 
-      case 'textarea': {
-        if (typeof value !== 'string') {
-          errors.push(`jsonField.errorTypeString::${field.key}`)
-          break
-        }
-
-        // 长度校验
-        if (schema.validator?.minLength !== undefined && value.length < schema.validator.minLength) {
-          errors.push(`jsonField.errorMinLength::${field.key}::${schema.validator.minLength}`)
-        }
-        if (schema.validator?.maxLength !== undefined && value.length > schema.validator.maxLength) {
-          errors.push(`jsonField.errorMaxLength::${field.key}::${schema.validator.maxLength}`)
-        }
-        break
-      }
-
       case 'i18n': {
         if (typeof value !== 'object' || value === null || Array.isArray(value)) {
           errors.push(`jsonField.errorMustObject::${field.key}`)
