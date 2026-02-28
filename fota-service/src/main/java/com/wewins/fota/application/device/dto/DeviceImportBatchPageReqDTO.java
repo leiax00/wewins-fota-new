@@ -2,6 +2,7 @@ package com.wewins.fota.application.device.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 /**
@@ -17,6 +18,12 @@ public class DeviceImportBatchPageReqDTO {
      * 批次名称（模糊查询）
      */
     private String batchName;
+
+    /**
+     * 关联的产品ID
+     */
+    @Positive(message = "产品ID必须为正数")
+    private Long productId;
 
     /**
      * 批次状态

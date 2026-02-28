@@ -35,12 +35,17 @@ public class DeviceImportBatchRepositoryImpl implements DeviceImportBatchReposit
     }
 
     @Override
-    public Page<DeviceImportBatch> pageBatches(Page<DeviceImportBatch> page, String batchName, String status) {
+    public Page<DeviceImportBatch> pageBatches(Page<DeviceImportBatch> page, String batchName, Long productId, String status) {
         LambdaQueryWrapper<DeviceImportBatch> queryWrapper = new LambdaQueryWrapper<>();
 
         // 批次名称模糊查询
         if (StringUtils.isNotBlank(batchName)) {
             queryWrapper.like(DeviceImportBatch::getBatchName, batchName.trim());
+        }
+
+        // 产品ID精确查询
+        if (productId != null) {
+            queryWrapper.eq(DeviceImportBatch::getProductId, productId);
         }
 
         // 状态精确查询

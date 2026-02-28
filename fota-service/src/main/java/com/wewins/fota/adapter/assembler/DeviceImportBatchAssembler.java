@@ -20,12 +20,25 @@ public class DeviceImportBatchAssembler {
      * @return 响应 DTO
      */
     public DeviceImportBatchRespDTO toDeviceImportBatchResp(DeviceImportBatch batch) {
+        return toDeviceImportBatchResp(batch, null);
+    }
+
+    /**
+     * 将 DeviceImportBatch 实体转换为 DeviceImportBatchRespDTO
+     *
+     * @param batch 批次实体
+     * @param productName 产品名称（可选）
+     * @return 响应 DTO
+     */
+    public DeviceImportBatchRespDTO toDeviceImportBatchResp(DeviceImportBatch batch, String productName) {
         if (batch == null) {
             return null;
         }
         return DeviceImportBatchRespDTO.builder()
                 .id(batch.getId())
                 .batchName(batch.getBatchName())
+                .productId(batch.getProductId())
+                .productName(productName)
                 .status(batch.getStatus())
                 .totalCount(batch.getTotalCount())
                 .successCount(batch.getSuccessCount())

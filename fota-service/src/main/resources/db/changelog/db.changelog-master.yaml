@@ -241,3 +241,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260228_01_add_product_id_to_device_import_batches
+      author: fota-team
+      comment: "为设备导入批次表添加 product_id 字段，支持追溯批次属于哪个产品"
+      changes:
+        - sqlFile:
+            path: changes/20260228_01_add_product_id_to_device_import_batches.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

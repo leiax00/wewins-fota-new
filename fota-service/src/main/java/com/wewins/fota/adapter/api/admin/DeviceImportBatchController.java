@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -75,14 +76,33 @@ public class DeviceImportBatchController {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询设备导入批次: batchName={}, status={}, page={}, size={}",
-                    reqDTO.getBatchName(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询设备导入批次: batchName={}, productId={}, status={}, page={}, size={}",
+                    reqDTO.getBatchName(), reqDTO.getProductId(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
         try {
             Page<DeviceImportBatch> pageResult = deviceImportBatchAppService.pageBatches(reqDTO);
+
+            // 提取所有产品ID
+            Set<Long> productIds = pageResult.getRecords().stream()
+                    .map(DeviceImportBatch::getProductId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // 批量查询产品名称（仅在有产品ID时执行）
+            Map<Long, String> productNameMap;
+            if (!productIds.isEmpty()) {
+                productNameMap = referenceNameResolver.resolveProductNames(productIds);
+            } else {
+                productNameMap = Collections.emptyMap();
+            }
+
+            // 转换为DTO并填充产品名称
             List<DeviceImportBatchRespDTO> records = pageResult.getRecords().stream()
-                    .map(deviceImportBatchAssembler::toDeviceImportBatchResp)
+                    .map(batch -> deviceImportBatchAssembler.toDeviceImportBatchResp(
+                            batch,
+                            productNameMap.get(batch.getProductId())
+                    ))
                     .toList();
 
             PageResponse<DeviceImportBatchRespDTO> response = PageResponse.of(
@@ -120,7 +140,16 @@ public class DeviceImportBatchController {
 
         try {
             DeviceImportBatch batch = deviceImportBatchAppService.getById(id);
-            DeviceImportBatchRespDTO respDTO = deviceImportBatchAssembler.toDeviceImportBatchResp(batch);
+
+            // 查询产品名称
+            String productName = null;
+            if (batch.getProductId() != null) {
+                Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(
+                        Set.of(batch.getProductId()));
+                productName = productNameMap.get(batch.getProductId());
+            }
+
+            DeviceImportBatchRespDTO respDTO = deviceImportBatchAssembler.toDeviceImportBatchResp(batch, productName);
             return ApiResponse.success(respDTO);
         } catch (BizException e) {
             log.warn("获取设备导入批次详情失败: batchId={}, errorCode={}, message={}", id, e.getCode(), e.getMessage());

@@ -107,27 +107,18 @@ public class BatchOperationReqDTO {
                     throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "IMEI列表不能为空");
                 }
             }
-            case UPDATE_TAG_BY_QUERY, UPDATE_BATCH_BY_QUERY -> {
-                // 查询条件至少要有一个
-                if (productId == null && (imeiKeyword == null || imeiKeyword.isBlank())
-                        && (status == null || status.isBlank()) && importBatchId == null) {
-                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "查询条件不能为空，请至少选择一个筛选条件");
-                }
-            }
             default -> throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "不支持的操作类型: " + operationType);
         }
 
         // 验证操作参数
         if (operationType == BatchOperationType.UPDATE_TAG_BY_BATCH
-                || operationType == BatchOperationType.UPDATE_TAG_BY_IMEI
-                || operationType == BatchOperationType.UPDATE_TAG_BY_QUERY) {
+                || operationType == BatchOperationType.UPDATE_TAG_BY_IMEI) {
             if (tags == null || tags.isBlank()) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "标签内容不能为空");
             }
         }
 
-        if (operationType == BatchOperationType.UPDATE_BATCH_BY_IMEI
-                || operationType == BatchOperationType.UPDATE_BATCH_BY_QUERY) {
+        if (operationType == BatchOperationType.UPDATE_BATCH_BY_IMEI) {
             if (newBatchId == null) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "新批次ID不能为空");
             }

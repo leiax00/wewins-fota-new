@@ -214,6 +214,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
         // 创建批次记录
         DeviceImportBatch batch = DeviceImportBatch.builder()
                 .batchName(batchName)
+                .productId(productId)
                 .status("IMPORTING")
                 .sourceFile(file.getOriginalFilename())
                 .totalCount(0)
@@ -414,7 +415,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
                 failedCount = totalCount - deleted;
                 log.info("批量删除完成: 总数={}, 成功={}, 失败={}", totalCount, successCount, failedCount);
             }
-            case UPDATE_TAG_BY_BATCH, UPDATE_TAG_BY_IMEI, UPDATE_TAG_BY_QUERY -> {
+            case UPDATE_TAG_BY_BATCH, UPDATE_TAG_BY_IMEI -> {
                 // 验证JSON格式
                 try {
                     objectMapper.readTree(reqDTO.getTags());
@@ -427,7 +428,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
                 successCount = deviceIds.size();
                 log.info("批量更新标签完成: 总数={}, 成功={}", totalCount, successCount);
             }
-            case UPDATE_BATCH_BY_IMEI, UPDATE_BATCH_BY_QUERY -> {
+            case UPDATE_BATCH_BY_IMEI -> {
                 // 验证新批次存在
                 deviceImportBatchRepository.findById(reqDTO.getNewBatchId())
                         .orElseThrow(() -> new BizException(ErrorCode.BAD_REQUEST.getCode(), "目标批次不存在"));

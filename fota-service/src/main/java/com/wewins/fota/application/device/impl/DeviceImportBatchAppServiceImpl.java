@@ -34,11 +34,11 @@ public class DeviceImportBatchAppServiceImpl implements DeviceImportBatchAppServ
         Page<DeviceImportBatch> page = new Page<>(reqDTO.getPage(), reqDTO.getSize());
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询设备导入批次: batchName={}, status={}, page={}, size={}",
-                    reqDTO.getBatchName(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询设备导入批次: batchName={}, productId={}, status={}, page={}, size={}",
+                    reqDTO.getBatchName(), reqDTO.getProductId(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
         }
 
-        return deviceImportBatchRepository.pageBatches(page, reqDTO.getBatchName(), reqDTO.getStatus());
+        return deviceImportBatchRepository.pageBatches(page, reqDTO.getBatchName(), reqDTO.getProductId(), reqDTO.getStatus());
     }
 
     @Override

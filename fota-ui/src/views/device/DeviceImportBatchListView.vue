@@ -9,6 +9,7 @@ import {
   type DeviceImportBatchItem,
   type DeviceItem,
 } from '@/api/deviceImportBatch'
+import { searchProducts, type ProductItem } from '@/api/product'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -20,10 +21,31 @@ const query = reactive({
   page: 1,
   size: 20,
   batchName: '',
+  productId: undefined as number | undefined,
   status: undefined as 'IMPORTING' | 'SUCCESS' | 'FAILED' | 'PARTIAL' | undefined,
 })
 
 const canRead = computed(() => userStore.hasPermission('fota:device:read'))
+
+// 产品列表（用于筛选）
+const products = ref<ProductItem[]>([])
+const productsLoading = ref(false)
+
+/**
+ * 获取产品列表
+ */
+const fetchProducts = async () => {
+  productsLoading.value = true
+  try {
+    const result = await searchProducts('')
+    products.value = result.records || []
+  } catch (error) {
+    console.error('获取产品列表失败:', error)
+    products.value = []
+  } finally {
+    productsLoading.value = false
+  }
+}
 
 // 批次状态选项
 const statusOptions: Array<{ value: string; label: string; type: string }> = [
@@ -93,6 +115,7 @@ const handleFilterChange = () => {
 const resetSearch = () => {
   query.page = 1
   query.batchName = ''
+  query.productId = undefined
   query.status = undefined
   void fetchList()
 }
@@ -143,6 +166,7 @@ const closeDrawer = () => {
 }
 
 onMounted(() => {
+  void fetchProducts()
   void fetchList()
 })
 </script>
@@ -158,6 +182,21 @@ onMounted(() => {
           style="width: 180px"
           @keyup.enter="handleSearch"
         />
+        <el-select
+          v-model="query.productId"
+          :placeholder="t('device.productId')"
+          clearable
+          filterable
+          style="width: 180px"
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="product in products"
+            :key="product.id"
+            :label="product.name"
+            :value="product.id"
+          />
+        </el-select>
         <el-select
           v-model="query.status"
           :placeholder="t('device.status')"
@@ -191,6 +230,15 @@ onMounted(() => {
         :label="t('device.batchName')"
         min-width="180"
       />
+      <el-table-column
+        :label="t('device.productId')"
+        prop="productId"
+        min-width="150"
+      >
+        <template #default="{ row }">
+          {{ row.productName || '-' }}
+        </template>
+      </el-table-column>
       <el-table-column
         prop="status"
         :label="t('device.status')"

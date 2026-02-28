@@ -41,6 +41,15 @@ public class DeviceImportBatch extends BaseEntity implements Serializable {
     private String batchName;
 
     /**
+     * 关联的产品ID（导入时指定的产品）
+     * <p>
+     * 用于追溯批次属于哪个产品，支持按产品筛选批次。
+     * 批次表是导入快照，此字段记录导入时的产品，不随设备变化而变化。
+     * </p>
+     */
+    private Long productId;
+
+    /**
      * 批次状态
      * <p>
      * 可选值：

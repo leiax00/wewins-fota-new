@@ -27,10 +27,11 @@ public interface DeviceImportBatchRepository {
      *
      * @param page 分页对象
      * @param batchName 批次名称（模糊查询）
+     * @param productId 产品ID
      * @param status 批次状态
      * @return 分页结果
      */
-    Page<DeviceImportBatch> pageBatches(Page<DeviceImportBatch> page, String batchName, String status);
+    Page<DeviceImportBatch> pageBatches(Page<DeviceImportBatch> page, String batchName, Long productId, String status);
 
     /**
      * 批量查询批次列表

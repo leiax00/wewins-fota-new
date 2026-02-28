@@ -26,6 +26,16 @@ public class DeviceImportBatchRespDTO {
     private String batchName;
 
     /**
+     * 关联的产品ID
+     */
+    private Long productId;
+
+    /**
+     * 关联的产品名称
+     */
+    private String productName;
+
+    /**
      * 批次状态
      */
     private String status;

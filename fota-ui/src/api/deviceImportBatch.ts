@@ -13,6 +13,8 @@ export type BatchStatus = 'IMPORTING' | 'SUCCESS' | 'FAILED' | 'PARTIAL'
 export interface DeviceImportBatchItem {
   id: number
   batchName: string
+  productId?: number
+  productName?: string
   status: BatchStatus
   totalCount: number
   successCount: number
@@ -28,6 +30,7 @@ export interface DeviceImportBatchItem {
 
 export interface DeviceImportBatchPageParams {
   batchName?: string
+  productId?: number
   status?: BatchStatus
   page?: number
   size?: number
