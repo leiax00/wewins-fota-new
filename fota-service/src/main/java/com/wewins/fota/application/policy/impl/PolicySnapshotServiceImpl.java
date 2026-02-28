@@ -10,9 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.StreamSupport;
 
 /**
  * 策略快照应用服务实现
@@ -269,12 +268,12 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
             return List.of();
         }
 
-        return java.util.stream.StreamSupport.stream(
-                        java.util.Spliterators.spliteratorUnknownSize(
+        return StreamSupport.stream(
+                        Spliterators.spliteratorUnknownSize(
                                 policy.getSourceVersions().fieldNames(),
-                                java.util.Spliterator.ORDERED),
-                        false)
-                .mapToLong(fieldName -> {
+                                Spliterator.ORDERED),
+                        false
+                ).mapToLong(fieldName -> {
                     try {
                         return policy.getSourceVersions().get(fieldName).asLong();
                     } catch (Exception e) {
