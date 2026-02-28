@@ -269,7 +269,11 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
             return List.of();
         }
 
-        return policy.getSourceVersions().fieldNames()
+        return java.util.stream.StreamSupport.stream(
+                        java.util.Spliterators.spliteratorUnknownSize(
+                                policy.getSourceVersions().fieldNames(),
+                                java.util.Spliterator.ORDERED),
+                        false)
                 .mapToLong(fieldName -> {
                     try {
                         return policy.getSourceVersions().get(fieldName).asLong();

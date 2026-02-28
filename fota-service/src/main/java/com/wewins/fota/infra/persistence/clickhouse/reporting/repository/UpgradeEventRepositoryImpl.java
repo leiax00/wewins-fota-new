@@ -33,9 +33,9 @@ public class UpgradeEventRepositoryImpl implements UpgradeEventRepository {
     private final FallbackEventStorage fallbackEventStorage;
 
     @Override
-    public void insertCheckLog(DeviceCheckLog log) {
+    public void insertCheckLog(DeviceCheckLog checkLog) {
         try {
-            deviceCheckLogMapper.insert(log);
+            deviceCheckLogMapper.insert(checkLog);
         } catch (Exception e) {
             log.error("写入 ClickHouse 失败（检查日志），尝试降级存储", e);
             // 检查日志暂不支持降级，记录日志即可

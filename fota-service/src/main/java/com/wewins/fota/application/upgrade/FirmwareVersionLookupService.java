@@ -161,10 +161,10 @@ public class FirmwareVersionLookupService {
 
         java.util.Map<String, Long> result = new java.util.HashMap<>();
         for (VersionTagPair pair : versionTagPairs) {
-            Long versionId = findVersionId(pair.getVersion(), pair.getTag(), productId);
+            Long versionId = findVersionId(pair.version, pair.tag, productId);
             if (versionId != null) {
                 // 使用 version 作为 key，因为 version 是业务主键
-                result.put(pair.getVersion(), versionId);
+                result.put(pair.version, versionId);
             }
         }
         return result;

@@ -144,12 +144,10 @@ public class UpgradeCheckService {
 
         // TODO: 实现灰度检查、时间窗口检查、配额检查
         // 当前选择优先级最高的策略
-        UpgradePolicy policy = policies.get(0);
+        UpgradePolicy policy = policies.getFirst();
 
         // 6. 构建响应（使用 UpgradeResponseBuilder）
-        CheckResult result = buildCheckResult(device, policy, null, auto);
-
-        return result;
+        return buildCheckResult(device, policy, null, auto == 1);
     }
 
     /**
@@ -239,9 +237,7 @@ public class UpgradeCheckService {
         UpgradePolicy policy = policies.get(0);
 
         // 9. 构建响应（支持 lang 和 auto 参数）
-        CheckResult result = upgradeResponseBuilder.buildResponse(device, policy, lang, auto);
-
-        return result;
+        return upgradeResponseBuilder.buildResponse(device, policy, lang, auto == 1);
     }
 
     /**
