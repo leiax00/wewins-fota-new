@@ -115,7 +115,7 @@ class UpgradeCheckServiceGrayTest {
             when(dataIntegrityService.isProductActive(any())).thenReturn(true);
             when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 50)).thenReturn(true); // 命中灰度
-            when(policyMatcher.matchesDeviceTags(any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
@@ -144,7 +144,7 @@ class UpgradeCheckServiceGrayTest {
             when(dataIntegrityService.isProductActive(any())).thenReturn(true);
             when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 10)).thenReturn(false); // 未命中灰度
-            when(policyMatcher.matchesDeviceTags(any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
@@ -172,7 +172,7 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(List.of(policy));
             when(dataIntegrityService.isProductActive(any())).thenReturn(true);
             when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
-            when(policyMatcher.matchesDeviceTags(any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
@@ -200,7 +200,7 @@ class UpgradeCheckServiceGrayTest {
             when(dataIntegrityService.isProductActive(any())).thenReturn(true);
             when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 100)).thenReturn(true); // 100% 应该返回 true
-            when(policyMatcher.matchesDeviceTags(any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
@@ -226,7 +226,7 @@ class UpgradeCheckServiceGrayTest {
             when(dataIntegrityService.isProductActive(any())).thenReturn(true);
             when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 0)).thenReturn(false); // 0% 应该返回 false
-            when(policyMatcher.matchesDeviceTags(any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);

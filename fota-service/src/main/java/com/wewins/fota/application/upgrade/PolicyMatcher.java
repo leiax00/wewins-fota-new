@@ -2,15 +2,13 @@ package com.wewins.fota.application.upgrade;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 /**
@@ -25,6 +23,114 @@ import java.time.format.DateTimeParseException;
 @Slf4j
 @Component
 public class PolicyMatcher {
+
+    /**
+     * 目标模式常量
+     */
+    private static final String TARGET_MODE_ALL = "ALL";
+    private static final String TARGET_MODE_DEVICE_IDS = "DEVICE_IDS";
+    private static final String TARGET_MODE_DEVICE_BATCHES = "DEVICE_BATCHES";
+    private static final String TARGET_MODE_DEVICE_TAGS = "DEVICE_TAGS";
+
+    /**
+     * 目标模式匹配 - 根据策略的 targetMode 选择对应的设备筛选逻辑
+     * <p>
+     * 支持四种目标模式：
+     * </p>
+     * <ul>
+     *   <li>ALL：全量设备 - 直接通过</li>
+     *   <li>DEVICE_IDS：按 IMEI 列表筛选</li>
+     *   <li>DEVICE_BATCHES：按批次筛选</li>
+     *   <li>DEVICE_TAGS：按标签筛选</li>
+     * </ul>
+     *
+     * @param policy        策略
+     * @param deviceImei    设备 IMEI
+     * @param deviceBatchId 设备导入批次 ID
+     * @param deviceTags    设备标签
+     * @return true 如果设备匹配策略的目标模式
+     */
+    public boolean matchesTargetMode(
+            UpgradePolicy policy,
+            String deviceImei,
+            Long deviceBatchId,
+            JsonNode deviceTags
+    ) {
+        String targetMode = policy.getTargetMode();
+        JsonNode targetImeis = policy.getTargetImeis();
+        JsonNode targetDeviceBatchIds = policy.getTargetDeviceBatchIds();
+        JsonNode targetDeviceTags = policy.getTargetDeviceTags();
+
+        // targetMode 为空时默认为 ALL
+        String mode = (targetMode == null || targetMode.isBlank()) ? TARGET_MODE_ALL : targetMode.toUpperCase();
+
+        return switch (mode) {
+            case TARGET_MODE_ALL -> true;
+            case TARGET_MODE_DEVICE_IDS -> matchesDeviceIds(targetImeis, deviceImei);
+            case TARGET_MODE_DEVICE_BATCHES -> matchesDeviceBatches(targetDeviceBatchIds, deviceBatchId);
+            case TARGET_MODE_DEVICE_TAGS -> matchesDeviceTags(targetDeviceTags, deviceTags);
+            default -> {
+                log.warn("未知的目标模式: {}, 默认通过", mode);
+                yield true;
+            }
+        };
+    }
+
+    /**
+     * IMEI 列表匹配
+     *
+     * @param targetImeis 策略指定的 IMEI 列表
+     * @param deviceImei  设备 IMEI
+     * @return true 如果设备 IMEI 在列表中
+     */
+    private boolean matchesDeviceIds(JsonNode targetImeis, String deviceImei) {
+        if (targetImeis == null || !targetImeis.isArray() || targetImeis.isEmpty()) {
+            log.debug("策略未指定目标 IMEI 列表，不匹配");
+            return false;
+        }
+
+        if (deviceImei == null || deviceImei.isBlank()) {
+            log.debug("设备 IMEI 为空，不匹配");
+            return false;
+        }
+
+        for (JsonNode node : targetImeis) {
+            if (deviceImei.equals(node.asText())) {
+                return true;
+            }
+        }
+
+        log.debug("设备 IMEI 不在目标列表中: deviceImei={}", deviceImei);
+        return false;
+    }
+
+    /**
+     * 批次列表匹配
+     *
+     * @param targetBatchIds 策略指定的批次 ID 列表
+     * @param deviceBatchId  设备导入批次 ID
+     * @return true 如果设备批次在列表中
+     */
+    private boolean matchesDeviceBatches(JsonNode targetBatchIds, Long deviceBatchId) {
+        if (targetBatchIds == null || !targetBatchIds.isArray() || targetBatchIds.isEmpty()) {
+            log.debug("策略未指定目标批次列表，不匹配");
+            return false;
+        }
+
+        if (deviceBatchId == null) {
+            log.debug("设备批次 ID 为空，不匹配");
+            return false;
+        }
+
+        for (JsonNode node : targetBatchIds) {
+            if (deviceBatchId.equals(node.asLong())) {
+                return true;
+            }
+        }
+
+        log.debug("设备批次不在目标列表中: deviceBatchId={}", deviceBatchId);
+        return false;
+    }
 
     /**
      * 标签匹配 - 使用 JSONB 查询

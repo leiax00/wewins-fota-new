@@ -13,7 +13,6 @@ import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
@@ -239,19 +238,20 @@ public class UpgradeCheckService {
         List<UpgradePolicy> policies = upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(
                 device.getProductId(), isTestDevice);
 
-        // 获取设备标签（用于 env 标签匹配）
+        // 获取设备标签（用于 env 标签匹配和 targetMode=DEVICE_TAGS）
         JsonNode deviceTags = device.getTags();
 
         // 过滤策略
         final JsonNode finalTags = augmentTagsWithDevMode(deviceTags, dev);
         final Long finalVersionId = versionId;
         final String imei = device.getImei();
+        final Long batchId = device.getImportBatchId();
 
         return policies.stream()
-                .filter(policy -> matchesDevMode(policy, finalTags))
+                .filter(policy -> matchesDevMode(policy, isTestDevice))
                 .filter(policy -> matchesTriggerMode(policy, auto))
                 .filter(policy -> matchesSourceVersion(policy, finalVersionId))
-                .filter(policy -> policyMatcher.matchesDeviceTags(policy.getTargetDeviceTags(), finalTags))
+                .filter(policy -> policyMatcher.matchesTargetMode(policy, imei, batchId, finalTags))
                 .filter(policy -> policyMatcher.matchesTimeWindow(policy.getTimeWindow()))
                 .filter(policy -> matchesGrayRelease(policy, imei))
                 .toList();
@@ -326,16 +326,11 @@ public class UpgradeCheckService {
      * dev 参数匹配：dev=1 临时标注为测试设备
      *
      * @param policy        升级策略
-     * @param dev           临时测试设备标识
-     * @param augmentedTags 增强后的设备标签
+     * @param isTestDevice           是否是测试设备
      * @return true 如果匹配
      */
-    private boolean matchesDevMode(UpgradePolicy policy, JsonNode augmentedTags) {
+    private boolean matchesDevMode(UpgradePolicy policy, boolean isTestDevice) {
         PolicyStatus status = policy.getStatus();
-        String actualEnv = augmentedTags == null || augmentedTags.isNull()
-                ? null : augmentedTags.path("env").asText();
-        boolean isTestDevice = "test".equalsIgnoreCase(actualEnv) || "dev".equalsIgnoreCase(actualEnv);
-
         return isTestDevice || status == PolicyStatus.ACTIVE;
     }
 
@@ -375,31 +370,11 @@ public class UpgradeCheckService {
      */
     private boolean matchesGrayRelease(UpgradePolicy policy, String imei) {
         Integer grayRate = policy.getGrayRate();
-        if (grayRate == null) {
+        if (grayRate == null || grayRate == 100) {
             return true; // 没有灰度限制，全量匹配
         }
 
         return grayReleaseService.hitsGrayBucket(imei, grayRate);
-    }
-
-    /**
-     * 设备标签匹配
-     * <p>
-     * 检查设备标签是否满足策略的 targetDeviceTags 要求
-     * </p>
-     * <p>业务规则（AND 逻辑）：</p>
-     * <ul>
-     *   <li>策略没有标签要求 → 匹配</li>
-     *   <li>设备没有标签且策略有要求 → 不匹配</li>
-     *   <li>设备标签包含策略要求的所有键值对 → 匹配</li>
-     * </ul>
-     *
-     * @param policy     升级策略
-     * @param deviceTags 设备标签
-     * @return true 如果标签匹配
-     */
-    private boolean matchesDeviceTags(UpgradePolicy policy, JsonNode deviceTags) {
-        return policyMatcher.matchesDeviceTags(policy.getTargetDeviceTags(), deviceTags);
     }
 
     /**
