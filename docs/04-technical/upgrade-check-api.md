@@ -86,10 +86,10 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 ```json
 {
    "code": 0,
-   "release_start_date": "2026-02-03T10:28:56",
+   "release_start_date": "2026-02-03T10:28:56Z",
    "release_note": "修复Bug并改进性能",
    "new_firmware": "v2.0.0",
-   "download_url": "https://cdn.xxx.com/pkg.bin?p_id=101&sig=xxx&exp=xxx",
+   "download_url": "https://cdn.xxx.com/pkg.bin?pid=101&did=1001&expire=1709222400&sig=xxx",
    "file_size": 20000000,
    "file_size_text": "19.1MB",
    "checksum": "a1b2c3d4e5f6...",

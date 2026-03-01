@@ -126,6 +126,9 @@ public class UpgradeResponseBuilder {
 
         JsonNode meta = firmware.getMeta();
         if (!meta.has("i18n")) {
+            if (meta.has("changelog")) {
+                return meta.get("changelog").toString();
+            }
             return getSimpleReleaseNote(firmware);
         }
 
@@ -175,14 +178,7 @@ public class UpgradeResponseBuilder {
     }
 
     private String getSimpleReleaseNote(FirmwareVersion firmware) {
-        JsonNode tags = firmware.getTags();
-        if (tags != null && tags.has("releaseNote")) {
-            return tags.get("releaseNote").asText();
-        }
-        if (tags != null && tags.has("description")) {
-            return tags.get("description").asText();
-        }
-        return "";
+        return "Release Version: " + firmware.getVersion();
     }
 
     private String generateDownloadUrl(FirmwareVersion firmware, UpgradePolicy policy, Device device) {
