@@ -38,20 +38,20 @@ public class FirmwareVersionLookupService {
      * 查找优先级：
      * </p>
      * <ol>
-     *   <li>如果提供了 tag，使用 version + tag 组合精确查找</li>
- *   *   <li>如果组合查找失败或未提供 tag，降级到仅 version 查找</li>
+     *   <li>如果提供了 internalVersion，使用 version + internalVersion 组合精确查找</li>
+ *   *   <li>如果组合查找失败或未提供 internalVersion，降级到仅 version 查找</li>
      * </ol>
      * <p>
      * 这种设计是为了解决历史问题：version 号可能在不同的构建中重复，
-     * 需要通过 tag（内部版本号）来精确区分。
+     * 需要通过 internalVersion（内部版本号）来精确区分。
      * </p>
      *
      * @param version    版本号（如 "Mobile.Router.B03"）
-     * @param tag        内部版本号（如 "ASR_YEMEN_M476_V11_B03_Build02"），可选
+     * @param internalVersion        内部版本号（如 "ASR_YEMEN_M476_V11_B03_Build02"），可选
      * @param productId  产品 ID
      * @return 固件版本 ID，如果未找到返回 null
      */
-    public Long findVersionId(String version, String tag, Long productId) {
+    public Long findVersionId(String version, String internalVersion, Long productId) {
         if (version == null || productId == null) {
             log.debug("查找固件版本 ID 失败：缺少必要参数, version={}, productId={}", version, productId);
             return null;
@@ -59,42 +59,35 @@ public class FirmwareVersionLookupService {
 
         Long versionId = null;
 
-        // 1. 优先：version + tag 组合查找（精确匹配）
-        if (StringUtils.hasText(tag)) {
-            versionId = findByVersionAndTag(version, tag, productId);
-            if (versionId != null) {
-                log.debug("精确匹配固件版本: version={}, tag={}, productId={}, versionId={}",
-                        version, tag, productId, versionId);
-                return versionId;
-            }
-            log.debug("version + tag 组合查找未找到结果，降级到 version 查找: version={}, tag={}, productId={}",
-                    version, tag, productId);
-        }
-
-        // 2. 降级：仅 version 查找（向后兼容）
-        versionId = findByVersionOnly(version, productId);
-        if (versionId != null) {
-            log.debug("通过 version 查找到固件版本: version={}, productId={}, versionId={}",
-                    version, productId, versionId);
+        // 1. internalVersion 存在, unique key 查找
+        if (StringUtils.hasText(internalVersion)) {
+            versionId = findByUniqueKey(version, internalVersion, productId);
         } else {
-            log.debug("未找到匹配的固件版本: version={}, tag={}, productId={}",
-                    version, tag, productId);
+            // 2. 仅 version 查找（向后兼容）
+            versionId = findByVersionOnly(version, productId);
+        }
+        if (versionId != null) {
+            log.debug("匹配到固件版本: version={}, internalVersion={}, productId={}, versionId={}",
+                    version, internalVersion, productId, versionId);
+        } else {
+            log.debug("未找到匹配的固件版本: version={}, internalVersion={}, productId={}",
+                    version, internalVersion, productId);
         }
 
         return versionId;
     }
 
     /**
-     * 通过 version + tag 组合查找固件版本 ID
+     * 通过 version + internalVersion 组合查找固件版本 ID
      *
      * @param version   版本号
-     * @param tag       内部版本号
+     * @param internalVersion       内部版本号
      * @param productId 产品 ID
      * @return 固件版本 ID，如果未找到返回 null
      */
-    private Long findByVersionAndTag(String version, String tag, Long productId) {
+    private Long findByUniqueKey(String version, String internalVersion, Long productId) {
         Optional<FirmwareVersion> firmware = firmwareVersionRepository
-                .findByUniqueKey(version, tag, productId);
+                .findByUniqueKey(version, internalVersion, productId);
         return firmware.map(FirmwareVersion::getId).orElse(null);
     }
 

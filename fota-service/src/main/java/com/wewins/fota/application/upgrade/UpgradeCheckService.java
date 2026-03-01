@@ -1,32 +1,30 @@
 package com.wewins.fota.application.upgrade;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
-import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * 设备检查升级应用服务
@@ -50,7 +48,6 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UpgradeCheckService {
 
     private final DeviceRepository deviceRepository;
@@ -61,91 +58,37 @@ public class UpgradeCheckService {
     private final DeviceActivityBitmapRepository bitmapRepository;
     private final PolicyMatcher policyMatcher;
     private final ProductRepository productRepository;
-    private final FirmwareVersionRepository firmwareVersionRepository;
     private final FirmwareVersionLookupService firmwareVersionLookupService;
     private final GrayReleaseService grayReleaseService;
     private final UpgradeResponseBuilder upgradeResponseBuilder;
     private final UpgradeRequestValidator requestValidator;
 
-    /**
-     * 检查设备是否有可用更新（兼容老接口，默认手动检查）
-     *
-     * @param imei 设备 IMEI
-     * @return 检查结果
-     */
-    public CheckResult checkUpgrade(String imei) {
-        return checkUpgrade(imei, 0);
-    }
-
-    /**
-     * 检查设备是否有可用更新
-     * <p>
-     * 核心业务逻辑：
-     * 1. 限流检查（防止设备频繁请求）
-     * 2. 验证设备存在且激活
-     * 3. 标记设备活跃
-     * 4. 匹配适用的升级策略
-     * 5. 检查灰度发布
-     * 6. 检查时间窗口
-     * </p>
-     *
-     * @param imei 设备 IMEI
-     * @param auto 自动检查标识：0=手动检查，1=自动检查，null=默认为手动检查
-     * @return 检查结果
-     */
-    public CheckResult checkUpgrade(String imei, Integer auto) {
-        log.debug("开始检查设备更新: imei={}, auto={}", imei, auto);
-
-        // 1. 限流检查（每分钟最多 10 次请求）
-        RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
-                "upgrade:" + imei,
-                10,  // 每分钟最多 10 次
-                Duration.ofMinutes(1)
-        );
-
-        if (!rateLimitDecision.isAllowed()) {
-            log.warn("设备请求被限流: imei={}, reason={}", imei, rateLimitDecision.getReason());
-            return CheckResult.rateLimited(
-                    "请求过于频繁",
-                    (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
-            );
-        }
-
-        // 2. 从缓存或数据库加载设备信息
-        // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
-        Device device = loadDevice(imei);
-        if (device == null) {
-            log.warn("设备不存在，拒绝升级: imei={}", imei);
-            return CheckResult.notFound("设备未注册，请联系管理员");
-        }
-
-        // 3. 标记设备活跃（使用设备 ID 作为 bitmap 偏移量）
-        try {
-            bitmapRepository.markActive(LocalDate.now(), device.getId());
-            log.debug("标记设备活跃: imei={}, deviceId={}", imei, device.getId());
-        } catch (Exception e) {
-            log.error("标记设备活跃失败: imei={}, deviceId={}", imei, device.getId(), e);
-            // 降级处理：记录错误但不中断主流程
-        }
-
-        // 4. 验证产品和固件版本
-        if (!validateProductAndFirmware(device)) {
-            return CheckResult.error("产品或固件版本配置无效");
-        }
-
-        // 5. 匹配适用的升级策略
-        List<UpgradePolicy> policies = findApplicablePolicies(device);
-        if (policies.isEmpty()) {
-            log.debug("未找到适用的升级策略: deviceId={}", device.getId());
-            return CheckResult.noUpdate();
-        }
-
-        // TODO: 实现灰度检查、时间窗口检查
-        // 当前选择优先级最高的策略
-        UpgradePolicy policy = policies.getFirst();
-
-        // 6. 构建响应（使用 UpgradeResponseBuilder）
-        return buildCheckResult(device, policy, null, auto == 1);
+    public UpgradeCheckService(
+            DeviceRepository deviceRepository,
+            @Qualifier("redisDeviceCacheRepository") DeviceCacheRepository deviceCacheService,
+            DataIntegrityService dataIntegrityService,
+            UpgradePolicyRepository upgradePolicyRepository,
+            DeviceRateLimiter deviceRateLimiter,
+            @Qualifier("redisDeviceActivityBitmapRepository") DeviceActivityBitmapRepository bitmapRepository,
+            PolicyMatcher policyMatcher,
+            ProductRepository productRepository,
+            FirmwareVersionLookupService firmwareVersionLookupService,
+            GrayReleaseService grayReleaseService,
+            UpgradeResponseBuilder upgradeResponseBuilder,
+            UpgradeRequestValidator requestValidator
+    ) {
+        this.deviceRepository = deviceRepository;
+        this.deviceCacheService = deviceCacheService;
+        this.dataIntegrityService = dataIntegrityService;
+        this.upgradePolicyRepository = upgradePolicyRepository;
+        this.deviceRateLimiter = deviceRateLimiter;
+        this.bitmapRepository = bitmapRepository;
+        this.policyMatcher = policyMatcher;
+        this.productRepository = productRepository;
+        this.firmwareVersionLookupService = firmwareVersionLookupService;
+        this.grayReleaseService = grayReleaseService;
+        this.upgradeResponseBuilder = upgradeResponseBuilder;
+        this.requestValidator = requestValidator;
     }
 
     /**
@@ -181,10 +124,8 @@ public class UpgradeCheckService {
         }
 
         // 3. 通过产品型号查找产品
-        Product product = productRepository.findByModel(request.getProduct())
-                .orElse(null);
+        Product product = productRepository.findByModel(request.getProduct()).orElse(null);
         if (product == null) {
-            log.warn("产品型号不存在: productModel={}", request.getProduct());
             return CheckResult.error("产品型号不存在");
         }
 
@@ -192,7 +133,6 @@ public class UpgradeCheckService {
         // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
         Device device = loadDevice(request.getImei());
         if (device == null) {
-            log.warn("设备不存在，拒绝升级: imei={}", request.getImei());
             return CheckResult.notFound("设备未注册，请联系管理员");
         }
 
@@ -218,7 +158,7 @@ public class UpgradeCheckService {
         }
 
         // 8. 选择优先级最高的策略
-        UpgradePolicy policy = policies.get(0);
+        UpgradePolicy policy = policies.getFirst();
 
         // 9. 构建响应（支持 lang 和 auto 参数）
         return upgradeResponseBuilder.buildResponse(device, policy, request.getLang(), request.getAuto() == 1);
@@ -283,7 +223,7 @@ public class UpgradeCheckService {
 
         // 获取设备信息用于匹配
         Long versionId = device.getCurrentVersionId();
-        com.fasterxml.jackson.databind.JsonNode deviceTags = device.getTags();
+        JsonNode deviceTags = device.getTags();
         String imei = device.getImei();
 
         // 过滤：版本范围匹配 + 标签匹配 + 灰度检查
@@ -312,15 +252,13 @@ public class UpgradeCheckService {
         }
 
         // 按产品拉取激活策略并按优先级降序
-        List<UpgradePolicy> policies = upgradePolicyRepository
-                .findActiveByProductIdOrderByPriorityDesc(device.getProductId());
+        List<UpgradePolicy> policies = upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(device.getProductId());
 
         // 获取设备标签（用于 env 标签匹配）
-        com.fasterxml.jackson.databind.JsonNode deviceTags = device.getTags();
-        com.fasterxml.jackson.databind.JsonNode augmentedTags = augmentTagsWithDevMode(deviceTags, dev);
+        JsonNode deviceTags = device.getTags();
 
         // 过滤策略
-        final com.fasterxml.jackson.databind.JsonNode finalTags = augmentedTags;
+        final JsonNode finalTags = augmentTagsWithDevMode(deviceTags, dev);
         final Long finalVersionId = versionId;
         final String imei = device.getImei();
 
@@ -344,15 +282,15 @@ public class UpgradeCheckService {
      * @param dev        临时测试设备标识
      * @return 增强后的标签
      */
-    private com.fasterxml.jackson.databind.JsonNode augmentTagsWithDevMode(
-            com.fasterxml.jackson.databind.JsonNode deviceTags, Integer dev) {
+    private JsonNode augmentTagsWithDevMode(
+            JsonNode deviceTags, Integer dev) {
         if (dev == null || dev != 1) {
             return deviceTags;
         }
 
         try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.node.ObjectNode augmented;
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode augmented;
 
             if (deviceTags == null || deviceTags.isEmpty() || deviceTags.isNull()) {
                 augmented = mapper.createObjectNode();
@@ -380,8 +318,8 @@ public class UpgradeCheckService {
      * @return true 如果匹配
      */
     private boolean matchesDevMode(UpgradePolicy policy, Integer dev,
-                                    com.fasterxml.jackson.databind.JsonNode augmentedTags) {
-        com.fasterxml.jackson.databind.JsonNode targetTags = policy.getTargetDeviceTags();
+                                   JsonNode augmentedTags) {
+        JsonNode targetTags = policy.getTargetDeviceTags();
         if (targetTags == null || targetTags.isEmpty() || targetTags.isNull()) {
             return true;
         }
@@ -392,10 +330,9 @@ public class UpgradeCheckService {
                     ? null : augmentedTags.path("env").asText();
 
             if ("test".equalsIgnoreCase(requiredEnv) || "dev".equalsIgnoreCase(requiredEnv)) {
-                boolean isTestDevice = (dev != null && dev == 1)
-                        || (actualEnv != null && ("test".equalsIgnoreCase(actualEnv)
+                return (dev != null && dev == 1)
+                        || (("test".equalsIgnoreCase(actualEnv)
                         || "dev".equalsIgnoreCase(actualEnv)));
-                return isTestDevice;
             }
 
             if ("prod".equalsIgnoreCase(requiredEnv) || "production".equalsIgnoreCase(requiredEnv)) {
@@ -475,11 +412,11 @@ public class UpgradeCheckService {
      *   <li>设备标签包含策略要求的所有键值对 → 匹配</li>
      * </ul>
      *
-     * @param policy    升级策略
+     * @param policy     升级策略
      * @param deviceTags 设备标签
      * @return true 如果标签匹配
      */
-    private boolean matchesDeviceTags(UpgradePolicy policy, com.fasterxml.jackson.databind.JsonNode deviceTags) {
+    private boolean matchesDeviceTags(UpgradePolicy policy, JsonNode deviceTags) {
         return policyMatcher.matchesDeviceTags(policy.getTargetDeviceTags(), deviceTags);
     }
 
@@ -500,7 +437,7 @@ public class UpgradeCheckService {
      * @return true 如果版本匹配
      */
     private boolean matchesSourceVersion(UpgradePolicy policy, Long versionId) {
-        com.fasterxml.jackson.databind.JsonNode sourceVersions = policy.getSourceVersions();
+        JsonNode sourceVersions = policy.getSourceVersions();
         if (sourceVersions == null || sourceVersions.isEmpty()) {
             return true; // 策略没有版本限制
         }
@@ -511,7 +448,7 @@ public class UpgradeCheckService {
 
         // 检查 versionId 是否在 sourceVersions 数组中
         if (sourceVersions.isArray()) {
-            for (com.fasterxml.jackson.databind.JsonNode node : sourceVersions) {
+            for (JsonNode node : sourceVersions) {
                 if (versionId.equals(node.asLong())) {
                     return true;
                 }
@@ -533,10 +470,10 @@ public class UpgradeCheckService {
      * </ul>
      * </p>
      *
-     * @param device    设备信息
-     * @param policy    升级策略
-     * @param lang      语言代码（可选）
-     * @param autoMode  是否自动检查模式（可选）
+     * @param device   设备信息
+     * @param policy   升级策略
+     * @param lang     语言代码（可选）
+     * @param autoMode 是否自动检查模式（可选）
      * @return 检查结果
      */
     private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String lang, Boolean autoMode) {
