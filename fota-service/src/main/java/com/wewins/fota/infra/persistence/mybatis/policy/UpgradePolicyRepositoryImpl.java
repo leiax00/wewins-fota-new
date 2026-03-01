@@ -113,16 +113,24 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     }
 
     @Override
-    public List<UpgradePolicy> findActiveByProductIdOrderByPriorityDesc(Long productId) {
+    public List<UpgradePolicy> findEffectiveByProductIdOrderByPriorityDesc(Long productId, boolean includeTestPolicies) {
         if (productId == null) {
             return List.of();
         }
 
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.eq(UpgradePolicy::getProductId, productId)
-                .isNull(UpgradePolicy::getDeletedAt)
-                .eq(UpgradePolicy::getStatus, PolicyStatus.ACTIVE)
-                .orderByDesc(UpgradePolicy::getPriority)
+                .isNull(UpgradePolicy::getDeletedAt);
+
+        if (includeTestPolicies) {
+            // 测试设备：查询 ACTIVE + VERIFIED + TESTING
+            query.in(UpgradePolicy::getStatus, PolicyStatus.ACTIVE, PolicyStatus.VERIFIED, PolicyStatus.TESTING);
+        } else {
+            // 普通设备：仅查询 ACTIVE
+            query.eq(UpgradePolicy::getStatus, PolicyStatus.ACTIVE);
+        }
+
+        query.orderByDesc(UpgradePolicy::getPriority)
                 .orderByDesc(UpgradePolicy::getId);
         return upgradePolicyMapper.selectList(query);
     }

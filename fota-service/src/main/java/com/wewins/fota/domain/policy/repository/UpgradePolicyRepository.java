@@ -37,7 +37,17 @@ public interface UpgradePolicyRepository {
 
     List<UpgradePolicy> findByProductIdOrderByPriorityDesc(Long productId);
 
-    List<UpgradePolicy> findActiveByProductIdOrderByPriorityDesc(Long productId);
+    /**
+     * 查询产品下的生效策略（按优先级降序）
+     * <p>
+     * 生效策略包括：ACTIVE、VERIFIED、TESTING 状态
+     * </p>
+     *
+     * @param productId 产品 ID
+     * @param includeTestPolicies 是否包含测试策略（TESTING、VERIFIED）
+     * @return 策略列表
+     */
+    List<UpgradePolicy> findEffectiveByProductIdOrderByPriorityDesc(Long productId, boolean includeTestPolicies);
 
     List<UpgradePolicy> findAllActiveOrderByPriorityAndUpdatedAt();
 

@@ -26,6 +26,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
+
 /**
  * 设备检查升级应用服务
  * <p>
@@ -204,40 +206,16 @@ public class UpgradeCheckService {
     }
 
     /**
-     * 查找适用的升级策略
-     * <p>
-     * 根据产品ID、当前版本ID、优先级查找匹配的策略
-     * </p>
-     *
-     * @param device 设备信息
-     * @return 适用的策略列表（按优先级降序）
-     */
-    private List<UpgradePolicy> findApplicablePolicies(Device device) {
-        if (device == null || device.getProductId() == null) {
-            return List.of();
-        }
-
-        // 按产品拉取激活策略并按优先级降序
-        List<UpgradePolicy> policies = upgradePolicyRepository
-                .findActiveByProductIdOrderByPriorityDesc(device.getProductId());
-
-        // 获取设备信息用于匹配
-        Long versionId = device.getCurrentVersionId();
-        JsonNode deviceTags = device.getTags();
-        String imei = device.getImei();
-
-        // 过滤：版本范围匹配 + 标签匹配 + 灰度检查
-        return policies.stream()
-                .filter(policy -> matchesSourceVersion(policy, versionId))
-                .filter(policy -> matchesDeviceTags(policy, deviceTags))
-                .filter(policy -> matchesGrayRelease(policy, imei))
-                .toList();
-    }
-
-    /**
      * 查找适用的升级策略（支持 dev、auto 参数）
      * <p>
      * 根据产品ID、当前版本ID、dev参数、auto参数查找匹配的策略
+     * </p>
+     * <p>
+     * 策略状态匹配规则：
+     * <ul>
+     *   <li>ACTIVE 状态：对所有设备生效</li>
+     *   <li>TESTING、VERIFIED 状态：仅对测试设备生效（dev=1 或设备标签 env=test）</li>
+     * </ul>
      * </p>
      *
      * @param device    设备信息
@@ -251,8 +229,14 @@ public class UpgradeCheckService {
             return List.of();
         }
 
-        // 按产品拉取激活策略并按优先级降序
-        List<UpgradePolicy> policies = upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(device.getProductId());
+        // 判断是否为测试设备：dev=1 或设备标签中 env=test/dev
+        boolean isTestDevice = isTestDevice(device, dev);
+
+        // 按产品拉取生效策略并按优先级降序
+        // 测试设备：ACTIVE + VERIFIED + TESTING
+        // 普通设备：仅 ACTIVE
+        List<UpgradePolicy> policies = upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(
+                device.getProductId(), isTestDevice);
 
         // 获取设备标签（用于 env 标签匹配）
         JsonNode deviceTags = device.getTags();
@@ -270,6 +254,36 @@ public class UpgradeCheckService {
                 .filter(policy -> policyMatcher.matchesTimeWindow(policy.getTimeWindow()))
                 .filter(policy -> matchesGrayRelease(policy, imei))
                 .toList();
+    }
+
+    /**
+     * 判断设备是否为测试设备
+     * <p>
+     * 测试设备的定义：
+     * <ul>
+     *   <li>请求参数 dev=1（临时标记为测试设备）</li>
+     *   <li>设备标签中 env=test 或 env=dev</li>
+     * </ul>
+     * </p>
+     *
+     * @param device 设备信息
+     * @param dev    临时测试设备标识
+     * @return true 如果是测试设备
+     */
+    private boolean isTestDevice(Device device, Integer dev) {
+        // dev=1 表示临时标记为测试设备
+        if (dev != null && dev == 1) {
+            return true;
+        }
+
+        // 检查设备标签中的 env 字段
+        JsonNode tags = device.getTags();
+        if (tags != null && !tags.isNull() && tags.has("env")) {
+            String env = tags.path("env").asText();
+            return "test".equalsIgnoreCase(env) || "dev".equalsIgnoreCase(env);
+        }
+
+        return false;
     }
 
     /**

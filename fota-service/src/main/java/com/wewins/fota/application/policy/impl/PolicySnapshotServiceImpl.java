@@ -201,9 +201,10 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
      */
     private Optional<PolicySnapshot> rebuildFromDatabase(Long productId) {
         try {
-            // 查询活跃策略
+            // 查询生效策略（ACTIVE + VERIFIED + TESTING）
+            // 快照需要包含所有生效策略，供 Region 同步使用
             List<UpgradePolicy> policies = policyRepository
-                    .findActiveByProductIdOrderByPriorityDesc(productId);
+                    .findEffectiveByProductIdOrderByPriorityDesc(productId, true);
 
             if (policies.isEmpty()) {
                 log.debug("产品无活跃策略: productId={}", productId);
