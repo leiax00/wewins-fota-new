@@ -15,7 +15,7 @@ import java.time.Duration;
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "app.firmware-upload.cleanup")
+@ConfigurationProperties(prefix = "app.firmware.upload.cleanup")
 public class FirmwareUploadCleanupProperties {
 
     /**

@@ -22,8 +22,8 @@ public interface SignedUrlService {
      * URL 格式：
      * <pre>
      * {cdnBaseUrl}/{firmwarePath}
-     *   ?policy={policyId}
-     *   &device={deviceId}
+     *   ?pid={policyId}
+     *   &did={deviceId}
      *   &expire={expireTime}
      *   &sig={signature}
      * </pre>

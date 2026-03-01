@@ -98,7 +98,7 @@ class UpgradeResponseBuilderTest {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
             when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?policy=100&device=1000&expire=1709222400&sig=abc123");
+                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123");
 
             // When
             UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
@@ -116,7 +116,7 @@ class UpgradeResponseBuilderTest {
         @DisplayName("构建响应 - 包含签名 URL")
         void buildResponse_shouldIncludeSignedUrl() {
             // Given
-            String expectedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip?policy=100&device=1000&expire=1709222400&sig=abc123";
+            String expectedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123";
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
             when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong())).thenReturn(expectedUrl);
 

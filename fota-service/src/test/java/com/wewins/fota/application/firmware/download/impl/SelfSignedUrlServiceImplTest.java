@@ -1,6 +1,6 @@
-package com.wewins.fota.application.firmware.download;
+package com.wewins.fota.application.firmware.download.impl;
 
-import com.wewins.fota.application.firmware.download.impl.SignedUrlServiceImpl;
+import com.wewins.fota.application.firmware.download.FirmwareDownloadProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,29 +10,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * SignedUrlServiceImpl 单元测试
+ * SelfSignedUrlServiceImpl 单元测试
  *
  * @author FOTA Team
- * @since 2026-02-28
+ * @since 2026-03-01
  */
-@DisplayName("SignedUrlServiceImpl 单元测试")
-class SignedUrlServiceImplTest {
+@DisplayName("SelfSignedUrlServiceImpl 单元测试")
+class SelfSignedUrlServiceImplTest {
 
     private static final String TEST_SECRET_KEY = "test-secret-key-at-least-32-bytes-long-for-security";
-    private static final String TEST_CDN_BASE_URL = "https://cdn.example.com";
+    private static final String TEST_BASE_URL = "https://cdn.example.com";
 
-    private SignedUrlServiceImpl signedUrlService;
-    private SignedUrlProperties properties;
+    private SelfSignedUrlServiceImpl signedUrlService;
+    private FirmwareDownloadProperties properties;
 
     @BeforeEach
     void setUp() {
-        properties = new SignedUrlProperties();
-        properties.setSecretKey(TEST_SECRET_KEY);
-        properties.setCdnBaseUrl(TEST_CDN_BASE_URL);
-        properties.setDefaultExpireSeconds(86400);
-        properties.setEnabled(true);
+        properties = new FirmwareDownloadProperties();
+        properties.setBaseUrl(TEST_BASE_URL);
+        properties.getSelfSigned().setSecretKey(TEST_SECRET_KEY);
+        properties.getSelfSigned().setDefaultExpireSeconds(86400);
 
-        signedUrlService = new SignedUrlServiceImpl(properties);
+        signedUrlService = new SelfSignedUrlServiceImpl(properties);
     }
 
     @Nested
@@ -52,9 +51,9 @@ class SignedUrlServiceImplTest {
 
             // Then
             assertThat(url).isNotEmpty();
-            assertThat(url).startsWith(TEST_CDN_BASE_URL);
-            assertThat(url).contains("policy=100");
-            assertThat(url).contains("device=1000");
+            assertThat(url).startsWith(TEST_BASE_URL);
+            assertThat(url).contains("pid=100");
+            assertThat(url).contains("did=1000");
             assertThat(url).contains("expire=");
             assertThat(url).contains("sig=");
         }
@@ -89,8 +88,8 @@ class SignedUrlServiceImplTest {
 
             // Then
             assertThat(url).isNotEmpty();
-            assertThat(url).contains("policy=100");
-            assertThat(url).contains("device=1000");
+            assertThat(url).contains("pid=100");
+            assertThat(url).contains("did=1000");
 
             // 验证过期时间约为当前时间 + 3600 秒（允许 5 秒误差）
             String[] params = url.split("&");
@@ -101,10 +100,10 @@ class SignedUrlServiceImplTest {
         }
 
         @Test
-        @DisplayName("生成签名 URL - 无 CDN 基础 URL")
-        void generateSignedUrl_shouldWorkWithoutCdnBaseUrl() {
+        @DisplayName("生成签名 URL - 无基础 URL")
+        void generateSignedUrl_shouldWorkWithoutBaseUrl() {
             // Given
-            properties.setCdnBaseUrl(null);
+            properties.setBaseUrl(null);
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
             Long deviceId = 1000L;
@@ -114,8 +113,8 @@ class SignedUrlServiceImplTest {
 
             // Then
             assertThat(url).startsWith("fota/fw/123/test-firmware.zip?");
-            assertThat(url).contains("policy=100");
-            assertThat(url).contains("device=1000");
+            assertThat(url).contains("pid=100");
+            assertThat(url).contains("did=1000");
         }
 
         @Test

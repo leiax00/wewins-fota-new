@@ -163,7 +163,7 @@ class UpgradeCheckServiceIntegrationTest {
             when(firmwareVersionRepository.findById(20L))
                     .thenReturn(Optional.of(targetFirmware));
             when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?policy=100&device=1000&expire=1709222400&sig=abc123");
+                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123");
 
             // When
             UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade("354972069009027");
@@ -178,7 +178,7 @@ class UpgradeCheckServiceIntegrationTest {
             // 验证扩展数据
             assertThat(result.getExt()).isNotNull();
             assertThat(result.getExt().get("downloadUrl"))
-                    .isEqualTo("https://cdn.example.com/fota/fw/1/test-firmware.zip?policy=100&device=1000&expire=1709222400&sig=abc123");
+                    .isEqualTo("https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123");
             assertThat(result.getExt().get("fileSize")).isEqualTo(20_000_000L);
             assertThat(result.getExt().get("fileSizeText")).isEqualTo("19.1MB");
             assertThat(result.getExt().get("checksum")).isEqualTo(targetFirmware.getSha256());
@@ -233,7 +233,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldIncludeSignedUrl_inResponse() {
             // Given
             String expectedSignedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip"
-                    + "?policy=100&device=1000&expire=1709222400"
+                    + "?pid=100&did=1000&expire=1709222400"
                     + "&sig=3a7b8f9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8";
 
             when(deviceRateLimiter.allow(anyString(), anyInt(), any()))

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
@@ -347,16 +348,23 @@ public class PolicyMatcher {
      * <p>
      * RANGE 类型：直接比较当前时间是否在 [startAt, endAt) 范围内
      * </p>
+     * <p>
+     * 支持的时间格式：
+     * <ul>
+     *   <li>ISO8601 UTC 格式：2026-02-26T16:00:00Z</li>
+     *   <li>本地时间格式（视为 UTC）：2026-02-26T16:00:00</li>
+     * </ul>
+     * </p>
      *
-     * @param startAt 开始时间（ISO8601 UTC 格式）
-     * @param endAt   结束时间（ISO8601 UTC 格式）
+     * @param startAt 开始时间
+     * @param endAt   结束时间
      * @return true 如果当前时间在范围内
      */
     private boolean matchesRangeWindow(String startAt, String endAt) {
         try {
             Instant now = Instant.now();
-            Instant start = Instant.parse(startAt);
-            Instant end = Instant.parse(endAt);
+            Instant start = parseInstant(startAt);
+            Instant end = parseInstant(endAt);
 
             // 检查是否在时间窗口内：[start, end)
             boolean inWindow = !now.isBefore(start) && now.isBefore(end);
@@ -375,6 +383,50 @@ public class PolicyMatcher {
     }
 
     /**
+     * 解析时间字符串为 Instant
+     * <p>
+     * 支持两种格式：
+     * <ul>
+     *   <li>ISO8601 UTC 格式（带 Z 后缀）：2026-02-26T16:00:00Z</li>
+     *   <li>本地时间格式（不带时区，视为 UTC）：2026-02-26T16:00:00</li>
+     * </ul>
+     * </p>
+     *
+     * @param dateTimeStr 时间字符串
+     * @return Instant 对象
+     */
+    private Instant parseInstant(String dateTimeStr) {
+        // 如果以 Z 结尾，直接解析为 Instant
+        if (dateTimeStr.endsWith("Z")) {
+            return Instant.parse(dateTimeStr);
+        }
+        // 否则解析为 LocalDateTime，然后视为 UTC 转换为 Instant
+        return LocalDateTime.parse(dateTimeStr).atZone(ZoneId.of("UTC")).toInstant();
+    }
+
+    /**
+     * 解析时间字符串为 ZonedDateTime（UTC 时区）
+     * <p>
+     * 支持两种格式：
+     * <ul>
+     *   <li>ISO8601 UTC 格式（带 Z 后缀）：2026-02-26T16:00:00Z</li>
+     *   <li>本地时间格式（不带时区，视为 UTC）：2026-02-26T16:00:00</li>
+     * </ul>
+     * </p>
+     *
+     * @param dateTimeStr 时间字符串
+     * @return ZonedDateTime 对象（UTC 时区）
+     */
+    private ZonedDateTime parseZonedDateTime(String dateTimeStr) {
+        // 如果以 Z 结尾，直接解析
+        if (dateTimeStr.endsWith("Z")) {
+            return ZonedDateTime.parse(dateTimeStr).withZoneSameInstant(ZoneId.of("UTC"));
+        }
+        // 否则解析为 LocalDateTime，然后视为 UTC
+        return LocalDateTime.parse(dateTimeStr).atZone(ZoneId.of("UTC"));
+    }
+
+    /**
      * 检查每日周期时间窗口
      * <p>
      * DAILY 类型：将起止时间的 HH:mm:ss 部分应用到今天的日期，
@@ -386,18 +438,23 @@ public class PolicyMatcher {
      * <p>
      * 表示每天 02:00:00 到 06:00:00 之间允许升级。
      * </p>
+     * <p>
+     * 支持的时间格式：
+     * <ul>
+     *   <li>ISO8601 UTC 格式：2026-02-26T16:00:00Z</li>
+     *   <li>本地时间格式（视为 UTC）：2026-02-26T16:00:00</li>
+     * </ul>
+     * </p>
      *
-     * @param startAt 开始时间（ISO8601 格式，只取时间部分）
-     * @param endAt   结束时间（ISO8601 格式，只取时间部分）
+     * @param startAt 开始时间（只取时间部分）
+     * @param endAt   结束时间（只取时间部分）
      * @return true 如果当前时间在每日窗口内
      */
     private boolean matchesDailyWindow(String startAt, String endAt) {
         try {
             // 解析时间窗口（获取 HH:mm:ss 部分）
-            ZonedDateTime startZoned = ZonedDateTime.parse(startAt)
-                    .withZoneSameInstant(ZoneId.of("UTC"));
-            ZonedDateTime endZoned = ZonedDateTime.parse(endAt)
-                    .withZoneSameInstant(ZoneId.of("UTC"));
+            ZonedDateTime startZoned = parseZonedDateTime(startAt);
+            ZonedDateTime endZoned = parseZonedDateTime(endAt);
 
             // 获取当前 UTC 日期
             ZonedDateTime nowUtc = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));

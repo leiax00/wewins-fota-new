@@ -43,7 +43,7 @@ public class UpgradeResponseBuilder {
     private final FirmwareVersionRepository firmwareVersionRepository;
 
     private static final DateTimeFormatter ISO_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
     /** 默认检查间隔：1 小时（秒） */
     private static final int DEFAULT_CHECK_INTERVAL = 3600;

@@ -1,11 +1,9 @@
 package com.wewins.fota.application.firmware.download.impl;
 
-import com.wewins.fota.application.firmware.download.SignedUrlProperties;
+import com.wewins.fota.application.firmware.download.FirmwareDownloadProperties;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -15,7 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 
 /**
- * 签名下载 URL 服务实现
+ * 自签名下载 URL 服务实现。
  * <p>
  * 使用 HMAC-SHA256 算法生成签名，包含以下溯源参数：
  * <ul>
@@ -26,22 +24,20 @@ import java.time.Duration;
  * </p>
  *
  * @author FOTA Team
- * @since 2026-02-28
+ * @since 2026-03-01
  */
 @Slf4j
-@Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties(SignedUrlProperties.class)
-public class SignedUrlServiceImpl implements SignedUrlService {
+public class SelfSignedUrlServiceImpl implements SignedUrlService {
 
-    private final SignedUrlProperties properties;
+    private final FirmwareDownloadProperties properties;
 
     private static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
     private static final String SIGNATURE_DELIMITER = "|";
 
     @Override
     public String generateSignedUrl(String firmwarePath, Long policyId, Long deviceId) {
-        return generateSignedUrl(firmwarePath, policyId, deviceId, properties.getDefaultExpireSeconds());
+        return generateSignedUrl(firmwarePath, policyId, deviceId, properties.getSelfSigned().getDefaultExpireSeconds());
     }
 
     @Override
@@ -117,9 +113,9 @@ public class SignedUrlServiceImpl implements SignedUrlService {
      */
     private String hmacSha256(String payload) {
         try {
-            String secretKey = properties.getSecretKey();
+            String secretKey = properties.getSelfSigned().getSecretKey();
             if (secretKey == null || secretKey.isBlank()) {
-                throw new IllegalStateException("签名密钥未配置: app.firmware.signed-url.secret-key");
+                throw new IllegalStateException("签名密钥未配置: app.firmware.download.self-signed.secret-key");
             }
 
             Mac mac = Mac.getInstance(HMAC_SHA256_ALGORITHM);
@@ -157,14 +153,14 @@ public class SignedUrlServiceImpl implements SignedUrlService {
     /**
      * 构建完整的下载 URL
      * <p>
-     * 格式: {cdnBaseUrl}/{firmwarePath}?policy={policyId}&device={deviceId}&expire={expireTime}&sig={signature}
+     * 格式: {baseUrl}/{firmwarePath}?pid={policyId}&did={deviceId}&expire={expireTime}&sig={signature}
      * </p>
      */
     private String buildUrl(String firmwarePath, Long policyId, Long deviceId, long expireTime, String signature) {
         StringBuilder url = new StringBuilder();
 
         // 添加基础 URL 和路径
-        String baseUrl = properties.getCdnBaseUrl();
+        String baseUrl = properties.getBaseUrl();
         if (baseUrl != null && !baseUrl.isBlank()) {
             // 移除 baseUrl 末尾的斜杠
             String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
@@ -176,8 +172,8 @@ public class SignedUrlServiceImpl implements SignedUrlService {
         }
 
         // 添加查询参数
-        url.append("?policy=").append(policyId);
-        url.append("&device=").append(deviceId);
+        url.append("?pid=").append(policyId);
+        url.append("&did=").append(deviceId);
         url.append("&expire=").append(expireTime);
         url.append("&sig=").append(signature);
 
