@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.Locale;
 
 /**
@@ -120,28 +121,19 @@ public class UpgradeResponseBuilder {
     }
 
     private String extractReleaseNote(FirmwareVersion firmware, String lang) {
-        if (firmware.getMeta() == null) {
-            return getSimpleReleaseNote(firmware);
-        }
-
         JsonNode meta = firmware.getMeta();
-        if (!meta.has("i18n")) {
-            if (meta.has("changelog")) {
-                return meta.get("changelog").toString();
-            }
-            return getSimpleReleaseNote(firmware);
-        }
+        if (meta != null) {
+            if (meta.has("i18n")) {
+                JsonNode i18n = meta.get("i18n");
+                String effectiveLang = determineEffectiveLanguage(lang, i18n);
 
-        JsonNode i18n = meta.get("i18n");
-        String effectiveLang = determineEffectiveLanguage(lang, i18n);
-
-        JsonNode langNode = i18n.get(effectiveLang);
-        if (langNode != null) {
-            if (langNode.has("changelog") && langNode.get("changelog").isTextual()) {
-                return langNode.get("changelog").asText();
+                JsonNode langNode = i18n.get(effectiveLang);
+                if (langNode != null) {
+                    return langNode.asText();
+                }
             }
-            if (langNode.has("description") && langNode.get("description").isTextual()) {
-                return langNode.get("description").asText();
+            if (meta.has("changelog") && meta.get("changelog").isTextual()) {
+                return meta.get("changelog").asText();
             }
         }
 
@@ -151,26 +143,31 @@ public class UpgradeResponseBuilder {
     private String determineEffectiveLanguage(String lang, JsonNode i18n) {
         if (lang == null || lang.isBlank()) {
             lang = "en";
-        } else {
-            lang = lang.toLowerCase();
         }
 
+        // 1. 精确匹配
         if (i18n.has(lang)) {
             return lang;
         }
 
-        if (lang.contains("-")) {
-            String baseLang = lang.split("-")[0];
-            if (i18n.has(baseLang)) {
-                return baseLang;
+        // 2. 前缀匹配：设备传 zh，匹配 zh-CN、zh-TW 等
+        if (!lang.contains("-")) {
+            String prefix = lang + "-";
+            for (Iterator<String> it = i18n.fieldNames(); it.hasNext(); ) {
+                String key = it.next();
+                if (key.startsWith(prefix)) {
+                    return key;
+                }
             }
         }
 
+        // 4. 回退到 en
         if (i18n.has("en")) {
             return "en";
         }
 
-        if (i18n.size() > 0) {
+        // 5. 返回第一个可用语言
+        if (!i18n.isEmpty()) {
             return i18n.fieldNames().next();
         }
 
