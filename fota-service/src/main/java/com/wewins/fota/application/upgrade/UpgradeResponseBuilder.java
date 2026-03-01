@@ -58,13 +58,14 @@ public class UpgradeResponseBuilder {
      * 此方法综合策略、固件、设备信息生成 CheckResult
      * </p>
      *
-     * @param device   设备信息
-     * @param policy   匹配的升级策略
-     * @param lang     语言代码（如 "en", "zh"），可选
-     * @param autoMode 是否自动检查模式
+     * @param device    设备信息
+     * @param policy    匹配的升级策略
+     * @param requestId 请求唯一标识（用于关联 check 和 report）
+     * @param lang      语言代码（如 "en", "zh"），可选
+     * @param autoMode  是否自动检查模式
      * @return 检查结果
      */
-    public CheckResult buildResponse(Device device, UpgradePolicy policy, String lang, Boolean autoMode) {
+    public CheckResult buildResponse(Device device, UpgradePolicy policy, String requestId, String lang, Boolean autoMode) {
         // 1. 加载目标固件版本信息
         FirmwareVersion targetFirmware = loadTargetFirmware(policy.getTargetVersionId());
         if (targetFirmware == null) {
@@ -84,7 +85,7 @@ public class UpgradeResponseBuilder {
         int downloadDelay = calculateDownloadDelay();
 
         // 4. 生成签名下载 URL
-        String downloadUrl = generateDownloadUrl(targetFirmware, policy, device);
+        String downloadUrl = generateDownloadUrl(targetFirmware, policy, requestId);
 
         // 5. 获取校验和
         String checksum = selectChecksum(targetFirmware);
@@ -97,6 +98,7 @@ public class UpgradeResponseBuilder {
                 .targetVersionId(targetFirmware.getId())
                 .targetVersion(targetFirmware.getVersion())
                 .policyId(policy.getId())
+                .requestId(requestId)
                 .checkInterval(checkInterval)
                 .downloadDelay(downloadDelay)
                 .releaseStartDate(formatReleaseDate(targetFirmware))
@@ -178,7 +180,7 @@ public class UpgradeResponseBuilder {
         return "Release Version: " + firmware.getVersion();
     }
 
-    private String generateDownloadUrl(FirmwareVersion firmware, UpgradePolicy policy, Device device) {
+    private String generateDownloadUrl(FirmwareVersion firmware, UpgradePolicy policy, String requestId) {
         String fileUrl = firmware.getFileUrl();
         if (fileUrl == null || fileUrl.isBlank()) {
             log.warn("固件文件 URL 为空: firmwareId={}", firmware.getId());
@@ -186,10 +188,10 @@ public class UpgradeResponseBuilder {
         }
 
         try {
-            return signedUrlService.generateSignedUrl(fileUrl, policy.getId(), device.getId());
+            return signedUrlService.generateSignedUrl(fileUrl, policy.getId(), requestId);
         } catch (Exception e) {
-            log.error("生成签名下载 URL 失败: firmwareId={}, policyId={}, deviceId={}",
-                    firmware.getId(), policy.getId(), device.getId(), e);
+            log.error("生成签名下载 URL 失败: firmwareId={}, policyId={}, requestId={}",
+                    firmware.getId(), policy.getId(), requestId, e);
             return null;
         }
     }

@@ -1,6 +1,5 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
@@ -20,10 +19,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -50,9 +53,13 @@ class UpgradeResponseBuilderTest {
     private Device testDevice;
     private UpgradePolicy testPolicy;
     private FirmwareVersion testFirmware;
+    private String testRequestId;
 
     @BeforeEach
     void setUp() {
+        // 生成测试用 request_id
+        testRequestId = UUID.randomUUID().toString().replace("-", "");
+
         // 创建测试设备
         testDevice = Device.builder()
                 .id(1000L)
@@ -96,120 +103,85 @@ class UpgradeResponseBuilderTest {
         @DisplayName("构建响应 - 基本场景")
         void buildResponse_shouldReturnValidResponse() {
             // Given
+            String expectedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&rid=" + testRequestId;
+
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123");
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+                    .thenReturn(expectedUrl);
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getHasUpdate()).isTrue();
-            assertThat(result.getDecision()).isEqualTo("UPDATE");
-            assertThat(result.getTargetVersionId()).isEqualTo(20L);
-            assertThat(result.getTargetVersion()).isEqualTo("v2.0.0");
             assertThat(result.getPolicyId()).isEqualTo(100L);
+            assertThat(result.getRequestId()).isEqualTo(testRequestId);
+            assertThat(result.getDownloadUrl()).isEqualTo(expectedUrl);
         }
 
         @Test
-        @DisplayName("构建响应 - 包含签名 URL")
-        void buildResponse_shouldIncludeSignedUrl() {
-            // Given
-            String expectedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&did=1000&expire=1709222400&sig=abc123";
-            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong())).thenReturn(expectedUrl);
-
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
-
-            // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("downloadUrl")).isEqualTo(expectedUrl);
-        }
-
-        @Test
-        @DisplayName("构建响应 - 文件大小格式化")
-        void buildResponse_shouldFormatFileSize() {
+        @DisplayName("构建响应 - 包含正确的固件信息")
+        void buildResponse_shouldIncludeFirmwareInfo() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("fileSize")).isEqualTo(20_000_000L);
-            assertThat(result.getExt().get("fileSizeText")).isEqualTo("19.1MB");
+            assertThat(result.getTargetVersion()).isEqualTo("v2.0.0");
+            assertThat(result.getFileSize()).isEqualTo(20_000_000L);
+            assertThat(result.getFileSizeText()).isEqualTo("19.1MB");
+            assertThat(result.getChecksum()).isEqualTo(testFirmware.getSha256());
+            assertThat(result.getChecksumType()).isEqualTo("sha256");
         }
 
         @Test
-        @DisplayName("构建响应 - SHA-256 校验和优先")
-        void buildResponse_shouldPreferSha256Checksum() {
-            // Given
-            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/firmware.zip");
-
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
-
-            // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("checksum")).isEqualTo(testFirmware.getSha256());
-            assertThat(result.getExt().get("checksumType")).isEqualTo("sha256");
-        }
-
-        @Test
-        @DisplayName("构建响应 - 自动模式检查间隔更长")
-        void buildResponse_shouldUseLongerInterval_forAutoMode() {
-            // Given
-            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/firmware.zip");
-
-            // When
-            UpgradeCheckService.CheckResult autoResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", true);
-            UpgradeCheckService.CheckResult manualResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
-
-            // Then
-            assertThat(autoResult.getResponseCheckInterval()).isEqualTo(86400);  // 24 小时
-            assertThat(manualResult.getResponseCheckInterval()).isEqualTo(3600);  // 1 小时
-        }
-
-        @Test
-        @DisplayName("构建响应 - 固件不存在返回错误")
+        @DisplayName("构建响应 - 固件版本不存在返回错误")
         void buildResponse_shouldReturnError_whenFirmwareNotFound() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.empty());
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result).isNotNull();
             assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("ERROR");
             assertThat(result.getErrorMessage()).isEqualTo("目标固件版本不存在");
         }
 
         @Test
-        @DisplayName("构建响应 - 固件包未就绪返回错误")
+        @DisplayName("构建响应 - 固件包未准备好返回错误")
         void buildResponse_shouldReturnError_whenFirmwareNotReady() {
             // Given
-            testFirmware.setPackageStatus("UPLOADED");
+            testFirmware.setPackageStatus("PENDING");
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result).isNotNull();
             assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("ERROR");
             assertThat(result.getErrorMessage()).isEqualTo("固件包未准备好");
+        }
+
+        @Test
+        @DisplayName("构建响应 - 签名 URL 生成失败时 downloadUrl 为 null")
+        void buildResponse_shouldHandleNullDownloadUrl() {
+            // Given
+            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+                    .thenThrow(new RuntimeException("签名服务异常"));
+
+            // When
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+
+            // Then
+            assertThat(result.getHasUpdate()).isTrue();
+            assertThat(result.getDownloadUrl()).isNull();
         }
     }
 
@@ -218,49 +190,24 @@ class UpgradeResponseBuilderTest {
     class I18nReleaseNoteTests {
 
         @Test
-        @DisplayName("选择中文 release_note")
-        void buildResponse_shouldSelectChineseReleaseNote() {
+        @DisplayName("返回中文 release_note")
+        void buildResponse_shouldReturnChineseReleaseNote_whenLangIsZh() {
             // Given - 设置多语言元数据
             ObjectNode meta = objectMapper.createObjectNode();
             ObjectNode i18n = meta.putObject("i18n");
             ObjectNode zhNode = i18n.putObject("zh");
-            zhNode.put("description", "修复蓝牙断连问题");
-            ObjectNode enNode = i18n.putObject("en");
-            enNode.put("description", "Fix Bluetooth disconnection");
+            zhNode.put("changelog", "修复蓝牙断连问题\n优化功耗");
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "zh", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "zh", false);
 
             // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("releaseNote")).isEqualTo("修复蓝牙断连问题");
-        }
-
-        @Test
-        @DisplayName("降级到英文 release_note")
-        void buildResponse_shouldFallbackToEnglish_whenRequestedLanguageNotFound() {
-            // Given
-            ObjectNode meta = objectMapper.createObjectNode();
-            ObjectNode i18n = meta.putObject("i18n");
-            ObjectNode enNode = i18n.putObject("en");
-            enNode.put("description", "Bug fixes and improvements");
-            testFirmware.setMeta(meta);
-
-            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
-                    .thenReturn("https://cdn.example.com/firmware.zip");
-
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "fr", false);
-
-            // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("releaseNote")).isEqualTo("Bug fixes and improvements");
+            assertThat(result.getReleaseNote()).isEqualTo("修复蓝牙断连问题\n优化功耗");
         }
 
         @Test
@@ -275,72 +222,73 @@ class UpgradeResponseBuilderTest {
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(any(), anyLong(), anyLong()))
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("releaseNote")).isEqualTo("1. Fix bug A\n2. Fix bug B");
+            assertThat(result.getReleaseNote()).isEqualTo("1. Fix bug A\n2. Fix bug B");
         }
     }
 
     @Nested
-    @DisplayName("静态工厂方法测试")
-    class StaticFactoryMethodTests {
+    @DisplayName("控制参数测试")
+    class ControlParamsTests {
 
         @Test
-        @DisplayName("创建无更新响应")
-        void buildNoUpdateResponse_shouldReturnNoUpdate() {
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildNoUpdateResponse();
+        @DisplayName("自动模式使用更长的检查间隔")
+        void buildResponse_shouldUseLongerInterval_forAutoMode() {
+            // Given
+            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+                    .thenReturn("https://cdn.example.com/firmware.zip");
+
+            // When - 自动模式
+            var autoResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", true);
 
             // Then
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("NO_UPDATE");
-            assertThat(result.getResponseCheckInterval()).isEqualTo(86400);
+            assertThat(autoResult.getCheckInterval()).isEqualTo(86400);  // 24 小时
         }
 
         @Test
-        @DisplayName("创建设备不存在响应")
-        void buildNotFoundResponse_shouldReturnNotFound() {
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildNotFoundResponse("设备未注册");
+        @DisplayName("手动模式使用默认检查间隔")
+        void buildResponse_shouldUseDefaultInterval_forManualMode() {
+            // Given
+            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+                    .thenReturn("https://cdn.example.com/firmware.zip");
+
+            // When - 手动模式
+            var manualResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-            assertThat(result.getErrorMessage()).isEqualTo("设备未注册");
+            assertThat(manualResult.getCheckInterval()).isEqualTo(3600);  // 1 小时
         }
+    }
+
+    @Nested
+    @DisplayName("签名 URL 调用验证")
+    class SignedUrlCallTests {
 
         @Test
-        @DisplayName("创建限流响应")
-        void buildRateLimitedResponse_shouldReturnRateLimited() {
+        @DisplayName("签名 URL 服务被正确调用")
+        void buildResponse_shouldCallSignedUrlService_withCorrectParams() {
+            // Given
+            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
+            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+                    .thenReturn("https://cdn.example.com/firmware.zip");
+
             // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildRateLimitedResponse("请求过于频繁", 300);
+            upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
 
             // Then
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("RATE_LIMITED");
-            assertThat(result.getErrorMessage()).isEqualTo("请求过于频繁");
-            assertThat(result.getResponseCheckInterval()).isEqualTo(300);
-            assertThat(result.getDownloadDelay()).isEqualTo(300);
-        }
-
-        @Test
-        @DisplayName("创建错误响应")
-        void buildErrorResponse_shouldReturnError() {
-            // When
-            UpgradeCheckService.CheckResult result = upgradeResponseBuilder.buildErrorResponse("INVALID_PARAM", "参数错误");
-
-            // Then
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("ERROR");
-            assertThat(result.getErrorMessage()).isEqualTo("参数错误");
-            assertThat(result.getExt()).isNotNull();
-            assertThat(result.getExt().get("errorCode")).isEqualTo("INVALID_PARAM");
+            verify(signedUrlService).generateSignedUrl(
+                    eq("fota/fw/1/test-firmware.zip"),
+                    eq(100L),
+                    eq(testRequestId)
+            );
         }
     }
 }

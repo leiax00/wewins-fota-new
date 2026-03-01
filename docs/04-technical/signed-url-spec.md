@@ -1,6 +1,6 @@
 # 签名下载 URL 技术规范
 
-> **版本**: v2.0
+> **版本**: v2.1
 > **创建日期**: 2026-02-28
 > **最后更新**: 2026-03-01
 > **作者**: FOTA 后端组
@@ -16,7 +16,7 @@
 
 - **防篡改**: URL 被篡改后无法通过验证
 - **防滥用**: URL 具有时效性，过期自动失效
-- **可溯源**: URL 中包含策略和设备信息，便于审计
+- **可溯源**: URL 中包含策略和请求信息，便于审计
 - **高性能**: 验证过程轻量，不影响下载性能
 
 ### 1.2 适用场景
@@ -51,14 +51,14 @@ signature = HMAC-SHA256(secret_key, string_to_sign)
 待签字符串按以下顺序拼接（使用 `|` 分隔）：
 
 ```
-string_to_sign = firmware_path|policy_id|device_id|expire_ts
+string_to_sign = firmware_path|policy_id|request_id|expire_ts
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `firmware_path` | String | 固件文件路径 |
 | `policy_id` | Long | 策略/任务 ID |
-| `device_id` | Long | 设备自增 ID（非 IMEI） |
+| `request_id` | String | 请求唯一标识（UUID，用于关联 check 和 report） |
 | `expire_ts` | Long | 过期时间戳（秒级 Unix 时间） |
 
 **示例**：
@@ -66,10 +66,10 @@ string_to_sign = firmware_path|policy_id|device_id|expire_ts
 ```
 firmware_path = "fota/fw/1/test.bin"
 policy_id = 12345
-device_id = 67890
+request_id = "550e8400-e29b-41d4-a716-446655440000"
 expire_ts = 1709222400
 
-string_to_sign = "fota/fw/1/test.bin|12345|67890|1709222400"
+string_to_sign = "fota/fw/1/test.bin|12345|550e8400-e29b-41d4-a716-446655440000|1709222400"
 ```
 
 ### 2.2 S3 预签名模式 (s3-presigned)
@@ -85,7 +85,7 @@ string_to_sign = "fota/fw/1/test.bin|12345|67890|1709222400"
 ```
 https://cdn.example.com/firmware/{firmware_path}?
   pid={policy_id}&
-  did={device_id}&
+  rid={request_id}&
   expire={expire_ts}&
   sig={signature}
 ```
@@ -95,7 +95,7 @@ https://cdn.example.com/firmware/{firmware_path}?
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `pid` | Long | 是 | 策略 ID，用于审计和日志溯源 |
-| `did` | Long | 是 | 设备自增 ID，用于防滥用统计 |
+| `rid` | String | 是 | 请求唯一标识（UUID），用于关联 check 和 report |
 | `expire` | Long | 是 | 过期时间戳（秒），验证时检查 |
 | `sig` | String | 是 | HMAC-SHA256 签名，十六进制编码 |
 
@@ -103,14 +103,14 @@ https://cdn.example.com/firmware/{firmware_path}?
 
 **自签名模式**：
 ```
-https://cdn.example.com/fota/fw/1/test.bin?pid=12345&did=67890&expire=1709222400&sig=abc123def456...
+https://cdn.example.com/fota/fw/1/test.bin?pid=12345&rid=550e8400-e29b-41d4-a716-446655440000&expire=1709222400&sig=abc123def456...
 ```
 
 **S3 预签名模式**：
 ```
 https://bucket.s3.amazonaws.com/fota/fw/1/test.bin?
   pid=12345&
-  did=67890&
+  rid=550e8400-e29b-41d4-a716-446655440000&
   X-Amz-Algorithm=AWS4-HMAC-SHA256&
   X-Amz-Credential=...&
   X-Amz-Date=...&
@@ -163,8 +163,8 @@ app:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  SignedUrlService (接口)                                            │
-│  - generateSignedUrl(firmwarePath, policyId, deviceId)              │
-│  - verifySignature(firmwarePath, policyId, deviceId, expire, sig)   │
+│  - generateSignedUrl(firmwarePath, policyId, requestId)             │
+│  - verifySignature(firmwarePath, policyId, requestId, expire, sig)  │
 └─────────────────────────────────────────────────────────────────────┘
                                    △
                                    │
@@ -195,7 +195,7 @@ app:
 
 ```
 1. 解析 URL 参数
-   ├─ 提取 pid, did, expire, sig
+   ├─ 提取 pid, rid, expire, sig
 
 2. 时效性检查
    ├─ 当前时间 > expire? → 拒绝 (403 Forbidden)
@@ -218,12 +218,12 @@ app:
 | 机制 | 说明 |
 |------|------|
 | **过期时间** | URL 默认 24 小时后失效 |
-| **设备绑定** | URL 绑定 device_id，无法跨设备共享 |
+| **请求绑定** | URL 绑定 request_id，用于审计和关联事件 |
 
 ### 7.2 防篡改攻击
 
 - URL 中任何参数被修改都会导致签名验证失败
-- 签名覆盖所有关键参数（pid、did、expire、firmware_path）
+- 签名覆盖所有关键参数（pid、rid、expire、firmware_path）
 - 使用 HMAC 算法，密钥不公开传输
 
 ### 7.3 密钥安全
@@ -235,6 +235,12 @@ app:
 ---
 
 ## 变更日志
+
+### v2.1 (2026-03-01)
+- **溯源参数调整**：将 `did`（设备 ID）替换为 `rid`（请求 ID）
+- 原因：`did` 冗余（上报消息体中已包含 `imei`），`rid` 用于关联 check 和 report
+- URL 格式变更：`did={deviceId}` → `rid={requestId}`
+- 签名载荷变更：`device_id` → `request_id`（UUID 字符串）
 
 ### v2.0 (2026-03-01)
 - 重构签名模式，支持 self-signed 和 s3-presigned 两种模式

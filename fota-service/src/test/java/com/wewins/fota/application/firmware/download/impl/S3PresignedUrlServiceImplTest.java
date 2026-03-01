@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,7 +32,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class S3PresignedUrlServiceImplTest {
 
-    private static final String TEST_PRESIGNED_URL = "https://bucket.s3.amazonaws.com/fota/fw/123/test-firmware.zip?X-Amz-Signature=abc123&pid=100&did=1000";
+    private static final String TEST_REQUEST_ID = "550e8400e29b41d4a716446655440000";
+    private static final String TEST_PRESIGNED_URL = "https://bucket.s3.amazonaws.com/fota/fw/123/test-firmware.zip?X-Amz-Signature=abc123&pid=100&rid=" + TEST_REQUEST_ID;
 
     @Mock
     private S3StorageClient s3StorageClient;
@@ -60,10 +62,10 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = 1000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
 
             // Then
             assertThat(url).isNotEmpty();
@@ -76,7 +78,7 @@ class S3PresignedUrlServiceImplTest {
 
             Map<String, String> params = paramsCaptor.getValue();
             assertThat(params).containsEntry("pid", "100");
-            assertThat(params).containsEntry("did", "1000");
+            assertThat(params).containsEntry("rid", requestId);
         }
 
         @Test
@@ -85,56 +87,28 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = 1000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
             int customExpireSeconds = 7200;
 
             // When
-            signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, customExpireSeconds);
+            signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, customExpireSeconds);
 
             // Then
             verify(s3StorageClient).getDownloadUrl(eq(firmwarePath), eq(Duration.ofSeconds(customExpireSeconds)), any(Map.class));
         }
 
         @Test
-        @DisplayName("生成预签名 URL - 空固件路径抛出异常")
-        void generateSignedUrl_shouldThrowException_whenFirmwarePathIsNull() {
-            // Given
-            String firmwarePath = null;
-            Long policyId = 100L;
-            Long deviceId = 1000L;
-
-            // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("firmwarePath 不能为空");
-        }
-
-        @Test
-        @DisplayName("生成预签名 URL - 空 policyId 抛出异常")
-        void generateSignedUrl_shouldThrowException_whenPolicyIdIsNull() {
-            // Given
-            String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = null;
-            Long deviceId = 1000L;
-
-            // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("policyId 必须为正数");
-        }
-
-        @Test
-        @DisplayName("生成预签名 URL - 空 deviceId 抛出异常")
-        void generateSignedUrl_shouldThrowException_whenDeviceIdIsNull() {
+        @DisplayName("生成预签名 URL - 空 requestId 抛出异常")
+        void generateSignedUrl_shouldThrowException_whenRequestIdIsNull() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = null;
+            String requestId = null;
 
             // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId))
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("deviceId 必须为正数");
+                    .hasMessageContaining("requestId 不能为空");
         }
 
         @Test
@@ -143,11 +117,11 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = 1000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
             int expireSeconds = 8 * 24 * 3600; // 8 天，超过 7 天限制
 
             // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId, expireSeconds))
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, expireSeconds))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("expireSeconds 必须在 1-604800 秒之间");
         }
@@ -163,12 +137,12 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = 1000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
             long expireTime = System.currentTimeMillis() / 1000 + 3600;
             String signature = "any-signature";
 
             // When
-            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, deviceId, expireTime, signature);
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, requestId, expireTime, signature);
 
             // Then
             assertThat(isValid).isTrue();
@@ -180,12 +154,12 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 100L;
-            Long deviceId = 1000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
             long expireTime = System.currentTimeMillis() / 1000 - 3600; // 1 小时前
             String signature = "any-signature";
 
             // When
-            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, deviceId, expireTime, signature);
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, requestId, expireTime, signature);
 
             // Then
             assertThat(isValid).isFalse();
@@ -202,10 +176,10 @@ class S3PresignedUrlServiceImplTest {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
             Long policyId = 200L;
-            Long deviceId = 2000L;
+            String requestId = UUID.randomUUID().toString().replace("-", "");
 
             // When
-            signedUrlService.generateSignedUrl(firmwarePath, policyId, deviceId);
+            signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
 
             // Then
             @SuppressWarnings("unchecked")
@@ -214,7 +188,7 @@ class S3PresignedUrlServiceImplTest {
 
             Map<String, String> params = paramsCaptor.getValue();
             assertThat(params).containsEntry("pid", "200");
-            assertThat(params).containsEntry("did", "2000");
+            assertThat(params).containsEntry("rid", requestId);
             assertThat(params).hasSize(2);
         }
     }

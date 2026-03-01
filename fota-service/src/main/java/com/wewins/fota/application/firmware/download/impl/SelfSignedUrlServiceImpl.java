@@ -18,7 +18,7 @@ import java.time.Duration;
  * 使用 HMAC-SHA256 算法生成签名，包含以下溯源参数：
  * <ul>
  *   <li>policy_id: 升级策略 ID，用于记录设备升级的来源策略</li>
- *   <li>device_id: 设备 ID，用于记录下载设备</li>
+ *   <li>request_id: 请求唯一标识，用于关联检查请求和升级事件</li>
  *   <li>expire: 过期时间戳，用于控制 URL 有效期</li>
  * </ul>
  * </p>
@@ -36,30 +36,30 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
     private static final String SIGNATURE_DELIMITER = "|";
 
     @Override
-    public String generateSignedUrl(String firmwarePath, Long policyId, Long deviceId) {
-        return generateSignedUrl(firmwarePath, policyId, deviceId, properties.getSelfSigned().getDefaultExpireSeconds());
+    public String generateSignedUrl(String firmwarePath, Long policyId, String requestId) {
+        return generateSignedUrl(firmwarePath, policyId, requestId, properties.getSelfSigned().getDefaultExpireSeconds());
     }
 
     @Override
-    public String generateSignedUrl(String firmwarePath, Long policyId, Long deviceId, int expireSeconds) {
+    public String generateSignedUrl(String firmwarePath, Long policyId, String requestId, int expireSeconds) {
         // 参数校验
-        validateParams(firmwarePath, policyId, deviceId, expireSeconds);
+        validateParams(firmwarePath, policyId, requestId, expireSeconds);
 
         // 计算过期时间戳（秒）
         long expireTime = System.currentTimeMillis() / 1000 + expireSeconds;
 
         // 构建签名载荷
-        String payload = buildPayload(firmwarePath, policyId, deviceId, expireTime);
+        String payload = buildPayload(firmwarePath, policyId, requestId, expireTime);
 
         // 生成 HMAC-SHA256 签名
         String signature = hmacSha256(payload);
 
         // 构建完整 URL
-        return buildUrl(firmwarePath, policyId, deviceId, expireTime, signature);
+        return buildUrl(firmwarePath, policyId, requestId, expireTime, signature);
     }
 
     @Override
-    public boolean verifySignature(String firmwarePath, Long policyId, Long deviceId, long expireTime, String signature) {
+    public boolean verifySignature(String firmwarePath, Long policyId, String requestId, long expireTime, String signature) {
         // 检查是否过期
         long currentTime = System.currentTimeMillis() / 1000;
         if (expireTime < currentTime) {
@@ -68,7 +68,7 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
         }
 
         // 重新计算签名并比对
-        String payload = buildPayload(firmwarePath, policyId, deviceId, expireTime);
+        String payload = buildPayload(firmwarePath, policyId, requestId, expireTime);
         String expectedSignature = hmacSha256(payload);
 
         return signature.equals(expectedSignature);
@@ -77,15 +77,15 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
     /**
      * 参数校验
      */
-    private void validateParams(String firmwarePath, Long policyId, Long deviceId, int expireSeconds) {
+    private void validateParams(String firmwarePath, Long policyId, String requestId, int expireSeconds) {
         if (firmwarePath == null || firmwarePath.isBlank()) {
             throw new IllegalArgumentException("firmwarePath 不能为空");
         }
         if (policyId == null || policyId <= 0) {
             throw new IllegalArgumentException("policyId 必须为正数");
         }
-        if (deviceId == null || deviceId <= 0) {
-            throw new IllegalArgumentException("deviceId 必须为正数");
+        if (requestId == null || requestId.isBlank()) {
+            throw new IllegalArgumentException("requestId 不能为空");
         }
         if (expireSeconds <= 0 || expireSeconds > Duration.ofDays(7).toSeconds()) {
             throw new IllegalArgumentException("expireSeconds 必须在 1-604800 秒之间（最多 7 天）");
@@ -95,13 +95,13 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
     /**
      * 构建签名载荷
      * <p>
-     * 格式: firmwarePath|policyId|deviceId|expireTime
+     * 格式: firmwarePath|policyId|requestId|expireTime
      * </p>
      */
-    private String buildPayload(String firmwarePath, Long policyId, Long deviceId, long expireTime) {
+    private String buildPayload(String firmwarePath, Long policyId, String requestId, long expireTime) {
         return firmwarePath + SIGNATURE_DELIMITER
                 + policyId + SIGNATURE_DELIMITER
-                + deviceId + SIGNATURE_DELIMITER
+                + requestId + SIGNATURE_DELIMITER
                 + expireTime;
     }
 
@@ -153,10 +153,10 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
     /**
      * 构建完整的下载 URL
      * <p>
-     * 格式: {baseUrl}/{firmwarePath}?pid={policyId}&did={deviceId}&expire={expireTime}&sig={signature}
+     * 格式: {baseUrl}/{firmwarePath}?pid={policyId}&rid={requestId}&expire={expireTime}&sig={signature}
      * </p>
      */
-    private String buildUrl(String firmwarePath, Long policyId, Long deviceId, long expireTime, String signature) {
+    private String buildUrl(String firmwarePath, Long policyId, String requestId, long expireTime, String signature) {
         StringBuilder url = new StringBuilder();
 
         // 添加基础 URL 和路径
@@ -173,7 +173,7 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
 
         // 添加查询参数
         url.append("?pid=").append(policyId);
-        url.append("&did=").append(deviceId);
+        url.append("&rid=").append(requestId);
         url.append("&expire=").append(expireTime);
         url.append("&sig=").append(signature);
 

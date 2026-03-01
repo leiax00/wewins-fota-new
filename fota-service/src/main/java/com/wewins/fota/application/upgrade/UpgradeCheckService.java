@@ -3,6 +3,7 @@ package com.wewins.fota.application.upgrade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.wewins.fota.common.util.RequestIdGenerator;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.application.validation.DataIntegrityService;
@@ -106,6 +107,9 @@ public class UpgradeCheckService {
 
         log.debug("开始检查设备更新: request={}", request);
 
+        // 生成请求唯一标识（用于关联 check 和 report）
+        String requestId = RequestIdGenerator.generate();
+
         // 1. 参数校验
         requestValidator.validateRequiredParams(request.getProduct(), request.getImei(), request.getVersion());
         requestValidator.validateAuto(request.getAuto());
@@ -163,7 +167,7 @@ public class UpgradeCheckService {
         UpgradePolicy policy = policies.getFirst();
 
         // 9. 构建响应（支持 lang 和 auto 参数）
-        return upgradeResponseBuilder.buildResponse(device, policy, request.getLang(), request.getAuto() == 1);
+        return upgradeResponseBuilder.buildResponse(device, policy, requestId, request.getLang(), request.getAuto() == 1);
     }
 
     /**
@@ -427,24 +431,26 @@ public class UpgradeCheckService {
      * </ul>
      * </p>
      *
-     * @param device   设备信息
-     * @param policy   升级策略
-     * @param lang     语言代码（可选）
-     * @param autoMode 是否自动检查模式（可选）
+     * @param device    设备信息
+     * @param policy    升级策略
+     * @param requestId 请求唯一标识
+     * @param lang      语言代码（可选）
+     * @param autoMode  是否自动检查模式（可选）
      * @return 检查结果
      */
-    private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String lang, Boolean autoMode) {
-        return upgradeResponseBuilder.buildResponse(device, policy, lang, autoMode);
+    private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String requestId, String lang, Boolean autoMode) {
+        return upgradeResponseBuilder.buildResponse(device, policy, requestId, lang, autoMode);
     }
 
     /**
      * 构建检查结果（无语言参数的简化版本）
      *
-     * @param device 设备信息
-     * @param policy 升级策略
+     * @param device    设备信息
+     * @param policy    升级策略
+     * @param requestId 请求唯一标识
      * @return 检查结果
      */
-    private CheckResult buildCheckResult(Device device, UpgradePolicy policy) {
-        return upgradeResponseBuilder.buildResponse(device, policy, null, false);
+    private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String requestId) {
+        return upgradeResponseBuilder.buildResponse(device, policy, requestId, null, false);
     }
 }

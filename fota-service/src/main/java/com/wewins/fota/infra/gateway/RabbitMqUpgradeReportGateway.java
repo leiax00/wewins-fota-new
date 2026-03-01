@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -52,10 +53,72 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
     private DeviceUpgradeEvent buildEvent(UpgradeReport report) {
         return DeviceUpgradeEvent.builder()
                 .imei(report.getImei())
+                .requestId(extractRequestId(report.getDownloadUrl()))
+                .policyId(extractPolicyId(report.getDownloadUrl()))
                 .eventType(DeviceUpgradeEventType.fromDbValue(report.getEventType()))
                 .downloadUrl(report.getDownloadUrl())
                 .details(report.getExt())
                 .clientIp(report.getClientIp())
                 .build();
+    }
+
+    /**
+     * 从下载 URL 中解析 rid 参数（请求唯一标识）
+     *
+     * @param downloadUrl 下载 URL
+     * @return requestId，如果解析失败则返回 null
+     */
+    private String extractRequestId(String downloadUrl) {
+        if (downloadUrl == null || downloadUrl.isBlank()) {
+            return null;
+        }
+
+        try {
+            URI uri = new URI(downloadUrl);
+            String query = uri.getQuery();
+            if (query == null) {
+                return null;
+            }
+
+            for (String param : query.split("&")) {
+                if (param.startsWith("rid=")) {
+                    return param.substring(4);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析下载 URL 中的 requestId 失败: downloadUrl={}", downloadUrl, e);
+        }
+
+        return null;
+    }
+
+    /**
+     * 从下载 URL 中解析 pid 参数（策略 ID）
+     *
+     * @param downloadUrl 下载 URL
+     * @return policyId，如果解析失败则返回 null
+     */
+    private Long extractPolicyId(String downloadUrl) {
+        if (downloadUrl == null || downloadUrl.isBlank()) {
+            return null;
+        }
+
+        try {
+            URI uri = new URI(downloadUrl);
+            String query = uri.getQuery();
+            if (query == null) {
+                return null;
+            }
+
+            for (String param : query.split("&")) {
+                if (param.startsWith("pid=")) {
+                    return Long.parseLong(param.substring(4));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析下载 URL 中的 policyId 失败: downloadUrl={}", downloadUrl, e);
+        }
+
+        return null;
     }
 }

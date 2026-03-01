@@ -44,6 +44,14 @@ public class CheckResult {
     private Long policyId;
 
     /**
+     * 请求唯一标识（UUID）
+     * <p>
+     * 用于关联设备检查请求和后续的升级事件
+     * </p>
+     */
+    private String requestId;
+
+    /**
      * 建议的下次检查间隔（秒）
      */
     private Integer checkInterval;
