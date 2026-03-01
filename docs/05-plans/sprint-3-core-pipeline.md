@@ -1010,3 +1010,4 @@ Sprint 3: [████████░░░░░░░░░] 40%
 - [Sprint 2 计划](./sprint-2-frontend.md)
 - [产品需求文档](../01-product/prd.md)
 - [技术架构文档](../02-architecture/FOTA 系统架构及技术说明书.md)
+- [**升级检查 API 规范**](../04-technical/upgrade-check-api.md)

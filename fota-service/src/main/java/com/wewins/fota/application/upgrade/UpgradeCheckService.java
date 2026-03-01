@@ -1,5 +1,7 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.application.upgrade.dto.CheckResult;
+import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
@@ -152,40 +154,26 @@ public class UpgradeCheckService {
      * 新 API 接口，支持完整参数列表
      * </p>
      *
-     * @param productModel 产品型号（必填）
-     * @param imei         设备 IMEI（必填）
-     * @param version      当前固件版本号（必填）
-     * @param tag          内部版本号/build tag（可选）
-     * @param auto         触发模式：0=手动, 1=自动（可选，默认0）
-     * @param lang         语言代码（可选）
-     * @param dev          测试设备标识：1=测试设备（可选）
+     * @param request 升级检查请求 DTO
      * @return 检查结果
      */
-    public CheckResult checkUpgrade(
-            String productModel,
-            String imei,
-            String version,
-            String tag,
-            Integer auto,
-            String lang,
-            Integer dev) {
+    public CheckResult checkUpgrade(UpgradeCheckReqDTO request) {
 
-        log.debug("开始检查设备更新: productModel={}, imei={}, version={}, tag={}, auto={}, lang={}, dev={}",
-                productModel, imei, version, tag, auto, lang, dev);
+        log.debug("开始检查设备更新: request={}", request);
 
         // 1. 参数校验
-        requestValidator.validateRequiredParams(productModel, imei, version);
-        requestValidator.validateAuto(auto);
+        requestValidator.validateRequiredParams(request.getProduct(), request.getImei(), request.getVersion());
+        requestValidator.validateAuto(request.getAuto());
 
         // 2. 限流检查（每分钟最多 10 次请求）
         RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
-                "upgrade:" + imei,
+                "upgrade:" + request.getImei(),
                 10,
                 Duration.ofMinutes(1)
         );
 
         if (!rateLimitDecision.isAllowed()) {
-            log.warn("设备请求被限流: imei={}, reason={}", imei, rateLimitDecision.getReason());
+            log.warn("设备请求被限流: imei={}, reason={}", request.getImei(), rateLimitDecision.getReason());
             return CheckResult.rateLimited(
                     "请求过于频繁",
                     (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
@@ -193,37 +181,37 @@ public class UpgradeCheckService {
         }
 
         // 3. 通过产品型号查找产品
-        Product product = productRepository.findByModel(productModel)
+        Product product = productRepository.findByModel(request.getProduct())
                 .orElse(null);
         if (product == null) {
-            log.warn("产品型号不存在: productModel={}", productModel);
+            log.warn("产品型号不存在: productModel={}", request.getProduct());
             return CheckResult.error("产品型号不存在");
         }
 
         // 4. 从缓存或数据库加载设备信息
         // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
-        Device device = loadDevice(imei);
+        Device device = loadDevice(request.getImei());
         if (device == null) {
-            log.warn("设备不存在，拒绝升级: imei={}", imei);
+            log.warn("设备不存在，拒绝升级: imei={}", request.getImei());
             return CheckResult.notFound("设备未注册，请联系管理员");
         }
 
         // 5. 标记设备活跃（使用设备 ID 作为 bitmap 偏移量）
         try {
             bitmapRepository.markActive(LocalDate.now(), device.getId());
-            log.debug("标记设备活跃: imei={}, deviceId={}", imei, device.getId());
+            log.debug("标记设备活跃: imei={}, deviceId={}", request.getImei(), device.getId());
         } catch (Exception e) {
-            log.error("标记设备活跃失败: imei={}, deviceId={}", imei, device.getId(), e);
+            log.error("标记设备活跃失败: imei={}, deviceId={}", request.getImei(), device.getId(), e);
             // 降级处理：记录错误但不中断主流程
         }
 
         // 6. 查找固件版本 ID（version+tag 组合优先）
-        Long versionId = firmwareVersionLookupService.findVersionId(version, tag, product.getId());
+        Long versionId = firmwareVersionLookupService.findVersionId(request.getVersion(), request.getTag(), product.getId());
         log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",
-                version, tag, product.getId(), versionId);
+                request.getVersion(), request.getTag(), product.getId(), versionId);
 
         // 7. 匹配适用的升级策略（支持 dev、auto 参数）
-        List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, dev, auto);
+        List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, request.getDev(), request.getAuto());
         if (policies.isEmpty()) {
             log.debug("未找到适用的升级策略: deviceId={}, versionId={}", device.getId(), versionId);
             return CheckResult.noUpdate();
@@ -233,7 +221,7 @@ public class UpgradeCheckService {
         UpgradePolicy policy = policies.get(0);
 
         // 9. 构建响应（支持 lang 和 auto 参数）
-        return upgradeResponseBuilder.buildResponse(device, policy, lang, auto == 1);
+        return upgradeResponseBuilder.buildResponse(device, policy, request.getLang(), request.getAuto() == 1);
     }
 
     /**
@@ -534,31 +522,6 @@ public class UpgradeCheckService {
     }
 
     /**
-     * 根据 auto 参数调整检查间隔
-     * <p>
-     * 业务规则：</p>
-     * <ul>
-     *   <li>auto=0 (手动检查): 用户主动触发，返回较短间隔 (3600秒 = 1小时)</li>
-     *   <li>auto=1 (自动检查): 系统自动触发，返回较长间隔 (86400秒 = 24小时)</li>
-     *   <li>auto=null: 默认为手动检查</li>
-     * </ul>
-     * <p>
-     * 仅在 responseCheckInterval 为 null 时设置默认值，
-     * 保留已设置的间隔（如限流、错误等情况）
-     * </p>
-     *
-     * @param result 检查结果
-     * @param auto   自动检查标识：0=手动检查，1=自动检查
-     */
-    private void adjustCheckInterval(CheckResult result, Integer auto) {
-        if (result.getResponseCheckInterval() == null) {
-            boolean isAutoCheck = (auto != null && auto == 1);
-            int defaultInterval = isAutoCheck ? 86400 : 3600; // 自动: 24小时, 手动: 1小时
-            result.setResponseCheckInterval(defaultInterval);
-        }
-    }
-
-    /**
      * 构建检查结果
      * <p>
      * 使用 UpgradeResponseBuilder 构建完整的响应，包括：
@@ -589,104 +552,5 @@ public class UpgradeCheckService {
      */
     private CheckResult buildCheckResult(Device device, UpgradePolicy policy) {
         return upgradeResponseBuilder.buildResponse(device, policy, null, false);
-    }
-
-    /**
-     * 检查结果 DTO
-     */
-    @lombok.Builder
-    @lombok.Data
-    public static class CheckResult {
-        /**
-         * 是否有更新
-         */
-        private Boolean hasUpdate;
-
-        /**
-         * 检查决策：UPDATE, NO_UPDATE, RATE_LIMITED, GRAY_MISS
-         */
-        private String decision;
-
-        /**
-         * 目标版本 ID
-         */
-        private Long targetVersionId;
-
-        /**
-         * 目标版本号
-         */
-        private String targetVersion;
-
-        /**
-         * 策略 ID
-         */
-        private Long policyId;
-
-        /**
-         * 建议的下次检查间隔（秒）
-         */
-        private Integer responseCheckInterval;
-
-        /**
-         * 下载延迟（秒）
-         */
-        private Integer downloadDelay;
-
-        /**
-         * 错误码
-         */
-        private String errorCode;
-
-        /**
-         * 错误信息
-         */
-        private String errorMessage;
-
-        /**
-         * 扩展数据
-         */
-        private java.util.Map<String, Object> ext;
-
-        // 静态工厂方法
-        public static CheckResult noUpdate() {
-            return CheckResult.builder()
-                    .hasUpdate(false)
-                    .decision("NO_UPDATE")
-                    .responseCheckInterval(86400) // 24 小时
-                    .build();
-        }
-
-        public static CheckResult notFound(String message) {
-            return CheckResult.builder()
-                    .hasUpdate(false)
-                    .decision("DEVICE_NOT_FOUND")
-                    .errorMessage(message)
-                    .build();
-        }
-
-        public static CheckResult error(String message) {
-            return CheckResult.builder()
-                    .hasUpdate(false)
-                    .decision("ERROR")
-                    .errorMessage(message)
-                    .build();
-        }
-
-        /**
-         * 创建限流拒绝结果
-         *
-         * @param message          限流原因
-         * @param retryAfterSeconds 重试等待时间（秒）
-         * @return CheckResult
-         */
-        public static CheckResult rateLimited(String message, int retryAfterSeconds) {
-            return CheckResult.builder()
-                    .hasUpdate(false)
-                    .decision("RATE_LIMITED")
-                    .errorMessage(message)
-                    .responseCheckInterval(retryAfterSeconds)
-                    .downloadDelay(retryAfterSeconds)
-                    .build();
-        }
     }
 }
