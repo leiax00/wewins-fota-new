@@ -247,7 +247,7 @@ public class UpgradeCheckService {
         final String imei = device.getImei();
 
         return policies.stream()
-                .filter(policy -> matchesDevMode(policy, dev, finalTags))
+                .filter(policy -> matchesDevMode(policy, finalTags))
                 .filter(policy -> matchesTriggerMode(policy, auto))
                 .filter(policy -> matchesSourceVersion(policy, finalVersionId))
                 .filter(policy -> policyMatcher.matchesDeviceTags(policy.getTargetDeviceTags(), finalTags))
@@ -312,9 +312,7 @@ public class UpgradeCheckService {
                 augmented = deviceTags.deepCopy();
             }
 
-            if (!augmented.has("env")) {
-                augmented.put("env", "test");
-            }
+            augmented.put("env", "test");
 
             return augmented;
         } catch (Exception e) {
@@ -331,35 +329,13 @@ public class UpgradeCheckService {
      * @param augmentedTags 增强后的设备标签
      * @return true 如果匹配
      */
-    private boolean matchesDevMode(UpgradePolicy policy, Integer dev,
-                                   JsonNode augmentedTags) {
-        JsonNode targetTags = policy.getTargetDeviceTags();
-        if (targetTags == null || targetTags.isEmpty() || targetTags.isNull()) {
-            return true;
-        }
+    private boolean matchesDevMode(UpgradePolicy policy, JsonNode augmentedTags) {
+        PolicyStatus status = policy.getStatus();
+        String actualEnv = augmentedTags == null || augmentedTags.isNull()
+                ? null : augmentedTags.path("env").asText();
+        boolean isTestDevice = "test".equalsIgnoreCase(actualEnv) || "dev".equalsIgnoreCase(actualEnv);
 
-        if (targetTags.has("env")) {
-            String requiredEnv = targetTags.path("env").asText();
-            String actualEnv = augmentedTags == null || augmentedTags.isNull()
-                    ? null : augmentedTags.path("env").asText();
-
-            if ("test".equalsIgnoreCase(requiredEnv) || "dev".equalsIgnoreCase(requiredEnv)) {
-                return (dev != null && dev == 1)
-                        || (("test".equalsIgnoreCase(actualEnv)
-                        || "dev".equalsIgnoreCase(actualEnv)));
-            }
-
-            if ("prod".equalsIgnoreCase(requiredEnv) || "production".equalsIgnoreCase(requiredEnv)) {
-                if (dev != null && dev == 1) {
-                    return false;
-                }
-                return actualEnv == null
-                        || "prod".equalsIgnoreCase(actualEnv)
-                        || "production".equalsIgnoreCase(actualEnv);
-            }
-        }
-
-        return true;
+        return isTestDevice || status == PolicyStatus.ACTIVE;
     }
 
     /**
