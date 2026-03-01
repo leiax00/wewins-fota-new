@@ -2,6 +2,7 @@ package com.wewins.fota.domain.policy.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,7 +29,7 @@ public interface UpgradePolicyRepository {
      * @param policy 要更新的策略实体
      * @return 更新后的策略，如果状态不匹配则返回 null
      */
-    UpgradePolicy updateWithStatusCheck(Long id, String expectedStatus, UpgradePolicy policy);
+    UpgradePolicy updateWithStatusCheck(Long id, PolicyStatus expectedStatus, UpgradePolicy policy);
 
     boolean deleteById(Long id);
 

@@ -110,12 +110,9 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         // 解析请求的状态
-        PolicyStatus requestedStatus;
-        try {
-            requestedStatus = PolicyStatus.of(policy.getStatus());
-        } catch (IllegalArgumentException e) {
-            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
-                "请求的状态无效: " + e.getMessage());
+        PolicyStatus requestedStatus = policy.getStatus();
+        if (requestedStatus == null) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "策略状态不能为空");
         }
 
         // 涉及 ACTIVE/PAUSED 的状态需要 release 权限
@@ -144,27 +141,19 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         // 先获取策略检查当前状态和权限
         UpgradePolicy existingPolicy = getById(policy.getId());
-        PolicyStatus currentStatus;
-        try {
-            currentStatus = PolicyStatus.of(existingPolicy.getStatus());
-        } catch (IllegalArgumentException e) {
-            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
-                "当前策略状态无效: " + e.getMessage());
+        PolicyStatus currentStatus = existingPolicy.getStatus();
+        if (currentStatus == null) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "当前策略状态无效");
         }
 
         // 检查是否有状态变更
         PolicyStatus targetStatus = currentStatus;
-        if (policy.getStatus() != null && !policy.getStatus().isBlank()) {
-            try {
-                targetStatus = PolicyStatus.of(policy.getStatus());
-            } catch (IllegalArgumentException e) {
-                throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(),
-                    "请求的目标状态无效: " + e.getMessage());
-            }
+        if (policy.getStatus() != null) {
+            targetStatus = policy.getStatus();
         }
 
         // 如果状态有变更，需要检查切换权限并使用并发保护
-        if (!currentStatus.getCode().equals(targetStatus.getCode())) {
+        if (currentStatus != targetStatus) {
             boolean hasReleasePermission = rbacExpressionService.has("fota:policy:release");
 
             // 涉及 ACTIVE/PAUSED 的状态切换需要 release 权限
@@ -175,12 +164,12 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
 
             log.info("策略状态通过更新接口变更: policyId={}, from={}, to={}",
-                policy.getId(), currentStatus.getCode(), targetStatus.getCode());
+                policy.getId(), currentStatus, targetStatus);
 
             // 使用带状态校验的更新方法，防止并发冲突
             normalizeAndValidate(policy, false);
             UpgradePolicy updated = upgradePolicyRepository.updateWithStatusCheck(
-                policy.getId(), currentStatus.getCode(), policy);
+                policy.getId(), currentStatus, policy);
 
             if (updated == null) {
                 throw new BizException(
@@ -201,7 +190,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         // 保持原状态不变（防止被篡改）
-        policy.setStatus(currentStatus.getCode());
+        policy.setStatus(currentStatus);
 
         normalizeAndValidate(policy, false);
         upgradePolicyRepository.updateById(policy);
@@ -221,7 +210,10 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         UpgradePolicy policy = getById(id);
-        PolicyStatus currentStatus = PolicyStatus.of(policy.getStatus());
+        PolicyStatus currentStatus = policy.getStatus();
+        if (currentStatus == null) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "策略状态无效");
+        }
 
         // 检查用户权限
         boolean hasReleasePermission = rbacExpressionService.has("fota:policy:release");
@@ -256,23 +248,21 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             log.debug("更新策略状态: policyId={}, newStatus={}", id, newStatus);
         }
 
-        // 获取策略
-        UpgradePolicy policy = getById(id);
-
-        // 解析当前状态
-        final PolicyStatus currentStatus;
-        try {
-            currentStatus = PolicyStatus.of(policy.getStatus());
-        } catch (IllegalArgumentException e) {
-            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "当前策略状态无效: " + e.getMessage());
-        }
-
         // 解析目标状态
         final PolicyStatus targetStatus;
         try {
             targetStatus = PolicyStatus.of(newStatus);
         } catch (IllegalArgumentException e) {
             throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "目标状态无效: " + e.getMessage());
+        }
+
+        // 获取策略
+        UpgradePolicy policy = getById(id);
+
+        // 获取当前状态
+        final PolicyStatus currentStatus = policy.getStatus();
+        if (currentStatus == null) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "当前策略状态无效");
         }
 
         // ==================== 权限检查 ====================
@@ -287,8 +277,8 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         // ==================== 执行状态切换 ====================
         // 使用带状态校验的更新方法，防止并发冲突
-        policy.setStatus(targetStatus.getCode());
-        UpgradePolicy updated = upgradePolicyRepository.updateWithStatusCheck(id, currentStatus.getCode(), policy);
+        policy.setStatus(targetStatus);
+        UpgradePolicy updated = upgradePolicyRepository.updateWithStatusCheck(id, currentStatus, policy);
 
         if (updated == null) {
             // 状态已被其他事务修改，抛出异常
@@ -430,11 +420,8 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * 校验并规范化状态
      */
     private void validateAndNormalizeStatus(UpgradePolicy policy) {
-        try {
-            PolicyStatus status = PolicyStatus.of(policy.getStatus());
-            policy.setStatus(status.getCode());
-        } catch (IllegalArgumentException e) {
-            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), e.getMessage());
+        if (policy.getStatus() == null) {
+            throw new BizException(ErrorCode.POLICY_STATUS_INVALID.getCode(), "策略状态不能为空");
         }
     }
 

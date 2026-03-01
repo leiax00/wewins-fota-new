@@ -2,6 +2,7 @@ package com.wewins.fota.domain.policy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.*;
 import org.apache.ibatis.type.JdbcType;
@@ -78,17 +79,8 @@ public class UpgradePolicy extends BaseEntity {
 
     /**
      * 策略状态
-     * <p>可选值：</p>
-     * <ul>
-     *   <li>DRAFT - 草稿</li>
-     *   <li>TESTING - 测试中</li>
-     *   <li>VERIFIED - 已验证</li>
-     *   <li>ACTIVE - 生产中</li>
-     *   <li>PAUSED - 暂停</li>
-     *   <li>EXPIRED - 过期</li>
-     * </ul>
      */
-    private String status;
+    private PolicyStatus status;
 
     /**
      * 触发模式

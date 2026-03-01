@@ -8,6 +8,7 @@ import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -67,7 +68,7 @@ class UpgradeResponseBuilderTest {
                 .name("测试策略")
                 .targetVersionId(20L)
                 .priority(100)
-                .status("ACTIVE")
+                .status(PolicyStatus.ACTIVE)
                 .build();
 
         // 创建测试固件版本

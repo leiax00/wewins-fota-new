@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.policy.enums;
 
+import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -42,6 +43,8 @@ public enum PolicyStatus {
     EXPIRED("过期", "EXPIRED");
 
     private final String displayName;
+
+    @EnumValue
     private final String code;
 
     PolicyStatus(String displayName, String code) {

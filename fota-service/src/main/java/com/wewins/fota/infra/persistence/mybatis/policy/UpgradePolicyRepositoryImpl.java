@@ -2,6 +2,7 @@ package com.wewins.fota.infra.persistence.mybatis.policy;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
@@ -63,11 +64,11 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     }
 
     @Override
-    public UpgradePolicy updateWithStatusCheck(Long id, String expectedStatus, UpgradePolicy policy) {
+    public UpgradePolicy updateWithStatusCheck(Long id, PolicyStatus expectedStatus, UpgradePolicy policy) {
         // 使用 MyBatis-Plus 的 LambdaQueryWrapper 实现带状态校验的 UPDATE
         LambdaQueryWrapper<UpgradePolicy> queryWrapper = new LambdaQueryWrapper<UpgradePolicy>()
                 .eq(UpgradePolicy::getId, id)
-                .eq(UpgradePolicy::getStatus, expectedStatus.toUpperCase())
+                .eq(UpgradePolicy::getStatus, expectedStatus)
                 .isNull(UpgradePolicy::getDeletedAt);
 
         int updated = upgradePolicyMapper.update(policy, queryWrapper);
@@ -120,7 +121,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.eq(UpgradePolicy::getProductId, productId)
                 .isNull(UpgradePolicy::getDeletedAt)
-                .eq(UpgradePolicy::getStatus, "ACTIVE")
+                .eq(UpgradePolicy::getStatus, PolicyStatus.ACTIVE)
                 .orderByDesc(UpgradePolicy::getPriority)
                 .orderByDesc(UpgradePolicy::getId);
         return upgradePolicyMapper.selectList(query);
@@ -130,7 +131,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     public List<UpgradePolicy> findAllActiveOrderByPriorityAndUpdatedAt() {
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.isNull(UpgradePolicy::getDeletedAt)
-                .eq(UpgradePolicy::getStatus, "ACTIVE")
+                .eq(UpgradePolicy::getStatus, PolicyStatus.ACTIVE)
                 .orderByDesc(UpgradePolicy::getPriority)
                 .orderByDesc(UpgradePolicy::getUpdatedAt);
         return upgradePolicyMapper.selectList(query);

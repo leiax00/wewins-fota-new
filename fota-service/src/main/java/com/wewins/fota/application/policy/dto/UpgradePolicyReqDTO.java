@@ -130,24 +130,8 @@ public class UpgradePolicyReqDTO {
 
     /**
      * 策略状态
-     * <p>可选值：</p>
-     * <ul>
-     *   <li>DRAFT - 草稿</li>
-     *   <li>TESTING - 测试中</li>
-     *   <li>VERIFIED - 已验证</li>
-     *   <li>ACTIVE - 生产中</li>
-     *   <li>PAUSED - 暂停</li>
-     *   <li>EXPIRED - 过期</li>
-     * </ul>
      */
-    private String status;
-
-    /**
-     * 获取状态枚举
-     */
-    public PolicyStatus getStatusEnum() {
-        return PolicyStatus.of(status);
-    }
+    private PolicyStatus status;
 
     /**
      * 备注

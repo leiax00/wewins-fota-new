@@ -12,6 +12,7 @@ import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -263,7 +264,7 @@ class UpgradeCheckServiceGrayTest {
                 .sourceVersions(sourceVersions)
                 .priority(10)
                 .grayRate(grayRate)
-                .status("ACTIVE")
+                .status(PolicyStatus.ACTIVE)
                 .build();
     }
 }

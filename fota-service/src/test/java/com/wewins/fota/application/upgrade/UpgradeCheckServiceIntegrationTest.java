@@ -14,6 +14,7 @@ import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -141,7 +142,7 @@ class UpgradeCheckServiceIntegrationTest {
                 .targetVersionId(20L)
                 .priority(100)
                 .grayRate(100)  // 全量灰度
-                .status("ACTIVE")
+                .status(PolicyStatus.ACTIVE)
                 .build();
     }
 
