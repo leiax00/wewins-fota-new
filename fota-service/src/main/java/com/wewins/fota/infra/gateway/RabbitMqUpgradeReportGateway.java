@@ -1,9 +1,9 @@
 package com.wewins.fota.infra.gateway;
 
 import com.wewins.fota.application.reporting.dto.UpgradeEventMessage;
+import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
 import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import com.wewins.fota.mq.core.MqMessagePublisher;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
     /**
      * 通过 RabbitMQ 投递上报事件。
      *
-     * @param report 设备上报模型
+     * @param report 设备上报领域模型
      */
     @Override
     public void accept(UpgradeReport report) {
@@ -45,7 +45,7 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
 
             mqMessagePublisher.publishJson(upgradeEventQueue, message);
         } catch (Exception e) {
-            log.error("设备上报消息发送失败: imei={}, eventType={}", report.getImei(), report.getEventType(), e);
+            log.error("设备上报消息发送失败: imei={}, event={}", report.getImei(), report.getEvent(), e);
             throw new IllegalStateException("设备上报消息发送失败", e);
         }
     }
@@ -53,12 +53,11 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
     private DeviceUpgradeEvent buildEvent(UpgradeReport report) {
         return DeviceUpgradeEvent.builder()
                 .imei(report.getImei())
-                .requestId(extractRequestId(report.getDownloadUrl()))
-                .policyId(extractPolicyId(report.getDownloadUrl()))
-                .eventType(DeviceUpgradeEventType.fromDbValue(report.getEventType()))
-                .downloadUrl(report.getDownloadUrl())
-                .details(report.getExt())
-                .clientIp(report.getClientIp())
+                .requestId(extractRequestId(report.getUrl()))
+                .policyId(extractPolicyId(report.getUrl()))
+                .eventType(DeviceUpgradeEventType.fromDbValue(report.getEvent()))
+                .downloadUrl(report.getUrl())
+                .details(report.getDetailsJson())
                 .build();
     }
 

@@ -760,6 +760,8 @@ public class GrayReleaseService {
 **预计时间**: 2天
 **分支**: `feature/sprint-3-reporting`
 
+> **API 规范**: [上报 API 规范文档](../04-technical/upgrade-report-api.md)
+
 ### Day 5: RabbitMQ 消费者
 
 #### 任务清单
@@ -1011,3 +1013,4 @@ Sprint 3: [████████░░░░░░░░░] 40%
 - [产品需求文档](../01-product/prd.md)
 - [技术架构文档](../02-architecture/FOTA 系统架构及技术说明书.md)
 - [**升级检查 API 规范**](../04-technical/upgrade-check-api.md)
+- [**升级上报 API 规范**](../04-technical/upgrade-report-api.md)

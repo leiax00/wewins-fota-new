@@ -12,7 +12,7 @@ public interface UpgradeReportGateway {
     /**
      * 接收设备升级上报并投递到下游通道。
      *
-     * @param report 设备上报模型
+     * @param report 设备上报领域模型
      */
     void accept(UpgradeReport report);
 }

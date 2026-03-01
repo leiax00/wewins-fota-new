@@ -19,11 +19,11 @@ public class NoopUpgradeReportGateway implements UpgradeReportGateway {
     /**
      * 接收上报但不投递。
      *
-     * @param report 设备上报模型
+     * @param report 设备上报领域模型
      */
     @Override
     public void accept(UpgradeReport report) {
-        log.debug("上报事件已接收，后续将接入 MQ pipeline: imei={}, eventType={}",
-                report.getImei(), report.getEventType());
+        log.debug("上报事件已接收，后续将接入 MQ pipeline: imei={}, event={}",
+                report.getImei(), report.getEvent());
     }
 }

@@ -235,19 +235,36 @@
 * **上报请求 (POST /v1/upgrade/report)**
 ```json
 {
-   "imei": 861234567890123,
+   "imei": "861234567890123",
    "url": "http://foid-dl.xxx.com/xxx.bin?xxxxxx",
-   "event": "", // 状态枚举： DL_START, DL_OK, DL_FAIL, UP_OK
+   "event": "",
    "details": {}
 }
-
 ```
 
+* **字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `imei` | String | 设备 IMEI（15位数字字符串，使用 String 防止前导0丢失） |
+| `url` | String | 下载 URL（包含 pid, rid 参数用于溯源） |
+| `event` | String | 事件类型（见下表） |
+| `details` | Object | 扩展详情（错误码、进度等） |
+
+* **事件类型 (event)**：
+
+| 值 | 说明 |
+|------|------|
+| `DL_START` | 开始下载 |
+| `DL_OK` | 下载成功 |
+| `DL_FAIL` | 下载失败 |
+| `UP_OK` | 升级成功 |
+| `UP_FAIL` | 升级失败 |
 
 * **服务端处理**：
 1. API 接收请求后，直接丢入 **RabbitMQ**。
 2. **立即返回 200 OK**（不等待数据库写入）。
-3. **Consumer 消费**：批量将日志写入 **ClickHouse**；如果是 `UP_SUCCESS`，则异步更新 **PostgreSQL** 中的设备当前版本号。
+3. **Consumer 消费**：批量将日志写入 **ClickHouse**；如果是 `UP_OK`，则异步更新 **PostgreSQL** 中的设备当前版本号。
 
 
 
