@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.policy.enums;
 
+import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
@@ -46,6 +47,8 @@ public enum TriggerMode {
      */
     @Getter
     private final String displayName;
+
+    @EnumValue
     private final String code;
 
     TriggerMode(String displayName, String code) {

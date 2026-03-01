@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.enums.TriggerMode;
 
 /**
  * 设备检查升级应用服务
@@ -346,22 +347,13 @@ public class UpgradeCheckService {
      * @return true 如果匹配
      */
     private boolean matchesTriggerMode(UpgradePolicy policy, Integer auto) {
-        String policyTriggerMode = policy.getTriggerMode();
-        if (policyTriggerMode == null || policyTriggerMode.isBlank()) {
+        TriggerMode triggerMode = policy.getTriggerMode();
+        if (triggerMode == null) {
             return true;
         }
 
         boolean isAutoCheck = (auto != null && auto == 1);
-
-        return switch (policyTriggerMode.toUpperCase()) {
-            case "AUTO" -> isAutoCheck;
-            case "MANUAL" -> !isAutoCheck;
-            case "BOTH" -> true;
-            default -> {
-                log.warn("未知的触发模式: {}, 默认匹配", policyTriggerMode);
-                yield true;
-            }
-        };
+        return isAutoCheck ? triggerMode.allowsAuto() : triggerMode.allowsManual();
     }
 
     /**

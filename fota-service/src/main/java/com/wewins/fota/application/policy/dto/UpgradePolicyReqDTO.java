@@ -53,16 +53,9 @@ public class UpgradePolicyReqDTO {
     private Integer priority;
 
     /**
-     * 触发模式：AUTO / MANUAL
+     * 触发模式
      */
-    private String triggerMode;
-
-    /**
-     * 获取触发模式枚举
-     */
-    public TriggerMode getTriggerModeEnum() {
-        return TriggerMode.of(triggerMode);
-    }
+    private TriggerMode triggerMode;
 
     /**
      * 时间窗口配置

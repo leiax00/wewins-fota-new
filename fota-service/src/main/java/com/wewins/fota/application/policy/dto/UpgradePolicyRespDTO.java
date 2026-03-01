@@ -1,6 +1,7 @@
 package com.wewins.fota.application.policy.dto;
 
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.enums.TriggerMode;
 import lombok.Builder;
 import lombok.Data;
 
@@ -46,9 +47,9 @@ public class UpgradePolicyRespDTO {
     private Integer priority;
 
     /**
-     * 触发模式：AUTO / MANUAL
+     * 触发模式
      */
-    private String triggerMode;
+    private TriggerMode triggerMode;
 
     /**
      * 时间窗口配置

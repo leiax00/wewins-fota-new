@@ -19,6 +19,7 @@ import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.enums.TriggerMode;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -424,7 +425,7 @@ class EndToEndIntegrationTest {
                 .priority(10)
                 .grayRate(grayRate)
                 .status(PolicyStatus.ACTIVE)
-                .triggerMode("BOTH")
+                .triggerMode(TriggerMode.BOTH)
                 .targetMode("ALL")
                 .build();
         policy = upgradePolicyRepository.save(policy);

@@ -258,7 +258,7 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
                 .sourceVersions(extractSourceVersions(policy))
                 .targetMode(policy.getTargetMode())
                 .timeWindow(extractTimeWindow(policy))
-                .triggerMode(policy.getTriggerMode())
+                .triggerMode(policy.getTriggerMode() != null ? policy.getTriggerMode().getCode() : null)
                 .targetEnvironment(null)  // 从扩展字段读取
                 .requiredTags(null)  // 从扩展字段读取
                 .build();

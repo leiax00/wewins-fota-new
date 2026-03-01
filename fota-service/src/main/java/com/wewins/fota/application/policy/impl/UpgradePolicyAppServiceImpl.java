@@ -429,8 +429,9 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * 校验并规范化触发模式
      */
     private void normalizeAndValidateTriggerMode(UpgradePolicy policy) {
-        TriggerMode triggerMode = TriggerMode.of(policy.getTriggerMode());
-        policy.setTriggerMode(triggerMode.getCode());
+        if (policy.getTriggerMode() == null) {
+            policy.setTriggerMode(TriggerMode.BOTH);
+        }
     }
 
     /**

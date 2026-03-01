@@ -3,6 +3,7 @@ package com.wewins.fota.domain.policy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.enums.TriggerMode;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.*;
 import org.apache.ibatis.type.JdbcType;
@@ -84,16 +85,8 @@ public class UpgradePolicy extends BaseEntity {
 
     /**
      * 触发模式
-     * <p>
-     * 可选值：
-     * </p>
-     * <ul>
-     *   <li>AUTO：仅允许系统自动触发推送</li>
-     *   <li>MANUAL：仅允许人工确认触发推送</li>
-     *   <li>BOTH：不限制，自动和手动都可以触发</li>
-     * </ul>
      */
-    private String triggerMode;
+    private TriggerMode triggerMode;
 
     /**
      * 目标设备模式
