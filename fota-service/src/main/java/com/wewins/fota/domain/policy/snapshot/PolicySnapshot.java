@@ -13,7 +13,7 @@ import java.util.Map;
  * 策略快照领域模型
  * <p>
  * 封装产品的完整升级策略快照数据，用于跨区域配置同步。
- * 快照包含策略列表、配额配置、固件元数据和控制参数，
+ * 快照包含策略列表、固件元数据和控制参数，
  * 可直接用于设备升级检查，无需额外查询。
  * </p>
  *
@@ -40,12 +40,6 @@ import java.util.Map;
  *             targetEnvironment: "prod"
  *         }
  *     ]
- *
- *     // 配额配置
- *     quota: {
- *         maxLimit: 10000
- *         regionLimits: {...}
- *     }
  *
  *     // 固件元数据索引
  *     firmwares: {
@@ -118,11 +112,6 @@ public class PolicySnapshot {
     private final List<PolicySelector> policies;
 
     /**
-     * 配额配置
-     */
-    private final QuotaConfig quota;
-
-    /**
      * 固件元数据索引
      * <p>
      * key: 版本 ID（字符串格式）
@@ -155,7 +144,6 @@ public class PolicySnapshot {
         String triggerMode;
         String targetEnvironment;
         JsonNodeConfig requiredTags;
-        Integer maxQuota;
     }
 
     /**
@@ -189,16 +177,6 @@ public class PolicySnapshot {
     }
 
     /**
-     * 配额配置
-     */
-    @Value
-    @Builder
-    public static class QuotaConfig {
-        Integer maxLimit;
-        Map<String, Integer> regionLimits;
-    }
-
-    /**
      * 固件元数据
      */
     @Value
@@ -229,7 +207,6 @@ public class PolicySnapshot {
      */
     public static PolicySnapshot create(Long productId, String version,
                                          List<PolicySelector> policies,
-                                         QuotaConfig quota,
                                          Map<String, FirmwareMetadata> firmwares,
                                          ControlConfig control) {
         return PolicySnapshot.builder()
@@ -238,7 +215,6 @@ public class PolicySnapshot {
                 .generatedAt(Instant.now().getEpochSecond())
                 .generatedBy("main")
                 .policies(policies)
-                .quota(quota)
                 .firmwares(firmwares)
                 .control(control)
                 .build();

@@ -42,7 +42,7 @@
 
 - **目标**：10,000+ QPS，99% 请求 < 50ms
 - **热路径优化**：只读本地 Redis + Caffeine 二级缓存
-- **并发控制**：设备级限流、配额控制、时间窗口管理
+- **并发控制**：设备级限流、时间窗口管理
 
 ### 🌐 同构单体多模式部署
 
@@ -56,10 +56,10 @@
 - **数据转发**：Forwarder 批量聚合数据，支持断线缓冲与恢复
 - **幂等设计**：HMAC + nonce 防重放，batch_id 幂等键
 
-### 🎯 灰度发布与配额控制
+### 🎯 灰度发布
 
 - **灰度算法**：`hash(imei) % 100 < gray_rate`
-- **精确控制**：百分比控制、时间窗口、总量配额、一键停止
+- **精确控制**：百分比控制、时间窗口、一键停止
 
 ### 📊 可观测与可靠性
 
@@ -95,7 +95,7 @@ flowchart TB
         RegionAPI[设备 API<br/>check/report]
         RegionSync[配置同步 Worker<br/>30s 轮询]
         RegionForward[Forwarder<br/>批量转发]
-        LocalRedis[(Redis<br/>策略快照/配额)]
+        LocalRedis[(Redis<br/>策略快照)]
         LocalMQ[(RabbitMQ)]
         LocalCH[(ClickHouse<br/>事件明细)]
     end
@@ -132,7 +132,7 @@ flowchart TB
 1. **检查更新流程**：
    - 设备 → Region API（读本地 Redis 策略快照）
    - 标记活跃设备（Redis Bitmap）
-   - 匹配策略（灰度、配额、时间窗）
+   - 匹配策略（灰度、时间窗）
    - 返回签名下载 URL
 
 2. **上报流程**：

@@ -31,7 +31,7 @@
 - [ ] 设备升级检查 API 完整可用
 - [ ] 新老 API `/fota/version/query` 和 `/v1/upgrade/check` 使用相同逻辑
 - [ ] 灰度发布算法正确实现（哈希分布均匀性验证通过）
-- [ ] 策略匹配支持版本、标签、时间窗口、配额
+- [ ] 策略匹配支持版本、标签、时间窗口
 - [ ] dev 参数临时标注测试设备功能
 - [ ] 签名下载 URL 生成功能
 - [ ] 上报事件异步写入 ClickHouse
@@ -275,7 +275,6 @@ public class UpgradeCheckService {
             .filter(policy -> matchesDeviceTags(policy, device.getTags()))
             .filter(policy -> matchesTimeWindow(policy))
             .filter(policy -> matchesGrayRelease(policy, device.getImei()))
-            .filter(policy -> matchesQuota(policy.getId()))
             .toList();
     }
 
@@ -517,7 +516,7 @@ private String determineLanguage(String lang, Product product) {
 4. UpgradeCheckService.checkUpgrade()
    ├─ 限流检查
    ├─ 标记活跃度 (Redis Bitmap)
-   ├─ 策略匹配 (灰度/版本/标签/时间/配额)
+   ├─ 策略匹配 (灰度/版本/标签/时间)
    └─ 构建响应
    ↓
 5. 调整 checkInterval (根据 auto 参数)
@@ -717,25 +716,14 @@ public class GrayReleaseService {
 - **标签匹配**: PostgreSQL JSONB 查询
 - **时间窗口**: LocalDateTime 比较
 
-### Day 3: 配额限制
-
-#### 任务清单
-
-| # | 任务 | 预计 | 状态 |
-|---|------|------|------|
-| 3.1 | 实现 Redis 配额计数器 | 2h | ⏸️ |
-| 3.2 | 实现分布式锁 | 1h | ⏸️ |
-| 3.3 | 集成配额检查到升级流程 | 1h | ⏸️ |
-| 3.4 | 单元测试 | 1h | ⏸️ |
-
 ---
 
-## 📅 阶段 2: 下载 URL 与响应构建 (Day 6-7)
+## 📅 阶段 2: 下载 URL 与响应构建 (Day 3-4)
 
 **预计时间**: 2天
 **分支**: `feature/sprint-3-download-url`
 
-### Day 4: 签名下载 URL
+### Day 3: 签名下载 URL
 
 #### 任务清单
 
@@ -754,7 +742,7 @@ public class GrayReleaseService {
 - 设置过期时间 (如 24 小时)
 - 密钥管理方案（存储、轮换）
 
-### Day 5: 响应构建
+### Day 4: 响应构建
 
 #### 任务清单
 
@@ -767,12 +755,12 @@ public class GrayReleaseService {
 
 ---
 
-## 📅 阶段 3: 上报事件处理 (Day 8-9)
+## 📅 阶段 3: 上报事件处理 (Day 5-6)
 
 **预计时间**: 2天
 **分支**: `feature/sprint-3-reporting`
 
-### Day 6: RabbitMQ 消费者
+### Day 5: RabbitMQ 消费者
 
 #### 任务清单
 
@@ -784,7 +772,7 @@ public class GrayReleaseService {
 | 6.4 | 实现 DLQ (死信队列) 处理 | 1h | ⏸️ |
 | 6.5 | 单元测试 | 1h | ⏸️ |
 
-### Day 7: ClickHouse 写入
+### Day 6: ClickHouse 写入
 
 #### 任务清单
 
@@ -798,12 +786,12 @@ public class GrayReleaseService {
 
 ---
 
-## 📅 阶段 4: 策略缓存与优化 (Day 10-12)
+## 📅 阶段 4: 策略缓存与优化 (Day 7-9)
 
 **预计时间**: 3天
 **分支**: `feature/sprint-3-cache`
 
-### Day 8: Redis 策略快照
+### Day 7: Redis 策略快照
 
 #### 任务清单
 
@@ -815,7 +803,7 @@ public class GrayReleaseService {
 | 8.4 | 实现版本指针原子切换 | 2h | ⏸️ |
 | 8.5 | 实现降级策略（Redis 不可用时） | 2h | ⏸️ |
 
-### Day 9-10: 集成测试与验收
+### Day 8-9: 集成测试与验收
 
 #### 任务清单
 
@@ -850,7 +838,7 @@ Sprint 3: [████████░░░░░░░░░] 40%
 - [x] 设备升级检查 API 完整可用
 - [x] 新老 API `/fota/version/query` 和 `/v1/upgrade/check` 使用相同逻辑
 - [x] 灰度发布算法正确实现（哈希分布均匀性验证通过）
-- [x] 策略匹配支持版本、标签、时间窗口、配额
+- [x] 策略匹配支持版本、标签、时间窗口
 - [x] dev 参数临时标注测试设备功能
 - [x] 签名下载 URL 生成功能
 - [x] 上报事件异步写入 ClickHouse
@@ -874,8 +862,7 @@ Sprint 3: [████████░░░░░░░░░] 40%
             │   ├─ 灰度检查 (Hash 算法)
             │   ├─ 版本范围匹配
             │   ├─ 标签匹配 (JSONB)
-            │   ├─ 时间窗口检查
-            │   └─ 配额检查 (Redis Counter)
+            │   └─ 时间窗口检查
             └─ 响应构建
                ├─ 签名下载 URL (RustFS/S3)
                └─ 控制参数计算
@@ -901,7 +888,6 @@ Sprint 3: [████████░░░░░░░░░] 40%
 | 风险 | 影响 | 概率 | 缓解措施 |
 |------|------|------|----------|
 | 灰度算法不均匀 | 高 | 中 | 使用 MurmurHash3，充分测试，输出分布报告 |
-| 配额超卖 | 中 | 中 | 使用 Redis Lua 脚本保证原子性 |
 | ClickHouse 写入失败 | 中 | 低 | DLQ 重试 + 本地文件降级 |
 | 策略缓存不一致 | 高 | 中 | 版本号 + 原子切换 + 降级到 DB |
 | 性能不达标 | 高 | 中 | Redis 缓存 + 批量处理 + 性能压测 |

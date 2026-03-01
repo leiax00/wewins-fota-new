@@ -11,7 +11,6 @@ import com.wewins.fota.application.report.DeviceUpgradeEventAppService;
 import com.wewins.fota.application.report.dto.UpgradeEventMessage;
 import com.wewins.fota.application.report.model.value.DeviceUpgradeEventType;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.quota.PolicyQuotaService;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.entity.Device;
@@ -94,9 +93,6 @@ class EndToEndIntegrationTest {
     @MockBean
     private DeviceActivityBitmapRepository bitmapRepository;
 
-    @MockBean
-    private PolicyQuotaService policyQuotaService;
-
     private static List<Long> cleanupProductIds = new ArrayList<>();
     private static List<Long> cleanupVersionIds = new ArrayList<>();
     private static List<Long> cleanupPolicyIds = new ArrayList<>();
@@ -112,8 +108,6 @@ class EndToEndIntegrationTest {
         // 配置默认 Mock 行为
         when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                 .thenReturn(new RateLimitDecision(true, null, 0));
-        when(policyQuotaService.checkAndIncrementQuota(any(), anyInt()))
-                .thenReturn(true);
     }
 
     @Test
@@ -428,7 +422,6 @@ class EndToEndIntegrationTest {
                 .sourceVersions(sourceVersionsArray)
                 .priority(10)
                 .grayRate(grayRate)
-                .quota(1000)
                 .status("ACTIVE")
                 .triggerMode("BOTH")
                 .targetMode("ALL")

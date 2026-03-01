@@ -186,7 +186,6 @@ export FOTA_SIGNED_URL_SECRET_KEY="your-secret-key-at-least-32-bytes-long"
 1. **下载日志分析**: 记录哪个设备通过哪个策略下载了固件
 2. **费用分摊**: 根据策略 ID 统计不同产品线的下载流量
 3. **安全审计**: 追踪异常下载行为
-4. **配额控制**: 验证下载是否来自合法渠道
 
 ---
 

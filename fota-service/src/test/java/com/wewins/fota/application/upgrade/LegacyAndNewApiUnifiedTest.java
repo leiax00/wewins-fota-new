@@ -233,7 +233,6 @@ class LegacyAndNewApiUnifiedTest {
             //    - 设备标签匹配
             //    - 时间窗口检查
             //    - 灰度检查
-            //    - 配额检查
 
             // Then: 验证流程正确
             assertThat(dev).isEqualTo(1);

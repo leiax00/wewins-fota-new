@@ -2,7 +2,6 @@ package com.wewins.fota.application.upgrade;
 
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.quota.PolicyQuotaService;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.common.exception.BizException;
@@ -41,7 +40,6 @@ import java.util.Optional;
  *   <li>匹配适用的升级策略</li>
  *   <li>检查灰度发布规则</li>
  *   <li>检查时间窗口</li>
- *   <li>检查配额限制</li>
  *   <li>生成交分检查间隔建议</li>
  * </ul>
  *
@@ -65,7 +63,6 @@ public class UpgradeCheckService {
     private final FirmwareVersionLookupService firmwareVersionLookupService;
     private final GrayReleaseService grayReleaseService;
     private final UpgradeResponseBuilder upgradeResponseBuilder;
-    private final PolicyQuotaService policyQuotaService;
     private final UpgradeRequestValidator requestValidator;
 
     /**
@@ -88,7 +85,6 @@ public class UpgradeCheckService {
      * 4. 匹配适用的升级策略
      * 5. 检查灰度发布
      * 6. 检查时间窗口
-     * 7. 检查配额限制
      * </p>
      *
      * @param imei 设备 IMEI
@@ -142,7 +138,7 @@ public class UpgradeCheckService {
             return CheckResult.noUpdate();
         }
 
-        // TODO: 实现灰度检查、时间窗口检查、配额检查
+        // TODO: 实现灰度检查、时间窗口检查
         // 当前选择优先级最高的策略
         UpgradePolicy policy = policies.getFirst();
 
@@ -302,12 +298,11 @@ public class UpgradeCheckService {
         com.fasterxml.jackson.databind.JsonNode deviceTags = device.getTags();
         String imei = device.getImei();
 
-        // 过滤：版本范围匹配 + 标签匹配 + 灰度检查 + 配额检查
+        // 过滤：版本范围匹配 + 标签匹配 + 灰度检查
         return policies.stream()
                 .filter(policy -> matchesSourceVersion(policy, versionId))
                 .filter(policy -> matchesDeviceTags(policy, deviceTags))
                 .filter(policy -> matchesGrayRelease(policy, imei))
-                .filter(policy -> matchesQuota(policy))
                 .toList();
     }
 
@@ -348,7 +343,6 @@ public class UpgradeCheckService {
                 .filter(policy -> policyMatcher.matchesDeviceTags(policy.getTargetDeviceTags(), finalTags))
                 .filter(policy -> policyMatcher.matchesTimeWindow(policy.getTimeWindow()))
                 .filter(policy -> matchesGrayRelease(policy, imei))
-                .filter(policy -> matchesQuota(policy))
                 .toList();
     }
 
@@ -479,34 +473,6 @@ public class UpgradeCheckService {
         }
 
         return grayReleaseService.hitsGrayBucket(imei, grayRate);
-    }
-
-    /**
-     * 配额检查
-     * <p>
-     * 检查策略配额是否已用尽
-     * </p>
-     * <p>业务规则：</p>
-     * <ul>
-     *   <li>策略无配额限制（quota 为 null 或 <= 0）→ 匹配</li>
-     *   <li>配额可用 → 匹配（同时占用配额）</li>
-     *   <li>配额已用尽 → 不匹配</li>
-     * </ul>
-     *
-     * @param policy 升级策略
-     * @return true 如果配额可用
-     */
-    private boolean matchesQuota(UpgradePolicy policy) {
-        Integer quota = policy.getQuota();
-        if (quota == null || quota <= 0) {
-            return true; // 无配额限制
-        }
-
-        boolean allowed = policyQuotaService.checkAndIncrementQuota(policy.getId(), quota);
-        if (!allowed) {
-            log.debug("策略配额已用尽: policyId={}, quota={}", policy.getId(), quota);
-        }
-        return allowed;
     }
 
     /**

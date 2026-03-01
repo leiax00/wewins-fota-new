@@ -210,7 +210,7 @@ Controller → Application Service → Domain Repository/Infrastructure
 
 #### 3.5.1 分布式锁
 
-**用途**：配额扣减、灰度分桶、版本更新等需要原子操作
+**用途**：灰度分桶、版本更新等需要原子操作
 
 **实现**：基于 Redis SETNX + TTL
 
@@ -222,7 +222,7 @@ Controller → Application Service → Domain Repository/Infrastructure
 **负载均衡场景的替代方案**：
 ```java
 // 推荐使用 Redis 原子操作，无需分布式锁
-redisTemplate.opsForValue().increment("quota:" + policyId, -count);
+redisTemplate.opsForValue().increment("gray:count:" + policyId, 1);
 ```
 
 #### 3.5.2 Leader 选举（⚠️ 负载均衡场景不需要）
@@ -305,7 +305,6 @@ redisTemplate.opsForValue().increment("quota:" + policyId, -count);
 | 功能 | 必要性 | 说明 | 推荐方案 |
 |---------|--------|--------|----------|
 | **Leader 选举** | ❌ 不需要 | 多实例平等提供服务，无需选主 | **移除** |
-| **分布式锁** | ⚠️ 部分需要 | 配额扣减需要，但可用 Redis 原子操作替代 | **简化** |
 | **负载均衡** | ✅ 必需 | 通过 Nginx/ELB 实现 | Nginx 上游配置 |
 | **会话共享** | ❌ 不需要 | 设备 API 是无状态的 | - |
 
@@ -313,7 +312,7 @@ redisTemplate.opsForValue().increment("quota:" + policyId, -count);
 
 **保留**：
 - `app.cluster.enabled = true` - 标记这是集群部署
-- Redis 原子操作（`INCRBY`、`DECRBY`）用于配额控制
+- Redis 原子操作（`INCRBY`、`DECRBY`）用于灰度计数
 
 **移除**：
 - Leader 选举机制（`LeaderElectionService`）
@@ -327,7 +326,6 @@ redisTemplate.opsForValue().increment("quota:" + policyId, -count);
    - 配置同步可以每个实例独立执行（幂等操作）
 
 2. **Redis 原子操作足以应对并发问题**
-   - 配额扣减：`redisTemplate.opsForValue().increment("quota:" + policyId, -count)`
    - 灰度计数：`redisTemplate.opsForValue().increment("gray:count:" + policyId, 1)`
    - 这些操作本身就是原子的，无需额外的锁
 
@@ -342,7 +340,6 @@ redisTemplate.opsForValue().increment("quota:" + policyId, -count);
 |---------|--------|--------|
 | 负载均衡 | ❌ 不需要 | 多实例平等提供服务 |
 | 定时任务 | ❌ 不需要 | 任务幂等，重复执行无害 |
-| 配额控制 | ❌ 不需要 | 用 Redis 原子操作 |
 | 数据聚合 | ✅ 需要 | 如果任务非幂等，需要避免重复 |
 
 ---
@@ -352,7 +349,7 @@ redisTemplate.opsForValue().increment("quota:" + policyId, -count);
 ### 6.1 短期（1-2 个月）
 
 1. **完善应用层服务实现**
-   - 补齐 UpgradeCheckService 的灰度、配额、时间窗口检查逻辑
+   - 补齐 UpgradeCheckService 的灰度、时间窗口检查逻辑
    - 实现策略匹配的完整算法（版本、标签、灰度）
    - 添加设备标签过滤功能
 

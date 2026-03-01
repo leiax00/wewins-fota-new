@@ -68,7 +68,7 @@
 **实施步骤**:
 1. ✅ 添加 Bitmap 相关键模板
 2. ✅ 添加策略快照相关键模板
-3. ✅ 添加限流配额相关键模板
+3. ✅ 添加限流相关键模板
 4. ✅ 定义 TTL 常量
 
 **新增内容**:
@@ -81,8 +81,7 @@ BITOP_TEMP_KEY_TEMPLATE = "fota:tmp:bitop:%s:%s"
 POLICY_SNAPSHOT_KEY_TEMPLATE = "fota:pol:snap:%s:v%s"
 POLICY_ACTIVE_VER_KEY_TEMPLATE = "fota:pol:active_ver:%s"
 
-// 限流配额相关
-POLICY_QUOTA_KEY_TEMPLATE = "fota:quota:policy:%s:%s"
+// 限流相关
 GRAY_COUNT_KEY_TEMPLATE = "fota:gray:count:%s:%s"
 ```
 
@@ -226,7 +225,7 @@ public interface DeviceActivityBitmapRepository {
 2. **Redis Key 常量**
    - Bitmap 相关键（ACTIVE_BITMAP_KEY_TEMPLATE、BITOP_TEMP_KEY_TEMPLATE）
    - 策略快照键（POLICY_SNAPSHOT_KEY_TEMPLATE、POLICY_ACTIVE_VER_KEY_TEMPLATE）
-   - 限流配额键（POLICY_QUOTA_KEY_TEMPLATE、GRAY_COUNT_KEY_TEMPLATE）
+   - 限流键（GRAY_COUNT_KEY_TEMPLATE）
    - TTL 常量（ACTIVE_BITMAP_TTL_SECONDS、BITOP_TEMP_TTL_SECONDS）
 
 3. **设备活跃度 Bitmap**

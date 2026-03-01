@@ -217,9 +217,6 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
                     .generatedAt(Instant.now().getEpochSecond())
                     .generatedBy("database_fallback")
                     .policies(buildPolicySelectors(policies))
-                    .quota(PolicySnapshot.QuotaConfig.builder()
-                            .maxLimit(10000)
-                            .build())
                     .firmwares(Map.of())  // 需要时从固件表加载
                     .control(PolicySnapshot.ControlConfig.builder()
                             .defaultCheckInterval(3600)
@@ -263,7 +260,6 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
                 .triggerMode(policy.getTriggerMode())
                 .targetEnvironment(null)  // 从扩展字段读取
                 .requiredTags(null)  // 从扩展字段读取
-                .maxQuota(null)  // 从配额表读取
                 .build();
     }
 

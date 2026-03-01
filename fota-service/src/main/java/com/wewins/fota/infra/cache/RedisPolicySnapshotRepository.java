@@ -435,7 +435,6 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
 
             // JSON 字段
             map.put("policies", objectMapper.writeValueAsString(snapshot.getPolicies()));
-            map.put("quota", objectMapper.writeValueAsString(snapshot.getQuota()));
             map.put("firmwares", objectMapper.writeValueAsString(snapshot.getFirmwares()));
             map.put("control", objectMapper.writeValueAsString(snapshot.getControl()));
 
@@ -461,9 +460,6 @@ public class RedisPolicySnapshotRepository implements PolicySnapshotRepository {
                             data.get("policies"),
                             objectMapper.getTypeFactory().constructCollectionType(
                                     List.class, PolicySnapshot.PolicySelector.class)))
-                    .quota(objectMapper.readValue(
-                            data.get("quota"),
-                            PolicySnapshot.QuotaConfig.class))
                     .firmwares(objectMapper.readValue(
                             data.get("firmwares"),
                             objectMapper.getTypeFactory().constructMapType(

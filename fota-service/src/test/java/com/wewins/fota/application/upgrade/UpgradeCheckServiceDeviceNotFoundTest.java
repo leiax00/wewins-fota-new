@@ -2,7 +2,6 @@ package com.wewins.fota.application.upgrade;
 
 import com.wewins.fota.application.upgrade.UpgradeCheckService.CheckResult;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.quota.PolicyQuotaService;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.application.validation.DataIntegrityService;
@@ -71,8 +70,6 @@ class UpgradeCheckServiceDeviceNotFoundTest {
     private GrayReleaseService grayReleaseService;
     @Mock
     private UpgradeResponseBuilder upgradeResponseBuilder;
-    @Mock
-    private PolicyQuotaService policyQuotaService;
 
     private UpgradeCheckService upgradeCheckService;
 
@@ -90,8 +87,7 @@ class UpgradeCheckServiceDeviceNotFoundTest {
                 firmwareVersionRepository,
                 firmwareVersionLookupService,
                 grayReleaseService,
-                upgradeResponseBuilder,
-                policyQuotaService
+                upgradeResponseBuilder
         );
     }
 

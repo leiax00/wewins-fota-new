@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.quota.PolicyQuotaService;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.cache.DeviceCache;
@@ -77,8 +76,6 @@ class UpgradeCheckServiceIntegrationTest {
     private GrayReleaseService grayReleaseService;
     @Mock
     private SignedUrlService signedUrlService;
-    @Mock
-    private PolicyQuotaService policyQuotaService;
     @Mock
     private UpgradeRequestValidator requestValidator;
 

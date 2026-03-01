@@ -51,9 +51,6 @@ fota:active:20260217
 # 限流
 fota:ratelimit:upgrade:127.0.0.1
 
-# 配额计数（策略ID + 日期）
-fota:quota:policy:101:20260217
-
 # 灰度计数
 fota:gray:count:101:20260217
 
@@ -126,7 +123,7 @@ public static final long RATE_LIMIT_TTL_SECONDS = 60;
 SET fota:device:861234567890123 '{"id":123,"imei":"861234567890123"}' EX 86400
 
 # 计数器
-INCR fota:quota:policy:101:20260217
+INCR fota:gray:count:101:20260217
 ```
 
 **注意事项**：

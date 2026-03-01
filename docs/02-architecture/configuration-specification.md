@@ -31,7 +31,6 @@ app:
 - `name`：区域展示名称
 - `publicUrl`：该区域对外访问的基础地址（用于生成回调、日志链接或区域索引）
 - `timeZone`：区域时区（如 `Asia/Singapore`）
-- `defaultQuota`：默认配额（可选，默认 100000）
 
 ### 1.3 `app.main` 对象
 

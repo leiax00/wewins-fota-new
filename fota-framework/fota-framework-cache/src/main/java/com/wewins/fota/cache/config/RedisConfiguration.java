@@ -90,40 +90,6 @@ public class RedisConfiguration {
     }
 
     /**
-     * 配置配额检查并递增 Lua 脚本
-     * <p>
-     * 脚本语义：
-     * <ul>
-     *   <li>原子操作：先检查配额是否已满，未满则递增计数器</li>
-     *   <li>返回 1 表示配额可用且已递增</li>
-     *   <li>返回 0 表示配额已用尽</li>
-     *   <li>首次创建时自动设置过期时间，实现每日配额自动重置</li>
-     * </ul>
-     * </p>
-     * <p>
-     * 使用方式：
-     * <pre>
-     * Long result = stringRedisTemplate.execute(
-     *     quotaCheckAndIncrementScript,
-     *     Collections.singletonList("fota:quota:policy:101:20260228"),
-     *     "100",  // 最大配额数
-     *     "86400" // 过期时间（秒）
-     * );
-     * boolean allowed = result != null && result == 1L;
-     * </pre>
-     * </p>
-     *
-     * @return 配额检查并递增脚本 bean
-     */
-    @Bean
-    public DefaultRedisScript<Long> quotaCheckAndIncrementScript() {
-        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
-        script.setResultType(Long.class);
-        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("redis/quota/check_and_increment.lua")));
-        return script;
-    }
-
-    /**
      * 配置分布式锁释放 Lua 脚本
      * <p>
      * 脚本语义：

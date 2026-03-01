@@ -92,7 +92,7 @@
 |--------|------|---------|
 | **product** | 产品与固件元数据管理 | 固件版本、校验和、下载地址 |
 | **device** | 设备注册与状态管理 | 设备档案、版本跟踪、活跃度 |
-| **upgrade** | 升级策略与执行 | 灰度、时间窗、配额、升级决策 |
+| **upgrade** | 升级策略与执行 | 灰度、时间窗、升级决策 |
 | **reporting** | 上报事件处理 | 状态上报、事件入库、统计分析 |
 | **sync** | 主/区域配置同步 | 策略快照、配置拉取、版本同步 |
 
@@ -195,19 +195,17 @@ interface DeviceRepository {
 **聚合根**：`UpgradePolicy`
 
 **实体**：
-- `PolicyRule`：策略规则（灰度、时间窗、配额）
+- `PolicyRule`：策略规则（灰度、时间窗）
 
 **值对象**：
 - `PolicyId`：策略 ID
 - `GrayRate`：灰度比例（0-100）
 - `TimeWindow`：时间窗口（start/end/timezone）
-- `Quota`：配额（每日最大升级数）
 - `TargetVersion`：目标版本
 
 **领域规则**：
 - 灰度命中：`Hash(IMEI) % 100 < grayRate`
 - 时间窗口校验：当前时间必须在 window 内
-- 配额预扣：检查剩余配额，扣减后返回
 - 策略优先级：多个策略命中时，取优先级最高的
 
 **领域事件**：
@@ -267,7 +265,6 @@ interface UpgradeSessionRepository {
 |---------|------|
 | `UpgradeDecisionService` | 给定 Device + Policy，返回升级决策 |
 | `PolicyMatchService` | 标签、范围、灰度命中判断 |
-| `QuotaService` | 配额窗口校验与预扣 |
 | `SignedUrlService` | 生成带签名的下载 URL（接口）|
 | `BitmapService` | 设备活跃度 Bitmap 操作 |
 

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.quota.PolicyQuotaService;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.cache.DeviceCache;
@@ -72,8 +71,6 @@ class UpgradeCheckServiceGrayTest {
     private GrayReleaseService grayReleaseService;
     @Mock
     private UpgradeResponseBuilder upgradeResponseBuilder;
-    @Mock
-    private PolicyQuotaService policyQuotaService;
 
     private UpgradeCheckService upgradeCheckService;
     private ObjectMapper objectMapper;
@@ -92,8 +89,7 @@ class UpgradeCheckServiceGrayTest {
                 firmwareVersionRepository,
                 firmwareVersionLookupService,
                 grayReleaseService,
-                upgradeResponseBuilder,
-                policyQuotaService
+                upgradeResponseBuilder
         );
         objectMapper = new ObjectMapper();
     }

@@ -247,36 +247,6 @@ public final class RedisKeyConstants {
      */
     public static final long POLICY_WRITE_LOCK_TTL_SECONDS = 30;
 
-    // ========== 限流配额常量 ==========
-
-    /**
-     * 策略配额 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.POLICY_QUOTA_KEY_TEMPLATE, policyId, date)
-     * </p>
-     * <p>
-     * 示例：fota:quota:policy:101:20260217
-     * </p>
-     * <p>
-     * 说明：策略每日配额计数器，用于灰度发布控制
-     * </p>
-     */
-    public static final String POLICY_QUOTA_KEY_TEMPLATE = "fota:quota:policy:%s:%s";
-
-    /**
-     * 灰度计数 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.GRAY_COUNT_KEY_TEMPLATE, policyId, date)
-     * </p>
-     * <p>
-     * 示例：fota:gray:count:101:20260217
-     * </p>
-     * <p>
-     * 说明：灰度发布设备计数器，记录命中灰度的设备数量
-     * </p>
-     */
-    public static final String GRAY_COUNT_KEY_TEMPLATE = "fota:gray:count:%s:%s";
-
     // ========== 服务注册常量 ==========
 
     /**
