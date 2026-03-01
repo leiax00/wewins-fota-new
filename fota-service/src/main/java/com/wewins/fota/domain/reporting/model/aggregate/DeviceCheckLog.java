@@ -64,7 +64,12 @@ public class DeviceCheckLog implements Serializable {
     /**
      * 当前固件版本
      */
-    private String currentVersion;
+    private String version;
+
+    /**
+     * 设备内部版本号（build tag）
+     */
+    private String internalVersion;
 
     /**
      * 目标固件版本
@@ -80,12 +85,12 @@ public class DeviceCheckLog implements Serializable {
     private Long targetVersionId;
 
     /**
-     * 检查决策
+     * 检查结果
      * <p>
-     * 决策结果：UPDATE（有更新）、NO_UPDATE（无更新）、RATE_LIMITED（限流）、GRAY_MISS（未命中灰度）
+     * 结果值：UPDATE（有更新）、NO_UPDATE（无更新）、RATE_LIMITED（限流）、DEVICE_NOT_FOUND（设备不存在）、ERROR（错误）
      * </p>
      */
-    private String decision;
+    private String checkRst;
 
     /**
      * 检查模式
@@ -99,14 +104,6 @@ public class DeviceCheckLog implements Serializable {
      * 语言设置
      */
     private String language;
-
-    /**
-     * 设备标签（JSON）
-     * <p>
-     * 存储设备上报的标签信息
-     * </p>
-     */
-    private String deviceTags;
 
     /**
      * 扩展标签（JSON）
@@ -123,14 +120,6 @@ public class DeviceCheckLog implements Serializable {
      * </p>
      */
     private Integer isDev;
-
-    /**
-     * 是否有更新
-     * <p>
-     * 0：无更新，1：有更新
-     * </p>
-     */
-    private Integer hasUpdate;
 
     /**
      * 灰度桶号

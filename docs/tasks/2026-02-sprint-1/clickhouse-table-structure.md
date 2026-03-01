@@ -41,22 +41,21 @@
 | device_id | UInt64 | 设备 ID |
 | imei | String | 设备 IMEI（防止前导 0 丢失） |
 | product_id | UInt64 | 产品 ID |
-| current_version | String | 当前固件版本 |
+| version | String | 当前固件版本 |
+| internal_version | String | 设备内部版本号（build tag） |
 | check_mode | LowCardinality(String) | 检查模式（auto/manual） |
 | language | LowCardinality(String) | 语言设置 |
-| device_tags | String | 设备标签（JSON） |
 | ext_tags | String | 扩展标签（JSON） |
 | is_dev | UInt8 | 是否为开发设备 |
-| has_update | UInt8 | 是否有更新 |
+| check_rst | Nullable(String) | 检查结果（UPDATE/NO_UPDATE/RATE_LIMITED/DEVICE_NOT_FOUND/ERROR） |
 | target_version | Nullable(String) | 目标固件版本 |
 | target_version_id | Nullable(UInt64) | 目标版本 ID |
 | policy_id | Nullable(UInt64) | 策略 ID |
 | gray_bucket | Nullable(UInt8) | 灰度桶号（0-99） |
 | is_gray_hit | Nullable(UInt8) | 是否命中灰度 |
-| decision | Nullable(String) | 检查决策结果 |
 | response_check_interval | Nullable(UInt32) | 建议下次检查间隔（秒） |
 | download_delay | Nullable(UInt32) | 建议下载延迟（秒） |
-| request_id | Nullable(UUID) | 请求唯一标识 |
+| request_id | String | 检查请求唯一标识（NOT NULL，用于幂等写入和关联 upgrade events） |
 | client_ip | Nullable(IPv4) | 客户端 IP |
 | user_agent | Nullable(String) | 用户代理 |
 | region | LowCardinality(String) | 区域标识 |
@@ -88,7 +87,7 @@ SETTINGS index_granularity = 8192;
 | month | UInt32 (MATERIALIZED) | 月份（自动计算，用于分区） |
 | event_id | UUID | 事件唯一标识（幂等写入） |
 | imei | String | 设备 IMEI（从上报获取） |
-| request_id | Nullable(UUID) | 关联检查日志的 request_id（从 URL 解析） |
+| request_id | Nullable(String) | 关联检查日志的 request_id（从 URL 解析，String 类型） |
 | policy_id | Nullable(UInt64) | 策略 ID（从 URL 解析） |
 | event_type | Enum8 | 事件类型（DL_START/DL_OK/DL_FAIL/UP_OK） |
 | download_url | String | 下载 URL（从上报获取） |
@@ -272,7 +271,7 @@ ORDER BY event_time;
 SELECT
     date,
     count() AS total_checks,
-    countIf(has_update) AS devices_with_update,
+    countIf(check_rst = 'UPDATE') AS devices_with_update,
     countIf(event_type = 'DL_OK') AS downloads_ok,
     countIf(event_type = 'UP_OK') AS upgrades_ok
 FROM device_check_logs
@@ -382,3 +381,25 @@ DDL 脚本使用 `ON CLUSTER '{cluster}'`，需要根据实际环境调整：
 
 - [ClickHouse 官方文档](https://clickhouse.com/docs/)
 - [项目架构文档](/docs/FOTA%20系统架构及技术说明书.md)
+
+---
+
+## 变更日志
+
+### 2026-03-02 (字段优化)
+
+**device_check_logs 表字段调整**：
+
+| 原字段 | 新字段 | 说明 |
+|--------|--------|------|
+| `current_version` | `version` | 简化命名 |
+| `device_tags` | `internal_version` | 语义更明确，表示设备内部版本号 |
+| `has_update` | (已删除) | 冗余字段，可通过 `target_version IS NOT NULL` 判断 |
+| `decision` | `check_rst` | 更直观的"检查结果"语义 |
+| `request_id` (Nullable UUID) | `request_id` (NOT NULL String) | 每次检查必定生成，同时作为唯一标识 |
+
+**device_upgrade_events 表字段调整**：
+
+| 原字段 | 新字段 | 说明 |
+|--------|--------|------|
+| `request_id` (UUID) | `request_id` (String) | 与 device_check_logs 保持一致 |

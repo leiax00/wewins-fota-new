@@ -13,7 +13,7 @@
 -- 设备检查日志表
 -- ================================================================================
 -- 用途：记录设备调用 /v1/upgrade/check 接口的日志
-CREATE TABLE IF NOT EXISTS device_check_logs ON CLUSTER '{cluster}'
+CREATE TABLE IF NOT EXISTS device_check_logs
 (
     -- 时间和分区字段
     event_time DateTime64(3, 'UTC'),
@@ -26,28 +26,27 @@ CREATE TABLE IF NOT EXISTS device_check_logs ON CLUSTER '{cluster}'
     product_id UInt64,
 
     -- 检查参数
-    current_version String,
+    version String,
+    internal_version String,
     check_mode LowCardinality(String),
     language LowCardinality(String),
-    device_tags String,
     ext_tags String,
     is_dev UInt8,
 
     -- 检查结果
-    has_update UInt8,
+    check_rst Nullable(String),
     target_version Nullable(String),
     target_version_id Nullable(UInt64),
     policy_id Nullable(UInt64),
     gray_bucket Nullable(UInt8),
     is_gray_hit Nullable(UInt8),
-    decision Nullable(String),
 
     -- 下发控制参数
     response_check_interval Nullable(UInt32),
     download_delay Nullable(UInt32),
 
-    -- 关联字段
-    request_id Nullable(UUID),
+    -- 检查请求唯一标识（NOT NULL，用于幂等写入和关联 upgrade events）
+    request_id String,
 
     -- 请求元数据
     client_ip Nullable(IPv4),
@@ -73,7 +72,7 @@ SETTINGS index_granularity = 8192;
 -- 设计原则：
 --   1. event_time 使用服务端时间（权威），设备上报时间放在 details JSON 中
 --   2. device_id, product_id, firmware_version 从 Redis 缓存补全（可为空）
-CREATE TABLE IF NOT EXISTS device_upgrade_events ON CLUSTER '{cluster}'
+CREATE TABLE IF NOT EXISTS device_upgrade_events
 (
     -- 时间字段（服务端时间，权威）
     event_time DateTime64(3, 'UTC'),
@@ -86,8 +85,8 @@ CREATE TABLE IF NOT EXISTS device_upgrade_events ON CLUSTER '{cluster}'
     -- 设备标识（从上报获取）
     imei String,
 
-    -- 关联字段（从 URL 解析）
-    request_id Nullable(UUID),
+    -- 关联字段（从 URL 解析，String 类型支持无中划线 UUID）
+    request_id Nullable(String),
     policy_id Nullable(UInt64),
 
     -- 事件信息（从上报获取）
