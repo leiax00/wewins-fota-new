@@ -1,16 +1,16 @@
 package com.wewins.fota.infra.mq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.Channel;
 import com.wewins.fota.application.reporting.DeviceUpgradeEventAppService;
 import com.wewins.fota.application.reporting.DeviceVersionUpdateService;
 import com.wewins.fota.application.reporting.UpgradeEventDeduplicationService;
-import com.wewins.fota.application.reporting.dto.UpgradeEventMessage;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
-import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +54,7 @@ public class UpgradeReportConsumer {
     private final DeviceUpgradeEventAppService deviceUpgradeEventAppService;
     private final UpgradeEventDeduplicationService deduplicationService;
     private final DeviceVersionUpdateService deviceVersionUpdateService;
+    private final MessageConverter messageConverter;
 
     /**
      * 批量处理升级上报事件
@@ -81,15 +82,7 @@ public class UpgradeReportConsumer {
 
         try {
             // 解析所有消息
-            List<UpgradeEventMessage> parsedMessages = new ArrayList<>();
-            for (Message message : messages) {
-                String payload = new String(message.getBody());
-                UpgradeEventMessage msg = parseMessage(payload);
-                if (msg != null) {
-                    parsedMessages.add(msg);
-                }
-            }
-
+            List<DeviceUpgradeEvent> parsedMessages = parseMessages(messages);
             if (parsedMessages.isEmpty()) {
                 log.warn("所有消息解析失败，ACK 并跳过: deliveryTag={}", deliveryTag);
                 channel.basicAck(deliveryTag, false);
@@ -110,6 +103,24 @@ public class UpgradeReportConsumer {
         }
     }
 
+    private List<DeviceUpgradeEvent> parseMessages(List<Message> messages) {
+        List<DeviceUpgradeEvent> events = new ArrayList<>();
+        for (Message message : messages) {
+            try {
+                Object payload = messageConverter.fromMessage(message);
+                if (payload instanceof DeviceUpgradeEvent event) {
+                    events.add(event);
+                } else {
+                    log.warn("Report: 消息类型不匹配: expected=DeviceUpgradeEvent, actual={}",
+                            payload.getClass().getName());
+                }
+            } catch (Exception e) {
+                log.error("Report: 检查日志消息解析失败: payload={}", new String(message.getBody()), e);
+            }
+        }
+        return events;
+    }
+
     /**
      * 处理消息列表
      * <p>
@@ -123,32 +134,26 @@ public class UpgradeReportConsumer {
      *
      * @param messages 消息列表
      */
-    private void processMessages(List<UpgradeEventMessage> messages) {
-        // 1. 提取所有事件
-        List<DeviceUpgradeEvent> allEvents = extractEvents(messages);
-        if (allEvents.isEmpty()) {
-            log.debug("消息中没有事件，跳过处理");
-            return;
-        }
+    private void processMessages(List<DeviceUpgradeEvent> messages) {
 
         // 2. 提取事件 ID 并去重
-        List<String> eventIds = allEvents.stream()
+        List<String> eventIds = messages.stream()
                 .map(DeviceUpgradeEvent::getEventId)
                 .filter(id -> id != null && !id.isEmpty())
                 .collect(Collectors.toList());
 
         List<String> newEventIds = deduplicationService.filterNewEvents(eventIds);
         if (newEventIds.isEmpty()) {
-            log.debug("所有事件都已处理过，跳过: totalEvents={}", allEvents.size());
+            log.debug("所有事件都已处理过，跳过: totalEvents={}", messages.size());
             return;
         }
 
         // 3. 过滤出未处理的事件
-        List<DeviceUpgradeEvent> newEvents = allEvents.stream()
+        List<DeviceUpgradeEvent> newEvents = messages.stream()
                 .filter(e -> newEventIds.contains(e.getEventId()))
                 .collect(Collectors.toList());
 
-        log.info("开始处理新事件: newEvents={}, totalEvents={}", newEvents.size(), allEvents.size());
+        log.info("开始处理新事件: newEvents={}, totalEvents={}", newEvents.size(), messages.size());
 
         // 4. 批量写入 ClickHouse
         deviceUpgradeEventAppService.recordUpgradeEvents(newEvents);
@@ -160,33 +165,5 @@ public class UpgradeReportConsumer {
         deviceVersionUpdateService.processUpgradeSuccessEvents(newEvents);
 
         log.info("事件处理完成: processed={}", newEvents.size());
-    }
-
-    /**
-     * 解析单条消息
-     *
-     * @param payload JSON 字符串
-     * @return UpgradeEventMessage 对象
-     */
-    private UpgradeEventMessage parseMessage(String payload) {
-        try {
-            return objectMapper.readValue(payload, UpgradeEventMessage.class);
-        } catch (Exception e) {
-            log.error("消息解析失败: payload={}", payload, e);
-            return null;
-        }
-    }
-
-    /**
-     * 从消息列表中提取所有事件
-     *
-     * @param messages 消息列表
-     * @return 事件列表
-     */
-    private List<DeviceUpgradeEvent> extractEvents(List<UpgradeEventMessage> messages) {
-        return messages.stream()
-                .filter(m -> m.getEvents() != null && !m.getEvents().isEmpty())
-                .flatMap(m -> m.getEvents().stream())
-                .collect(Collectors.toList());
     }
 }

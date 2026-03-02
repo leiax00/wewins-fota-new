@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.common.util.RequestIdGenerator;
+import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
+import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
@@ -18,6 +20,8 @@ import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog;
+import com.wewins.fota.domain.reporting.service.CheckLogGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -65,6 +69,8 @@ public class UpgradeCheckService {
     private final GrayReleaseService grayReleaseService;
     private final UpgradeResponseBuilder upgradeResponseBuilder;
     private final UpgradeRequestValidator requestValidator;
+    private final CheckLogGateway checkLogGateway;
+    private final DeviceCheckLogBuilder checkLogBuilder;
 
     public UpgradeCheckService(
             DeviceRepository deviceRepository,
@@ -78,7 +84,9 @@ public class UpgradeCheckService {
             FirmwareVersionLookupService firmwareVersionLookupService,
             GrayReleaseService grayReleaseService,
             UpgradeResponseBuilder upgradeResponseBuilder,
-            UpgradeRequestValidator requestValidator
+            UpgradeRequestValidator requestValidator,
+            CheckLogGateway checkLogGateway,
+            DeviceCheckLogBuilder checkLogBuilder
     ) {
         this.deviceRepository = deviceRepository;
         this.deviceCacheService = deviceCacheService;
@@ -92,6 +100,8 @@ public class UpgradeCheckService {
         this.grayReleaseService = grayReleaseService;
         this.upgradeResponseBuilder = upgradeResponseBuilder;
         this.requestValidator = requestValidator;
+        this.checkLogGateway = checkLogGateway;
+        this.checkLogBuilder = checkLogBuilder;
     }
 
     /**
@@ -104,70 +114,124 @@ public class UpgradeCheckService {
      * @return 检查结果
      */
     public CheckResult checkUpgrade(UpgradeCheckReqDTO request) {
+        return checkUpgrade(request, null);
+    }
+
+    /**
+     * 检查设备是否有可用更新（带日志上下文）
+     * <p>
+     * 新 API 接口，支持完整参数列表和日志记录
+     * </p>
+     *
+     * @param request    升级检查请求 DTO
+     * @param logContext HTTP 请求上下文（用于日志记录）
+     * @return 检查结果
+     */
+    public CheckResult checkUpgrade(UpgradeCheckReqDTO request, CheckLogContext logContext) {
 
         log.debug("开始检查设备更新: request={}", request);
 
         // 生成请求唯一标识（用于关联 check 和 report）
         String requestId = RequestIdGenerator.generate();
 
-        // 1. 参数校验
-        requestValidator.validateRequiredParams(request.getProduct(), request.getImei(), request.getVersion());
-        requestValidator.validateAuto(request.getAuto());
+        // 用于日志记录的中间状态
+        Device device = null;
+        UpgradePolicy matchedPolicy = null;
+        CheckResult result = null;
 
-        // 2. 限流检查（每分钟最多 10 次请求）
-        RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
-                "upgrade:" + request.getImei(),
-                10,
-                Duration.ofMinutes(1)
-        );
-
-        if (!rateLimitDecision.isAllowed()) {
-            log.warn("设备请求被限流: imei={}, reason={}", request.getImei(), rateLimitDecision.getReason());
-            return CheckResult.rateLimited(
-                    "请求过于频繁",
-                    (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
-            );
-        }
-
-        // 3. 通过产品型号查找产品
-        Product product = productRepository.findByModel(request.getProduct()).orElse(null);
-        if (product == null) {
-            return CheckResult.error("产品型号不存在");
-        }
-
-        // 4. 从缓存或数据库加载设备信息
-        // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
-        Device device = loadDevice(request.getImei());
-        if (device == null) {
-            return CheckResult.notFound("设备未注册，请联系管理员");
-        }
-
-        // 5. 标记设备活跃（使用设备 ID 作为 bitmap 偏移量）
         try {
-            bitmapRepository.markActive(LocalDate.now(), device.getId());
-            log.debug("标记设备活跃: imei={}, deviceId={}", request.getImei(), device.getId());
+            // 1. 参数校验
+            requestValidator.validateRequiredParams(request.getProduct(), request.getImei(), request.getVersion());
+            requestValidator.validateAuto(request.getAuto());
+
+            // 2. 限流检查（每分钟最多 10 次请求）
+            RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
+                    "upgrade:" + request.getImei(),
+                    10,
+                    Duration.ofMinutes(1)
+            );
+
+            if (!rateLimitDecision.isAllowed()) {
+                log.warn("设备请求被限流: imei={}, reason={}", request.getImei(), rateLimitDecision.getReason());
+                result = CheckResult.rateLimited(
+                        "请求过于频繁",
+                        (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
+                );
+                return result;
+            }
+
+            // 3. 通过产品型号查找产品
+            Product product = productRepository.findByModel(request.getProduct()).orElse(null);
+            if (product == null) {
+                result = CheckResult.error("产品型号不存在");
+                return result;
+            }
+
+            // 4. 从缓存或数据库加载设备信息
+            // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
+            device = loadDevice(request.getImei());
+            if (device == null) {
+                result = CheckResult.notFound("设备未注册，请联系管理员");
+                return result;
+            }
+
+            // 5. 标记设备活跃（使用设备 ID 作为 bitmap 偏移量）
+            try {
+                bitmapRepository.markActive(LocalDate.now(), device.getId());
+                log.debug("标记设备活跃: imei={}, deviceId={}", request.getImei(), device.getId());
+            } catch (Exception e) {
+                log.error("标记设备活跃失败: imei={}, deviceId={}", request.getImei(), device.getId(), e);
+                // 降级处理：记录错误但不中断主流程
+            }
+
+            // 6. 查找固件版本 ID（version+tag 组合优先）
+            Long versionId = firmwareVersionLookupService.findVersionId(request.getVersion(), request.getTag(), product.getId());
+            log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",
+                    request.getVersion(), request.getTag(), product.getId(), versionId);
+
+            // 7. 匹配适用的升级策略（支持 dev、auto 参数）
+            List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, request.getDev(), request.getAuto());
+            if (policies.isEmpty()) {
+                log.debug("未找到适用的升级策略: deviceId={}, versionId={}", device.getId(), versionId);
+                result = CheckResult.noUpdate();
+                return result;
+            }
+
+            // 8. 选择优先级最高的策略
+            matchedPolicy = policies.getFirst();
+
+            // 9. 构建响应（支持 lang 和 auto 参数）
+            result = upgradeResponseBuilder.buildResponse(device, matchedPolicy, requestId, request.getLang(), request.getAuto() == 1);
+
+            return result;
+        } finally {
+            // 记录检查日志（异步，不阻塞主流程）
+            recordCheckLog(request, device, matchedPolicy, result, logContext);
+        }
+    }
+
+    /**
+     * 记录检查日志
+     * <p>
+     * 使用 try-catch 确保日志记录失败不影响主流程
+     * </p>
+     *
+     * @param request   升级检查请求
+     * @param device      设备信息（可能为 null）
+     * @param policy      匹配的策略（可能为 null）
+     * @param result      检查结果
+     * @param logContext HTTP 请求上下文
+     */
+    private void recordCheckLog(UpgradeCheckReqDTO request, Device device, UpgradePolicy policy, CheckResult result, CheckLogContext logContext) {
+        try {
+            DeviceCheckLog checkLog = checkLogBuilder.build(request, device, policy, result, logContext);
+            checkLogGateway.accept(checkLog);
         } catch (Exception e) {
-            log.error("标记设备活跃失败: imei={}, deviceId={}", request.getImei(), device.getId(), e);
-            // 降级处理：记录错误但不中断主流程
+            log.error("检查日志记录失败: imei={}, requestId={}",
+                    request != null ? request.getImei() : null,
+                    result != null ? result.getRequestId() : null, e);
+            // 降级处理：日志记录失败不影响主流程
         }
-
-        // 6. 查找固件版本 ID（version+tag 组合优先）
-        Long versionId = firmwareVersionLookupService.findVersionId(request.getVersion(), request.getTag(), product.getId());
-        log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",
-                request.getVersion(), request.getTag(), product.getId(), versionId);
-
-        // 7. 匹配适用的升级策略（支持 dev、auto 参数）
-        List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, request.getDev(), request.getAuto());
-        if (policies.isEmpty()) {
-            log.debug("未找到适用的升级策略: deviceId={}, versionId={}", device.getId(), versionId);
-            return CheckResult.noUpdate();
-        }
-
-        // 8. 选择优先级最高的策略
-        UpgradePolicy policy = policies.getFirst();
-
-        // 9. 构建响应（支持 lang 和 auto 参数）
-        return upgradeResponseBuilder.buildResponse(device, policy, requestId, request.getLang(), request.getAuto() == 1);
     }
 
     /**

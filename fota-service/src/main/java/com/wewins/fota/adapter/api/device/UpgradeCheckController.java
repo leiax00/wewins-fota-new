@@ -3,11 +3,14 @@ package com.wewins.fota.adapter.api.device;
 import com.wewins.fota.adapter.api.device.dto.UpgradeCheckRespDTO;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.upgrade.UpgradeCheckService;
+import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,13 +40,19 @@ public class UpgradeCheckController {
 
     private final UpgradeCheckService upgradeCheckService;
 
+    @Value("${app.node.code:main}")
+    private String region;
+
     /**
      * 检查设备升级（GET 方法）
      */
     @GetMapping("/v1/upgrade/check")
-    public ResponseEntity<UpgradeCheckRespDTO> checkUpgrade(@ModelAttribute UpgradeCheckReqDTO request) {
+    public ResponseEntity<UpgradeCheckRespDTO> checkUpgrade(
+            @ModelAttribute UpgradeCheckReqDTO request,
+            HttpServletRequest httpRequest) {
         log.debug("收到设备检查 GET 请求: {}", request);
-        CheckResult result = upgradeCheckService.checkUpgrade(request);
+        CheckLogContext logContext = buildLogContext(httpRequest);
+        CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);
         UpgradeCheckRespDTO response = convertToRespDTO(result);
         return ResponseEntity.ok(response);
     }
@@ -55,18 +64,83 @@ public class UpgradeCheckController {
      * </p>
      */
     @GetMapping("/fota/version/query")
-    public ResponseEntity<UpgradeCheckRespDTO> checkUpgradeOld(@ModelAttribute UpgradeCheckReqDTO request) {
+    public ResponseEntity<UpgradeCheckRespDTO> checkUpgradeOld(
+            @ModelAttribute UpgradeCheckReqDTO request,
+            HttpServletRequest httpRequest) {
         log.debug("[Legacy API] 收到设备检查 GET 请求: {}", request);
-        return checkUpgrade(request);
+        return checkUpgrade(request, httpRequest);
     }
 
     /**
      * 检查设备升级（POST 方法）
      */
     @PostMapping("/v1/upgrade/check")
-    public ResponseEntity<UpgradeCheckRespDTO> checkUpgradePost(@RequestBody UpgradeCheckReqDTO request) {
+    public ResponseEntity<UpgradeCheckRespDTO> checkUpgradePost(
+            @RequestBody UpgradeCheckReqDTO request,
+            HttpServletRequest httpRequest) {
         log.debug("收到设备检查 POST 请求: {}", request);
-        return checkUpgrade(request);
+        return checkUpgrade(request, httpRequest);
+    }
+
+    /**
+     * 构建检查日志上下文
+     *
+     * @param httpRequest HTTP 请求
+     * @return 日志上下文
+     */
+    private CheckLogContext buildLogContext(HttpServletRequest httpRequest) {
+        return CheckLogContext.builder()
+                .clientIp(extractClientIp(httpRequest))
+                .userAgent(httpRequest.getHeader("User-Agent"))
+                .region(region)
+                .build();
+    }
+
+    /**
+     * 提取客户端 IP 地址
+     * <p>
+     * 优先从 X-Forwarded-For 或 X-Real-IP 头获取
+     * </p>
+     *
+     * @param request HTTP 请求
+     * @return 客户端 IP
+     */
+    private String extractClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return normalizeIp(xForwardedFor.split(",")[0].trim());
+        }
+
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return normalizeIp(xRealIp.trim());
+        }
+
+        return normalizeIp(request.getRemoteAddr());
+    }
+
+    /**
+     * 标准化 IP 地址
+     * <p>
+     * 将 IPv6 的 localhost (0:0:0:0:0:0:0:1) 转换为 IPv4 的 127.0.0.1
+     * </p>
+     *
+     * @param ip 原始 IP 地址
+     * @return 标准化后的 IP 地址
+     */
+    private String normalizeIp(String ip) {
+        if (ip == null || ip.isBlank()) {
+            return null;
+        }
+        // IPv6 localhost 转换为 IPv4
+        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+            return "127.0.0.1";
+        }
+        // 移除 IPv6 前缀（如 ::ffff:192.168.1.1 -> 192.168.1.1）
+        if (ip.startsWith("::ffff:")) {
+            return ip.substring(7);
+        }
+        return ip;
     }
 
     /**

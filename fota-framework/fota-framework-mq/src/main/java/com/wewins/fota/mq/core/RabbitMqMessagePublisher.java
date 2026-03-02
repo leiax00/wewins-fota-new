@@ -20,10 +20,8 @@ public class RabbitMqMessagePublisher implements MqMessagePublisher {
 
     @Override
     public void publishJson(String destination, Object payload) {
-        try {
-            publish(destination, objectMapper.writeValueAsString(payload));
-        } catch (Exception ex) {
-            throw new IllegalStateException("Serialize MQ payload failed", ex);
-        }
+        // 直接发送对象，让 RabbitTemplate 的 MessageConverter 处理序列化
+        // 避免 double serialization（先手动序列化为字符串，再由 MessageConverter 序列化）
+        rabbitTemplate.convertAndSend(destination, payload);
     }
 }

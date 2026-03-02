@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.reporting.model.value;
 
+import lombok.Getter;
+
 import java.util.Arrays;
 
 /**
@@ -11,6 +13,7 @@ import java.util.Arrays;
  * @author FOTA Team
  * @since 2026-02-11
  */
+@Getter
 public enum DeviceUpgradeEventType {
 
     /**
@@ -38,30 +41,19 @@ public enum DeviceUpgradeEventType {
      */
     UP_FAIL("UP_FAIL", "Upgrade failed");
 
+    /**
+     *  获取 ClickHouse 数据库存储值
+     */
     private final String dbValue;
+
+    /**
+     *  获取事件描述
+     */
     private final String description;
 
     DeviceUpgradeEventType(String dbValue, String description) {
         this.dbValue = dbValue;
         this.description = description;
-    }
-
-    /**
-     * 获取 ClickHouse 数据库存储值
-     *
-     * @return 数据库枚举值
-     */
-    public String getDbValue() {
-        return dbValue;
-    }
-
-    /**
-     * 获取事件描述
-     *
-     * @return 事件描述
-     */
-    public String getDescription() {
-        return description;
     }
 
     /**

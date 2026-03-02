@@ -21,7 +21,6 @@ public class UpgradeReportAppService {
         if (report == null) {
             return;
         }
-        log.info("收到设备升级上报: imei={}, event={}", report.getImei(), report.getEvent());
         upgradeReportGateway.accept(report);
     }
 

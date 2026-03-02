@@ -38,12 +38,14 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
      */
     @Override
     public void accept(UpgradeReport report) {
-        try {
-            UpgradeEventMessage message = UpgradeEventMessage.builder()
-                    .events(List.of(buildEvent(report)))
-                    .build();
+        if (report == null) {
+            log.warn("检查日志为空，跳过投递");
+            return;
+        }
 
-            mqMessagePublisher.publishJson(upgradeEventQueue, message);
+        try {
+            DeviceUpgradeEvent payload = buildEvent(report);
+            mqMessagePublisher.publishJson(upgradeEventQueue, payload);
         } catch (Exception e) {
             log.error("设备上报消息发送失败: imei={}, event={}", report.getImei(), report.getEvent(), e);
             throw new IllegalStateException("设备上报消息发送失败", e);
