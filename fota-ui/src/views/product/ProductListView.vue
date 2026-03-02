@@ -38,7 +38,7 @@ const formRef = ref()
 
 const form = reactive({
   name: '',
-  manufacturer: '',
+  manufacturer: 'wewins',
   model: '',
   remark: '',
 })
@@ -64,7 +64,7 @@ const openCreateDialog = () => {
   dialogMode.value = 'create'
   editingId.value = null
   form.name = ''
-  form.manufacturer = ''
+  form.manufacturer = 'wewins'
   form.model = ''
   form.remark = ''
   dialogVisible.value = true
