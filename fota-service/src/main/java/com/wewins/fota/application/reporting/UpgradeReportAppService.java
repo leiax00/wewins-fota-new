@@ -29,14 +29,18 @@ public class UpgradeReportAppService {
      *
      * @param dto 请求 DTO
      * @param detailsJson 序列化后的 details JSON
+     * @param clientIp 客户端 IP 地址
+     * @param region 区域标识
      * @return 领域模型
      */
-    public UpgradeReport toDomain(UpgradeReportDTO dto, String detailsJson) {
+    public UpgradeReport toDomain(UpgradeReportDTO dto, String detailsJson, String clientIp, String region) {
         return UpgradeReport.builder()
                 .imei(dto.getImei())
                 .event(dto.getEvent())
                 .url(dto.getUrl())
                 .detailsJson(detailsJson)
+                .clientIp(clientIp)
+                .region(region)
                 .build();
     }
 }

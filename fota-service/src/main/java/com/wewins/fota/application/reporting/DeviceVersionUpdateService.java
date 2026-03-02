@@ -48,7 +48,7 @@ public class DeviceVersionUpdateService {
      * @param events 升级事件列表
      */
     @Async("fotaTaskExecutor")
-    @Transactional(transactionManager = "postgresqlTransactionManager")
+    @Transactional(transactionManager = "primaryTransactionManager")
     public void processUpgradeSuccessEvents(List<DeviceUpgradeEvent> events) {
         if (events == null || events.isEmpty()) {
             return;

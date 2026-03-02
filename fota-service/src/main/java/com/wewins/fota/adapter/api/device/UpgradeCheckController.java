@@ -7,6 +7,7 @@ import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
+import com.wewins.fota.common.util.HttpUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,57 +91,10 @@ public class UpgradeCheckController {
      */
     private CheckLogContext buildLogContext(HttpServletRequest httpRequest) {
         return CheckLogContext.builder()
-                .clientIp(extractClientIp(httpRequest))
+                .clientIp(HttpUtils.extractClientIp(httpRequest))
                 .userAgent(httpRequest.getHeader("User-Agent"))
                 .region(region)
                 .build();
-    }
-
-    /**
-     * 提取客户端 IP 地址
-     * <p>
-     * 优先从 X-Forwarded-For 或 X-Real-IP 头获取
-     * </p>
-     *
-     * @param request HTTP 请求
-     * @return 客户端 IP
-     */
-    private String extractClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return normalizeIp(xForwardedFor.split(",")[0].trim());
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return normalizeIp(xRealIp.trim());
-        }
-
-        return normalizeIp(request.getRemoteAddr());
-    }
-
-    /**
-     * 标准化 IP 地址
-     * <p>
-     * 将 IPv6 的 localhost (0:0:0:0:0:0:0:1) 转换为 IPv4 的 127.0.0.1
-     * </p>
-     *
-     * @param ip 原始 IP 地址
-     * @return 标准化后的 IP 地址
-     */
-    private String normalizeIp(String ip) {
-        if (ip == null || ip.isBlank()) {
-            return null;
-        }
-        // IPv6 localhost 转换为 IPv4
-        if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
-            return "127.0.0.1";
-        }
-        // 移除 IPv6 前缀（如 ::ffff:192.168.1.1 -> 192.168.1.1）
-        if (ip.startsWith("::ffff:")) {
-            return ip.substring(7);
-        }
-        return ip;
     }
 
     /**

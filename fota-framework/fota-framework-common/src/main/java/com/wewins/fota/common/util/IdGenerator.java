@@ -15,9 +15,9 @@ import java.util.UUID;
  * @author FOTA Team
  * @since 2026-03-01
  */
-public final class RequestIdGenerator {
+public final class IdGenerator {
 
-    private RequestIdGenerator() {
+    private IdGenerator() {
         // 工具类，禁止实例化
     }
 
@@ -26,7 +26,11 @@ public final class RequestIdGenerator {
      *
      * @return 32 字符的 UUID 字符串（无中划线）
      */
-    public static String generate() {
+    public static String simpleUUID() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    public static String uuid() {
+        return UUID.randomUUID().toString();
     }
 }

@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
 import com.wewins.fota.application.reporting.UpgradeReportAppService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
+import com.wewins.fota.common.util.HttpUtils;
 import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +37,9 @@ public class UpgradeReportController {
     private final UpgradeReportAppService upgradeReportAppService;
     private final ObjectMapper objectMapper;
 
+    @Value("${app.node.code:main}")
+    private String region;
+
     /**
      * 上报升级状态
      * <p>
@@ -41,12 +47,16 @@ public class UpgradeReportController {
      * </p>
      *
      * @param requestBody 上报请求体
+     * @param httpRequest HTTP 请求（用于提取客户端 IP）
      * @return 200 OK
      */
     @PostMapping("/report")
-    public ResponseEntity<Void> reportUpgrade(@Valid @RequestBody UpgradeReportDTO requestBody) {
+    public ResponseEntity<Void> reportUpgrade(
+            @Valid @RequestBody UpgradeReportDTO requestBody,
+            HttpServletRequest httpRequest) {
         String detailsJson = serializeDetails(requestBody.getDetails());
-        UpgradeReport report = upgradeReportAppService.toDomain(requestBody, detailsJson);
+        String clientIp = HttpUtils.extractClientIp(httpRequest);
+        UpgradeReport report = upgradeReportAppService.toDomain(requestBody, detailsJson, clientIp, region);
         upgradeReportAppService.reportUpgrade(report);
 
         return ResponseEntity.ok().build();

@@ -1,6 +1,6 @@
 package com.wewins.fota.infra.gateway;
 
-import com.wewins.fota.application.reporting.dto.UpgradeEventMessage;
+import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
 import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.util.List;
 
 /**
  * 设备上报网关的 RabbitMQ 实现。
@@ -54,12 +53,15 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
 
     private DeviceUpgradeEvent buildEvent(UpgradeReport report) {
         return DeviceUpgradeEvent.builder()
+                .eventId(IdGenerator.uuid())
                 .imei(report.getImei())
                 .requestId(extractRequestId(report.getUrl()))
                 .policyId(extractPolicyId(report.getUrl()))
                 .eventType(DeviceUpgradeEventType.fromDbValue(report.getEvent()))
                 .downloadUrl(report.getUrl())
                 .details(report.getDetailsJson())
+                .clientIp(report.getClientIp())
+                .region(report.getRegion())
                 .build();
     }
 

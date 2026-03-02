@@ -35,4 +35,14 @@ public class UpgradeReport {
      * 扩展详情（已序列化的 JSON 字符串）
      */
     String detailsJson;
+
+    /**
+     * 客户端 IP 地址
+     */
+    String clientIp;
+
+    /**
+     * 区域标识（main 或 region 节点代码）
+     */
+    String region;
 }

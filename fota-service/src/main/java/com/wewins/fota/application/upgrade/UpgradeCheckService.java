@@ -3,7 +3,7 @@ package com.wewins.fota.application.upgrade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wewins.fota.common.util.RequestIdGenerator;
+import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
@@ -132,7 +132,7 @@ public class UpgradeCheckService {
         log.debug("开始检查设备更新: request={}", request);
 
         // 生成请求唯一标识（用于关联 check 和 report）
-        String requestId = RequestIdGenerator.generate();
+        String requestId = IdGenerator.simpleUUID();
 
         // 用于日志记录的中间状态
         Device device = null;
