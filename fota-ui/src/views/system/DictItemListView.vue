@@ -14,6 +14,7 @@ import {
   type DictItem,
   type DictTypeItem,
 } from '@/api/system'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -87,13 +88,13 @@ const fetchList = async () => {
 
   loading.value = true
   try {
-    const result = await pageDictItems({
+    const result = await pageDictItems(trimFormValues({
       page: query.page,
       size: query.size,
       dictTypeId: id,
       label: query.label,
       status: query.status,
-    })
+    }))
 
     const records = result.records || []
     list.value = records
@@ -202,7 +203,7 @@ const submitForm = async () => {
 
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       dictTypeId: dictTypeId.value,
       label: form.label,
       value: form.value,
@@ -210,7 +211,7 @@ const submitForm = async () => {
       sortOrder: form.sortOrder,
       status: form.status,
       extra: parsedExtra.value,
-    }
+    })
 
     if (dialogMode.value === 'create') {
       await createDictItem(payload)

@@ -16,6 +16,7 @@ import {
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'
 import {formatDateTime as utilsFormatDateTime, formatLocalDateTime} from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -255,7 +256,7 @@ const handleProductSearch = async (keyword: string) => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pagePolicies(query)
+    const result = await pagePolicies(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {

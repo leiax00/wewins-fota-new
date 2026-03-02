@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { resolveStatusLabelKey, resolveStatusType, userStatusTypeMap } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   assignUserRoles,
   createUser,
@@ -65,7 +66,7 @@ const statusOptions = [
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageUsers(query)
+    const result = await pageUsers(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -105,14 +106,14 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       username: form.username,
       displayName: form.displayName,
       email: form.email,
       phone: form.phone,
       status: form.status,
       passwordHash: form.passwordHash || undefined,
-    }
+    })
 
     if (dialogMode.value === 'create') {
       await createUser(payload)

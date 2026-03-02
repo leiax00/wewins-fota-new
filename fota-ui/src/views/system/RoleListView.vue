@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { resolveStatusLabelKey, resolveStatusType, roleStatusTypeMap } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   assignRolePermissions,
   createRole,
@@ -97,7 +98,7 @@ const allPermissionIds = computed(() => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageRoles(query)
+    const result = await pageRoles(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -133,12 +134,12 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       code: form.code,
       name: form.name,
       description: form.description,
       status: form.status,
-    }
+    })
     if (dialogMode.value === 'create') {
       await createRole(payload)
       ElMessage.success(t('system.common.createSuccess'))

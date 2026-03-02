@@ -17,6 +17,7 @@ import { deviceStatusTypeMap, resolveStatusLabelKey, resolveStatusType } from '@
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   createDevice,
   deleteDevice,
@@ -241,7 +242,7 @@ const handleBatchOperationSuccess = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageDevices(query)
+    const result = await pageDevices(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {

@@ -18,6 +18,7 @@ import {
 import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch'
 import { searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -153,13 +154,13 @@ const tagPairs = computed({
   },
   set: (pairs: Array<{ key: string; value: string; editing?: boolean }>) => {
     form.tagKeys = pairs.map((p) => p.key).filter((k) => k.trim())
-    form.tagValues = pairs.map((p) => p.value)
+    form.tagValues = pairs.map((p) => p.value.trim())
     form.tagEditing = pairs.map((p) => p.editing || false)
     // 同步更新 targetDeviceTags
     form.targetDeviceTags = {}
     pairs.forEach((p) => {
       if (p.key.trim()) {
-        form.targetDeviceTags[p.key.trim()] = p.value
+        form.targetDeviceTags[p.key.trim()] = p.value.trim()
       }
     })
   },
@@ -559,7 +560,7 @@ const submitForm = async () => {
           endAt: form.timeWindow.endAt,
         }
 
-    const payload = {
+    const payload = trimFormValues({
       productId: form.productId!,
       firmwareVersionId: form.firmwareVersionId!,
       name: form.name,
@@ -574,7 +575,7 @@ const submitForm = async () => {
       targetDeviceTags: form.targetMode === 'DEVICE_TAGS' ? form.targetDeviceTags : undefined,
       status: form.status,
       remark: form.remark || undefined,
-    }
+    })
 
     if (isEditMode.value && editingId.value) {
       await updatePolicy(editingId.value, payload)

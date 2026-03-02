@@ -11,6 +11,7 @@ import {
   updateProduct,
   type ProductItem,
 } from '@/api/product'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -51,7 +52,7 @@ const formRules = {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageProducts(query)
+    const result = await pageProducts(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -83,12 +84,12 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       name: form.name,
       manufacturer: form.manufacturer,
       model: form.model,
       remark: form.remark,
-    }
+    })
 
     if (dialogMode.value === 'create') {
       await createProduct(payload)

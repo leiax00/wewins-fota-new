@@ -12,6 +12,7 @@ import {
   updateDictType,
   type DictTypeItem,
 } from '@/api/system'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -61,7 +62,7 @@ const formRules = {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageDictTypes(query)
+    const result = await pageDictTypes(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -95,13 +96,13 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       code: form.code,
       name: form.name,
       i18nKey: form.i18nKey,
       status: form.status,
       description: form.description,
-    }
+    })
 
     if (dialogMode.value === 'create') {
       await createDictType(payload)

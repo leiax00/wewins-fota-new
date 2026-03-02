@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   cancelUploadSession,
   createFirmwareVersion,
@@ -306,7 +307,7 @@ const handleProductSearch = async (keyword: string) => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageFirmwareVersions(query)
+    const result = await pageFirmwareVersions(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -355,13 +356,13 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload: Record<string, unknown> = {
+    const payload: Record<string, unknown> = trimFormValues({
       productId: form.productId!,
       version: form.version,
       internalVersion: form.internalVersion || undefined,
       tags: form.tags || undefined,
       meta: form.meta || undefined,
-    }
+    })
 
     // 处理包状态
     if (form.noPackage) {
@@ -540,12 +541,14 @@ onMounted(() => {
       <el-table-column
         prop="version"
         :label="t('firmware.version')"
-        min-width="120"
+        min-width="160"
+        show-overflow-tooltip
       />
       <el-table-column
         prop="internalVersion"
         label="内部版本"
-        min-width="120"
+        min-width="200"
+        show-overflow-tooltip
       />
       <el-table-column
         prop="packageStatus"
