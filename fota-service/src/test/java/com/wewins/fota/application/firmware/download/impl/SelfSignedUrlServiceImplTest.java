@@ -1,12 +1,11 @@
 package com.wewins.fota.application.firmware.download.impl;
 
 import com.wewins.fota.application.firmware.download.FirmwareDownloadProperties;
+import com.wewins.fota.storage.config.StorageProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,9 +21,11 @@ class SelfSignedUrlServiceImplTest {
 
     private static final String TEST_SECRET_KEY = "test-secret-key-at-least-32-bytes-long-for-security";
     private static final String TEST_BASE_URL = "https://cdn.example.com";
+    private static final String TEST_S3_BUCKET = "fota";
 
     private SelfSignedUrlServiceImpl signedUrlService;
     private FirmwareDownloadProperties properties;
+    private StorageProperties storageProperties;
 
     @BeforeEach
     void setUp() {
@@ -33,7 +34,10 @@ class SelfSignedUrlServiceImplTest {
         properties.getSelfSigned().setSecretKey(TEST_SECRET_KEY);
         properties.getSelfSigned().setDefaultExpireSeconds(86400);
 
-        signedUrlService = new SelfSignedUrlServiceImpl(properties);
+        storageProperties = new StorageProperties();
+        storageProperties.getS3().setEnabled(false); // 默认不启用 S3
+
+        signedUrlService = new SelfSignedUrlServiceImpl(properties, storageProperties);
     }
 
     @Nested
@@ -45,18 +49,13 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldReturnSignedUrl_whenValidParams() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
 
             // Then
             assertThat(url).isNotEmpty();
             assertThat(url).startsWith(TEST_BASE_URL);
-            // URL 不再包含 pid 和 rid 参数
-            assertThat(url).doesNotContain("pid=");
-            assertThat(url).doesNotContain("rid=");
             assertThat(url).contains("expire=");
             assertThat(url).contains("sig=");
         }
@@ -66,11 +65,9 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldHandleLeadingSlash() {
             // Given
             String firmwarePath = "/fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
 
             // Then
             assertThat(url).contains("//cdn.example.com/fota/fw/123");
@@ -82,18 +79,13 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldUseCustomExpireTime() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
             int customExpireSeconds = 3600;
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, customExpireSeconds);
+            String url = signedUrlService.generateSignedUrl(firmwarePath, customExpireSeconds);
 
             // Then
             assertThat(url).isNotEmpty();
-            // URL 不再包含 pid 和 rid 参数
-            assertThat(url).doesNotContain("pid=");
-            assertThat(url).doesNotContain("rid=");
 
             // 验证过期时间约为当前时间 + 3600 秒（允许 5 秒误差）
             String[] params = url.split("\\?");
@@ -111,17 +103,12 @@ class SelfSignedUrlServiceImplTest {
             // Given
             properties.setBaseUrl(null);
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
 
             // Then
             assertThat(url).startsWith("fota/fw/123/test-firmware.zip?");
-            // URL 不再包含 pid 和 rid 参数
-            assertThat(url).doesNotContain("pid=");
-            assertThat(url).doesNotContain("rid=");
         }
 
         @Test
@@ -129,39 +116,11 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldThrowException_whenFirmwarePathIsNull() {
             // Given
             String firmwarePath = null;
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId))
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("firmwarePath 不能为空");
-        }
-
-        @Test
-        @DisplayName("生成签名 URL - policyId 为 null 不再抛出异常")
-        void generateSignedUrl_shouldNotThrowException_whenPolicyIdIsNull() {
-            // Given
-            String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = null;
-            String requestId = UUID.randomUUID().toString();
-
-            // When & Then - 不再校验 policyId
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
-            assertThat(url).isNotEmpty();
-        }
-
-        @Test
-        @DisplayName("生成签名 URL - requestId 为 null 不再抛出异常")
-        void generateSignedUrl_shouldNotThrowException_whenRequestIdIsNull() {
-            // Given
-            String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = null;
-
-            // When & Then - 不再校验 requestId
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
-            assertThat(url).isNotEmpty();
         }
 
         @Test
@@ -169,14 +128,51 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldThrowException_whenExpireTimeTooLong() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
             int expireSeconds = 8 * 24 * 3600; // 8 天，超过 7 天限制
 
             // When & Then
-            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, expireSeconds))
+            assertThatThrownBy(() -> signedUrlService.generateSignedUrl(firmwarePath, expireSeconds))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("expireSeconds 必须在 1-604800 秒之间");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - S3 path_style 模式添加 bucket 到路径")
+        void generateSignedUrl_shouldAddBucketToPath_whenS3PathStyleEnabled() {
+            // Given
+            storageProperties.getS3().setEnabled(true);
+            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setBucket(TEST_S3_BUCKET);
+            String firmwarePath = "fw/test.zip";
+
+            // 重新创建服务实例
+            signedUrlService = new SelfSignedUrlServiceImpl(properties, storageProperties);
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
+
+            // Then - URL 应该包含 bucket
+            assertThat(url).contains("//cdn.example.com/" + TEST_S3_BUCKET + "/fw/test.zip");
+        }
+
+        @Test
+        @DisplayName("生成签名 URL - S3 禁用时不添加 bucket")
+        void generateSignedUrl_shouldNotAddBucket_whenS3Disabled() {
+            // Given
+            storageProperties.getS3().setEnabled(false);
+            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setBucket(TEST_S3_BUCKET);
+            String firmwarePath = "fw/test.zip";
+
+            // 重新创建服务实例
+            signedUrlService = new SelfSignedUrlServiceImpl(properties, storageProperties);
+
+            // When
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
+
+            // Then - URL 不应该包含额外的 bucket
+            assertThat(url).contains("//cdn.example.com/fw/test.zip");
+            assertThat(url).doesNotContain("//cdn.example.com/" + TEST_S3_BUCKET);
         }
     }
 
@@ -189,11 +185,9 @@ class SelfSignedUrlServiceImplTest {
         void verifySignature_shouldReturnTrue_whenSignatureIsValid() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // 生成签名 URL
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, 3600);
+            String url = signedUrlService.generateSignedUrl(firmwarePath, 3600);
 
             // 解析 URL 参数
             String[] params = url.split("\\?");
@@ -203,7 +197,7 @@ class SelfSignedUrlServiceImplTest {
             String signature = findParam(queryParams, "sig");
 
             // When
-            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, requestId, expireTime, signature);
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, expireTime, signature);
 
             // Then
             assertThat(isValid).isTrue();
@@ -214,13 +208,11 @@ class SelfSignedUrlServiceImplTest {
         void verifySignature_shouldReturnFalse_whenSignatureIsInvalid() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
             long expireTime = System.currentTimeMillis() / 1000 + 3600;
             String invalidSignature = "invalid123";
 
             // When
-            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, requestId, expireTime, invalidSignature);
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, expireTime, invalidSignature);
 
             // Then
             assertThat(isValid).isFalse();
@@ -231,40 +223,33 @@ class SelfSignedUrlServiceImplTest {
         void verifySignature_shouldReturnFalse_whenSignatureIsExpired() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // 使用过去的过期时间
             long expireTime = System.currentTimeMillis() / 1000 - 3600; // 1 小时前
             String signature = "any-signature";
 
             // When
-            boolean isValid = signedUrlService.verifySignature(firmwarePath, policyId, requestId, expireTime, signature);
+            boolean isValid = signedUrlService.verifySignature(firmwarePath, expireTime, signature);
 
             // Then
             assertThat(isValid).isFalse();
         }
 
         @Test
-        @DisplayName("验证签名 - 相同参数生成相同签名")
+        @DisplayName("验证签名 - 签名长度验证")
         void verifySignature_shouldBeConsistent_forSameParams() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
             int expireSeconds = 3600;
 
             // When
-            String url1 = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, expireSeconds);
-            String url2 = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId, expireSeconds);
+            String url1 = signedUrlService.generateSignedUrl(firmwarePath, expireSeconds);
+            String url2 = signedUrlService.generateSignedUrl(firmwarePath, expireSeconds);
 
-            // Then - 过期时间可能不同，但签名算法应该一致
-            // 我们只验证签名部分，忽略时间戳差异
+            // Then - 验证签名格式一致
             String sig1 = extractSignature(url1);
             String sig2 = extractSignature(url2);
 
-            // 由于时间戳不同，签名也会不同
-            // 但我们可以验证格式一致
             assertThat(sig1).hasSize(64); // SHA256 十六进制是 64 字符
             assertThat(sig2).hasSize(64);
         }
@@ -275,32 +260,21 @@ class SelfSignedUrlServiceImplTest {
     class SignatureConsistencyTests {
 
         @Test
-        @DisplayName("相同固件路径生成相同签名（policyId 和 requestId 不影响签名）")
+        @DisplayName("相同固件路径生成相同签名格式")
         void generateSignedUrl_shouldGenerateSameSignature_forSameFirmwarePath() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            String requestId1 = UUID.randomUUID().toString();
-            String requestId2 = UUID.randomUUID().toString();
 
-            // When - 使用不同的 policyId 和 requestId，但相同的 firmwarePath
-            String url1 = signedUrlService.generateSignedUrl(firmwarePath, 100L, requestId1);
-            String url2 = signedUrlService.generateSignedUrl(firmwarePath, 200L, requestId2); // 不同 policyId
-            String url3 = signedUrlService.generateSignedUrl(firmwarePath, 100L, requestId2); // 不同 requestId
+            // When
+            String url1 = signedUrlService.generateSignedUrl(firmwarePath);
+            String url2 = signedUrlService.generateSignedUrl(firmwarePath);
 
-            // Then - 由于签名只包含 firmwarePath 和 expireTime，
-            // 在同一秒内生成的 URL 签名应该相同
+            // Then - 验证签名格式正确
             String sig1 = extractSignature(url1);
             String sig2 = extractSignature(url2);
-            String sig3 = extractSignature(url3);
 
-            // 验证签名长度
             assertThat(sig1).hasSize(64);
             assertThat(sig2).hasSize(64);
-            assertThat(sig3).hasSize(64);
-
-            // 由于签名不再包含 policyId 和 requestId，签名只与 firmwarePath 和 expireTime 相关
-            // 如果在同一秒内生成，签名应该相同
-            // 但由于时间戳可能不同，我们只验证格式正确
         }
 
         @Test
@@ -309,17 +283,16 @@ class SelfSignedUrlServiceImplTest {
             // Given
             String firmwarePath1 = "fota/fw/123/firmware-A.zip";
             String firmwarePath2 = "fota/fw/456/firmware-B.zip";
-            String requestId = UUID.randomUUID().toString();
 
             // When
-            String url1 = signedUrlService.generateSignedUrl(firmwarePath1, 100L, requestId);
-            String url2 = signedUrlService.generateSignedUrl(firmwarePath2, 100L, requestId);
+            String url1 = signedUrlService.generateSignedUrl(firmwarePath1);
+            String url2 = signedUrlService.generateSignedUrl(firmwarePath2);
 
             // Then
             String sig1 = extractSignature(url1);
             String sig2 = extractSignature(url2);
 
-            // 由于 firmwarePath 不同，签名应该不同（即使其他参数相同）
+            // 由于 firmwarePath 不同，签名应该不同
             assertThat(sig1).isNotEqualTo(sig2);
         }
 
@@ -328,11 +301,9 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldGenerate64CharSignature() {
             // Given
             String firmwarePath = "fota/fw/123/test-firmware.zip";
-            Long policyId = 100L;
-            String requestId = UUID.randomUUID().toString();
 
             // When
-            String url = signedUrlService.generateSignedUrl(firmwarePath, policyId, requestId);
+            String url = signedUrlService.generateSignedUrl(firmwarePath);
 
             // Then
             String signature = extractSignature(url);

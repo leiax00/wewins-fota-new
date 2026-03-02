@@ -1,8 +1,7 @@
 package com.wewins.fota.application.firmware.download.impl;
 
 import com.wewins.fota.application.firmware.download.FirmwareDownloadProperties;
-import com.wewins.fota.application.firmware.download.SignedUrlService;
-import lombok.RequiredArgsConstructor;
+import com.wewins.fota.storage.config.StorageProperties;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Mac;
@@ -15,21 +14,29 @@ import java.time.Duration;
 /**
  * 自签名下载 URL 服务实现。
  * <p>
- * 使用 HMAC-SHA256 算法生成签名，URL 格式：
- * <pre>{baseUrl}/{firmwarePath}?expire={expireTime}&sig={signature}</pre>
+ * 继承 {@link NoneSignedUrlServiceImpl}，复用 URL 基础路径构建逻辑，
+ * 在此基础上添加 HMAC-SHA256 签名参数。
+ * </p>
+ * <p>
+ * URL 格式：{baseUrl}/{bucket}/{firmwarePath}?expire={expireTime}&sig={signature}
+ * </p>
+ * <p>
+ * 签名内容：{完整URL}|{expireTime}，其中完整 URL 包含域名、bucket 和路径，
+ * 可防止域名被篡改。
  * </p>
  *
  * @author FOTA Team
  * @since 2026-03-01
  */
 @Slf4j
-@RequiredArgsConstructor
-public class SelfSignedUrlServiceImpl implements SignedUrlService {
-
-    private final FirmwareDownloadProperties properties;
+public class SelfSignedUrlServiceImpl extends NoneSignedUrlServiceImpl {
 
     private static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
     private static final String SIGNATURE_DELIMITER = "|";
+
+    public SelfSignedUrlServiceImpl(FirmwareDownloadProperties properties, StorageProperties storageProperties) {
+        super(properties, storageProperties);
+    }
 
     @Override
     public String generateSignedUrl(String firmwarePath) {
@@ -44,14 +51,15 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
         // 计算过期时间戳（秒）
         long expireTime = System.currentTimeMillis() / 1000 + expireSeconds;
 
-        // 构建签名载荷（不再包含 policyId 和 requestId）
-        String payload = buildPayload(firmwarePath, expireTime);
+        // 构建签名载荷
+        String noSignUrl = buildBaseUrl(firmwarePath);
+        String payload = buildPayload(noSignUrl, expireTime);
 
         // 生成 HMAC-SHA256 签名
         String signature = hmacSha256(payload);
 
-        // 构建完整 URL（不再包含 pid 和 rid 参数）
-        return buildUrl(firmwarePath, expireTime, signature);
+        // 复用父类方法构建基础 URL，再添加签名参数
+        return noSignUrl + "?expire=" + expireTime + "&sig=" + signature;
     }
 
     @Override
@@ -63,8 +71,9 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
             return false;
         }
 
-        // 重新计算签名并比对（不再包含 policyId 和 requestId）
-        String payload = buildPayload(firmwarePath, expireTime);
+        // 重新计算签名并比对（使用完整 URL）
+        String noSignUrl = buildBaseUrl(firmwarePath);
+        String payload = buildPayload(noSignUrl, expireTime);
         String expectedSignature = hmacSha256(payload);
 
         return signature.equals(expectedSignature);
@@ -72,15 +81,9 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
 
     /**
      * 参数校验
-     * <p>
-     * 注意：policyId 和 requestId 参数保留用于接口兼容性，但不再参与签名计算。
-     * </p>
      */
     private void validateParams(String firmwarePath, int expireSeconds) {
-        if (firmwarePath == null || firmwarePath.isBlank()) {
-            throw new IllegalArgumentException("firmwarePath 不能为空");
-        }
-        // policyId 和 requestId 不再参与签名，仅保留参数兼容性
+        validateFirmwarePath(firmwarePath);
         if (expireSeconds <= 0 || expireSeconds > Duration.ofDays(7).toSeconds()) {
             throw new IllegalArgumentException("expireSeconds 必须在 1-604800 秒之间（最多 7 天）");
         }
@@ -89,11 +92,14 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
     /**
      * 构建签名载荷
      * <p>
-     * 格式: firmwarePath|expireTime
+     * 格式: noSignUrl|expireTime
      * </p>
+     *
+     * @param noSignUrl  不含签名参数的完整 URL（包含域名、bucket、路径）
+     * @param expireTime 过期时间戳
      */
-    private String buildPayload(String firmwarePath, long expireTime) {
-        return firmwarePath + SIGNATURE_DELIMITER + expireTime;
+    private String buildPayload(String noSignUrl, long expireTime) {
+        return noSignUrl + SIGNATURE_DELIMITER + expireTime;
     }
 
     /**
@@ -139,33 +145,5 @@ public class SelfSignedUrlServiceImpl implements SignedUrlService {
             hexString.append(hex);
         }
         return hexString.toString();
-    }
-
-    /**
-     * 构建完整的下载 URL
-     * <p>
-     * 格式: {baseUrl}/{firmwarePath}?expire={expireTime}&sig={signature}
-     * </p>
-     */
-    private String buildUrl(String firmwarePath, long expireTime, String signature) {
-        StringBuilder url = new StringBuilder();
-
-        // 添加基础 URL 和路径
-        String baseUrl = properties.getBaseUrl();
-        if (baseUrl != null && !baseUrl.isBlank()) {
-            // 移除 baseUrl 末尾的斜杠
-            String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            // 确保 firmwarePath 以斜杠开头
-            String cleanPath = firmwarePath.startsWith("/") ? firmwarePath : "/" + firmwarePath;
-            url.append(cleanBaseUrl).append(cleanPath);
-        } else {
-            url.append(firmwarePath);
-        }
-
-        // 添加查询参数（不再包含 pid 和 rid）
-        url.append("?expire=").append(expireTime);
-        url.append("&sig=").append(signature);
-
-        return url.toString();
     }
 }

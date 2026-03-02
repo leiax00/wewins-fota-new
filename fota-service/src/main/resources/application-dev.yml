@@ -35,7 +35,7 @@ app:
   storage:
     s3:
       enabled: ${STORAGE_S3_ENABLED:true}
-      endpoint: ${STORAGE_S3_ENDPOINT:http://localhost:9000}
+      endpoint: ${STORAGE_S3_ENDPOINT:http://fota-dl.wewins.wolaie.com}
       region: ${STORAGE_S3_REGION:us-east-1}
       bucket: ${STORAGE_S3_BUCKET:fota}
       accessKey: ${STORAGE_S3_ACCESS_KEY:uzFXvQ4GgMsyZ2YhU50q}

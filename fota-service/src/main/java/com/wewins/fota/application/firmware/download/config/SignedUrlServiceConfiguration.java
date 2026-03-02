@@ -5,6 +5,7 @@ import com.wewins.fota.application.firmware.download.SignedUrlService;
 import com.wewins.fota.application.firmware.download.impl.NoneSignedUrlServiceImpl;
 import com.wewins.fota.application.firmware.download.impl.S3PresignedUrlServiceImpl;
 import com.wewins.fota.application.firmware.download.impl.SelfSignedUrlServiceImpl;
+import com.wewins.fota.storage.config.StorageProperties;
 import com.wewins.fota.storage.core.S3StorageClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,9 +48,11 @@ public class SignedUrlServiceConfiguration {
             matchIfMissing = true
     )
     @ConditionalOnMissingBean(SignedUrlService.class)
-    public SignedUrlService selfSignedUrlService(FirmwareDownloadProperties properties) {
+    public SignedUrlService selfSignedUrlService(
+            FirmwareDownloadProperties properties,
+            StorageProperties storageProperties) {
         log.info("初始化自签名 URL 服务");
-        return new SelfSignedUrlServiceImpl(properties);
+        return new SelfSignedUrlServiceImpl(properties, storageProperties);
     }
 
     /**
@@ -85,8 +88,10 @@ public class SignedUrlServiceConfiguration {
             havingValue = "none"
     )
     @ConditionalOnMissingBean(SignedUrlService.class)
-    public SignedUrlService noneSignedUrlService(FirmwareDownloadProperties properties) {
+    public SignedUrlService noneSignedUrlService(
+            FirmwareDownloadProperties properties,
+            StorageProperties storageProperties) {
         log.info("初始化无签名 URL 服务");
-        return new NoneSignedUrlServiceImpl(properties);
+        return new NoneSignedUrlServiceImpl(properties, storageProperties);
     }
 }
