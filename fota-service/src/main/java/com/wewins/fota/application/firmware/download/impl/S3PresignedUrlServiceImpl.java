@@ -7,14 +7,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * S3 预签名下载 URL 服务实现。
  * <p>
- * 使用 S3 SDK 的 presignGetObject 生成预签名 URL，
- * 溯源参数（policy、request）被纳入签名计算，确保完整性。
+ * 使用 S3 SDK 的 presignGetObject 生成预签名 URL。
  * </p>
  *
  * @author FOTA Team
@@ -28,27 +25,21 @@ public class S3PresignedUrlServiceImpl implements SignedUrlService {
     private final FirmwareDownloadProperties properties;
 
     @Override
-    public String generateSignedUrl(String firmwarePath, Long policyId, String requestId) {
-        return generateSignedUrl(firmwarePath, policyId, requestId, properties.getS3Presigned().getDefaultExpireSeconds());
+    public String generateSignedUrl(String firmwarePath) {
+        return generateSignedUrl(firmwarePath, properties.getS3Presigned().getDefaultExpireSeconds());
     }
 
     @Override
-    public String generateSignedUrl(String firmwarePath, Long policyId, String requestId, int expireSeconds) {
-        // 参数校验
-        validateParams(firmwarePath, policyId, requestId, expireSeconds);
+    public String generateSignedUrl(String firmwarePath, int expireSeconds) {
+        validateParams(firmwarePath, expireSeconds);
 
-        // 构建溯源参数
-        Map<String, String> trackingParams = new LinkedHashMap<>();
-        trackingParams.put("pid", String.valueOf(policyId));
-        trackingParams.put("rid", requestId);
-
-        // 使用 S3 SDK 生成带自定义参数的预签名 URL
+        // 使用 S3 SDK 生成预签名 URL（不再添加自定义参数）
         Duration ttl = Duration.ofSeconds(expireSeconds);
-        return s3StorageClient.getDownloadUrl(firmwarePath, ttl, trackingParams);
+        return s3StorageClient.getDownloadUrl(firmwarePath, ttl);
     }
 
     @Override
-    public boolean verifySignature(String firmwarePath, Long policyId, String requestId, long expireTime, String signature) {
+    public boolean verifySignature(String firmwarePath, long expireTime, String signature) {
         // S3 预签名 URL 的验证由 S3 服务端完成
         // 这里只检查是否过期
         long currentTime = System.currentTimeMillis() / 1000;
@@ -58,22 +49,18 @@ public class S3PresignedUrlServiceImpl implements SignedUrlService {
         }
 
         // S3 预签名 URL 的签名验证由 S3 服务端处理
-        // 自定义参数（policy、request）已纳入签名，确保完整性
         return true;
     }
 
     /**
      * 参数校验
+     * <p>
+     * 注意：policyId 和 requestId 参数保留用于接口兼容性，但不再参与 URL 生成。
+     * </p>
      */
-    private void validateParams(String firmwarePath, Long policyId, String requestId, int expireSeconds) {
+    private void validateParams(String firmwarePath, int expireSeconds) {
         if (firmwarePath == null || firmwarePath.isBlank()) {
             throw new IllegalArgumentException("firmwarePath 不能为空");
-        }
-        if (policyId == null || policyId <= 0) {
-            throw new IllegalArgumentException("policyId 必须为正数");
-        }
-        if (requestId == null || requestId.isBlank()) {
-            throw new IllegalArgumentException("requestId 不能为空");
         }
         if (expireSeconds <= 0 || expireSeconds > Duration.ofDays(7).toSeconds()) {
             throw new IllegalArgumentException("expireSeconds 必须在 1-604800 秒之间（最多 7 天）");

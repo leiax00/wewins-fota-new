@@ -2,6 +2,7 @@ package com.wewins.fota.application.firmware.download.config;
 
 import com.wewins.fota.application.firmware.download.FirmwareDownloadProperties;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
+import com.wewins.fota.application.firmware.download.impl.NoneSignedUrlServiceImpl;
 import com.wewins.fota.application.firmware.download.impl.S3PresignedUrlServiceImpl;
 import com.wewins.fota.application.firmware.download.impl.SelfSignedUrlServiceImpl;
 import com.wewins.fota.storage.core.S3StorageClient;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.Configuration;
  * <ul>
  *   <li>self-signed：使用 HMAC-SHA256 自签名 URL</li>
  *   <li>s3-presigned：使用 S3 SDK 生成预签名 URL</li>
+ *   <li>none：无签名模式，直接返回固定下载地址</li>
  * </ul>
  * </p>
  *
@@ -68,5 +70,23 @@ public class SignedUrlServiceConfiguration {
             FirmwareDownloadProperties properties) {
         log.info("初始化 S3 预签名 URL 服务");
         return new S3PresignedUrlServiceImpl(s3StorageClient, properties);
+    }
+
+    /**
+     * 无签名 URL 服务
+     * <p>
+     * 当 sign-mode=none 时使用，直接返回固定下载地址
+     * </p>
+     */
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "app.firmware.download",
+            name = "sign-mode",
+            havingValue = "none"
+    )
+    @ConditionalOnMissingBean(SignedUrlService.class)
+    public SignedUrlService noneSignedUrlService(FirmwareDownloadProperties properties) {
+        log.info("初始化无签名 URL 服务");
+        return new NoneSignedUrlServiceImpl(properties);
     }
 }

@@ -11,10 +11,11 @@ import java.time.Duration;
 /**
  * 固件下载配置属性。
  * <p>
- * 支持两种签名模式：
+ * 支持三种签名模式：
  * <ul>
  *   <li>self-signed：使用 HMAC-SHA256 自签名 URL</li>
  *   <li>s3-presigned：使用 S3 SDK 生成预签名 URL</li>
+ *   <li>none：无签名模式，直接返回固定下载地址</li>
  * </ul>
  * </p>
  *
@@ -59,7 +60,12 @@ public class FirmwareDownloadProperties {
         /**
          * S3 预签名模式：使用 S3 SDK 的 presignGetObject 生成预签名 URL
          */
-        S3_PRESIGNED
+        S3_PRESIGNED,
+
+        /**
+         * 无签名模式：直接返回固定下载地址，不进行签名
+         */
+        NONE
     }
 
     /**
@@ -116,6 +122,18 @@ public class FirmwareDownloadProperties {
                 throw new IllegalStateException(
                         "签名密钥长度不足，当前 " + secretKey.length() + " 字节，"
                                 + "要求至少 " + MIN_SECRET_KEY_LENGTH + " 字节");
+            }
+        } else if (signMode == SignMode.S3_PRESIGNED) {
+            int defaultExpire = s3Presigned.getDefaultExpireSeconds();
+            if (defaultExpire <= 0 || defaultExpire > Duration.ofDays(7).toSeconds()) {
+                throw new IllegalStateException(
+                        "S3 预签名默认过期时间无效，当前 " + defaultExpire + " 秒，"
+                                + "要求在 1-604800 秒之间（最多 7 天）");
+            }
+        } else if (signMode == SignMode.NONE) {
+            if (baseUrl == null || baseUrl.isBlank()) {
+                throw new IllegalStateException(
+                        "无签名模式必须配置 baseUrl，请设置 app.firmware.download.base-url");
             }
         }
 
