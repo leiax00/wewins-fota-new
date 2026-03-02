@@ -66,6 +66,7 @@ public class DeviceCheckLogBuilder {
                 .productId(device != null ? device.getProductId() : null)
                 .imei(request.getImei())
                 .policyId(policy != null ? policy.getId() : null)
+                .downloadUrl(result.getDownloadUrl())
                 .version(request.getVersion())
                 .internalVersion(request.getTag())
                 .targetVersion(result.getTargetVersion())

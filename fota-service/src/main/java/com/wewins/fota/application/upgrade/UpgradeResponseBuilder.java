@@ -188,7 +188,7 @@ public class UpgradeResponseBuilder {
         }
 
         try {
-            return signedUrlService.generateSignedUrl(fileUrl, policy.getId(), requestId);
+            return signedUrlService.generateSignedUrl(fileUrl);
         } catch (Exception e) {
             log.error("生成签名下载 URL 失败: firmwareId={}, policyId={}, requestId={}",
                     firmware.getId(), policy.getId(), requestId, e);

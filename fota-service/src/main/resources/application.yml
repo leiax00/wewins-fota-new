@@ -204,8 +204,8 @@ app:
   # 固件下载配置
   firmware:
     download:
-      # 签名模式：self-signed（自签名）或 s3-presigned（S3 预签名）
-      sign-mode: ${FIRMWARE_DOWNLOAD_SIGN_MODE:self-signed}
+      # 签名模式：self-signed（自签名）或 s3-presigned（S3 预签名）或 none (不签名)
+      sign-mode: ${FIRMWARE_DOWNLOAD_SIGN_MODE:none}
       # RustFS/CDN 基础域名（用于拼接完整下载 URL）
       # 优先使用环境变量，未配置时回退到 S3 endpoint
       base-url: ${FIRMWARE_DOWNLOAD_BASE_URL:${app.storage.s3.endpoint:}}

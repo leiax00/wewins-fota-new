@@ -42,6 +42,4 @@ app:
       secretKey: ${STORAGE_S3_SECRET_KEY:AGzlSY175qMCBwxdbjct6e0I8isOyQfKpmDa3n4L}
   firmware:
     download:
-      self-signed:
-        secret-key: ${FIRMWARE_SIGNED_SECRET:wewins-fota-firmware-signed-in-development-2026}
-      sign-mode: s3-presigned
+      sign-mode: none
