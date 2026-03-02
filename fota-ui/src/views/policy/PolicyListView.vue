@@ -512,7 +512,7 @@ onActivated(() => {
                         effect="plain"
                         class="version-tag"
                       >
-                        v{{ row.sourceVersionNames?.[versionId] ?? versionId }}
+                        {{ row.sourceVersionNames?.[versionId] ?? versionId }}
                       </el-tag>
                       <el-tag
                         v-if="row.sourceVersions.length > 4"

@@ -47,14 +47,24 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         List<FirmwareVersion> versions = firmwareVersionMapper.selectList(
                 new LambdaQueryWrapper<FirmwareVersion>()
                         .in(FirmwareVersion::getId, ids)
-                        .select(FirmwareVersion::getId, FirmwareVersion::getVersion)
+                        .select(FirmwareVersion::getId, FirmwareVersion::getVersion, FirmwareVersion::getInternalVersion)
         );
 
         return versions.stream()
                 .collect(Collectors.toMap(
                         FirmwareVersion::getId,
-                        FirmwareVersion::getVersion
+                        v -> formatVersionLabel(v.getVersion(), v.getInternalVersion())
                 ));
+    }
+
+    /**
+     * 格式化版本显示：版本号 (内部版本号) 或仅版本号
+     */
+    private String formatVersionLabel(String version, String internalVersion) {
+        if (internalVersion != null && !internalVersion.isBlank()) {
+            return String.format("%s (%s)", version, internalVersion);
+        }
+        return version;
     }
 
     @Override
