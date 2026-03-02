@@ -211,6 +211,16 @@ const targetImeisComputed = computed({
   },
 })
 
+/**
+ * 格式化版本显示：版本号 (内部版本: xxx) 或仅版本号
+ */
+const formatVersionLabel = (version: FirmwareVersionItem): string => {
+  if (version.internalVersion) {
+    return `${version.version} (${version.internalVersion})`
+  }
+  return version.version
+}
+
 const formRules = {
   productId: [{ required: true, message: t('policy.productIdRequired'), trigger: 'change' }],
   firmwareVersionId: [{ required: true, message: t('policy.firmwareVersionRequired'), trigger: 'change' }],
@@ -655,7 +665,7 @@ onMounted(() => {
               <el-option
                 v-for="firmware in firmwareOptions"
                 :key="firmware.id"
-                :label="firmware.version"
+                :label="formatVersionLabel(firmware)"
                 :value="firmware.id"
               />
             </el-select>
@@ -800,7 +810,7 @@ onMounted(() => {
             <el-option
               v-for="version in sourceVersionOptions"
               :key="version.id"
-              :label="`${version.version}`"
+              :label="formatVersionLabel(version)"
               :value="version.id"
             />
           </el-select>
