@@ -1,6 +1,9 @@
 package com.wewins.fota.adapter.api.device.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,18 +37,23 @@ public class UpgradeReportDTO {
     private String imei;
 
     /**
-     * 事件类型：DL_START, DL_OK, DL_FAIL, UP_OK, UP_FAIL
+     * 请求唯一标识（链路追踪 ID）
+     * <p>
+     * 从 Check 响应中获取，用于关联检查和上报事件
+     * </p>
      */
-    @NotBlank(message = "event 不能为空")
-    @Pattern(regexp = "^(DL_START|DL_OK|DL_FAIL|UP_OK|UP_FAIL)$",
-             message = "event 必须为有效的事件类型: DL_START, DL_OK, DL_FAIL, UP_OK, UP_FAIL")
-    private String event;
+    @NotBlank(message = "request_id 不能为空")
+    @JsonProperty("request_id")
+    private String requestId;
 
     /**
-     * 下载 URL（包含 pid, rid 参数用于溯源）
+     * 事件类型
+     * <p>
+     * 设备上报数字：0=DL_START, 1=DL_OK, 2=DL_FAIL, 3=UP_OK, 4=UP_FAIL
+     * </p>
      */
-    @NotBlank(message = "url 不能为空")
-    private String url;
+    @NotNull(message = "event 不能为空")
+    private DeviceUpgradeEventType event;
 
     /**
      * 扩展详情（错误码、进度等）

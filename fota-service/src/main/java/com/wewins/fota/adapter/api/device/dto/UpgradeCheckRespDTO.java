@@ -15,10 +15,11 @@ import lombok.Data;
  * <pre>
  * {
  *    "code": 0,
+ *    "request_id": "550e8400-e29b-41d4-a716-446655440000",
  *    "release_start_date": "2026-02-03T10:28:56",
  *    "release_note": "xxxxxxx",
  *    "new_firmware": "v2.0.0",
- *    "download_url": "https://cdn.xxx.com/pkg.bin?p_id=101&sig=...",
+ *    "download_url": "https://cdn.xxx.com/pkg.bin?sig=...",
  *    "file_size": 20000000,
  *    "file_size_text": "19MB",
  *    "control": {
@@ -59,6 +60,15 @@ public class UpgradeCheckRespDTO {
      */
     @JsonProperty("code")
     private Integer code;
+
+    /**
+     * 请求唯一标识（链路追踪 ID）
+     * <p>
+     * 设备需在后续上报请求中携带此 ID，用于关联检查和上报事件
+     * </p>
+     */
+    @JsonProperty("request_id")
+    private String requestId;
 
     /**
      * 发布开始日期（ISO 8601 格式）

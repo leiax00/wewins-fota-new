@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.common.enums.CheckMode;
 import com.wewins.fota.common.exception.BizException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -86,17 +87,17 @@ public class UpgradeRequestValidator {
     }
 
     /**
-     * 校验自动检查标识
+     * 校验检查模式
      * <p>
-     * 校验规则：只能是 0（手动）或 1（自动）
+     * 校验规则：不能为 null
      * </p>
      *
-     * @param auto 自动检查标识
-     * @throws BizException 如果自动检查标识超出范围
+     * @param checkMode 检查模式
+     * @throws BizException 如果检查模式为空
      */
-    public void validateAuto(Integer auto) {
-        if (auto != null && (auto < 0 || auto > 1)) {
-            throw new BizException(400, "auto 参数只能是 0（手动检查）或 1（自动检查）");
+    public void validateCheckMode(CheckMode checkMode) {
+        if (checkMode == null) {
+            throw new BizException(400, "checkMode 参数无效");
         }
     }
 
@@ -123,11 +124,11 @@ public class UpgradeRequestValidator {
      * @param productModel 产品型号
      * @param imei         设备 IMEI
      * @param version      版本号
-     * @param auto         自动检查标识（可选）
+     * @param checkMode    检查模式（可选）
      * @throws BizException 如果任一参数无效
      */
-    public void validateAllParams(String productModel, String imei, String version, Integer auto) {
+    public void validateAllParams(String productModel, String imei, String version, CheckMode checkMode) {
         validateRequiredParams(productModel, imei, version);
-        validateAuto(auto);
+        validateCheckMode(checkMode);
     }
 }

@@ -3,7 +3,6 @@ package com.wewins.fota.infra.gateway;
 import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
-import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import com.wewins.fota.mq.core.MqMessagePublisher;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import java.net.URI;
 
 /**
  * 设备上报网关的 RabbitMQ 实现。
@@ -38,7 +35,7 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
     @Override
     public void accept(UpgradeReport report) {
         if (report == null) {
-            log.warn("检查日志为空，跳过投递");
+            log.warn("上报数据为空，跳过投递");
             return;
         }
 
@@ -46,7 +43,8 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
             DeviceUpgradeEvent payload = buildEvent(report);
             mqMessagePublisher.publishJson(upgradeEventQueue, payload);
         } catch (Exception e) {
-            log.error("设备上报消息发送失败: imei={}, event={}", report.getImei(), report.getEvent(), e);
+            log.error("设备上报消息发送失败: imei={}, requestId={}, event={}",
+                    report.getImei(), report.getRequestId(), report.getEvent(), e);
             throw new IllegalStateException("设备上报消息发送失败", e);
         }
     }
@@ -55,73 +53,11 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
         return DeviceUpgradeEvent.builder()
                 .eventId(IdGenerator.uuid())
                 .imei(report.getImei())
-                .requestId(extractRequestId(report.getUrl()))
-                .policyId(extractPolicyId(report.getUrl()))
-                .eventType(DeviceUpgradeEventType.fromDbValue(report.getEvent()))
-                .downloadUrl(report.getUrl())
+                .requestId(report.getRequestId())
+                .eventType(report.getEvent())
                 .details(report.getDetailsJson())
                 .clientIp(report.getClientIp())
                 .region(report.getRegion())
                 .build();
-    }
-
-    /**
-     * 从下载 URL 中解析 rid 参数（请求唯一标识）
-     *
-     * @param downloadUrl 下载 URL
-     * @return requestId，如果解析失败则返回 null
-     */
-    private String extractRequestId(String downloadUrl) {
-        if (downloadUrl == null || downloadUrl.isBlank()) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(downloadUrl);
-            String query = uri.getQuery();
-            if (query == null) {
-                return null;
-            }
-
-            for (String param : query.split("&")) {
-                if (param.startsWith("rid=")) {
-                    return param.substring(4);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("解析下载 URL 中的 requestId 失败: downloadUrl={}", downloadUrl, e);
-        }
-
-        return null;
-    }
-
-    /**
-     * 从下载 URL 中解析 pid 参数（策略 ID）
-     *
-     * @param downloadUrl 下载 URL
-     * @return policyId，如果解析失败则返回 null
-     */
-    private Long extractPolicyId(String downloadUrl) {
-        if (downloadUrl == null || downloadUrl.isBlank()) {
-            return null;
-        }
-
-        try {
-            URI uri = new URI(downloadUrl);
-            String query = uri.getQuery();
-            if (query == null) {
-                return null;
-            }
-
-            for (String param : query.split("&")) {
-                if (param.startsWith("pid=")) {
-                    return Long.parseLong(param.substring(4));
-                }
-            }
-        } catch (Exception e) {
-            log.warn("解析下载 URL 中的 policyId 失败: downloadUrl={}", downloadUrl, e);
-        }
-
-        return null;
     }
 }

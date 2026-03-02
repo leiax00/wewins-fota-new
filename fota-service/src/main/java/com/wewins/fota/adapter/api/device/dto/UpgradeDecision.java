@@ -6,6 +6,8 @@ import lombok.Getter;
  * 升级检查决策类型枚举
  * <p>
  * 定义设备升级检查的所有可能结果，用于设备端判断后续行为
+ * 同时用于 ClickHouse Enum8 字段类型映射
+ * Code 值：UPDATE=0, NO_UPDATE=1, RATE_LIMITED=2, DEVICE_NOT_FOUND=3, ERROR=4
  * </p>
  *
  * @author FOTA Team
@@ -39,14 +41,7 @@ public enum UpgradeDecision {
      */
     ERROR(4, "错误");
 
-    /**
-     * 决策代码（返回给设备端）
-     */
     private final int code;
-
-    /**
-     * 决策描述（用于日志和调试）
-     */
     private final String description;
 
     UpgradeDecision(int code, String description) {
@@ -55,10 +50,7 @@ public enum UpgradeDecision {
     }
 
     /**
-     * 根据代码获取枚举
-     *
-     * @param code 决策代码
-     * @return 对应的枚举，如果不存在则返回 null
+     * 从 code 解析枚举（支持 JSON 反序列化）
      */
     public static UpgradeDecision fromCode(int code) {
         for (UpgradeDecision decision : values()) {

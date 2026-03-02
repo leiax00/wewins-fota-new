@@ -6,7 +6,7 @@
 
     <insert id="insert" parameterType="com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog">
         INSERT INTO device_check_logs (
-            event_time, device_id, imei, product_id, policy_id,
+            event_time, device_id, imei, product_id, policy_id, download_url,
             version, internal_version, target_version, target_version_id, check_rst,
             check_mode, language, ext_tags, is_dev,
             gray_bucket, is_gray_hit,
@@ -15,9 +15,9 @@
             client_ip, user_agent, region,
             error_code, error_message
         ) VALUES (
-            #{eventTime}, #{deviceId}, #{imei}, #{productId}, #{policyId},
-            #{version}, #{internalVersion}, #{targetVersion}, #{targetVersionId}, #{checkRst},
-            #{checkMode}, #{language}, #{extTags}, #{isDev},
+            #{eventTime}, #{deviceId}, #{imei}, #{productId}, #{policyId}, #{downloadUrl},
+            #{version}, #{internalVersion}, #{targetVersion}, #{targetVersionId}, #{checkRst.code},
+            #{checkMode.code}, #{language}, #{extTags}, #{isDev},
             #{grayBucket}, #{isGrayHit},
             #{responseCheckInterval}, #{downloadDelay},
             #{requestId},
@@ -28,7 +28,7 @@
 
     <insert id="insertBatch">
         INSERT INTO device_check_logs (
-            event_time, device_id, imei, product_id, policy_id,
+            event_time, device_id, imei, product_id, policy_id, download_url,
             version, internal_version, target_version, target_version_id, check_rst,
             check_mode, language, ext_tags, is_dev,
             gray_bucket, is_gray_hit,
@@ -38,9 +38,9 @@
             error_code, error_message
         ) VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.eventTime}, #{item.deviceId}, #{item.imei}, #{item.productId}, #{item.policyId},
-             #{item.version}, #{item.internalVersion}, #{item.targetVersion}, #{item.targetVersionId}, #{item.checkRst},
-             #{item.checkMode}, #{item.language}, #{item.extTags}, #{item.isDev},
+            (#{item.eventTime}, #{item.deviceId}, #{item.imei}, #{item.productId}, #{item.policyId}, #{item.downloadUrl},
+             #{item.version}, #{item.internalVersion}, #{item.targetVersion}, #{item.targetVersionId}, #{item.checkRst.code},
+             #{item.checkMode.code}, #{item.language}, #{item.extTags}, #{item.isDev},
              #{item.grayBucket}, #{item.isGrayHit},
              #{item.responseCheckInterval}, #{item.downloadDelay},
              #{item.requestId},

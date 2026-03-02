@@ -70,14 +70,14 @@ public class UpgradeResponseBuilder {
         FirmwareVersion targetFirmware = loadTargetFirmware(policy.getTargetVersionId());
         if (targetFirmware == null) {
             log.warn("目标固件版本不存在: targetVersionId={}", policy.getTargetVersionId());
-            return CheckResult.error("目标固件版本不存在");
+            return CheckResult.error(requestId, "目标固件版本不存在");
         }
 
         // 2. 检查固件包状态
         if (!isFirmwareReady(targetFirmware)) {
             log.warn("固件包未准备好: targetVersionId={}, packageStatus={}",
                     targetFirmware.getId(), targetFirmware.getPackageStatus());
-            return CheckResult.error("固件包未准备好");
+            return CheckResult.error(requestId, "固件包未准备好");
         }
 
         // 3. 计算控制参数

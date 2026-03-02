@@ -36,8 +36,8 @@ public class UpgradeReportAppService {
     public UpgradeReport toDomain(UpgradeReportDTO dto, String detailsJson, String clientIp, String region) {
         return UpgradeReport.builder()
                 .imei(dto.getImei())
+                .requestId(dto.getRequestId())
                 .event(dto.getEvent())
-                .url(dto.getUrl())
                 .detailsJson(detailsJson)
                 .clientIp(clientIp)
                 .region(region)

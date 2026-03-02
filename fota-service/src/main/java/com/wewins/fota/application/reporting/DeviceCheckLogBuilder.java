@@ -4,6 +4,7 @@ import com.wewins.fota.application.upgrade.GrayReleaseService;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
+import com.wewins.fota.common.enums.CheckMode;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog;
@@ -69,8 +70,8 @@ public class DeviceCheckLogBuilder {
                 .internalVersion(request.getTag())
                 .targetVersion(result.getTargetVersion())
                 .targetVersionId(result.getTargetVersionId())
-                .checkRst(result.getDecision() != null ? result.getDecision().name() : null)
-                .checkMode((request.getAuto() == null || request.getAuto() == 1) ? "auto" : "manual")
+                .checkRst(result.getDecision())
+                .checkMode(request.getCheckMode() != null ? request.getCheckMode() : CheckMode.AUTO)
                 .language(request.getLang())
                 .isDev(request.getDev())
                 .grayBucket(grayBucket)

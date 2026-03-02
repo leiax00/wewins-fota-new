@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.reporting.model;
 
+import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
 import lombok.Builder;
 import lombok.Value;
 
@@ -22,14 +23,17 @@ public class UpgradeReport {
     String imei;
 
     /**
-     * 事件类型：DL_START, DL_OK, DL_FAIL, UP_OK, UP_FAIL
+     * 请求唯一标识（链路追踪 ID）
+     * <p>
+     * 从 Check 响应中获取，用于关联检查和上报事件
+     * </p>
      */
-    String event;
+    String requestId;
 
     /**
-     * 下载 URL（包含 pid, rid 参数用于溯源）
+     * 事件类型
      */
-    String url;
+    DeviceUpgradeEventType event;
 
     /**
      * 扩展详情（已序列化的 JSON 字符串）

@@ -3,6 +3,7 @@ package com.wewins.fota.application.upgrade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.wewins.fota.common.enums.CheckMode;
 import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
@@ -142,7 +143,7 @@ public class UpgradeCheckService {
         try {
             // 1. 参数校验
             requestValidator.validateRequiredParams(request.getProduct(), request.getImei(), request.getVersion());
-            requestValidator.validateAuto(request.getAuto());
+            requestValidator.validateCheckMode(request.getCheckMode());
 
             // 2. 限流检查（每分钟最多 10 次请求）
             RateLimitDecision rateLimitDecision = deviceRateLimiter.allow(
@@ -154,6 +155,7 @@ public class UpgradeCheckService {
             if (!rateLimitDecision.isAllowed()) {
                 log.warn("设备请求被限流: imei={}, reason={}", request.getImei(), rateLimitDecision.getReason());
                 result = CheckResult.rateLimited(
+                        requestId,
                         "请求过于频繁",
                         (int) (rateLimitDecision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
                 );
@@ -163,7 +165,7 @@ public class UpgradeCheckService {
             // 3. 通过产品型号查找产品
             Product product = productRepository.findByModel(request.getProduct()).orElse(null);
             if (product == null) {
-                result = CheckResult.error("产品型号不存在");
+                result = CheckResult.error(requestId, "产品型号不存在");
                 return result;
             }
 
@@ -171,7 +173,7 @@ public class UpgradeCheckService {
             // 重要：新系统要求设备必须预先导入，设备不存在时拒绝升级（不创建设备）
             device = loadDevice(request.getImei());
             if (device == null) {
-                result = CheckResult.notFound("设备未注册，请联系管理员");
+                result = CheckResult.notFound(requestId, "设备未注册，请联系管理员");
                 return result;
             }
 
@@ -189,19 +191,19 @@ public class UpgradeCheckService {
             log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",
                     request.getVersion(), request.getTag(), product.getId(), versionId);
 
-            // 7. 匹配适用的升级策略（支持 dev、auto 参数）
-            List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, request.getDev(), request.getAuto());
+            // 7. 匹配适用的升级策略（支持 dev、checkMode 参数）
+            List<UpgradePolicy> policies = findApplicablePolicies(device, versionId, request.getDev(), request.getCheckMode());
             if (policies.isEmpty()) {
                 log.debug("未找到适用的升级策略: deviceId={}, versionId={}", device.getId(), versionId);
-                result = CheckResult.noUpdate();
+                result = CheckResult.noUpdate(requestId);
                 return result;
             }
 
             // 8. 选择优先级最高的策略
             matchedPolicy = policies.getFirst();
 
-            // 9. 构建响应（支持 lang 和 auto 参数）
-            result = upgradeResponseBuilder.buildResponse(device, matchedPolicy, requestId, request.getLang(), request.getAuto() == 1);
+            // 9. 构建响应（支持 lang 和 checkMode 参数）
+            result = upgradeResponseBuilder.buildResponse(device, matchedPolicy, requestId, request.getLang(), request.getCheckMode() == CheckMode.AUTO);
 
             return result;
         } finally {
@@ -274,9 +276,9 @@ public class UpgradeCheckService {
     }
 
     /**
-     * 查找适用的升级策略（支持 dev、auto 参数）
+     * 查找适用的升级策略（支持 dev、checkMode 参数）
      * <p>
-     * 根据产品ID、当前版本ID、dev参数、auto参数查找匹配的策略
+     * 根据产品ID、当前版本ID、dev参数、checkMode参数查找匹配的策略
      * </p>
      * <p>
      * 策略状态匹配规则：
@@ -289,10 +291,10 @@ public class UpgradeCheckService {
      * @param device    设备信息
      * @param versionId 当前版本 ID（可能为 null）
      * @param dev       临时测试设备标识（1=测试设备）
-     * @param auto      触发模式（0=手动, 1=自动）
+     * @param checkMode 触发模式
      * @return 适用的策略列表（按优先级降序）
      */
-    private List<UpgradePolicy> findApplicablePolicies(Device device, Long versionId, Integer dev, Integer auto) {
+    private List<UpgradePolicy> findApplicablePolicies(Device device, Long versionId, Integer dev, CheckMode checkMode) {
         if (device == null || device.getProductId() == null) {
             return List.of();
         }
@@ -317,7 +319,7 @@ public class UpgradeCheckService {
 
         return policies.stream()
                 .filter(policy -> matchesDevMode(policy, isTestDevice))
-                .filter(policy -> matchesTriggerMode(policy, auto))
+                .filter(policy -> matchesTriggerMode(policy, checkMode))
                 .filter(policy -> matchesSourceVersion(policy, finalVersionId))
                 .filter(policy -> policyMatcher.matchesTargetMode(policy, imei, batchId, finalTags))
                 .filter(policy -> policyMatcher.matchesTimeWindow(policy.getTimeWindow()))
@@ -403,19 +405,19 @@ public class UpgradeCheckService {
     }
 
     /**
-     * auto 参数匹配：对应策略的 triggerMode
+     * checkMode 参数匹配：对应策略的 triggerMode
      *
      * @param policy 升级策略
-     * @param auto   触发模式（0=手动, 1=自动）
+     * @param checkMode   触发模式
      * @return true 如果匹配
      */
-    private boolean matchesTriggerMode(UpgradePolicy policy, Integer auto) {
+    private boolean matchesTriggerMode(UpgradePolicy policy, CheckMode checkMode) {
         TriggerMode triggerMode = policy.getTriggerMode();
         if (triggerMode == null) {
             return true;
         }
 
-        boolean isAutoCheck = (auto != null && auto == 1);
+        boolean isAutoCheck = checkMode == CheckMode.AUTO;
         return isAutoCheck ? triggerMode.allowsAuto() : triggerMode.allowsManual();
     }
 

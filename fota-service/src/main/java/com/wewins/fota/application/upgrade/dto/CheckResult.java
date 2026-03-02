@@ -124,20 +124,22 @@ public class CheckResult {
     /**
      * 创建"有更新"结果
      */
-    public static CheckResult update() {
+    public static CheckResult update(String requestId) {
         return CheckResult.builder()
                 .hasUpdate(true)
                 .decision(UpgradeDecision.UPDATE)
+                .requestId(requestId)
                 .build();
     }
 
     /**
      * 创建"无更新"结果
      */
-    public static CheckResult noUpdate() {
+    public static CheckResult noUpdate(String requestId) {
         return CheckResult.builder()
                 .hasUpdate(false)
                 .decision(UpgradeDecision.NO_UPDATE)
+                .requestId(requestId)
                 .checkInterval(DEFAULT_CHECK_INTERVAL)
                 .build();
     }
@@ -145,10 +147,11 @@ public class CheckResult {
     /**
      * 创建"设备不存在"结果
      */
-    public static CheckResult notFound(String message) {
+    public static CheckResult notFound(String requestId, String message) {
         return CheckResult.builder()
                 .hasUpdate(false)
                 .decision(UpgradeDecision.DEVICE_NOT_FOUND)
+                .requestId(requestId)
                 .errorMessage(message)
                 .checkInterval(ERROR_RETRY_INTERVAL)
                 .build();
@@ -157,10 +160,11 @@ public class CheckResult {
     /**
      * 创建"限流"结果
      */
-    public static CheckResult rateLimited(String message, int retryAfterSeconds) {
+    public static CheckResult rateLimited(String requestId, String message, int retryAfterSeconds) {
         return CheckResult.builder()
                 .hasUpdate(false)
                 .decision(UpgradeDecision.RATE_LIMITED)
+                .requestId(requestId)
                 .errorMessage(message)
                 .checkInterval(retryAfterSeconds)
                 .downloadDelay(retryAfterSeconds)
@@ -170,10 +174,11 @@ public class CheckResult {
     /**
      * 创建"错误"结果
      */
-    public static CheckResult error(String message) {
+    public static CheckResult error(String requestId, String message) {
         return CheckResult.builder()
                 .hasUpdate(false)
                 .decision(UpgradeDecision.ERROR)
+                .requestId(requestId)
                 .errorMessage(message)
                 .checkInterval(ERROR_RETRY_INTERVAL)
                 .build();
@@ -182,10 +187,11 @@ public class CheckResult {
     /**
      * 创建"错误"结果（带错误码）
      */
-    public static CheckResult error(String errorCode, String message) {
+    public static CheckResult error(String requestId, String errorCode, String message) {
         return CheckResult.builder()
                 .hasUpdate(false)
                 .decision(UpgradeDecision.ERROR)
+                .requestId(requestId)
                 .errorCode(errorCode)
                 .errorMessage(message)
                 .checkInterval(ERROR_RETRY_INTERVAL)

@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.reporting.model.aggregate;
 
+import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
+import com.wewins.fota.common.enums.CheckMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -62,6 +64,14 @@ public class DeviceCheckLog implements Serializable {
     private Long policyId;
 
     /**
+     * 下发给设备的下载 URL
+     * <p>
+     * 包含 pid 和 rid 参数，用于关联后续的升级事件
+     * </p>
+     */
+    private String downloadUrl;
+
+    /**
      * 当前固件版本
      */
     private String version;
@@ -86,19 +96,13 @@ public class DeviceCheckLog implements Serializable {
 
     /**
      * 检查结果
-     * <p>
-     * 结果值：UPDATE（有更新）、NO_UPDATE（无更新）、RATE_LIMITED（限流）、DEVICE_NOT_FOUND（设备不存在）、ERROR（错误）
-     * </p>
      */
-    private String checkRst;
+    private UpgradeDecision checkRst;
 
     /**
      * 检查模式
-     * <p>
-     * auto（自动检查）、manual（手动检查）
-     * </p>
      */
-    private String checkMode;
+    private CheckMode checkMode;
 
     /**
      * 语言设置

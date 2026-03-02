@@ -133,6 +133,7 @@ public class UpgradeCheckController {
     private UpgradeCheckRespDTO buildUpdateResponse(CheckResult result) {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.UPDATE.getCode())
+                .requestId(result.getRequestId())
                 .releaseStartDate(result.getReleaseStartDate())
                 .releaseNote(result.getReleaseNote())
                 .newFirmware(result.getNewFirmware())
@@ -154,6 +155,7 @@ public class UpgradeCheckController {
     private UpgradeCheckRespDTO buildNoUpdateResponse(CheckResult result) {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.NO_UPDATE.getCode())
+                .requestId(result.getRequestId())
                 .control(UpgradeCheckRespDTO.Control.builder()
                         .checkInterval(result.getCheckInterval() != null ? result.getCheckInterval() : 86400)
                         .downloadDelay(0)
@@ -167,6 +169,7 @@ public class UpgradeCheckController {
     private UpgradeCheckRespDTO buildRateLimitedResponse(CheckResult result) {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.RATE_LIMITED.getCode())
+                .requestId(result.getRequestId())
                 .control(UpgradeCheckRespDTO.Control.builder()
                         .checkInterval(result.getCheckInterval())
                         .downloadDelay(result.getDownloadDelay())
@@ -180,6 +183,7 @@ public class UpgradeCheckController {
     private UpgradeCheckRespDTO buildNotFoundResponse(CheckResult result) {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.DEVICE_NOT_FOUND.getCode())
+                .requestId(result.getRequestId())
                 .control(UpgradeCheckRespDTO.Control.builder()
                         .checkInterval(result.getCheckInterval() != null ? result.getCheckInterval() : 3600)
                         .downloadDelay(0)
@@ -193,6 +197,7 @@ public class UpgradeCheckController {
     private UpgradeCheckRespDTO buildErrorResponse(CheckResult result) {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.ERROR.getCode())
+                .requestId(result.getRequestId())
                 .control(UpgradeCheckRespDTO.Control.builder()
                         .checkInterval(result.getCheckInterval() != null ? result.getCheckInterval() : 3600)
                         .downloadDelay(0)
@@ -202,10 +207,14 @@ public class UpgradeCheckController {
 
     /**
      * 构建空响应
+     * <p>
+     * 当 CheckResult 为 null 时使用，生成新的 requestId 用于链路追踪
+     * </p>
      */
     private UpgradeCheckRespDTO buildEmptyResponse() {
         return UpgradeCheckRespDTO.builder()
                 .code(UpgradeDecision.ERROR.getCode())
+                .requestId(com.wewins.fota.common.util.IdGenerator.simpleUUID())
                 .control(UpgradeCheckRespDTO.Control.builder()
                         .checkInterval(3600)
                         .downloadDelay(0)

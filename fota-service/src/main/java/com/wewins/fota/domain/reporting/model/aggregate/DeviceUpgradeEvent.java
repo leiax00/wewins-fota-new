@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * 设计原则：
  * <ul>
  *   <li>event_time 使用服务端时间（权威），设备上报时间放在 details JSON 中</li>
- *   <li>device_id, product_id, firmware_version 从 Redis 缓存补全（可为空）</li>
+ *   <li>通过 request_id 关联 device_check_logs 获取设备信息</li>
  * </ul>
  * </p>
  *
@@ -52,22 +52,12 @@ public class DeviceUpgradeEvent implements Serializable {
     private String imei;
 
     /**
-     * 请求唯一标识（UUID 字符串）
+     * 请求唯一标识（链路追踪 ID）
      * <p>
-     * 从下载 URL 中解析，关联 device_check_logs.request_id
-     * 可能为空（如果 URL 中没有 rid 参数）
-     * 使用 String 类型存储 UUID，避免 MyBatis 类型处理器问题
+     * 设备从 Check 响应中获取并上报，关联 device_check_logs.request_id
      * </p>
      */
     private String requestId;
-
-    /**
-     * 策略 ID
-     * <p>
-     * 从下载 URL 中解析（pid 参数）
-     * </p>
-     */
-    private Long policyId;
 
     /**
      * 事件类型
@@ -76,14 +66,6 @@ public class DeviceUpgradeEvent implements Serializable {
      * </p>
      */
     private DeviceUpgradeEventType eventType;
-
-    /**
-     * 下载 URL
-     * <p>
-     * 设备上报的下载 URL（包含 pid 和 rid 参数）
-     * </p>
-     */
-    private String downloadUrl;
 
     /**
      * 原始上报详情（JSON）
@@ -102,33 +84,6 @@ public class DeviceUpgradeEvent implements Serializable {
      * </p>
      */
     private LocalDateTime eventTime;
-
-    // ========== 以下字段从 Redis 缓存补全 ==========
-
-    /**
-     * 设备 ID
-     * <p>
-     * 从 Redis 缓存补全，键为 "fota:device:{imei}"
-     * 如果缓存未命中则为 null
-     * </p>
-     */
-    private Long deviceId;
-
-    /**
-     * 产品 ID
-     * <p>
-     * 从 Redis 缓存补全
-     * </p>
-     */
-    private Long productId;
-
-    /**
-     * 固件版本
-     * <p>
-     * 从 Redis 缓存补全，记录事件发生时的固件版本快照
-     * </p>
-     */
-    private String firmwareVersion;
 
     // ========== 元数据 ==========
 

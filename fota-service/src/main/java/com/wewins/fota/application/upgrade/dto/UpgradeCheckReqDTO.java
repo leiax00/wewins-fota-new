@@ -1,6 +1,7 @@
 package com.wewins.fota.application.upgrade.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wewins.fota.common.enums.CheckMode;
 import lombok.Data;
 
 /**
@@ -31,9 +32,22 @@ public class UpgradeCheckReqDTO {
     private String version;
 
     /**
-     * 0: 手动检查; 1: 自动检查（默认 1）
+     * 检查模式：0=手动, 1=自动（默认自动）
      */
     private Integer auto = 1;
+
+    /**
+     * 获取检查模式枚举
+     * <p>
+     * 默认返回自动检查模式
+     * </p>
+     */
+    public CheckMode getCheckMode() {
+        if (auto == null || auto == 1) {
+            return CheckMode.AUTO;
+        }
+        return CheckMode.MANUAL;
+    }
 
     /**
      * 语言代码
