@@ -1,21 +1,15 @@
 # 设备升级上报 API 规范
 
-> **版本**: v1.0
+> **版本**: v1.1
 > **最后更新**: 2026-03-02
 > **关联 PRD**: [产品需求文档](../01-product/prd.md)
-> **关联 Sprint**: [Sprint 3](../05-plans/sprint-3-core-pipeline.md)
+> **关联文档**: [升级检查 API](./upgrade-check-api.md)
 
 ---
 
 ## 概述
 
 本文档定义设备升级上报 API 的请求和响应格式规范。
-
-设备在升级过程的关键节点通过此 API 上报状态，用于：
-- 实时监控升级进度
-- 统计升级成功率
-- 分析失败原因
-- 追踪固件下载溯源
 
 ### API 端点
 
@@ -25,9 +19,9 @@
 
 ### 设计原则
 
-1. **发后即忘**: API 接收请求后立即返回 200 OK，不等待数据处理
-2. **异步处理**: 请求通过 RabbitMQ 异步写入 ClickHouse
-3. **尽力而为**: 即使消息队列不可用，也不影响设备端
+1. **发后即忘**: API 接收请求后立即返回 200 OK，实际处理通过 RabbitMQ 异步完成
+2. **链路追踪**: 通过 `request_id` 关联检查请求和上报事件
+3. **异步处理**: 请求通过 RabbitMQ 异步写入 ClickHouse
 
 ---
 
@@ -38,19 +32,21 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `imei` | String | ✅ | 设备 IMEI（15位数字字符串） |
-| `event` | String | ✅ | 事件类型（见事件类型枚举） |
-| `url` | String | ✅ | 下载 URL（包含 pid, rid 参数用于溯源） |
+| `request_id` | String | ✅ | **链路追踪 ID**（从 Check 响应获取） |
+| `event` | Integer | ✅ | 事件类型代码（0-4，见下表） |
 | `details` | Object | ❌ | 扩展详情（错误码、进度等） |
 
 ### 事件类型枚举 (event)
 
-| 值 | 说明 | 触发时机 |
-|------|------|------|
-| `DL_START` | 开始下载 | 设备开始下载固件 |
-| `DL_OK` | 下载成功 | 设备下载固件完成 |
-| `DL_FAIL` | 下载失败 | 设备下载固件失败 |
-| `UP_OK` | 升级成功 | 设备安装固件成功 |
-| `UP_FAIL` | 升级失败 | 设备安装固件失败 |
+> **注意**: `event` 字段使用**数字代码**（0-4），不是字符串
+
+| code | 枚举 | 说明 | 触发时机 |
+|------|------|------|------|
+| 0 | DL_START | 开始下载 | 设备开始下载固件 |
+| 1 | DL_OK | 下载成功 | 设备下载固件完成 |
+| 2 | DL_FAIL | 下载失败 | 设备下载固件失败 |
+| 3 | UP_OK | 升级成功 | 设备安装固件成功 |
+| 4 | UP_FAIL | 升级失败 | 设备安装固件失败 |
 
 ### details 字段结构
 
@@ -68,6 +64,29 @@
 
 ---
 
+## 链路追踪设计
+
+### request_id 的作用
+`request_id` 是链路追踪的核心字段，用于：
+1. 关联设备检查请求（`/v1/upgrade/check`）和上报事件
+2. 从 `device_check_logs` 表获取设备信息（device_id、product_id 等）
+3. 支持端到端的问题排查和性能分析
+
+### 数据流转
+```
+Check 响应 (request_id)
+       ↓
+设备存储 request_id
+       ↓
+Report 请求携带 request_id
+       ↓
+通过 request_id 关联 device_check_logs
+       ↓
+获取设备完整信息
+```
+
+---
+
 ## 请求示例
 
 ### 下载开始
@@ -77,8 +96,8 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
   -H "Content-Type: application/json" \
   -d '{
     "imei": "861234567890123",
-    "event": "DL_START",
-    "url": "https://cdn.example.com/firmware.bin?pid=101&rid=abc123"
+    "request_id": "550e8400e29b41d4a716446655440000",
+    "event": 0
   }'
 ```
 
@@ -89,8 +108,8 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
   -H "Content-Type: application/json" \
   -d '{
     "imei": "861234567890123",
-    "event": "DL_OK",
-    "url": "https://cdn.example.com/firmware.bin?pid=101&rid=abc123",
+    "request_id": "550e8400e29b41d4a716446655440000",
+    "event": 1,
     "details": {
       "bytes_downloaded": 20000000,
       "duration_ms": 45000
@@ -105,8 +124,8 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
   -H "Content-Type: application/json" \
   -d '{
     "imei": "861234567890123",
-    "event": "DL_FAIL",
-    "url": "https://cdn.example.com/firmware.bin?pid=101&rid=abc123",
+    "request_id": "550e8400e29b41d4a716446655440000",
+    "event": 2,
     "details": {
       "error_code": "NETWORK_TIMEOUT",
       "error_message": "Connection timed out after 30s",
@@ -122,8 +141,8 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
   -H "Content-Type: application/json" \
   -d '{
     "imei": "861234567890123",
-    "event": "UP_OK",
-    "url": "https://cdn.example.com/firmware.bin?pid=101&rid=abc123",
+    "request_id": "550e8400e29b41d4a716446655440000",
+    "event": 3,
     "details": {
       "duration_ms": 120000
     }
@@ -137,11 +156,11 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
   -H "Content-Type: application/json" \
   -d '{
     "imei": "861234567890123",
-    "event": "UP_FAIL",
-    "url": "https://cdn.example.com/firmware.bin?pid=101&rid=abc123",
+    "request_id": "550e8400e29b41d4a716446655440000",
+    "event": 4,
     "details": {
-      "error_code": "CHECKSUM_MISMATCH",
-      "error_message": "SHA256 verification failed"
+      "error_code": "VERIFY_FAILED",
+      "error_message": "Checksum verification failed"
     }
   }'
 ```
@@ -152,103 +171,27 @@ curl -X POST http://localhost:8080/v1/upgrade/report \
 
 ### 成功响应
 
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-```
-
 ```json
-{}
+{
+  "code": 200,
+  "message": "success"
+}
 ```
 
-> **说明**: 上报成功时返回空对象，设备端无需处理响应内容。
+> **说明**: 上报接口采用"发后即忘"模式，只要请求格式正确即返回成功，实际处理异步完成。
 
 ### 错误响应
 
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/json
-```
-
 ```json
 {
-  "message": "Invalid request: imei is required"
+  "code": 400,
+  "message": "参数校验失败: imei 不能为空"
 }
 ```
 
 ---
 
-## 服务端处理流程
-
-```
-设备上报请求
-     │
-     ↓
-┌─────────────────────────────────────┐
-│  UpgradeReportController            │
-│  - 接收请求                          │
-│  - 参数校验（imei、event、url 必填） │
-│  - 构建 UpgradeReport 领域模型       │
-└─────────────────────────────────────┘
-     │
-     ↓
-┌─────────────────────────────────────┐
-│  UpgradeReportAppService            │
-│  - 调用 Gateway 处理上报             │
-└─────────────────────────────────────┘
-     │
-     ↓
-┌─────────────────────────────────────┐
-│  RabbitMqUpgradeReportGateway       │
-│  - 解析 URL 中的 pid/rid 参数        │
-│  - 构建 DeviceUpgradeEvent          │
-│  - 发送到 RabbitMQ                   │
-│  - 立即返回                          │
-└─────────────────────────────────────┘
-     │
-     ↓ (异步)
-┌─────────────────────────────────────┐
-│  UpgradeReportConsumer              │
-│  - 批量消费消息                      │
-│  - 写入 ClickHouse                  │
-│  - UP_OK 时更新 PostgreSQL 设备版本 │
-└─────────────────────────────────────┘
-```
-
----
-
-## URL 溯源参数
-
-下载 URL 中包含以下查询参数用于溯源：
-
-| 参数 | 说明 | 示例 |
-|------|------|------|
-| `pid` | 策略 ID (Policy ID) | `101` |
-| `rid` | 请求 ID (Request ID) | `abc123-def456` |
-
-这些参数由服务端在 `/v1/upgrade/check` 响应中生成，设备端应原样上报。
-
-### URL 解析逻辑
-
-```java
-// 从 URL 中解析 rid 参数
-private String extractRequestId(String url) {
-    // 解析 ?rid=xxx 中的值
-    // 返回 requestId，用于关联 device_check_logs.request_id
-}
-
-// 从 URL 中解析 pid 参数
-private Long extractPolicyId(String url) {
-    // 解析 ?pid=xxx 中的值
-    // 返回策略 ID
-}
-```
-
----
-
-## 实现类
-
-### 类图
+## 实现类图
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -274,8 +217,8 @@ private Long extractPolicyId(String url) {
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  UpgradeReportDTO (请求 DTO)                                 │   │
 │  │  @NotBlank String imei;                                      │   │
-│  │  @NotBlank @Pattern String event;                            │   │
-│  │  @NotBlank String url;                                       │   │
+│  │  @NotBlank String requestId;                                 │   │
+│  │  @NotNull Integer event;                                     │   │
 │  │  Map<String, Object> details;                                │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
@@ -286,9 +229,14 @@ private Long extractPolicyId(String url) {
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  UpgradeReport (领域模型)                                    │   │
 │  │  String imei;                                                │   │
-│  │  String event;                                               │   │
-│  │  String url;                                                 │   │
+│  │  String requestId;                                           │   │
+│  │  DeviceUpgradeEventType event;                               │   │
 │  │  String detailsJson;  // 已序列化                            │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  DeviceUpgradeEventType (枚举)                               │   │
+│  │  DL_START(0), DL_OK(1), DL_FAIL(2), UP_OK(3), UP_FAIL(4)     │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
@@ -302,9 +250,15 @@ private Long extractPolicyId(String url) {
 │  Infrastructure 层 (infra/gateway)                                  │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  RabbitMqUpgradeReportGateway                                │   │
-│  │  - 解析 URL 中的 pid/rid                                      │   │
-│  │  - 构建 DeviceUpgradeEvent                                    │   │
-│  │  - 发送到 RabbitMQ                                            │   │
+│  │  - 构建 DeviceUpgradeEvent                                   │   │
+│  │  - 发送到 RabbitMQ                                           │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  DeviceUpgradeEventAppService (消费者)                       │   │
+│  │  - 批量消费消息                                              │   │
+│  │  - 写入 ClickHouse                                           │   │
+│  │  - UP_OK 时更新 PostgreSQL 设备版本                          │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -316,6 +270,7 @@ private Long extractPolicyId(String url) {
 | UpgradeReportController | `adapter/api/device/UpgradeReportController.java` |
 | UpgradeReportDTO | `adapter/api/device/dto/UpgradeReportDTO.java` |
 | UpgradeReport | `domain/reporting/model/UpgradeReport.java` |
+| DeviceUpgradeEventType | `domain/reporting/model/value/DeviceUpgradeEventType.java` |
 | UpgradeReportGateway | `domain/reporting/service/UpgradeReportGateway.java` |
 | DeviceUpgradeEvent | `domain/reporting/model/aggregate/DeviceUpgradeEvent.java` |
 | RabbitMqUpgradeReportGateway | `infra/gateway/RabbitMqUpgradeReportGateway.java` |
@@ -323,10 +278,35 @@ private Long extractPolicyId(String url) {
 
 ---
 
+## 数据关联
+
+### 通过 request_id 关联数据
+
+```
+device_check_logs                    device_upgrade_events
+┌─────────────────────┐              ┌─────────────────────┐
+│ request_id (PK)     │◄────────────│ request_id (FK)     │
+│ device_id           │              │ event_id (PK)       │
+│ product_id          │              │ imei                │
+│ policy_id           │              │ event_type          │
+│ download_url        │              │ details             │
+│ ...                 │              │ ...                 │
+└─────────────────────┘              └─────────────────────┘
+```
+
+> **设计原则**: `device_upgrade_events` 表通过 `request_id` 关联 `device_check_logs`，> 无需存储冗余的设备信息（device_id、product_id 等），需要时可 JOIN 查询获取。
+
+---
+
 ## 变更日志
 
-### 2026-03-02 (v1.0)
+### 2026-03-02 (v1.1)
+- **重要变更**: 用 `request_id` 替换 `url` 字段用于链路追踪
+- **重要变更**: `event` 字段改为数字类型（0-4）
+- 移除 URL 溯源参数说明（不再从 URL 解析 pid/rid）
+- 简化数据模型，通过 request_id 关联获取设备信息
+
+### 2026-03-01 (v1.0)
 - 初版：定义 API 请求和响应格式
 - 字段与 PRD 定义对齐
 - 新增 `UP_FAIL` 事件类型
-- 添加 URL 溯源参数说明

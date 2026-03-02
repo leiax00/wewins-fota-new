@@ -1,7 +1,7 @@
 # 设备升级检查 API 规范
 
-> **版本**: v1.0
-> **最后更新**: 2026-03-01
+> **版本**: v1.1
+> **最后更新**: 2026-03-02
 > **关联 PRD**: [产品需求文档](../01-product/prd.md)
 
 ---
@@ -55,6 +55,7 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `code` | Integer | 决策码（见下表） |
+| `request_id` | String | **链路追踪 ID**（设备需在后续上报中携带此 ID） |
 | `release_start_date` | String | 发布开始日期（ISO 8601） |
 | `release_note` | String | 发布说明 |
 | `new_firmware` | String | 新固件版本号 |
@@ -66,6 +67,8 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 | `control` | Object | 控制参数 |
 | `control.check_interval` | Integer | 下次检查间隔（秒） |
 | `control.download_delay` | Integer | 下载延迟（秒） |
+
+> **重要**: `request_id` 字段用于链路追踪，设备需在后续的升级上报请求中携带此 ID，> 以便关联检查请求和上报事件。
 
 ### 决策码 (code)
 
@@ -81,15 +84,18 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 
 ## 响应示例
 
+> **注意**: 所有响应（无论成功还是失败）都会包含 `request_id` 字段。
+
 ### 有更新 (code=0)
 
 ```json
 {
    "code": 0,
+   "request_id": "550e8400e29b41d4a716446655440000",
    "release_start_date": "2026-02-03T10:28:56Z",
    "release_note": "修复Bug并改进性能",
    "new_firmware": "v2.0.0",
-   "download_url": "https://cdn.xxx.com/pkg.bin?pid=101&did=1001&expire=1709222400&sig=xxx",
+   "download_url": "https://cdn.xxx.com/pkg.bin?sig=xxx",
    "file_size": 20000000,
    "file_size_text": "19.1MB",
    "checksum": "a1b2c3d4e5f6...",
@@ -106,6 +112,7 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 ```json
 {
    "code": 1,
+   "request_id": "550e8400e29b41d4a716446655440001",
    "control": {
       "check_interval": 86400,
       "download_delay": 0
@@ -118,6 +125,7 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 ```json
 {
    "code": 2,
+   "request_id": "550e8400e29b41d4a716446655440002",
    "control": {
       "check_interval": 60,
       "download_delay": 60
@@ -130,6 +138,7 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 ```json
 {
    "code": 3,
+   "request_id": "550e8400e29b41d4a716446655440003",
    "control": {
       "check_interval": 3600,
       "download_delay": 0
@@ -142,6 +151,7 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 ```json
 {
    "code": 4,
+   "request_id": "550e8400e29b41d4a716446655440004",
    "control": {
       "check_interval": 3600,
       "download_delay": 0
@@ -151,94 +161,18 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 
 ---
 
-## 设备端处理建议
+## 错误处理
 
-### 根据 code 的处理逻辑
-
-```
-if (code == 0) {
-    // 有更新
-    sleep(control.download_delay);  // 随机延迟下载
-    download(download_url);
-    verifyChecksum(checksum, checksum_type);
-    install();
-    scheduleNextCheck(control.check_interval);
-} else if (code == 1) {
-    // 无更新
-    scheduleNextCheck(control.check_interval);
-} else if (code == 2) {
-    // 被限流
-    scheduleNextCheck(control.check_interval);  // 使用返回的间隔
-} else if (code == 3) {
-    // 设备未注册
-    log("设备未注册，请联系管理员");
-    scheduleNextCheck(control.check_interval);
-} else if (code == 4) {
-    // 错误
-    log("服务器错误");
-    scheduleNextCheck(control.check_interval);
-}
-```
-
----
-
-## 实现类
-
-### 类图
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Adapter/API 层 (adapter/api/device)                                │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  UpgradeCheckController                                      │   │
-│  │  - 接收请求，调用 Service                                     │   │
-│  │  - 将 CheckResult 转换为 UpgradeCheckRespDTO                 │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                              │                                      │
-│  ┌────────────────────────────┴────────────────────────────────┐   │
-│  │  UpgradeDecision (枚举)                                      │   │
-│  │  UPDATE(0), NO_UPDATE(1), RATE_LIMITED(2),                   │   │
-│  │  DEVICE_NOT_FOUND(3), ERROR(4)                               │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  UpgradeCheckRespDTO (响应 DTO)                              │   │
-│  │  - 严格按本文档定义，字段使用 snake_case                      │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-                                   │
-                                   ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│  Application 层 (application/upgrade)                               │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  UpgradeCheckService                                         │   │
-│  │  - 业务逻辑：限流、策略匹配、灰度检查等                        │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  CheckResult (内部 DTO)                                      │   │
-│  │  - 包含业务决策信息和固件元数据                               │   │
-│  │  - decision 字段使用 UpgradeDecision 枚举                    │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 文件位置
-
-| 文件 | 路径 |
-|------|------|
-| UpgradeDecision | `adapter/api/device/dto/UpgradeDecision.java` |
-| UpgradeCheckRespDTO | `adapter/api/device/dto/UpgradeCheckRespDTO.java` |
-| UpgradeCheckReqDTO | `application/upgrade/dto/UpgradeCheckReqDTO.java` |
-| CheckResult | `application/upgrade/dto/CheckResult.java` |
-| UpgradeCheckController | `adapter/api/device/UpgradeCheckController.java` |
-| UpgradeCheckService | `application/upgrade/UpgradeCheckService.java` |
+> **重要**: 即使发生错误，响应也会包含 `request_id` 字段，用于问题排查和链路追踪。
 
 ---
 
 ## 变更日志
 
+### 2026-03-02 (v1.1)
+- **重要变更**: 响应新增 `request_id` 字段用于链路追踪
+- 设备需在后续上报请求中携带此 ID
+
 ### 2026-03-01 (v1.0)
 - 初版：定义 API 请求和响应格式
-- 新增 `code` 决策码字段
-- 统一使用 snake_case 命名风格
+- 字段与 PRD 定义对齐
