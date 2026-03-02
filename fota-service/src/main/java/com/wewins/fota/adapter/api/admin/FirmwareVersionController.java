@@ -397,6 +397,7 @@ public class FirmwareVersionController {
         FirmwareVersionReqDTO processed = new FirmwareVersionReqDTO();
         processed.setProductId(reqDTO.getProductId());
         processed.setVersion(reqDTO.getVersion());
+        processed.setInternalVersion(reqDTO.getInternalVersion());
         processed.setFileUrl(objectKey);
         processed.setFileName(session.getFileName());  // 保存原始文件名
         processed.setFileSize(session.getFileSize());
