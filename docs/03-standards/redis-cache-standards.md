@@ -73,42 +73,84 @@ fota:lock:device_import:batch_123
 
 ## TTL 设置原则
 
-### TTL 常量定义
+### 分层 TTL 策略
+
+基于**设备缓存沉默期释放内存**和**共享缓存续期保持热点数据**的设计目标，采用分层 TTL 策略：
 
 所有 TTL 必须在 `RedisKeyConstants` 中定义常量：
 
 ```java
-// 设备信息缓存 TTL（24 小时）
-public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
+// ========== 设备缓存（固定TTL，不续期）==========
+public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;  // 24小时
 
-// 策略信息缓存 TTL（1 小时）
-public static final long POLICY_CACHE_TTL_SECONDS = 60 * 60;
+// ========== 共享缓存（滑动TTL，续期）==========
+public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;      // 24小时
+public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7天
+public static final long FIRMWARE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30天
 
-// 活跃度 Bitmap TTL（90 天，用于离线分析）
-public static final long ACTIVE_BITMAP_TTL_SECONDS = 90 * 24 * 60 * 60;
-
-// 限流窗口 TTL（60 秒）
-public static final long RATE_LIMIT_TTL_SECONDS = 60;
+// ========== 其他缓存 ==========
+public static final long ACTIVE_BITMAP_TTL_SECONDS = 90 * 24 * 60 * 60; // 90天
+public static final long RATE_LIMIT_TTL_SECONDS = 60;                 // 60秒
 ```
 
-### TTL 设置建议
+### 分层 TTL 配置表
 
-| 数据类型 | 建议 TTL | 原因 |
-|---------|---------|------|
-| 设备信息 | 24h | 设备信息变更不频繁 |
-| 策略快照 | 1-6h | 策略可能动态调整 |
-| 产品信息 | 1h | 产品配置相对稳定 |
-| 活跃度 Bitmap | 90天 | 用于离线分析 |
-| 限流窗口 | 60s | 短期限流 |
-| 临时键（BITOP） | 60s | 临时计算结果 |
-| 分布式锁 | 30s | 防止死锁 |
+| 缓存类型 | TTL | 续期策略 | 一致性保证 | 原因 |
+|---------|-----|---------|-----------|------|
+| **设备缓存** | 24小时 | ❌ 不续期 | 被动过期 | 沉默期释放内存（主要内存占用） |
+| **策略缓存** | 24小时 | ✅ **续期** | 主动失效 | 热点数据持续缓存 |
+| **产品信息** | 7天 | ✅ **续期** | 主动失效 | 产品信息极少变更 |
+| **固件版本** | 30天 | ✅ **续期** | 主动失效 | 固件发布后基本不变 |
+| **活跃度 Bitmap** | 90天 | ❌ 不续期 | 按日创建 | 用于离线分析 |
+| **限流窗口** | 60秒 | ❌ 不续期 | 窗口重置 | 短期限流 |
+| **临时键（BITOP）** | 60秒 | ❌ 不续期 | 临时使用 | 临时计算结果 |
+| **分布式锁** | 30秒 | ❌ 不续期 | 心跳续期 | 防止死锁 |
+
+### 续期策略详解
+
+#### 设备缓存：固定 TTL（不续期）
+
+```java
+// ✅ 设备缓存读取时不续期
+public DeviceCache get(String imei) {
+    String key = String.format(DEVICE_KEY_TEMPLATE, imei);
+    Object cached = redisTemplate.opsForValue().get(key);
+    // ❌ 不调用 expire()，让缓存自然过期
+    return (DeviceCache) cached;
+}
+```
+
+**原因**：脉冲模式 Day 2-3 沉默期，设备不检查 → 缓存自然过期 → 释放内存
+
+#### 共享缓存：滑动 TTL（续期）
+
+```java
+// ✅ 共享缓存读取时续期
+public List<UpgradePolicy> getProductPolicies(Long productId, boolean includeTest) {
+    String key = buildKey(productId, includeTest);
+    String json = redisTemplate.opsForValue().get(key);
+    
+    if (json != null) {
+        // ✅ 续期：热点数据持续保持缓存
+        long ttl = getRandomizedTtl(POLICY_CACHE_TTL_SECONDS);
+        redisTemplate.expire(key, Duration.ofSeconds(ttl));
+        return deserializePolicies(json);
+    }
+    
+    return null;
+}
+```
+
+**原因**：共享缓存被千万设备频繁访问，续期保证热点数据持续缓存，性能最优
 
 ### TTL 设置注意事项
 
-1. **必须设置 TTL**：除特殊需求外，所有 key 必须设置过期时间
-2. **避免 TTL 集中**：大量 key 同时过期会导致 Redis 阻塞
-3. **TTL 随机化**：对于批量 key，TTL 应加入随机偏移（±10%）
-4. **监控过期率**：定期检查 key 过期情况，避免缓存雪崩
+1. **分层配置**：根据数据类型选择合适的 TTL 和续期策略
+2. **必须设置 TTL**：除特殊需求外，所有 key 必须设置过期时间
+3. **避免 TTL 集中**：大量 key 同时过期会导致 Redis 阻塞
+4. **TTL 随机化**：对于批量 key，TTL 应加入随机偏移（±10%）
+5. **监控过期率**：定期检查 key 过期情况，避免缓存雪崩
+6. **主动失效**：共享缓存必须实现主动失效机制（管理后台修改时立即失效）
 
 ---
 

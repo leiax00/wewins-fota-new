@@ -378,4 +378,128 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long DEVICE_IMPORT_SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+    // ========== 缓存索引常量 ==========
+
+    /**
+     * 产品策略列表缓存 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, type)
+     * </p>
+     * <p>
+     * 示例：fota:cache:product:policy:1001:all
+     * </p>
+     * <p>
+     * 说明：缓存产品的策略列表，type 为 "all" 或 "prod" 区分是否包含测试策略
+     * </p>
+     */
+    public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:product:policy:%s:%s";
+
+    /**
+     * 产品型号索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_MODEL_INDEX_KEY_TEMPLATE, model)
+     * </p>
+     * <p>
+     * 示例：fota:cache:product:model:M476
+     * </p>
+     * <p>
+     * 说明：通过产品型号反向查找产品 ID
+     * </p>
+     */
+    public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
+
+    /**
+     * 产品固件列表 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:firmware:list:1001
+     * </p>
+     * <p>
+     * 说明：存储产品关联的所有固件版本 ID 集合
+     * </p>
+     */
+    public static final String PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE = "fota:cache:firmware:list:%s";
+
+    /**
+     * 固件标签索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag)
+     * </p>
+     * <p>
+     * 示例：fota:cache:firmware:tag:1001:stable
+     * </p>
+     * <p>
+     * 说明：按标签索引固件版本 ID
+     * </p>
+     */
+    public static final String FIRMWARE_TAG_INDEX_KEY_TEMPLATE = "fota:cache:firmware:tag:%s:%s";
+
+    /**
+     * 产品缓存索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_CACHE_INDEX_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:index:product:1001
+     * </p>
+     * <p>
+     * 说明：记录产品相关的所有缓存键，支持批量失效
+     * </p>
+     */
+    public static final String PRODUCT_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:product:%s";
+
+    /**
+     * 策略缓存索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_CACHE_INDEX_KEY_TEMPLATE, policyId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:index:policy:101
+     * </p>
+     * <p>
+     * 说明：记录策略相关的所有缓存键，支持批量失效
+     * </p>
+     */
+    public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
+
+    /**
+     * 固件缓存索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_CACHE_INDEX_KEY_TEMPLATE, versionId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:index:firmware:201
+     * </p>
+     * <p>
+     * 说明：记录固件相关的所有缓存键，支持批量失效
+     * </p>
+     */
+    public static final String FIRMWARE_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:firmware:%s";
+
+    /**
+     * 缓存索引通用 TTL（1 小时）
+     * <p>
+     * 与缓存 TTL 保持一致，确保索引不会比缓存更早过期
+     * </p>
+     */
+    public static final long CACHE_INDEX_TTL_SECONDS = 60 * 60;
+
+    // ========== 固件缓存常量 ==========
+
+    /**
+     * 固件信息 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId)
+     * </p>
+     * <p>
+     * 示例：fota:firmware:201
+     * </p>
+     * <p>
+     * 说明：单个固件版本的完整信息缓存
+     * </p>
+     */
+    public static final String FIRMWARE_KEY_TEMPLATE = "fota:firmware:%s";
 }
