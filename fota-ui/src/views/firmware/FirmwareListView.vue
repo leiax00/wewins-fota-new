@@ -72,8 +72,8 @@ const form = reactive({
   internalVersion: '',
   noPackage: false,
   uploadSessionId: '',
-  tags: '',
-  meta: '',
+  tags: {} as Record<string, unknown>,
+  meta: {} as Record<string, unknown>,
 })
 
 /**
@@ -326,8 +326,8 @@ const openCreateDialog = () => {
   form.internalVersion = ''
   form.noPackage = false
   form.uploadSessionId = ''
-  form.tags = ''
-  form.meta = ''
+  form.tags = {}
+  form.meta = {}
   resetUploadState()
   dialogVisible.value = true
 }
@@ -343,8 +343,9 @@ const openEditDialog = (row: FirmwareVersionItem) => {
   form.internalVersion = row.internalVersion || ''
   form.noPackage = row.packageStatus === 'NONE'
   form.uploadSessionId = ''
-  form.tags = row.tags || ''
-  form.meta = row.meta || ''
+  // 解析 JSON 字符串为对象
+  form.tags = row.tags ? JSON.parse(row.tags) : {}
+  form.meta = row.meta ? JSON.parse(row.meta) : {}
   resetUploadState()
   dialogVisible.value = true
 }
@@ -360,8 +361,9 @@ const submitForm = async () => {
       productId: form.productId!,
       version: form.version,
       internalVersion: form.internalVersion || undefined,
-      tags: form.tags || undefined,
-      meta: form.meta || undefined,
+      // 序列化对象为 JSON 字符串，空对象不发送
+      tags: Object.keys(form.tags).length > 0 ? JSON.stringify(form.tags) : undefined,
+      meta: Object.keys(form.meta).length > 0 ? JSON.stringify(form.meta) : undefined,
     })
 
     // 处理包状态

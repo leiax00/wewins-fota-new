@@ -90,7 +90,7 @@ const form = reactive({
   productId: undefined as number | undefined,
   currentVersionId: undefined as number | undefined,
   status: 'OFFLINE' as DeviceStatus,
-  tags: '',
+  tags: {} as Record<string, unknown>,
 })
 
 const statusOptions: DeviceStatus[] = ['ONLINE', 'OFFLINE', 'LOST']
@@ -107,40 +107,21 @@ const imeiValidator = (_rule: unknown, value: string, callback: (error?: Error) 
   callback()
 }
 
-const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+const tagsValidator = (_rule: unknown, value: Record<string, unknown>, callback: (error?: Error) => void) => {
   // 如果有 JsonFieldEditor 的校验错误，优先显示
   if (tagsValidationErrors.value.length > 0) {
     callback(new Error(tagsValidationErrors.value[0]))
     return
   }
 
-  // 保留原有兜底校验逻辑
-  if (!value || !value.trim()) {
+  // 空对象是有效的
+  if (!value || Object.keys(value).length === 0) {
     callback()
     return
   }
 
-  try {
-    const parsed = JSON.parse(value.trim())
-
-    if (Array.isArray(parsed)) {
-      callback(new Error(t('device.tagsMustBeObject')))
-      return
-    }
-
-    if (parsed === null || typeof parsed !== 'object') {
-      callback(new Error(t('device.tagsMustBeObject')))
-      return
-    }
-
-    callback()
-  } catch (error) {
-    if (error instanceof Error) {
-      callback(error)
-    } else {
-      callback(new Error(t('device.tagsJsonInvalid')))
-    }
-  }
+  // value 已经是对象类型，直接通过
+  callback()
 }
 
 /**
@@ -271,7 +252,7 @@ const openCreateDialog = () => {
   form.productId = undefined
   form.currentVersionId = undefined
   form.status = 'OFFLINE'
-  form.tags = ''
+  form.tags = {}
   tagsValidationErrors.value = []
   firmwareOptions.value = []
   formRef.value?.clearValidate()
@@ -285,7 +266,8 @@ const openEditDialog = async (row: DeviceItem) => {
   form.productId = row.productId
   form.currentVersionId = row.currentVersionId
   form.status = row.status
-  form.tags = row.tags || ''
+  // 解析 JSON 字符串为对象
+  form.tags = row.tags ? JSON.parse(row.tags) : {}
   tagsValidationErrors.value = []
 
   // 将当前产品添加到搜索选项中，确保编辑时能正确显示产品名称
@@ -318,7 +300,8 @@ const submitForm = async () => {
       productId: form.productId!,
       currentVersionId: form.currentVersionId || undefined,
       status: form.status,
-      tags: form.tags?.trim() || undefined,
+      // 序列化对象为 JSON 字符串，空对象不发送
+      tags: Object.keys(form.tags).length > 0 ? JSON.stringify(form.tags) : undefined,
     }
 
     if (dialogMode.value === 'create') {

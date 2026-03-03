@@ -67,7 +67,7 @@ const form = reactive<{
   imeiKeyword: string
   status: 'ONLINE' | 'OFFLINE' | 'LOST' | undefined
   importBatchId: number | undefined
-  tags: string
+  tags: Record<string, unknown>
   newBatchId: number | undefined
 }>({
   operationType: null,
@@ -77,7 +77,7 @@ const form = reactive<{
   imeiKeyword: '',
   status: undefined,
   importBatchId: undefined,
-  tags: '',
+  tags: {},
   newBatchId: undefined,
 })
 
@@ -323,25 +323,17 @@ const buildRequestParams = (): BatchOperationRequest | null => {
 
   // 修改标签操作
   if (needTags.value) {
-    if (!form.tags || !form.tags.trim()) {
-      ElMessage.warning(t('device.pleaseInputTags'))
-      return null
-    }
     // 验证不是空对象
-    try {
-      const parsed = JSON.parse(form.tags)
-      if (Object.keys(parsed).length === 0) {
-        ElMessage.warning(t('device.pleaseInputAtLeastOneTagField'))
-        return null
-      }
-    } catch {
-      // JSON解析错误会在tagsValidationErrors中处理
+    if (Object.keys(form.tags).length === 0) {
+      ElMessage.warning(t('device.pleaseInputAtLeastOneTagField'))
+      return null
     }
     if (tagsValidationErrors.value.length > 0) {
       ElMessage.error(tagsValidationErrors.value[0])
       return null
     }
-    params.tags = form.tags
+    // 序列化对象为 JSON 字符串
+    params.tags = JSON.stringify(form.tags)
   }
 
   // 修改批次操作
@@ -423,7 +415,7 @@ const resetForm = () => {
   form.imeiKeyword = ''
   form.status = undefined
   form.importBatchId = undefined
-  form.tags = ''
+  form.tags = {}
   form.newBatchId = undefined
   tagsValidationErrors.value = []
   estimateCount.value = null
@@ -448,7 +440,7 @@ const selectOperationType = (type: BatchOperationType) => {
       type === 'UPDATE_TAG_BY_IMEI'
 
   if (!typeNeedsTags) {
-    form.tags = ''
+    form.tags = {}
     tagsValidationErrors.value = []
   }
 }
@@ -480,7 +472,7 @@ watch(
           newType === 'UPDATE_TAG_BY_IMEI'
 
       if (!newTypeNeedsTags) {
-        form.tags = ''
+        form.tags = {}
         tagsValidationErrors.value = []
       }
     }

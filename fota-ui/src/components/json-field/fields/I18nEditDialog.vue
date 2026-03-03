@@ -28,12 +28,26 @@ const localValue = ref<I18nFieldValue>({})
 
 const tr = (key: string, fallback: string) => (te(key) ? t(key) : fallback)
 
+/**
+ * 规范化 i18n 值（不 trim，保留原始输入）
+ */
 const normalizeI18nValue = (value: unknown): I18nFieldValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   const next: I18nFieldValue = {}
   Object.entries(value as Record<string, unknown>).forEach(([k, v]) => {
-    if (typeof v === 'string') next[k] = v.trim()  // 自动去除首尾空格
+    if (typeof v === 'string') next[k] = v  // 不 trim，保留原始输入
     else if (v != null) next[k] = String(v)
+  })
+  return next
+}
+
+/**
+ * 提交前 trim 值（只在确认时调用）
+ */
+const trimI18nValue = (value: I18nFieldValue): I18nFieldValue => {
+  const next: I18nFieldValue = {}
+  Object.entries(value).forEach(([k, v]) => {
+    next[k] = typeof v === 'string' ? v.trim() : v
   })
   return next
 }
@@ -56,7 +70,7 @@ const onDialogVisibleChange = (visible: boolean) => {
 }
 
 const onConfirm = () => {
-  emit('confirm', normalizeI18nValue(localValue.value))
+  emit('confirm', trimI18nValue(localValue.value))
   emit('update:modelValue', false)
 }
 </script>
