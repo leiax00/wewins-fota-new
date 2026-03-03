@@ -5,9 +5,9 @@
 > **范围**: 核心链路最小可用版本
 
 **Sprint Owner**: FOTA 后端组
-**文档版本**: v1.3
+**文档版本**: v1.4
 **创建日期**: 2026-02-28
-**最后更新**: 2026-02-28
+**最后更新**: 2026-03-03
 
 ---
 
@@ -123,16 +123,16 @@ dev     = 1                            # 开发环境
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 0.1 | 实现 ProductRepository.findByModel() | 1h | ⏸️ |
-| 0.2 | 实现 FirmwareVersionRepository.findByVersionNumberAndProductId() | 1h | ⏸️ |
-| 0.3 | 实现 FirmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId() | 1h | ⏸️ |
-| 0.4 | 重构 UpgradeCheckService 支持新参数 | 3h | ⏸️ |
-| 0.5 | 实现设备不存在时的拒绝逻辑 | 1h | ⏸️ |
-| 0.6 | 实现 dev 参数临时测试设备标注 | 2h | ⏸️ |
-| 0.7 | 实现 version+tag 组合查找逻辑 | 2h | ⏸️ |
-| 0.8 | 实现 auto 参数对 checkInterval 的影响 | 1h | ⏸️ |
-| 0.9 | 实现参数校验（imei格式、grayRate范围等） | 2h | ⏸️ |
-| 0.10 | 新老接口统一测试 | 3h | ⏸️ |
+| 0.1 | 实现 ProductRepository.findByModel() | 1h | ✅ |
+| 0.2 | 实现 FirmwareVersionRepository.findByVersionNumberAndProductId() | 1h | ✅ |
+| 0.3 | 实现 FirmwareVersionRepository.findByVersionNumberAndInternalVersionAndProductId() | 1h | ✅ |
+| 0.4 | 重构 UpgradeCheckService 支持新参数 | 3h | ✅ |
+| 0.5 | 实现设备不存在时的拒绝逻辑 | 1h | ✅ |
+| 0.6 | 实现 dev 参数临时测试设备标注 | 2h | ✅ |
+| 0.7 | 实现 version+tag 组合查找逻辑 | 2h | ✅ |
+| 0.8 | 实现 auto 参数对 checkInterval 的影响 | 1h | ✅ |
+| 0.9 | 实现参数校验（imei格式、grayRate范围等） | 2h | ✅ |
+| 0.10 | 新老接口统一测试 | 3h | ✅ |
 
 **预计总计**: 17小时 ≈ 2天
 
@@ -705,10 +705,10 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 2.1 | 实现版本范围匹配 | 2h | ⏸️ |
-| 2.2 | 实现标签匹配 (JSONB) | 2h | ⏸️ |
-| 2.3 | 实现时间窗口检查 | 2h | ⏸️ |
-| 2.4 | 单元测试 | 1h | ⏸️ |
+| 2.1 | 实现版本范围匹配 | 2h | ✅ |
+| 2.2 | 实现标签匹配 (JSONB) | 2h | ✅ |
+| 2.3 | 实现时间窗口检查 | 2h | ✅ |
+| 2.4 | 单元测试 | 1h | ✅ |
 
 #### 技术要点
 
@@ -729,11 +729,18 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 4.1 | 实现签名服务 (SignedUrlService) | 2h | ⏸️ |
-| 4.2 | 集成 RustFS/S3 SDK | 2h | ⏸️ |
-| 4.3 | 实现 Pre-signed URL 生成 | 2h | ⏸️ |
-| 4.4 | 定义签名算法规范文档 | 1h | ⏸️ |
-| 4.5 | 单元测试 | 1h | ⏸️ |
+| 4.1 | 实现签名服务 (SignedUrlService) | 2h | ✅ |
+| 4.2 | 集成 RustFS/S3 SDK | 2h | ✅ |
+| 4.3 | 实现 Pre-signed URL 生成 | 2h | ✅ |
+| 4.4 | 定义签名算法规范文档 | 1h | ✅ |
+| 4.5 | 单元测试 | 1h | ✅ |
+
+#### 完成情况
+
+- ✅ **SignedUrlService**: 支持三种签名模式 (`self-signed`, `s3-presigned`, `none`)
+- ✅ **Self-signed 模式**: 使用 HMAC-SHA256 签名
+- ✅ **URL格式**: `{baseUrl}/{firmwarePath}?expire={expireTime}&sig={signature}`
+- ✅ **支持自定义过期时间**: 7天内
 
 #### 技术要点
 
@@ -748,10 +755,16 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 5.1 | 实现固件元数据加载 | 1h | ⏸️ |
-| 5.2 | 实现控制参数计算 (checkInterval, downloadDelay) | 1h | ⏸️ |
-| 5.3 | 构建完整响应 DTO | 1h | ⏸️ |
-| 5.4 | 单元测试 | 1h | ⏸️ |
+| 5.1 | 实现固件元数据加载 | 1h | ✅ |
+| 5.2 | 实现控制参数计算 (checkInterval, downloadDelay) | 1h | ✅ |
+| 5.3 | 构建完整响应 DTO | 1h | ✅ |
+| 5.4 | 单元测试 | 1h | ✅ |
+
+#### 完成情况
+
+- ✅ **CheckResult 响应构建**: 完整的响应 DTO 转换
+- ✅ **控制参数**: checkInterval、downloadDelay 自动计算
+- ✅ **多语言支持**: lang 参数选择对应语言的 release_note
 
 ---
 
@@ -768,11 +781,18 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 6.1 | 创建 MQ 消费者 (UpgradeReportConsumer) | 2h | ⏸️ |
-| 6.2 | 实现批量处理逻辑 | 2h | ⏸️ |
-| 6.3 | 实现幂等性去重机制 | 2h | ⏸️ |
-| 6.4 | 实现 DLQ (死信队列) 处理 | 1h | ⏸️ |
-| 6.5 | 单元测试 | 1h | ⏸️ |
+| 6.1 | 创建 MQ 消费者 (UpgradeReportConsumer) | 2h | ✅ |
+| 6.2 | 实现批量处理逻辑 | 2h | ✅ |
+| 6.3 | 实现幂等性去重机制 | 2h | ✅ |
+| 6.4 | 实现 DLQ (死信队列) 处理 | 1h | ✅ |
+| 6.5 | 单元测试 | 1h | ✅ |
+
+#### 完成情况
+
+- ✅ **UpgradeReportConsumer**: 批量接收和处理消息
+- ✅ **幂等性去重**: 基于 `event_id` 去重
+- ✅ **DLQ 处理**: 失败消息进入死信队列
+- ✅ **设备版本更新**: UP_OK 事件异步更新设备版本
 
 ### Day 6: ClickHouse 写入
 
@@ -780,11 +800,18 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 7.1 | 创建 ClickHouse Repository | 1h | ⏸️ |
-| 7.2 | 实现事件批量写入 | 2h | ⏸️ |
+| 7.1 | 创建 ClickHouse Repository | 1h | ✅ |
+| 7.2 | 实现事件批量写入 | 2h | ✅ |
 | 7.3 | 实现本地文件降级方案 | 1h | ⏸️ |
-| 7.4 | 实现设备版本异步更新 | 1h | ⏸️ |
-| 7.5 | 集成测试 | 1h | ⏸️ |
+| 7.4 | 实现设备版本异步更新 | 1h | ✅ |
+| 7.5 | 集成测试 | 1h | ✅ |
+
+#### 完成情况
+
+- ✅ **DeviceUpgradeEventAppService**: 批量写入升级事件
+- ✅ **自动生成 eventId 和 eventTime**
+- ✅ **异常处理和日志记录**
+- ⏸️ **本地文件降级**: 待实现
 
 ---
 
@@ -799,11 +826,17 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 8.1 | 设计策略快照数据结构 | 1h | ⏸️ |
+| 8.1 | 设计策略快照数据结构 | 1h | ✅ |
 | 8.2 | 实现快照写入服务 | 2h | ⏸️ |
 | 8.3 | 实现快照读取服务 | 1h | ⏸️ |
 | 8.4 | 实现版本指针原子切换 | 2h | ⏸️ |
-| 8.5 | 实现降级策略（Redis 不可用时） | 2h | ⏸️ |
+| 8.5 | 实现降级策略（Redis 不可用时） | 2h | ✅ |
+
+#### 完成情况
+
+- ✅ **策略查询**: 支持测试设备策略（ACTIVE + VERIFIED + TESTING）
+- ✅ **降级策略**: 直接查询数据库作为降级方案
+- ⏸️ **Redis 缓存层**: 待实现，当前直接查询数据库
 
 ### Day 8-9: 集成测试与验收
 
@@ -811,26 +844,32 @@ public class GrayReleaseService {
 
 | # | 任务 | 预计 | 状态 |
 |---|------|------|------|
-| 9.1 | 端到端测试 | 3h | ⏸️ |
+| 9.1 | 端到端测试 | 3h | ✅ |
 | 9.2 | 性能测试 (目标: P99 < 50ms) | 3h | ⏸️ |
-| 9.3 | 灰度分布均匀性测试 | 2h | ⏸️ |
-| 9.4 | 边界场景测试 | 2h | ⏸️ |
-| 9.5 | 数据一致性验证 | 2h | ⏸️ |
-| 9.6 | 代码审查与重构 | 2h | ⏸️ |
-| 9.7 | 文档更新 | 1h | ⏸️ |
+| 9.3 | 灰度分布均匀性测试 | 2h | ✅ |
+| 9.4 | 边界场景测试 | 2h | ✅ |
+| 9.5 | 数据一致性验证 | 2h | ✅ |
+| 9.6 | 代码审查与重构 | 2h | ✅ |
+| 9.7 | 文档更新 | 1h | ✅ |
+
+#### 完成情况
+
+- ✅ **灰度分布测试**: 所有比例测试通过
+- ✅ **边界场景**: 设备不存在、产品不存在、版本不匹配等
+- ⏸️ **性能测试**: 待执行
 
 ---
 
 ## 📊 进度跟踪
 
 ```
-Sprint 3: [████████░░░░░░░░░] 40%
+Sprint 3: [████████████████░░] 85%
 
 阶段 0: API 参数实现           ✅ 已完成
 阶段 1: 灰度发布与策略匹配     ✅ 已完成
-阶段 2: 下载 URL 与响应构建    🔄 进行中
-阶段 3: 上报事件处理           🔄 进行中
-阶段 4: 策略缓存与优化         ✅ 已完成
+阶段 2: 下载 URL 与响应构建    ✅ 已完成
+阶段 3: 上报事件处理           ✅ 已完成
+阶段 4: 策略缓存与优化         ⚠️ 部分完成 (缺 Redis 缓存层)
 
 总计: 12 天 (约 2.5 周)
 ```
@@ -844,7 +883,7 @@ Sprint 3: [████████░░░░░░░░░] 40%
 - [x] dev 参数临时标注测试设备功能
 - [x] 签名下载 URL 生成功能
 - [x] 上报事件异步写入 ClickHouse
-- [x] Redis 策略快照缓存生效
+- [ ] Redis 策略快照缓存生效（⚠️ 当前直接查数据库，缓存层待实现）
 - [ ] 单元测试覆盖率 ≥ 60%（当前约 50%）
 - [ ] 性能测试达标（P99 < 50ms）
 
@@ -900,6 +939,21 @@ Sprint 3: [████████░░░░░░░░░] 40%
 ---
 
 ## 📝 变更日志
+
+### 2026-03-03 (代码实现进度更新 - v1.4)
+- ✅ **阶段 0 完成**: 所有 API 参数实现任务已完成
+- ✅ **阶段 1 完成**: 策略匹配增强（版本范围、标签、时间窗口）
+- ✅ **阶段 2 完成**:
+  - SignedUrlService 支持 3 种签名模式
+  - CheckResult 响应构建完整
+- ✅ **阶段 3 完成**:
+  - UpgradeReportConsumer 批量消费 + 幂等去重 + DLQ
+  - DeviceUpgradeEventAppService 批量写入事件
+- ⚠️ **阶段 4 部分完成**:
+  - 策略查询直接访问数据库（降级方案已实现）
+  - Redis 缓存层待实现
+- 📊 **整体进度**: 40% → 85%
+- ⏸️ **待完成**: Redis 缓存层、本地文件降级、性能测试
 
 ### 2026-02-28 (评审修复 - v1.3)
 - ✅ **统一设备不存在逻辑**: 明确拒绝升级，不创建设备，删除矛盾描述
@@ -958,6 +1012,33 @@ Sprint 3: [████████░░░░░░░░░] 40%
 ---
 
 ## 📋 代码审查报告
+
+### 已实现文件清单
+
+**核心服务层 (Application)**:
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| `UpgradeCheckService.java` | 升级检查核心服务 | ✅ |
+| `GrayReleaseService.java` | 灰度发布算法服务 | ✅ |
+| `FirmwareVersionLookupService.java` | 固件版本查找服务 | ✅ |
+| `SignedUrlService.java` | 签名 URL 接口 | ✅ |
+| `SelfSignedUrlServiceImpl.java` | 自签名 URL 实现 | ✅ |
+| `UpgradeReportAppService.java` | 上报应用服务 | ✅ |
+| `DeviceUpgradeEventAppService.java` | 设备升级事件服务 | ✅ |
+
+**控制器层 (Adapter/API)**:
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| `UpgradeCheckController.java` | 升级检查 API（新老路径） | ✅ |
+| `UpgradeReportController.java` | 上报 API | ✅ |
+
+**基础设施层 (Infrastructure)**:
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| `UpgradeReportConsumer.java` | MQ 消费者（批量+幂等） | ✅ |
+| `ProductRepositoryImpl.java` | 产品仓储实现 | ✅ |
+| `FirmwareVersionRepositoryImpl.java` | 固件版本仓储实现 | ✅ |
+| `UpgradePolicyRepositoryImpl.java` | 策略仓储实现（⚠️ 缓存待实现） | ⚠️ |
 
 ### 灰度发布模块审查
 
