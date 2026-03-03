@@ -96,7 +96,11 @@ const getDefaultValue = (): string | number | boolean => {
  */
 const confirm = () => {
   if (props.field && internalValue.value !== undefined) {
-    emit('confirm', internalValue.value)
+    // 字符串类型自动去除首尾空格
+    const value = typeof internalValue.value === 'string'
+      ? internalValue.value.trim()
+      : internalValue.value
+    emit('confirm', value)
     visible.value = false
   }
 }

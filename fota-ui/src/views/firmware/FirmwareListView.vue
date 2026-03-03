@@ -542,7 +542,7 @@ onMounted(() => {
         prop="version"
         :label="t('firmware.version')"
         min-width="160"
-        show-overflow-tooltip
+        show-overflow-tooltipx
       />
       <el-table-column
         prop="internalVersion"

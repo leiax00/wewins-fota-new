@@ -32,7 +32,7 @@ const normalizeI18nValue = (value: unknown): I18nFieldValue => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   const next: I18nFieldValue = {}
   Object.entries(value as Record<string, unknown>).forEach(([k, v]) => {
-    if (typeof v === 'string') next[k] = v
+    if (typeof v === 'string') next[k] = v.trim()  // 自动去除首尾空格
     else if (v != null) next[k] = String(v)
   })
   return next
