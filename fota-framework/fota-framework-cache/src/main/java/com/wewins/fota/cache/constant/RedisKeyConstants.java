@@ -24,7 +24,6 @@ package com.wewins.fota.cache.constant;
  *   <li>fota:product:{productId} - 产品信息缓存</li>
  *   <li>fota:firmware:{versionId} - 固件信息缓存</li>
  *   <li>fota:cache:list:product:policy:{productId}:{type} - 产品策略列表（ID集合）</li>
- *   <li>fota:cache:list:product:firmware:{productId} - 产品固件列表（ID集合）</li>
  *   <li>fota:cache:index:product:{productId} - 产品缓存索引</li>
  *   <li>fota:config:{region} - 配置快照</li>
  * </ul>
@@ -138,17 +137,6 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long FIRMWARE_CACHE_TTL_SECONDS = 30L * 24 * 60 * 60;
-
-    /**
-     * 产品固件列表缓存 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_LIST_KEY_TEMPLATE, productId)
-     * </p>
-     * <p>
-     * 示例：fota:cache:firmware:list:1001
-     * </p>
-     */
-    public static final String FIRMWARE_LIST_KEY_TEMPLATE = "fota:cache:firmware:list:%s";
 
     /**
      * 配置信息缓存 TTL（6 小时）
@@ -448,20 +436,6 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
-
-    /**
-     * 产品固件列表 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId)
-     * </p>
-     * <p>
-     * 示例：fota:cache:list:product:firmware:1001
-     * </p>
-     * <p>
-     * 说明：存储产品关联的所有固件版本 ID 集合（Keys Pattern）
-     * </p>
-     */
-    public static final String PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE = "fota:cache:list:product:firmware:%s";
 
     /**
      * 固件标签索引 Key 模板

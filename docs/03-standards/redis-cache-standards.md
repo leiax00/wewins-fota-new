@@ -170,14 +170,13 @@ public List<UpgradePolicy> getProductPolicies(Long productId, boolean includeTes
 
 ### Keys Pattern（推荐）
 
-**适用场景**：产品策略列表、产品固件列表
+**适用场景**：产品策略列表
 
 **存储结构**：
 
 ```redis
 # 列表缓存（只存 ID）
 fota:cache:list:product:policy:{productId}:{type}    Type: Set
-fota:cache:list:product:firmware:{productId}         Type: Set
 
 # 单个对象缓存
 fota:policy:{policyId}                               Type: String (JSON)
@@ -187,27 +186,17 @@ fota:firmware:{versionId}                            Type: String (JSON)
 **读取流程**：
 
 ```java
-public List<FirmwareVersion> findByProductId(Long productId) {
-    // 1. 获取固件 ID 列表
-    String idsKey = String.format(PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-    Set<Object> versionIds = redisTemplate.opsForSet().members(idsKey);
-    
-    if (versionIds == null || versionIds.isEmpty()) {
-        // 缓存未命中，从数据库加载
-        return loadFromDatabase(productId);
+public List<UpgradePolicy> findByProductId(Long productId, String type) {
+    String idsKey = String.format(PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, type);
+    Set<Object> policyIds = redisTemplate.opsForSet().members(idsKey);
+    if (policyIds == null || policyIds.isEmpty()) {
+        return loadFromDatabase(productId, type);
     }
-    
-    // 2. 批量获取固件详情（MGET）
-    List<String> firmwareKeys = versionIds.stream()
-        .map(id -> String.format(FIRMWARE_KEY_TEMPLATE, id))
+    List<String> policyKeys = policyIds.stream()
+        .map(id -> String.format(POLICY_KEY_TEMPLATE, id))
         .collect(Collectors.toList());
-    
-    List<Object> firmwares = redisTemplate.opsForValue().multiGet(firmwareKeys);
-    
-    return firmwares.stream()
-        .filter(Objects::nonNull)
-        .map(obj -> (FirmwareVersion) obj)
-        .collect(Collectors.toList());
+    List<Object> policies = redisTemplate.opsForValue().multiGet(policyKeys);
+    return policies.stream().filter(Objects::nonNull).map(obj -> (UpgradePolicy) obj).collect(Collectors.toList());
 }
 ```
 
@@ -215,19 +204,18 @@ public List<FirmwareVersion> findByProductId(Long productId) {
 
 | 操作 | Embedded Pattern | Keys Pattern | 收益 |
 |------|-----------------|--------------|------|
-| **新增固件** | 读写 100KB | 写 5KB + 1个ID | **95%** ↓ |
-| **更新固件** | 读写 100KB | 写 5KB | **95%** ↓ |
-| **删除固件** | 读写 100KB | 删 5KB + 1个ID | **95%** ↓ |
+| **新增策略** | 读写 100KB | 写 5KB + 1个ID | **95%** ↓ |
+| **更新策略** | 读写 100KB | 写 5KB | **95%** ↓ |
+| **删除策略** | 读写 100KB | 删 5KB + 1个ID | **95%** ↓ |
 
 **命名规范**：
 
 ```java
 // ✅ 正确：去掉 ids 层级，Redis Type 本身能区分
 fota:cache:list:product:policy:{productId}:{type}      // Type: Set = ID列表
-fota:cache:list:product:firmware:{productId}           // Type: Set = ID列表
 
 // ❌ 错误：不必要的 ids 层级
-fota:cache:list:product:firmware:ids:{productId}       // 冗余
+fota:cache:list:product:policy:ids:{productId}:{type}  // 冗余
 ```
 
 ### Embedded Pattern（不推荐用于列表）
@@ -235,15 +223,15 @@ fota:cache:list:product:firmware:ids:{productId}       // 冗余
 **问题**：
 
 ```java
-// 场景：产品有 50 个固件版本，每个 1KB
+// 场景：产品有 50 个策略项，每个 1KB
 // 当前缓存：完整列表（50KB）
 
-// 新增一个固件版本
-1. GET fota:cache:product:firmware:1001     // 读取 50KB
-2. 反序列化 → List<FirmwareVersion>         // 解析 50 个对象
-3. firmwareList.add(newFirmware);           // 新增第 51 个
+// 新增一个策略项
+1. GET fota:cache:product:policy:1001:all   // 读取 50KB
+2. 反序列化 → List<UpgradePolicy>           // 解析 50 个对象
+3. policyList.add(newPolicy);               // 新增第 51 个
 4. 序列化 → JSON (51KB)                     // 序列化 51 个对象
-5. SET fota:cache:product:firmware:1001     // 写入 51KB
+5. SET fota:cache:product:policy:1001:all   // 写入 51KB
 
 // 总流量：101KB（读 50KB + 写 51KB）
 // 更新范围：全量更新（50→51个对象）
@@ -255,14 +243,9 @@ fota:cache:list:product:firmware:ids:{productId}       // 冗余
 
 ### 迁移计划
 
-#### 阶段 1：固件列表缓存（立即）
-- ✅ 新建，无历史包袱
-- ✅ 验证 Keys Pattern 可行性
-
-#### 阶段 2：策略列表缓存（1-2周后）
-- ⚠️ 需要修改现有 `RedisPolicyCacheRepository`
-- ⚠️ 需要充分测试
-- ✅ 收益明显（更新范围减少 95%）
+#### 阶段 1：策略列表缓存（立即）
+- ✅ 完成迁移到 Keys Pattern
+- ✅ 更新范围显著减少
 
 ---
 
@@ -849,7 +832,7 @@ public class RedisDeviceActivityBitmapRepository {
 
 **设计决策**：
 - 列表缓存采用 **Keys Pattern**（ID列表 + MGET）
-- 命名简化：去掉 `ids` 层级（`fota:cache:list:product:firmware:{productId}`）
+- 命名简化：去掉 `ids` 层级（`fota:cache:list:product:policy:{productId}:{type}`）
 - 设备缓存精简：保留 DeviceCache，包含策略匹配必需字段（tags、importBatchId）
 
 ### v1.0 (2026-02-17)

@@ -92,12 +92,11 @@ fota:{module}:{subtype}:{identifiers}
 
 | 数据类型 | 键模板 | 示例 | 数据结构 |
 |----------|--------|------|----------|
-| **产品策略列表** | `fota:cache:product:policy:{productId}:{type}` | `fota:cache:product:policy:1001:prod` | String (JSON) |
+| **产品策略列表** | `fota:cache:list:product:policy:{productId}:{type}` | `fota:cache:list:product:policy:1001:prod` | Set |
 | **单个策略详情** | `fota:policy:{policyId}` | `fota:policy:101` | String (JSON) |
 | **产品信息** | `fota:product:{productId}` | `fota:product:1001` | String (JSON) |
 | **产品型号索引** | `fota:cache:product:model:{model}` | `fota:cache:product:model:M476` | String |
 | **固件详情** | `fota:firmware:{versionId}` | `fota:firmware:201` | String (JSON) |
-| **产品固件列表** | `fota:cache:firmware:list:{productId}` | `fota:cache:firmware:list:1001` | Set |
 
 ### 3.3 缓存索引键（用于批量失效）
 
@@ -112,9 +111,8 @@ fota:{module}:{subtype}:{identifiers}
 ```
 fota:cache:index:product:1001 (SET)
     ├── fota:product:1001
-    ├── fota:cache:product:policy:1001:all
-    ├── fota:cache:product:policy:1001:prod
-    └── fota:cache:firmware:list:1001
+    ├── fota:cache:list:product:policy:1001:all
+    └── fota:cache:list:product:policy:1001:prod
 ```
 
 ---
@@ -379,9 +377,8 @@ long actualTtl = getRandomizedTtl(baseTtl); // 21.6h ~ 26.4h
 
 ```java
 // 新增键常量
-public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:product:policy:%s:%s";
+public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:list:product:policy:%s:%s";
 public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
-public static final String PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE = "fota:cache:firmware:list:%s";
 public static final String PRODUCT_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:product:%s";
 public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
 public static final String FIRMWARE_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:firmware:%s";
@@ -539,7 +536,7 @@ fota:
 ├─────────────────────────────────────────────────────────┤
 │ 固件修改                                                 │
 │   ├─ 固件版本上传/发布                                   │
-│   │   └─ 失效: 固件缓存 + 产品固件列表 + 相关策略缓存    │
+│   │   └─ 失效: 固件缓存 + 相关策略缓存                 │
 │   ├─ 固件标签变更（stable/beta等）                       │
 │   │   └─ 失效: 固件标签索引 + 固件缓存                   │
 │   └─ 固件状态变更（READY/DISABLED等）                    │
@@ -562,8 +559,8 @@ fota:
 | 操作 | 失效的缓存键 | 失效方式 |
 |------|------------|---------|
 | **产品基本信息修改** | `fota:product:{productId}` | 直接删除 |
-| | `fota:cache:product:policy:{productId}:all` | 通过索引批量删除 |
-| | `fota:cache:product:policy:{productId}:prod` | 通过索引批量删除 |
+| | `fota:cache:list:product:policy:{productId}:all` | 通过索引批量删除 |
+| | `fota:cache:list:product:policy:{productId}:prod` | 通过索引批量删除 |
 | **产品状态变更** | `fota:product:{productId}` | 直接删除 |
 | | `fota:cache:index:product:{productId}` | 获取所有关联键并删除 |
 | | `fota:device:*` (该产品的设备) | 按需删除（可选） |
@@ -591,10 +588,6 @@ public class ProductCacheInvalidator {
         // 2. 通过索引删除所有关联的策略缓存
         cacheIndexService.invalidateProductPolicyCache(productId);
         
-        // 3. 删除产品固件列表缓存
-        String firmwareListKey = String.format(PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-        redisTemplate.delete(firmwareListKey);
-        
         log.info("产品缓存已失效: productId={}", productId);
     }
     
@@ -619,10 +612,10 @@ public class ProductCacheInvalidator {
 | 操作 | 失效的缓存键 | 失效方式 |
 |------|------------|---------|
 | **策略创建/更新/删除** | `fota:policy:{policyId}` | 直接删除 |
-| | `fota:cache:product:policy:{productId}:all` | 删除产品策略列表 |
-| | `fota:cache:product:policy:{productId}:prod` | 删除产品策略列表 |
+| | `fota:cache:list:product:policy:{productId}:all` | 删除产品策略列表 |
+| | `fota:cache:list:product:policy:{productId}:prod` | 删除产品策略列表 |
 | **策略灰度调整** | `fota:policy:{policyId}` | 直接删除（立即生效） |
-| | `fota:cache:product:policy:{productId}:*` | 删除产品策略列表 |
+| | `fota:cache:list:product:policy:{productId}:*` | 删除产品策略列表 |
 
 **实现示例**：
 
@@ -668,7 +661,6 @@ public class PolicyCacheInvalidator {
 | 操作 | 失效的缓存键 | 失效方式 |
 |------|------------|---------|
 | **固件版本发布** | `fota:firmware:{versionId}` | 直接删除 |
-| | `fota:cache:firmware:list:{productId}` | 删除产品固件列表 |
 | | `fota:cache:firmware:tag:{productId}:{tag}` | 删除标签索引 |
 | **固件标签变更** | `fota:cache:firmware:tag:{productId}:{oldTag}` | 删除旧标签 |
 | | `fota:cache:firmware:tag:{productId}:{newTag}` | 删除新标签 |
@@ -691,11 +683,7 @@ public class FirmwareCacheInvalidator {
         String firmwareKey = String.format(FIRMWARE_KEY_TEMPLATE, versionId);
         redisTemplate.delete(firmwareKey);
         
-        // 2. 删除产品固件列表
-        String firmwareListKey = String.format(PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-        redisTemplate.delete(firmwareListKey);
-        
-        // 3. 删除标签索引（如果有）
+        // 2. 删除标签索引（如果有）
         if (tag != null && !tag.isBlank()) {
             String tagKey = String.format(FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag);
             redisTemplate.delete(tagKey);

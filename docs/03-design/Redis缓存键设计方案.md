@@ -49,7 +49,7 @@
    - 内存占用：~500 bytes/设备（1000万设备 ≈ 5GB）
 
 3. **命名简化**
-   - 去掉 `ids` 层级（`fota:cache:list:product:firmware:{productId}`）
+- 去掉 `ids` 层级（`fota:cache:list:product:policy:{productId}:{type}`）
    - Redis Type 本身能区分（Set = ID 列表，String = 完整对象）
 
 详细设计决策参考：`docs/02-architecture/cache-design-decisions.md`
@@ -93,7 +93,6 @@ fota:firmware:201                        # 固件详情
 
 # 列表缓存（Type: Set）
 fota:cache:list:product:policy:1001:all  # 产品策略列表（ID集合）
-fota:cache:list:product:firmware:1001    # 产品固件列表（ID集合）
 
 # 缓存索引（Type: Set）
 fota:cache:index:product:1001            # 产品缓存索引
@@ -134,7 +133,6 @@ fota:ratelimit:check:123:202603041030    # 限流
 | `fota:cache:index:product:{productId}` | Set | 产品缓存索引 | 24h | ✅ 滑动续期 | `RedisProductCacheRepository` | `PRODUCT_CACHE_INDEX_KEY_TEMPLATE` |
 | **固件缓存** |
 | `fota:firmware:{versionId}` | String (JSON) | 固件详情 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_KEY_TEMPLATE` |
-| `fota:cache:list:product:firmware:{productId}` | Set | 固件列表（ID集合） | 30d | ✅ 滑动续期 | `RedisFirmwareListCacheRepository` | `PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE` |
 | `fota:cache:firmware:tag:{productId}:{tag}` | Set | 固件标签索引 | 30d | ✅ 滑动续期 | - | `FIRMWARE_TAG_INDEX_KEY_TEMPLATE` |
 | `fota:cache:index:firmware:{versionId}` | Set | 固件缓存索引 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_CACHE_INDEX_KEY_TEMPLATE` |
 | **策略快照** |
@@ -179,7 +177,7 @@ private void renewTtl(String key) {
 |---------|---------|---------|------|
 | **String (JSON)** | 单个对象缓存 | 12+ | 设备、策略、产品、固件 |
 | **String (Bitmap)** | 设备活跃度跟踪 | 2 | 活跃度 Bitmap、BITOP 临时键 |
-| **Set** | ID 列表、缓存索引 | 8+ | 策略列表、固件列表、缓存索引 |
+| **Set** | ID 列表、缓存索引 | 8+ | 策略列表、固件标签索引、缓存索引 |
 | **Hash** | 策略快照数据 | 1 | 策略快照 |
 
 ---
@@ -188,13 +186,12 @@ private void renewTtl(String key) {
 
 ### 4.1 Keys Pattern（推荐用于列表缓存）
 
-**适用场景**：产品策略列表、产品固件列表
+**适用场景**：产品策略列表
 
 **存储结构**：
 ```redis
 # 列表缓存（只存 ID）
 fota:cache:list:product:policy:{productId}:{type}    Type: Set
-fota:cache:list:product:firmware:{productId}         Type: Set
 
 # 单个对象缓存
 fota:policy:{policyId}                               Type: String (JSON)
@@ -203,58 +200,19 @@ fota:firmware:{versionId}                            Type: String (JSON)
 
 **读取流程**：
 ```java
-// 1. 获取固件 ID 列表
-String idsKey = String.format(PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-Set<Object> versionIds = redisTemplate.opsForSet().members(idsKey);
+String idsKey = String.format(PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, type);
+Set<Object> policyIds = redisTemplate.opsForSet().members(idsKey);
 
-if (versionIds == null || versionIds.isEmpty()) {
-    return loadFromDatabase(productId);
+if (policyIds == null || policyIds.isEmpty()) {
+    return loadFromDatabase(productId, type);
 }
 
-// 2. 批量获取固件详情（MGET）
-List<String> firmwareKeys = versionIds.stream()
-    .map(id -> String.format(FIRMWARE_KEY_TEMPLATE, id))
+List<String> policyKeys = policyIds.stream()
+    .map(id -> String.format(POLICY_KEY_TEMPLATE, id))
     .collect(Collectors.toList());
 
-List<Object> firmwares = redisTemplate.opsForValue().multiGet(firmwareKeys);
-
-return firmwares.stream()
-    .filter(Objects::nonNull)
-    .map(obj -> (FirmwareVersion) obj)
-    .collect(Collectors.toList());
+List<Object> policies = redisTemplate.opsForValue().multiGet(policyKeys);
 ```
-
-**写入流程**：
-```java
-// 1. 缓存每个固件对象
-for (FirmwareVersion firmware : firmwareList) {
-    firmwareCacheRepository.cacheFirmware(firmware);
-}
-
-// 2. 缓存固件 ID 列表
-String idsKey = String.format(PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-Long[] versionIds = firmwareList.stream()
-    .map(FirmwareVersion::getId)
-    .toArray(Long[]::new);
-
-redisTemplate.opsForSet().add(idsKey, versionIds);
-redisTemplate.expire(idsKey, Duration.ofSeconds(
-    RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.FIRMWARE_CACHE_TTL_SECONDS)
-));
-```
-
-**更新优势**：
-
-| 操作 | Embedded Pattern | Keys Pattern | 收益 |
-|------|------------------|--------------|------|
-| **新增固件** | 读写 100KB | 写 1KB + 添加 1个 ID | **99%** ↓ |
-| **更新固件** | 读写 100KB | 写 1KB | **99%** ↓ |
-| **删除固件** | 读写 100KB | 删 1KB + 删除 1个 ID | **99%** ↓ |
-| **读取列表** | 1次 GET | 1次 SMEMBERS + 1次 MGET | 略慢 ⚠️ |
-
-**迁移计划**：
-- **阶段 1（立即）**：固件列表缓存（新建，无历史包袱）
-- **阶段 2（1-2周后）**：策略列表缓存（需要重构 `RedisPolicyCacheRepository`）
 
 ### 4.2 Embedded Pattern（不推荐用于列表）
 
@@ -614,72 +572,7 @@ public Optional<FirmwareVersion> findById(Long versionId) {
 }
 ```
 
-### 8.2 固件列表缓存（Keys Pattern）
-
-**Key 模板**：`fota:cache:list:product:firmware:{productId}`  
-**数据结构**：Set（版本 ID 集合）  
-**TTL**：30 天（滑动续期）  
-**实现类**：`RedisFirmwareListCacheRepository.java`
-
-**示例**：
-```redis
-# 产品 1001 的固件列表
-fota:cache:list:product:firmware:1001  →  Set {201, 202, 203, 204}
-```
-
-**读取流程**（Keys Pattern）：
-```java
-// RedisFirmwareListCacheRepository.java
-@Override
-public Optional<List<FirmwareVersion>> findByProductId(Long productId) {
-    // 1. 获取固件 ID 列表
-    String idsKey = buildFirmwareIdsKey(productId);
-    Set<Object> versionIds = redisTemplate.opsForSet().members(idsKey);
-    
-    if (versionIds == null || versionIds.isEmpty()) {
-        return Optional.empty();
-    }
-    
-    // 2. 批量获取固件详情（MGET）
-    List<String> firmwareKeys = versionIds.stream()
-        .map(id -> buildFirmwareKey((Long) id))
-        .collect(Collectors.toList());
-    
-    List<Object> firmwares = redisTemplate.opsForValue().multiGet(firmwareKeys);
-    
-    // 3. 过滤 null 值并返回
-    List<FirmwareVersion> result = firmwares.stream()
-        .filter(Objects::nonNull)
-        .map(obj -> (FirmwareVersion) obj)
-        .collect(Collectors.toList());
-    
-    return Optional.of(result);
-}
-```
-
-**写入流程**：
-```java
-@Override
-public void cacheFirmwareList(Long productId, List<FirmwareVersion> firmwareList) {
-    // 1. 缓存每个固件对象
-    for (FirmwareVersion firmware : firmwareList) {
-        firmwareCacheRepository.cacheFirmware(firmware);
-    }
-    
-    // 2. 缓存固件 ID 列表
-    String idsKey = buildFirmwareIdsKey(productId);
-    Long[] versionIds = firmwareList.stream()
-        .map(FirmwareVersion::getId)
-        .toArray(Long[]::new);
-    
-    redisTemplate.opsForSet().add(idsKey, versionIds);
-    redisTemplate.expire(idsKey, Duration.ofSeconds(
-        RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.FIRMWARE_CACHE_TTL_SECONDS)
-    ));
-}
-```
-
-### 8.3 固件标签索引
+### 8.2 固件标签索引
 
 **Key 模板**：`fota:cache:firmware:tag:{productId}:{tag}`  
 **数据结构**：Set（版本 ID 集合）  
@@ -743,8 +636,7 @@ public List<FirmwareVersion> findByTag(Long productId, String tag) {
 fota:cache:index:product:1001  →  Set {
   "fota:product:1001",
   "fota:cache:list:product:policy:1001:all",
-  "fota:cache:list:product:policy:1001:prod",
-  "fota:cache:list:product:firmware:1001"
+  "fota:cache:list:product:policy:1001:prod"
 }
 ```
 
@@ -1321,6 +1213,5 @@ public class RedisDeviceCacheRepository {
   - `fota-service/src/main/java/com/wewins/fota/infra/cache/RedisPolicyCacheRepository.java`
   - `fota-service/src/main/java/com/wewins/fota/infra/cache/RedisProductCacheRepository.java`
   - `fota-service/src/main/java/com/wewins/fota/infra/cache/RedisFirmwareCacheRepository.java`
-  - `fota-service/src/main/java/com/wewins/fota/infra/cache/RedisFirmwareListCacheRepository.java`
   - `fota-service/src/main/java/com/wewins/fota/infra/cache/RedisPolicySnapshotRepository.java`
   - `fota-framework-cache/src/main/java/com/wewins/fota/cache/bitmap/RedisDeviceActivityBitmapRepository.java`

@@ -20,22 +20,22 @@ FOTA 系统需要实现高性能的缓存机制，支撑 10,000+ QPS 和 99% 请
 
 ### 问题描述
 
-产品策略列表和固件列表如何缓存？
+产品策略列表如何缓存？
 
 **选项 A：Embedded Pattern（String JSON）**
 ```redis
-Key: fota:cache:product:firmware:1001
-Value: [FirmwareV1, FirmwareV2, ..., FirmwareV50]  # 完整对象列表
+Key: fota:cache:product:policy:1001:all
+Value: [Policy1, Policy2, ..., Policy50]  # 完整对象列表
 ```
 
 **选项 B：Keys Pattern（ID列表 + MGET）**
 ```redis
-Key: fota:cache:list:product:firmware:1001
+Key: fota:cache:list:product:policy:1001:all
 Type: Set
 Members: [1, 2, 3, ..., 50]  # ID 列表
 
-Key: fota:firmware:1
-Key: fota:firmware:2
+Key: fota:policy:1
+Key: fota:policy:2
 ...
 ```
 
@@ -46,8 +46,8 @@ Key: fota:firmware:2
 ### 理由
 
 1. **更新范围小**
-   - Embedded Pattern：修改 1 个固件 → 重写整个列表（50KB）
-   - Keys Pattern：修改 1 个固件 → 只更新 1 个对象（1KB）
+   - Embedded Pattern：修改 1 个策略 → 重写整个列表（50KB）
+   - Keys Pattern：修改 1 个策略 → 只更新 1 个对象（1KB）
    - **收益：更新范围减少 95%**
 
 2. **并发安全性高**
@@ -55,7 +55,7 @@ Key: fota:firmware:2
    - Keys Pattern：每个对象独立更新 → 无冲突
 
 3. **与现有架构一致**
-   - 已有 `FirmwareCacheRepository` 缓存单个固件
+   - 已有单对象缓存能力
    - 只需新增 ID 列表缓存
 
 4. **性能可接受**
@@ -64,11 +64,7 @@ Key: fota:firmware:2
 
 ### 实施计划
 
-**阶段 1（立即）**：固件列表缓存
-- 新建 `FirmwareListCacheRepository`
-- 实现 Keys Pattern
-
-**阶段 2（1-2周后）**：策略列表缓存
+**阶段 1（立即）**：策略列表缓存
 - 重构 `RedisPolicyCacheRepository`
 - 迁移到 Keys Pattern
 
@@ -80,8 +76,8 @@ Key: fota:firmware:2
 
 列表缓存的 Key 是否需要 `ids` 层级？
 
-**选项 A**：`fota:cache:list:product:firmware:ids:{productId}`
-**选项 B**：`fota:cache:list:product:firmware:{productId}`
+**选项 A**：`fota:cache:list:product:policy:ids:{productId}:{type}`
+**选项 B**：`fota:cache:list:product:policy:{productId}:{type}`
 
 ### 决策结果
 
@@ -109,7 +105,6 @@ fota:firmware:{versionId}
 
 # 列表缓存（Type: Set）
 fota:cache:list:product:policy:{productId}:{type}
-fota:cache:list:product:firmware:{productId}
 
 # 缓存索引（Type: Set）
 fota:cache:index:product:{productId}

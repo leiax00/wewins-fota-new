@@ -18,9 +18,6 @@ public class FirmwareCacheInvalidator {
         String firmwareKey = String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId);
         redisTemplate.delete(firmwareKey);
         
-        String firmwareListKey = String.format(RedisKeyConstants.PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-        redisTemplate.delete(firmwareListKey);
-        
         if (tag != null && !tag.isBlank()) {
             String tagKey = String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag);
             redisTemplate.delete(tagKey);

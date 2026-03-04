@@ -20,9 +20,6 @@ public class ProductCacheInvalidator {
         
         cacheIndexService.invalidateProductPolicyCache(productId);
         
-        String firmwareListKey = String.format(RedisKeyConstants.PRODUCT_FIRMWARE_LIST_KEY_TEMPLATE, productId);
-        redisTemplate.delete(firmwareListKey);
-        
         log.info("产品缓存已失效: productId={}", productId);
     }
 
