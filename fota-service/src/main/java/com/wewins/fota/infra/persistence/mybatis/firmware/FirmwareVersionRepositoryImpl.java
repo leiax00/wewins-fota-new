@@ -2,9 +2,10 @@ package com.wewins.fota.infra.persistence.mybatis.firmware;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.firmware.cache.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.infra.persistence.mybatis.firmware.mapper.FirmwareVersionMapper;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
+import com.wewins.fota.infra.persistence.mybatis.firmware.mapper.FirmwareVersionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
@@ -25,9 +26,23 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
 
     private final FirmwareVersionMapper firmwareVersionMapper;
 
+    private final FirmwareCacheRepository firmwareCacheRepository;
+
     @Override
     public Optional<FirmwareVersion> findById(Long id) {
-        return Optional.ofNullable(firmwareVersionMapper.selectById(id));
+        Optional<FirmwareVersion> cached = firmwareCacheRepository.findById(id);
+        if (cached.isPresent()) {
+            log.debug("固件缓存命中: versionId={}", id);
+            return cached;
+        }
+
+        FirmwareVersion firmware = firmwareVersionMapper.selectById(id);
+        if (firmware != null) {
+            firmwareCacheRepository.cacheFirmware(firmware);
+            log.debug("固件缓存已写入: versionId={}", id);
+        }
+
+        return Optional.ofNullable(firmware);
     }
 
     @Override
@@ -35,7 +50,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        return firmwareVersionMapper.selectBatchIds(ids);
+        return firmwareVersionMapper.selectByIds(ids);
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
-import com.wewins.fota.application.upgrade.UpgradeCheckService.CheckResult;
+import com.wewins.fota.application.upgrade.dto.CheckResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,7 +36,7 @@ class UpgradeCheckServiceCheckIntervalTest {
      * 调用 private 方法进行测试
      */
     private void invokeAdjustCheckInterval(CheckResult result, Integer auto) throws Exception {
-        adjustCheckIntervalMethod.invoke(new UpgradeCheckService(null, null, null, null, null, null,
+        adjustCheckIntervalMethod.invoke(new UpgradeCheckService(null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null), result, auto);
     }
 

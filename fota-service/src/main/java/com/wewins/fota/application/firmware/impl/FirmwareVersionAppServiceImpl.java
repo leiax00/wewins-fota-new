@@ -7,8 +7,11 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
+import com.wewins.fota.infra.cache.event.ChangeType;
+import com.wewins.fota.infra.cache.event.FirmwareChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,7 @@ import java.util.Objects;
 public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService {
 
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Page<FirmwareVersion> pageFirmwareVersions(FirmwareVersionPageReqDTO reqDTO) {
@@ -91,6 +95,7 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         firmwareVersionRepository.create(firmwareVersion);
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), null, ChangeType.CREATED));
 
         log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}, internalVersion={}",
                 firmwareVersion.getId(), firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
@@ -127,6 +132,7 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         firmwareVersionRepository.updateById(firmwareVersion);
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), null, ChangeType.UPDATED));
 
         log.info("固件版本更新成功: firmwareVersionId={}", firmwareVersion.getId());
         return firmwareVersion;
@@ -144,9 +150,10 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         // 检查固件版本是否存在
-        getById(id);
+        FirmwareVersion existingVersion = getById(id);
 
         boolean result = firmwareVersionRepository.deleteById(id);
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, existingVersion.getProductId(), id, null, ChangeType.DELETED));
         log.info("固件版本删除成功: firmwareVersionId={}, result={}", id, result);
         return result;
     }

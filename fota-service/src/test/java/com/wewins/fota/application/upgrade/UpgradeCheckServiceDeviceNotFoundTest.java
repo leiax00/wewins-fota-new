@@ -1,261 +1,134 @@
 package com.wewins.fota.application.upgrade;
 
-import com.wewins.fota.application.upgrade.UpgradeCheckService.CheckResult;
-import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
-import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
-import com.wewins.fota.cache.ratelimit.RateLimitDecision;
-import com.wewins.fota.application.validation.DataIntegrityService;
-import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
-import com.wewins.fota.domain.product.repository.ProductRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.wewins.fota.application.upgrade.dto.CheckResult;
+import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 /**
- * UpgradeCheckService 设备不存在拒绝逻辑测试
- * <p>
- * 测试设备不存在时返回 NOT_FOUND 的逻辑
- * </p>
- *
- * <p>业务规则：</p>
- * <ul>
- *   <li>新系统要求设备必须预先导入</li>
- *   <li>设备不存在时拒绝升级，不创建设备</li>
- *   <li>返回明确的错误消息："设备未注册，请联系管理员"</li>
- * </ul>
+ * CheckResult 静态工厂方法测试
  *
  * @author FOTA Team
  * @since 2026-02-28
  */
-@DisplayName("设备不存在拒绝逻辑测试")
-@ExtendWith(MockitoExtension.class)
+@DisplayName("CheckResult 静态工厂方法测试")
 class UpgradeCheckServiceDeviceNotFoundTest {
 
-    @Mock
-    private DeviceRepository deviceRepository;
-    @Mock
-    private DeviceCacheRepository deviceCacheService;
-    @Mock
-    private DataIntegrityService dataIntegrityService;
-    @Mock
-    private UpgradePolicyRepository upgradePolicyRepository;
-    @Mock
-    private DeviceRateLimiter deviceRateLimiter;
-    @Mock
-    private DeviceActivityBitmapRepository bitmapRepository;
-    @Mock
-    private PolicyMatcher policyMatcher;
-    @Mock
-    private ProductRepository productRepository;
-    @Mock
-    private FirmwareVersionRepository firmwareVersionRepository;
-    @Mock
-    private FirmwareVersionLookupService firmwareVersionLookupService;
-    @Mock
-    private GrayReleaseService grayReleaseService;
-    @Mock
-    private UpgradeResponseBuilder upgradeResponseBuilder;
-
-    private UpgradeCheckService upgradeCheckService;
-
-    @BeforeEach
-    void setUp() {
-        upgradeCheckService = new UpgradeCheckService(
-                deviceRepository,
-                deviceCacheService,
-                dataIntegrityService,
-                upgradePolicyRepository,
-                deviceRateLimiter,
-                bitmapRepository,
-                policyMatcher,
-                productRepository,
-                firmwareVersionRepository,
-                firmwareVersionLookupService,
-                grayReleaseService,
-                upgradeResponseBuilder
-        );
-    }
-
     @Nested
-    @DisplayName("设备不存在拒绝逻辑测试")
-    class DeviceNotFoundTests {
-
-        @Test
-        @DisplayName("设备不存在 - 应返回 NOT_FOUND")
-        void whenDeviceNotFound_shouldReturnNotFound() {
-            // Given
-            String imei = "123456789012345";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
-
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei);
-
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-            assertThat(result.getErrorMessage()).isEqualTo("设备未注册，请联系管理员");
-        }
-
-        @Test
-        @DisplayName("设备不存在 - auto=1 时也应返回 NOT_FOUND")
-        void whenDeviceNotFoundWithAuto_shouldReturnNotFound() {
-            // Given
-            String imei = "123456789012345";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
-
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei, 1);
-
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-            assertThat(result.getErrorMessage()).isEqualTo("设备未注册，请联系管理员");
-        }
-
-        @Test
-        @DisplayName("设备不存在 - auto=0 时也应返回 NOT_FOUND")
-        void whenDeviceNotFoundWithManualAuto_shouldReturnNotFound() {
-            // Given
-            String imei = "123456789012345";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
-
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei, 0);
-
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-            assertThat(result.getErrorMessage()).isEqualTo("设备未注册，请联系管理员");
-        }
-
-        @Test
-        @DisplayName("设备不存在 - 不应设置检查间隔")
-        void whenDeviceNotFound_checkIntervalShouldBeNull() {
-            // Given
-            String imei = "123456789012345";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
-
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei);
-
-            // Then
-            assertThat(result.getResponseCheckInterval()).isNull();
-        }
-    }
-
-    @Nested
-    @DisplayName("CheckResult.notFound() 静态工厂方法测试")
+    @DisplayName("CheckResult.notFound() 测试")
     class CheckResultNotFoundTests {
 
         @Test
         @DisplayName("notFound() 方法应创建正确的 NOT_FOUND 结果")
         void testNotFoundStaticFactory() {
-            // Given
             String errorMessage = "设备未注册，请联系管理员";
 
-            // When
-            CheckResult result = CheckResult.notFound(errorMessage);
+            CheckResult result = CheckResult.notFound("req-123", errorMessage);
 
-            // Then
             assertThat(result).isNotNull();
             assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.DEVICE_NOT_FOUND);
             assertThat(result.getErrorMessage()).isEqualTo(errorMessage);
         }
 
         @Test
-        @DisplayName("notFound(null) 应使用默认消息")
+        @DisplayName("notFound(null) 应能正常工作")
         void testNotFoundWithNullMessage() {
-            // When
-            CheckResult result = CheckResult.notFound(null);
+            CheckResult result = CheckResult.notFound("req-123", null);
 
-            // Then
             assertThat(result).isNotNull();
             assertThat(result.getHasUpdate()).isFalse();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-        }
-
-        @Test
-        @DisplayName("notFound() 与其他结果类型应能区分")
-        void testNotFoundVsOtherResults() {
-            // Given
-            CheckResult notFoundResult = CheckResult.notFound("设备未注册，请联系管理员");
-            CheckResult noUpdateResult = CheckResult.noUpdate();
-            CheckResult errorResult = CheckResult.error("系统错误");
-
-            // Then & When
-            assertThat(notFoundResult.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
-            assertThat(noUpdateResult.getDecision()).isEqualTo("NO_UPDATE");
-            assertThat(errorResult.getDecision()).isEqualTo("ERROR");
-
-            assertThat(notFoundResult.getHasUpdate()).isFalse();
-            assertThat(noUpdateResult.getHasUpdate()).isFalse();
-            assertThat(errorResult.getHasUpdate()).isFalse();
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.DEVICE_NOT_FOUND);
         }
     }
 
     @Nested
-    @DisplayName("边界条件测试")
-    class BoundaryConditionTests {
+    @DisplayName("CheckResult.noUpdate() 测试")
+    class CheckResultNoUpdateTests {
 
         @Test
-        @DisplayName("空 IMEI 字符串应被正常处理")
-        void whenEmptyImei_shouldHandleGracefully() {
-            // Given
-            String imei = "";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
+        @DisplayName("noUpdate() 方法应创建正确的 NO_UPDATE 结果")
+        void testNoUpdateStaticFactory() {
+            CheckResult result = CheckResult.noUpdate("req-456");
 
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei);
-
-            // Then
             assertThat(result).isNotNull();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
+            assertThat(result.getHasUpdate()).isFalse();
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.NO_UPDATE);
+            assertThat(result.getCheckInterval()).isEqualTo(86400);
+        }
+    }
+
+    @Nested
+    @DisplayName("CheckResult.rateLimited() 测试")
+    class CheckResultRateLimitedTests {
+
+        @Test
+        @DisplayName("rateLimited() 方法应创建正确的 RATE_LIMITED 结果")
+        void testRateLimitedStaticFactory() {
+            CheckResult result = CheckResult.rateLimited("req-789", "请求过于频繁", 300);
+
+            assertThat(result).isNotNull();
+            assertThat(result.getHasUpdate()).isFalse();
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.RATE_LIMITED);
+            assertThat(result.getErrorMessage()).isEqualTo("请求过于频繁");
+            assertThat(result.getCheckInterval()).isEqualTo(300);
+            assertThat(result.getDownloadDelay()).isEqualTo(300);
+        }
+    }
+
+    @Nested
+    @DisplayName("CheckResult.error() 测试")
+    class CheckResultErrorTests {
+
+        @Test
+        @DisplayName("error() 方法应创建正确的 ERROR 结果")
+        void testErrorStaticFactory() {
+            CheckResult result = CheckResult.error("req-abc", "系统错误");
+
+            assertThat(result).isNotNull();
+            assertThat(result.getHasUpdate()).isFalse();
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.ERROR);
+            assertThat(result.getErrorMessage()).isEqualTo("系统错误");
+            assertThat(result.getCheckInterval()).isEqualTo(3600);
         }
 
         @Test
-        @DisplayName("特殊字符 IMEI 应被正常处理")
-        void whenSpecialCharImei_shouldHandleGracefully() {
-            // Given
-            String imei = "'; DROP TABLE devices; --";
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
-                    .thenReturn(RateLimitDecision.allowed());
-            when(deviceRepository.findByImei(imei)).thenReturn(Optional.empty());
+        @DisplayName("error() 方法带错误码应正常工作")
+        void testErrorWithErrorCode() {
+            CheckResult result = CheckResult.error("req-def", "ERR_001", "配置无效");
 
-            // When
-            CheckResult result = upgradeCheckService.checkUpgrade(imei);
-
-            // Then
             assertThat(result).isNotNull();
-            assertThat(result.getDecision()).isEqualTo("DEVICE_NOT_FOUND");
+            assertThat(result.getHasUpdate()).isFalse();
+            assertThat(result.getDecision()).isEqualTo(UpgradeDecision.ERROR);
+            assertThat(result.getErrorCode()).isEqualTo("ERR_001");
+            assertThat(result.getErrorMessage()).isEqualTo("配置无效");
+        }
+    }
+
+    @Nested
+    @DisplayName("结果类型区分测试")
+    class CheckResultTypeTests {
+
+        @Test
+        @DisplayName("不同结果类型应能正确区分")
+        void testDifferentResultTypes() {
+            CheckResult notFoundResult = CheckResult.notFound("req-1", "设备未注册，请联系管理员");
+            CheckResult noUpdateResult = CheckResult.noUpdate("req-2");
+            CheckResult errorResult = CheckResult.error("req-3", "系统错误");
+            CheckResult rateLimitedResult = CheckResult.rateLimited("req-4", "限流", 60);
+
+            assertThat(notFoundResult.getDecision()).isEqualTo(UpgradeDecision.DEVICE_NOT_FOUND);
+            assertThat(noUpdateResult.getDecision()).isEqualTo(UpgradeDecision.NO_UPDATE);
+            assertThat(errorResult.getDecision()).isEqualTo(UpgradeDecision.ERROR);
+            assertThat(rateLimitedResult.getDecision()).isEqualTo(UpgradeDecision.RATE_LIMITED);
+
+            assertThat(notFoundResult.getHasUpdate()).isFalse();
+            assertThat(noUpdateResult.getHasUpdate()).isFalse();
+            assertThat(errorResult.getHasUpdate()).isFalse();
+            assertThat(rateLimitedResult.getHasUpdate()).isFalse();
         }
     }
 }

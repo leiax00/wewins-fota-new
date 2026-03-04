@@ -1,8 +1,6 @@
 package com.wewins.fota.adapter.api.device;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wewins.fota.application.upgrade.UpgradeCheckService.CheckResult;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

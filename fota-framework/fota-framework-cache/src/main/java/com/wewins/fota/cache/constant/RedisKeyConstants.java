@@ -101,14 +101,28 @@ public final class RedisKeyConstants {
     public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
     /**
-     * 策略信息缓存 TTL（1 小时）
+     * 策略信息缓存 TTL（24 小时）
+     * <p>
+     * 滑动 TTL（续期），热点数据持续缓存
+     * </p>
      */
-    public static final long POLICY_CACHE_TTL_SECONDS = 60 * 60;
+    public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
     /**
-     * 产品信息缓存 TTL（1 小时）
+     * 产品信息缓存 TTL（7 天）
+     * <p>
+     * 滑动 TTL（续期），产品信息极少变更
+     * </p>
      */
-    public static final long PRODUCT_CACHE_TTL_SECONDS = 60 * 60;
+    public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /**
+     * 固件信息缓存 TTL（30 天）
+     * <p>
+     * 滑动 TTL（续期），固件发布后基本不变
+     * </p>
+     */
+    public static final long FIRMWARE_CACHE_TTL_SECONDS = 30L * 24 * 60 * 60;
 
     /**
      * 配置信息缓存 TTL（6 小时）
@@ -480,12 +494,12 @@ public final class RedisKeyConstants {
     public static final String FIRMWARE_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:firmware:%s";
 
     /**
-     * 缓存索引通用 TTL（1 小时）
+     * 缓存索引通用 TTL（24 小时）
      * <p>
-     * 与缓存 TTL 保持一致，确保索引不会比缓存更早过期
+     * 与策略缓存 TTL 保持一致，确保索引不会比缓存更早过期
      * </p>
      */
-    public static final long CACHE_INDEX_TTL_SECONDS = 60 * 60;
+    public static final long CACHE_INDEX_TTL_SECONDS = 24 * 60 * 60;
 
     // ========== 固件缓存常量 ==========
 

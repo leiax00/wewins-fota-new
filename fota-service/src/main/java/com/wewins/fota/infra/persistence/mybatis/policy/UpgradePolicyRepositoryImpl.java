@@ -2,9 +2,10 @@ package com.wewins.fota.infra.persistence.mybatis.policy;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.policy.cache.PolicyCacheRepository;
+import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.infra.persistence.mybatis.policy.mapper.UpgradePolicyMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,8 @@ import java.util.Optional;
 public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
 
     private final UpgradePolicyMapper upgradePolicyMapper;
+
+    private final PolicyCacheRepository policyCacheRepository;
 
     @Override
     public Optional<UpgradePolicy> findById(Long id) {
@@ -118,21 +121,33 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
             return List.of();
         }
 
+        List<UpgradePolicy> cached = policyCacheRepository.getProductPolicies(productId, includeTestPolicies);
+        if (cached != null) {
+            log.debug("策略缓存命中: productId={}, includeTest={}", productId, includeTestPolicies);
+            return cached;
+        }
+
         LambdaQueryWrapper<UpgradePolicy> query = new LambdaQueryWrapper<>();
         query.eq(UpgradePolicy::getProductId, productId)
                 .isNull(UpgradePolicy::getDeletedAt);
 
         if (includeTestPolicies) {
-            // 测试设备：查询 ACTIVE + VERIFIED + TESTING
             query.in(UpgradePolicy::getStatus, PolicyStatus.ACTIVE, PolicyStatus.VERIFIED, PolicyStatus.TESTING);
         } else {
-            // 普通设备：仅查询 ACTIVE
             query.eq(UpgradePolicy::getStatus, PolicyStatus.ACTIVE);
         }
 
         query.orderByDesc(UpgradePolicy::getPriority)
                 .orderByDesc(UpgradePolicy::getId);
-        return upgradePolicyMapper.selectList(query);
+
+        List<UpgradePolicy> policies = upgradePolicyMapper.selectList(query);
+
+        if (!policies.isEmpty()) {
+            policyCacheRepository.cacheProductPolicies(productId, includeTestPolicies, policies);
+            log.debug("策略缓存已写入: productId={}, includeTest={}, count={}", productId, includeTestPolicies, policies.size());
+        }
+
+        return policies;
     }
 
     @Override

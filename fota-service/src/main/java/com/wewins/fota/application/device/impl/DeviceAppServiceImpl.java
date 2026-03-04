@@ -20,9 +20,13 @@ import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.infra.cache.event.ChangeType;
+import com.wewins.fota.infra.cache.event.DeviceBatchChangedEvent;
+import com.wewins.fota.infra.cache.event.DeviceChangedEvent;
 import com.wewins.fota.infra.parser.DeviceImportFileParserFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +60,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
     private final DeviceImportFileParserFactory parserFactory;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final int BATCH_SIZE = 1000;
 
@@ -99,6 +104,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
 
         normalizeAndValidate(device, true);
         deviceRepository.create(device);
+        eventPublisher.publishEvent(new DeviceChangedEvent(this, device.getImei(), ChangeType.CREATED));
         log.info("设备创建成功: deviceId={}, imei={}", device.getId(), device.getImei());
         return device;
     }
@@ -118,6 +124,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
         getById(device.getId());
         normalizeAndValidate(device, false);
         deviceRepository.updateById(device);
+        eventPublisher.publishEvent(new DeviceChangedEvent(this, device.getImei(), ChangeType.UPDATED));
         log.info("设备更新成功: deviceId={}", device.getId());
         return device;
     }
@@ -133,8 +140,9 @@ public class DeviceAppServiceImpl implements DeviceAppService {
             log.debug("删除设备: deviceId={}", id);
         }
 
-        getById(id);
+        Device existingDevice = getById(id);
         boolean result = deviceRepository.softDeleteById(id);
+        eventPublisher.publishEvent(new DeviceChangedEvent(this, existingDevice.getImei(), ChangeType.DELETED));
         log.info("设备删除成功: deviceId={}, result={}", id, result);
         return result;
     }
@@ -397,6 +405,10 @@ public class DeviceAppServiceImpl implements DeviceAppService {
 
             log.info("设备导入完成: batchId={}, total={}, success={} (新建={}, 更新={}), failed={}",
                     batch.getId(), batch.getTotalCount(), batch.getSuccessCount(), successCount - updatedCount, updatedCount, batch.getFailedCount());
+
+            if (!imeis.isEmpty()) {
+                eventPublisher.publishEvent(new DeviceBatchChangedEvent(this, imeis, ChangeType.BATCH_IMPORTED));
+            }
 
             return DeviceImportRespDTO.builder()
                     .batchId(batch.getId())

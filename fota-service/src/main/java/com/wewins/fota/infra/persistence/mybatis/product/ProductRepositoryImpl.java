@@ -2,9 +2,10 @@ package com.wewins.fota.infra.persistence.mybatis.product;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.product.cache.ProductCacheRepository;
 import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
@@ -27,9 +28,23 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     private final ProductMapper productMapper;
 
+    private final ProductCacheRepository productCacheRepository;
+
     @Override
     public Optional<Product> findById(Long id) {
-        return Optional.ofNullable(productMapper.selectById(id));
+        Optional<Product> cached = productCacheRepository.findById(id);
+        if (cached.isPresent()) {
+            log.debug("产品缓存命中: productId={}", id);
+            return cached;
+        }
+
+        Product product = productMapper.selectById(id);
+        if (product != null) {
+            productCacheRepository.cacheProduct(product);
+            log.debug("产品缓存已写入: productId={}", id);
+        }
+
+        return Optional.ofNullable(product);
     }
 
     @Override
@@ -129,12 +144,24 @@ public class ProductRepositoryImpl implements ProductRepository {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(
-                productMapper.selectOne(
-                        new LambdaQueryWrapper<Product>()
-                                .eq(Product::getModel, model)
-                                .isNull(Product::getDeletedAt)
-                )
+        Optional<Product> cached = productCacheRepository.findByModel(model);
+        if (cached.isPresent()) {
+            log.debug("产品型号索引缓存命中: model={}", model);
+            return cached;
+        }
+
+        Product product = productMapper.selectOne(
+                new LambdaQueryWrapper<Product>()
+                        .eq(Product::getModel, model)
+                        .isNull(Product::getDeletedAt)
         );
+
+        if (product != null) {
+            productCacheRepository.cacheProduct(product);
+            productCacheRepository.cacheProductByModel(model, product.getId());
+            log.debug("产品型号索引缓存已写入: model={}, productId={}", model, product.getId());
+        }
+
+        return Optional.ofNullable(product);
     }
 }

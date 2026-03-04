@@ -7,8 +7,11 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.infra.cache.event.ChangeType;
+import com.wewins.fota.infra.cache.event.ProductChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +26,7 @@ import java.util.List;
 public class ProductAppServiceImpl implements ProductAppService {
 
     private final ProductRepository productRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Page<Product> pageProducts(ProductPageReqDTO reqDTO) {
@@ -83,6 +87,7 @@ public class ProductAppServiceImpl implements ProductAppService {
         validateProductNameUnique(product.getName(), null);
 
         productRepository.create(product);
+        eventPublisher.publishEvent(new ProductChangedEvent(this, product.getId(), ChangeType.CREATED));
 
         log.info("产品创建成功: productId={}, name={}", product.getId(), product.getName());
         return product;
@@ -107,6 +112,7 @@ public class ProductAppServiceImpl implements ProductAppService {
         validateProductNameUnique(product.getName(), product.getId());
 
         productRepository.updateById(product);
+        eventPublisher.publishEvent(new ProductChangedEvent(this, product.getId(), ChangeType.UPDATED));
 
         log.info("产品更新成功: productId={}, name={}", product.getId(), product.getName());
         return product;
@@ -127,6 +133,8 @@ public class ProductAppServiceImpl implements ProductAppService {
         getById(id);
 
         boolean result = productRepository.deleteById(id);
+        eventPublisher.publishEvent(new ProductChangedEvent(this, id, ChangeType.DELETED));
+
         log.info("产品删除成功: productId={}, result={}", id, result);
         return result;
     }

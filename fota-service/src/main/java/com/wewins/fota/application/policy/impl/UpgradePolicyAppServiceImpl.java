@@ -18,9 +18,12 @@ import com.wewins.fota.domain.policy.enums.TimeWindowType;
 import com.wewins.fota.domain.policy.enums.TriggerMode;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.infra.cache.event.ChangeType;
+import com.wewins.fota.infra.cache.event.PolicyChangedEvent;
 import com.wewins.fota.module.system.security.RbacExpressionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,6 +68,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     private final ProductRepository productRepository;
     private final FirmwareVersionRepository firmwareVersionRepository;
     private final RbacExpressionService rbacExpressionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ==================== 查询方法 ====================
 
@@ -124,6 +128,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         normalizeAndValidate(policy, true);
         upgradePolicyRepository.create(policy);
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), policy.getId(), ChangeType.CREATED));
         log.info("升级策略创建成功: policyId={}, name={}, status={}", policy.getId(), policy.getName(), policy.getStatus());
         return policy;
     }
@@ -180,6 +185,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
 
             log.info("升级策略更新成功: policyId={}, statusChanged=true", policy.getId());
+            eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), policy.getId(), ChangeType.UPDATED));
             return updated;
         }
 
@@ -194,6 +200,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         normalizeAndValidate(policy, false);
         upgradePolicyRepository.updateById(policy);
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), policy.getId(), ChangeType.UPDATED));
         log.info("升级策略更新成功: policyId={}, statusChanged=false", policy.getId());
         return policy;
     }
@@ -229,6 +236,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         }
 
         boolean result = upgradePolicyRepository.deleteById(id);
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), id, ChangeType.DELETED));
         log.info("升级策略删除成功: policyId={}, status={}, result={}", id, currentStatus.getCode(), result);
         return result;
     }
@@ -291,6 +299,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
         log.info("策略状态更新成功: policyId={}, from={}, to={}",
                 id, currentStatus.getCode(), targetStatus.getCode());
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), id, ChangeType.STATUS_CHANGED));
 
         return updated;
     }
