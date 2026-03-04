@@ -1,9 +1,8 @@
 package com.wewins.fota.infra.cache;
 
-import com.wewins.fota.cache.constant.RedisKeyConstants;
+import com.wewins.fota.domain.firmware.cache.FirmwareCacheRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -11,15 +10,10 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class FirmwareCacheInvalidator {
 
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final CacheIndexService cacheIndexService;
+    private final FirmwareCacheRepository firmwareCacheRepository;
 
     public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
-        String firmwareKey = String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId);
-        redisTemplate.delete(firmwareKey);
-        
-        cacheIndexService.invalidateFirmwareCache(versionId);
-        
+        firmwareCacheRepository.evict(versionId);
         log.info("固件缓存已失效: productId={}, versionId={}", productId, versionId);
     }
 }

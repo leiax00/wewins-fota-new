@@ -97,7 +97,6 @@ fota:cache:list:product:policy:1001:all  # 产品策略列表（ID集合）
 # 缓存索引（Type: Set）
 fota:cache:index:product:1001            # 产品缓存索引
 fota:cache:index:policy:101              # 策略缓存索引
-fota:cache:index:firmware:201            # 固件缓存索引
 
 # 策略快照
 fota:pol:snap:main:v123                  # 策略快照数据
@@ -133,7 +132,6 @@ fota:ratelimit:check:123:202603041030    # 限流
 | `fota:cache:index:product:{productId}` | Set | 产品缓存索引 | 24h | ✅ 滑动续期 | `RedisProductCacheRepository` | `PRODUCT_CACHE_INDEX_KEY_TEMPLATE` |
 | **固件缓存** |
 | `fota:firmware:{versionId}` | String (JSON) | 固件详情 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_KEY_TEMPLATE` |
-| `fota:cache:index:firmware:{versionId}` | Set | 固件缓存索引 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_CACHE_INDEX_KEY_TEMPLATE` |
 | **策略快照** |
 | `fota:pol:snap:{scope}:{version}` | Hash | 策略快照数据 | 7d | ✅ 滑动续期 | `RedisPolicySnapshotRepository` | `POLICY_SNAPSHOT_KEY_TEMPLATE` |
 | `fota:pol:active_ver:{scope}` | String | 活跃版本指针 | 7d | ✅ 滑动续期 | `RedisPolicySnapshotRepository` | `POLICY_ACTIVE_VER_KEY_TEMPLATE` |
@@ -619,14 +617,6 @@ private void updateCacheIndex(Long productId, String cacheKey) {
 
 **功能**：记录策略相关的所有缓存键
 
-#### 9.1.3 固件缓存索引
-
-**Key 模板**：`fota:cache:index:firmware:{versionId}`  
-**数据结构**：Set  
-**TTL**：30 天（滑动续期）
-
-**功能**：记录固件相关的所有缓存键
-
 ### 9.2 索引更新逻辑
 
 ```java
@@ -1025,16 +1015,9 @@ public void invalidatePolicyCache(Long policyId) {
 **实现类**：`FirmwareCacheInvalidator.java`
 
 ```java
-// 失效固件相关的所有缓存
-public void invalidateFirmwareCache(Long versionId) {
-    Set<String> relatedKeys = redisTemplate.opsForSet()
-        .members(String.format(RedisKeyConstants.FIRMWARE_CACHE_INDEX_KEY_TEMPLATE, versionId));
-
-    if (CollectionUtils.isNotEmpty(relatedKeys)) {
-        redisTemplate.delete(relatedKeys);
-    }
-
-    redisTemplate.delete(String.format(RedisKeyConstants.FIRMWARE_CACHE_INDEX_KEY_TEMPLATE, versionId));
+// 失效固件详情缓存
+public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
+    firmwareCacheRepository.evict(versionId);
 }
 ```
 

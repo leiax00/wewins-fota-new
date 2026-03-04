@@ -77,8 +77,4 @@ public class CacheIndexService {
         invalidateByIndex(indexKey);
     }
 
-    public void invalidateFirmwareCache(Long versionId) {
-        String indexKey = String.format(RedisKeyConstants.FIRMWARE_CACHE_INDEX_KEY_TEMPLATE, versionId);
-        invalidateByIndex(indexKey);
-    }
 }

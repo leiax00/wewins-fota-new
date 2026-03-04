@@ -466,20 +466,6 @@ public final class RedisKeyConstants {
     public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
 
     /**
-     * 固件缓存索引 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_CACHE_INDEX_KEY_TEMPLATE, versionId)
-     * </p>
-     * <p>
-     * 示例：fota:cache:index:firmware:201
-     * </p>
-     * <p>
-     * 说明：记录固件相关的所有缓存键，支持批量失效
-     * </p>
-     */
-    public static final String FIRMWARE_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:firmware:%s";
-
-    /**
      * 缓存索引通用 TTL（24 小时）
      * <p>
      * 与策略缓存 TTL 保持一致，确保索引不会比缓存更早过期

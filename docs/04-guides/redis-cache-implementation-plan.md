@@ -104,7 +104,6 @@ fota:{module}:{subtype}:{identifiers}
 |----------|--------|----------|
 | **产品缓存索引** | `fota:cache:index:product:{productId}` | Set |
 | **策略缓存索引** | `fota:cache:index:policy:{policyId}` | Set |
-| **固件缓存索引** | `fota:cache:index:firmware:{versionId}` | Set |
 
 ### 3.4 索引关联示例
 
@@ -381,7 +380,6 @@ public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:list:p
 public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
 public static final String PRODUCT_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:product:%s";
 public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
-public static final String FIRMWARE_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:firmware:%s";
 
 // 分层 TTL（设备缓存固定，共享缓存滑动续期）
 public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;      // 24小时（固定，不续期）
