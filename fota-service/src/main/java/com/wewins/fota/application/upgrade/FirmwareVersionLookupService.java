@@ -1,6 +1,7 @@
 package com.wewins.fota.application.upgrade;
 
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.cache.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ import java.util.Optional;
 public class FirmwareVersionLookupService {
 
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final FirmwareVersionLookupCacheRepository firmwareVersionLookupCacheRepository;
 
     /**
      * 查找固件版本 ID
@@ -86,9 +88,21 @@ public class FirmwareVersionLookupService {
      * @return 固件版本 ID，如果未找到返回 null
      */
     private Long findByUniqueKey(String version, String internalVersion, Long productId) {
+        FirmwareVersionLookupCacheRepository.LookupCacheResult cached =
+                firmwareVersionLookupCacheRepository.get(productId, version, internalVersion);
+        if (cached.hit()) {
+            return cached.versionId();
+        }
+
         Optional<FirmwareVersion> firmware = firmwareVersionRepository
                 .findByUniqueKey(version, internalVersion, productId);
-        return firmware.map(FirmwareVersion::getId).orElse(null);
+        Long versionId = firmware.map(FirmwareVersion::getId).orElse(null);
+        if (versionId != null) {
+            firmwareVersionLookupCacheRepository.put(productId, version, internalVersion, versionId);
+        } else {
+            firmwareVersionLookupCacheRepository.putNotFound(productId, version, internalVersion);
+        }
+        return versionId;
     }
 
     /**
@@ -99,9 +113,21 @@ public class FirmwareVersionLookupService {
      * @return 固件版本 ID，如果未找到返回 null
      */
     private Long findByVersionOnly(String version, Long productId) {
+        FirmwareVersionLookupCacheRepository.LookupCacheResult cached =
+                firmwareVersionLookupCacheRepository.get(productId, version, null);
+        if (cached.hit()) {
+            return cached.versionId();
+        }
+
         Optional<FirmwareVersion> firmware = firmwareVersionRepository
                 .findByVersionNumberAndProductId(version, productId);
-        return firmware.map(FirmwareVersion::getId).orElse(null);
+        Long versionId = firmware.map(FirmwareVersion::getId).orElse(null);
+        if (versionId != null) {
+            firmwareVersionLookupCacheRepository.put(productId, version, null, versionId);
+        } else {
+            firmwareVersionLookupCacheRepository.putNotFound(productId, version, null);
+        }
+        return versionId;
     }
 
     /**

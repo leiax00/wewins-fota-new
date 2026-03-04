@@ -139,6 +139,22 @@ public final class RedisKeyConstants {
     public static final long FIRMWARE_CACHE_TTL_SECONDS = 30L * 24 * 60 * 60;
 
     /**
+     * 固件版本映射缓存 TTL（24 小时）
+     * <p>
+     * 映射关系：productId + version + internalVersion -> versionId
+     * </p>
+     */
+    public static final long FIRMWARE_LOOKUP_CACHE_TTL_SECONDS = 24 * 60 * 60;
+
+    /**
+     * 固件版本映射负缓存 TTL（60 秒）
+     * <p>
+     * 用于防止不存在版本反复穿透数据库
+     * </p>
+     */
+    public static final long FIRMWARE_LOOKUP_NOT_FOUND_TTL_SECONDS = 60;
+
+    /**
      * 配置信息缓存 TTL（6 小时）
      */
     public static final long CONFIG_CACHE_TTL_SECONDS = 6 * 60 * 60;
@@ -488,4 +504,15 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final String FIRMWARE_KEY_TEMPLATE = "fota:firmware:%s";
+
+    /**
+     * 固件版本映射 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_LOOKUP_KEY_TEMPLATE, productId, version, internalVersion)
+     * </p>
+     * <p>
+     * 示例：fota:cache:firmware:lookup:1001:Mobile.Router.B03:ASR_YEMEN_M476_V11_B03_Build02
+     * </p>
+     */
+    public static final String FIRMWARE_LOOKUP_KEY_TEMPLATE = "fota:cache:firmware:lookup:%s:%s:%s";
 }

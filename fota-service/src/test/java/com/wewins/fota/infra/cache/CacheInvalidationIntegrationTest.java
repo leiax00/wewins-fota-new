@@ -143,31 +143,31 @@ class CacheInvalidationIntegrationTest {
         @Test
         @DisplayName("固件 CREATED 事件应触发缓存失效")
         void onFirmwareCreated_shouldInvalidateCache() {
-            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, ChangeType.CREATED);
+            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, "v2.0.0", "build-1", ChangeType.CREATED);
 
             listener.onFirmwareChanged(event);
 
-            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L);
+            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L, "v2.0.0", "build-1");
         }
 
         @Test
         @DisplayName("固件 UPDATED 事件应触发缓存失效")
         void onFirmwareUpdated_shouldInvalidateCache() {
-            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, ChangeType.UPDATED);
+            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, "v2.0.0", "build-1", ChangeType.UPDATED);
 
             listener.onFirmwareChanged(event);
 
-            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L);
+            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L, "v2.0.0", "build-1");
         }
 
         @Test
         @DisplayName("固件 DELETED 事件应触发缓存失效")
         void onFirmwareDeleted_shouldInvalidateCache() {
-            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, ChangeType.DELETED);
+            FirmwareChangedEvent event = new FirmwareChangedEvent(this, 1L, 10L, "v2.0.0", "build-1", ChangeType.DELETED);
 
             listener.onFirmwareChanged(event);
 
-            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L);
+            verify(firmwareCacheInvalidator).invalidateOnFirmwarePublish(1L, 10L, "v2.0.0", "build-1");
         }
     }
 

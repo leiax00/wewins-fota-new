@@ -64,7 +64,7 @@ public class CacheInvalidationListener {
             event.getProductId(), event.getVersionId(), event.getChangeType());
 
         firmwareCacheInvalidator.invalidateOnFirmwarePublish(
-            event.getProductId(), event.getVersionId());
+            event.getProductId(), event.getVersionId(), event.getVersion(), event.getInternalVersion());
         cacheMetricsService.recordFirmwareCacheInvalidation();
         cacheMetricsService.recordCacheInvalidationEvent("firmware");
         cacheMetricsService.recordInvalidationDuration(System.currentTimeMillis() - start);

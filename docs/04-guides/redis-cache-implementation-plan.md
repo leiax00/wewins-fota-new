@@ -97,6 +97,7 @@ fota:{module}:{subtype}:{identifiers}
 | **产品信息** | `fota:product:{productId}` | `fota:product:1001` | String (JSON) |
 | **产品型号索引** | `fota:cache:product:model:{model}` | `fota:cache:product:model:M476` | String |
 | **固件详情** | `fota:firmware:{versionId}` | `fota:firmware:201` | String (JSON) |
+| **固件版本映射** | `fota:cache:firmware:lookup:{productId}:{version}:{internalVersion}` | `fota:cache:firmware:lookup:1001:Mobile.Router.B03:ASR_YEMEN_M476_V11_B03_Build02` | String |
 
 ### 3.3 缓存索引键（用于批量失效）
 
@@ -137,6 +138,7 @@ fota:cache:index:product:1001 (SET)
 | **策略缓存** | **24小时** | ✅ **续期** | 主动失效 | 热点数据持续缓存，24h兜底 |
 | **产品信息** | **7天** | ✅ **续期** | 主动失效 | 产品信息极少变更 |
 | **固件版本** | **30天** | ✅ **续期** | 主动失效 | 固件发布后基本不变 |
+| **固件版本映射** | **24小时** | ✅ **续期（正缓存）** | 主动失效 + 负缓存60s | 版本ID解析热点，需防穿透 |
 
 ### 4.3 为什么共享缓存采用滑动TTL（续期）？
 
@@ -380,12 +382,15 @@ public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:list:p
 public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
 public static final String PRODUCT_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:product:%s";
 public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
+public static final String FIRMWARE_LOOKUP_KEY_TEMPLATE = "fota:cache:firmware:lookup:%s:%s:%s";
 
 // 分层 TTL（设备缓存固定，共享缓存滑动续期）
 public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;      // 24小时（固定，不续期）
 public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;       // 24小时（滑动，续期）
 public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;   // 7天（滑动，续期）
 public static final long FIRMWARE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30天（滑动，续期）
+public static final long FIRMWARE_LOOKUP_CACHE_TTL_SECONDS = 24 * 60 * 60; // 24小时（滑动，续期）
+public static final long FIRMWARE_LOOKUP_NOT_FOUND_TTL_SECONDS = 60;       // 60秒（负缓存）
 public static final long CACHE_INDEX_TTL_SECONDS = 24 * 60 * 60;        // 24小时（与策略一致）
 ```
 
@@ -659,6 +664,8 @@ public class PolicyCacheInvalidator {
 | 操作 | 失效的缓存键 | 失效方式 |
 |------|------------|---------|
 | **固件版本发布** | `fota:firmware:{versionId}` | 直接删除 |
+| | `fota:cache:firmware:lookup:{productId}:{version}:__NULL__` | 删除 version-only 映射缓存 |
+| | `fota:cache:firmware:lookup:{productId}:{version}:{internalVersion}` | 删除 version+tag 映射缓存 |
 
 **实现示例**：
 
@@ -666,16 +673,18 @@ public class PolicyCacheInvalidator {
 @Service
 @RequiredArgsConstructor
 public class FirmwareCacheInvalidator {
-    
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final FirmwareCacheRepository firmwareCacheRepository;
+    private final FirmwareVersionLookupCacheRepository firmwareVersionLookupCacheRepository;
     
     /**
      * 固件发布后失效缓存
      */
-    public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
-        // 1. 删除固件详情
-        String firmwareKey = String.format(FIRMWARE_KEY_TEMPLATE, versionId);
-        redisTemplate.delete(firmwareKey);
+    public void invalidateOnFirmwarePublish(Long productId, Long versionId, String version, String internalVersion) {
+        firmwareCacheRepository.evict(versionId);
+        firmwareVersionLookupCacheRepository.evictByVersion(productId, version);
+        if (StringUtils.hasText(internalVersion)) {
+            firmwareVersionLookupCacheRepository.evict(productId, version, internalVersion);
+        }
         
         log.info("固件缓存已失效: productId={}, versionId={}", productId, versionId);
     }
@@ -720,7 +729,7 @@ public void evictBatch(String[] imeis) {
 
 public record ProductChangedEvent(Long productId, ChangeType changeType) {}
 public record PolicyChangedEvent(Long productId, Long policyId, ChangeType changeType) {}
-public record FirmwareChangedEvent(Long productId, Long versionId, String tag, ChangeType changeType) {}
+public record FirmwareChangedEvent(Long productId, Long versionId, String version, String internalVersion, ChangeType changeType) {}
 public record DeviceChangedEvent(String imei, ChangeType changeType) {}
 
 public enum ChangeType {
@@ -766,7 +775,7 @@ public class CacheInvalidationListener {
             event.productId(), event.versionId(), event.changeType());
         
         firmwareCacheInvalidator.invalidateOnFirmwarePublish(
-            event.productId(), event.versionId());
+            event.productId(), event.versionId(), event.version(), event.internalVersion());
     }
     
     @EventListener

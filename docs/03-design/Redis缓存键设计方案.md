@@ -132,6 +132,7 @@ fota:ratelimit:check:123:202603041030    # 限流
 | `fota:cache:index:product:{productId}` | Set | 产品缓存索引 | 24h | ✅ 滑动续期 | `RedisProductCacheRepository` | `PRODUCT_CACHE_INDEX_KEY_TEMPLATE` |
 | **固件缓存** |
 | `fota:firmware:{versionId}` | String (JSON) | 固件详情 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_KEY_TEMPLATE` |
+| `fota:cache:firmware:lookup:{productId}:{version}:{internalVersion}` | String | 版本映射（查 versionId） | 24h / 60s(NF) | ✅ 正缓存续期，❌ 负缓存不续期 | `RedisFirmwareVersionLookupCacheRepository` | `FIRMWARE_LOOKUP_KEY_TEMPLATE` |
 | **策略快照** |
 | `fota:pol:snap:{scope}:{version}` | Hash | 策略快照数据 | 7d | ✅ 滑动续期 | `RedisPolicySnapshotRepository` | `POLICY_SNAPSHOT_KEY_TEMPLATE` |
 | `fota:pol:active_ver:{scope}` | String | 活跃版本指针 | 7d | ✅ 滑动续期 | `RedisPolicySnapshotRepository` | `POLICY_ACTIVE_VER_KEY_TEMPLATE` |
@@ -172,7 +173,7 @@ private void renewTtl(String key) {
 
 | 存储类型 | 使用场景 | Key 数量 | 示例 |
 |---------|---------|---------|------|
-| **String (JSON)** | 单个对象缓存 | 12+ | 设备、策略、产品、固件 |
+| **String (JSON/String)** | 单个对象与映射缓存 | 13+ | 设备、策略、产品、固件、版本映射 |
 | **String (Bitmap)** | 设备活跃度跟踪 | 2 | 活跃度 Bitmap、BITOP 临时键 |
 | **Set** | ID 列表、缓存索引 | 8+ | 策略列表、缓存索引 |
 | **Hash** | 策略快照数据 | 1 | 策略快照 |
@@ -1015,9 +1016,13 @@ public void invalidatePolicyCache(Long policyId) {
 **实现类**：`FirmwareCacheInvalidator.java`
 
 ```java
-// 失效固件详情缓存
-public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
+// 失效固件详情缓存 + 版本映射缓存
+public void invalidateOnFirmwarePublish(Long productId, Long versionId, String version, String internalVersion) {
     firmwareCacheRepository.evict(versionId);
+    firmwareVersionLookupCacheRepository.evictByVersion(productId, version);
+    if (StringUtils.hasText(internalVersion)) {
+        firmwareVersionLookupCacheRepository.evict(productId, version, internalVersion);
+    }
 }
 ```
 
@@ -1074,6 +1079,7 @@ CacheInvalidationListener 监听事件
 | **分层 TTL** | 不同类型缓存使用不同 TTL（24h/7d/30d） |
 | **TTL 随机化** | 基础 TTL ±10% 随机抖动 |
 | **滑动续期** | 共享缓存访问时续期，自然分散过期时间 |
+| **短 TTL 负缓存** | 映射未命中仅缓存 60 秒，防止穿透且避免长期误判 |
 | **降级策略** | 缓存不可用时直接查询数据库 |
 
 ### 14.4 一致性保证
