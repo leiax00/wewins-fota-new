@@ -538,7 +538,7 @@ fota:
 │   ├─ 固件版本上传/发布                                   │
 │   │   └─ 失效: 固件缓存 + 相关策略缓存                 │
 │   ├─ 固件标签变更（stable/beta等）                       │
-│   │   └─ 失效: 固件标签索引 + 固件缓存                   │
+│   │   └─ 失效: 固件缓存                   │
 │   └─ 固件状态变更（READY/DISABLED等）                    │
 │       └─ 失效: 固件缓存 + 相关策略缓存                   │
 ├─────────────────────────────────────────────────────────┤
@@ -661,10 +661,6 @@ public class PolicyCacheInvalidator {
 | 操作 | 失效的缓存键 | 失效方式 |
 |------|------------|---------|
 | **固件版本发布** | `fota:firmware:{versionId}` | 直接删除 |
-| | `fota:cache:firmware:tag:{productId}:{tag}` | 删除标签索引 |
-| **固件标签变更** | `fota:cache:firmware:tag:{productId}:{oldTag}` | 删除旧标签 |
-| | `fota:cache:firmware:tag:{productId}:{newTag}` | 删除新标签 |
-| | `fota:firmware:{versionId}` | 删除固件详情 |
 
 **实现示例**：
 
@@ -678,16 +674,10 @@ public class FirmwareCacheInvalidator {
     /**
      * 固件发布后失效缓存
      */
-    public void invalidateOnFirmwarePublish(Long productId, Long versionId, String tag) {
+    public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
         // 1. 删除固件详情
         String firmwareKey = String.format(FIRMWARE_KEY_TEMPLATE, versionId);
         redisTemplate.delete(firmwareKey);
-        
-        // 2. 删除标签索引（如果有）
-        if (tag != null && !tag.isBlank()) {
-            String tagKey = String.format(FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag);
-            redisTemplate.delete(tagKey);
-        }
         
         log.info("固件缓存已失效: productId={}, versionId={}", productId, versionId);
     }
@@ -778,7 +768,7 @@ public class CacheInvalidationListener {
             event.productId(), event.versionId(), event.changeType());
         
         firmwareCacheInvalidator.invalidateOnFirmwarePublish(
-            event.productId(), event.versionId(), event.tag());
+            event.productId(), event.versionId());
     }
     
     @EventListener

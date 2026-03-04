@@ -438,20 +438,6 @@ public final class RedisKeyConstants {
     public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
 
     /**
-     * 固件标签索引 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag)
-     * </p>
-     * <p>
-     * 示例：fota:cache:firmware:tag:1001:stable
-     * </p>
-     * <p>
-     * 说明：按标签索引固件版本 ID
-     * </p>
-     */
-    public static final String FIRMWARE_TAG_INDEX_KEY_TEMPLATE = "fota:cache:firmware:tag:%s:%s";
-
-    /**
      * 产品缓存索引 Key 模板
      * <p>
      * 使用方式：String.format(RedisKeyConstants.PRODUCT_CACHE_INDEX_KEY_TEMPLATE, productId)

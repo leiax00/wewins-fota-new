@@ -95,7 +95,7 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         firmwareVersionRepository.create(firmwareVersion);
-        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), null, ChangeType.CREATED));
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), ChangeType.CREATED));
 
         log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}, internalVersion={}",
                 firmwareVersion.getId(), firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
@@ -132,7 +132,7 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         }
 
         firmwareVersionRepository.updateById(firmwareVersion);
-        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), null, ChangeType.UPDATED));
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, firmwareVersion.getProductId(), firmwareVersion.getId(), ChangeType.UPDATED));
 
         log.info("固件版本更新成功: firmwareVersionId={}", firmwareVersion.getId());
         return firmwareVersion;
@@ -153,7 +153,7 @@ public class FirmwareVersionAppServiceImpl implements FirmwareVersionAppService 
         FirmwareVersion existingVersion = getById(id);
 
         boolean result = firmwareVersionRepository.deleteById(id);
-        eventPublisher.publishEvent(new FirmwareChangedEvent(this, existingVersion.getProductId(), id, null, ChangeType.DELETED));
+        eventPublisher.publishEvent(new FirmwareChangedEvent(this, existingVersion.getProductId(), id, ChangeType.DELETED));
         log.info("固件版本删除成功: firmwareVersionId={}, result={}", id, result);
         return result;
     }

@@ -14,14 +14,9 @@ public class FirmwareCacheInvalidator {
     private final RedisTemplate<String, Object> redisTemplate;
     private final CacheIndexService cacheIndexService;
 
-    public void invalidateOnFirmwarePublish(Long productId, Long versionId, String tag) {
+    public void invalidateOnFirmwarePublish(Long productId, Long versionId) {
         String firmwareKey = String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId);
         redisTemplate.delete(firmwareKey);
-        
-        if (tag != null && !tag.isBlank()) {
-            String tagKey = String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag);
-            redisTemplate.delete(tagKey);
-        }
         
         cacheIndexService.invalidateFirmwareCache(versionId);
         

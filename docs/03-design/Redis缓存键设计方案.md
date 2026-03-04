@@ -133,7 +133,6 @@ fota:ratelimit:check:123:202603041030    # 限流
 | `fota:cache:index:product:{productId}` | Set | 产品缓存索引 | 24h | ✅ 滑动续期 | `RedisProductCacheRepository` | `PRODUCT_CACHE_INDEX_KEY_TEMPLATE` |
 | **固件缓存** |
 | `fota:firmware:{versionId}` | String (JSON) | 固件详情 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_KEY_TEMPLATE` |
-| `fota:cache:firmware:tag:{productId}:{tag}` | Set | 固件标签索引 | 30d | ✅ 滑动续期 | - | `FIRMWARE_TAG_INDEX_KEY_TEMPLATE` |
 | `fota:cache:index:firmware:{versionId}` | Set | 固件缓存索引 | 30d | ✅ 滑动续期 | `RedisFirmwareCacheRepository` | `FIRMWARE_CACHE_INDEX_KEY_TEMPLATE` |
 | **策略快照** |
 | `fota:pol:snap:{scope}:{version}` | Hash | 策略快照数据 | 7d | ✅ 滑动续期 | `RedisPolicySnapshotRepository` | `POLICY_SNAPSHOT_KEY_TEMPLATE` |
@@ -177,7 +176,7 @@ private void renewTtl(String key) {
 |---------|---------|---------|------|
 | **String (JSON)** | 单个对象缓存 | 12+ | 设备、策略、产品、固件 |
 | **String (Bitmap)** | 设备活跃度跟踪 | 2 | 活跃度 Bitmap、BITOP 临时键 |
-| **Set** | ID 列表、缓存索引 | 8+ | 策略列表、固件标签索引、缓存索引 |
+| **Set** | ID 列表、缓存索引 | 8+ | 策略列表、缓存索引 |
 | **Hash** | 策略快照数据 | 1 | 策略快照 |
 
 ---
@@ -571,50 +570,6 @@ public Optional<FirmwareVersion> findById(Long versionId) {
     return Optional.empty();
 }
 ```
-
-### 8.2 固件标签索引
-
-**Key 模板**：`fota:cache:firmware:tag:{productId}:{tag}`  
-**数据结构**：Set（版本 ID 集合）  
-**TTL**：30 天（滑动续期）
-
-**功能**：按标签索引固件版本，支持标签查询
-
-**示例**：
-```redis
-# 产品 1001 标签为 stable 的固件
-fota:cache:firmware:tag:1001:stable  →  Set {201, 203}
-
-# 产品 1001 标签为 beta 的固件
-fota:cache:firmware:tag:1001:beta  →  Set {202, 204}
-```
-
-**使用场景**：
-```java
-// 查找特定标签的固件
-public List<FirmwareVersion> findByTag(Long productId, String tag) {
-    String key = String.format(FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, tag);
-    Set<Object> versionIds = redisTemplate.opsForSet().members(key);
-    
-    if (versionIds == null || versionIds.isEmpty()) {
-        return Collections.emptyList();
-    }
-    
-    // 批量获取固件详情
-    List<String> firmwareKeys = versionIds.stream()
-        .map(id -> String.format(FIRMWARE_KEY_TEMPLATE, id))
-        .collect(Collectors.toList());
-    
-    List<Object> firmwares = redisTemplate.opsForValue().multiGet(firmwareKeys);
-    
-    return firmwares.stream()
-        .filter(Objects::nonNull)
-        .map(obj -> (FirmwareVersion) obj)
-        .collect(Collectors.toList());
-}
-```
-
----
 
 ## 9. 缓存索引设计
 
