@@ -39,17 +39,29 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
 
                 List<Object> cachedPolicies = redisTemplate.opsForValue().multiGet(policyKeys);
                 List<UpgradePolicy> policies = new ArrayList<>();
+                boolean hasMissingPolicy = false;
                 if (cachedPolicies != null) {
-                    for (Object cachedPolicy : cachedPolicies) {
+                    for (int i = 0; i < cachedPolicies.size(); i++) {
+                        String policyKey = policyKeys.get(i);
+                        Object cachedPolicy = cachedPolicies.get(i);
                         if (cachedPolicy == null) {
+                            hasMissingPolicy = true;
                             continue;
                         }
 
                         UpgradePolicy policy = deserializePolicy(cachedPolicy.toString());
                         if (policy != null) {
                             policies.add(policy);
+                            renewTtl(policyKey);
+                        } else {
+                            hasMissingPolicy = true;
                         }
                     }
+                }
+
+                if (hasMissingPolicy) {
+                    redisTemplate.delete(key);
+                    return null;
                 }
 
                 renewTtl(key);
