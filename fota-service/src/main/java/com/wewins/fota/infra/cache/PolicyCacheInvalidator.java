@@ -16,6 +16,7 @@ public class PolicyCacheInvalidator {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final PolicyCacheRepository policyCacheRepository;
+    private final CacheIndexService cacheIndexService;
 
     public void invalidateOnPolicyChange(Long productId, Long policyId) {
         String policyKey = String.format(RedisKeyConstants.POLICY_KEY_TEMPLATE, policyId);
@@ -25,11 +26,14 @@ public class PolicyCacheInvalidator {
         String prodPoliciesKey = String.format(RedisKeyConstants.PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, "prod");
         redisTemplate.delete(List.of(allPoliciesKey, prodPoliciesKey));
         
+        cacheIndexService.invalidatePolicyCache(policyId);
+        
         log.info("策略缓存已失效: productId={}, policyId={}", productId, policyId);
     }
 
     public void invalidateOnBatchPolicyChange(Long productId) {
         policyCacheRepository.evictProductPolicies(productId);
+        cacheIndexService.invalidateProductPolicyCache(productId);
         log.warn("产品所有策略缓存已失效: productId={}", productId);
     }
 }

@@ -31,15 +31,4 @@ public class ProductCacheInvalidator {
         log.warn("产品状态变更，缓存已强力失效: productId={}", productId);
     }
 
-    public void invalidateOnProductModelChange(String oldModel, String newModel) {
-        if (oldModel != null && !oldModel.isBlank()) {
-            String oldKey = String.format(RedisKeyConstants.PRODUCT_MODEL_INDEX_KEY_TEMPLATE, oldModel);
-            redisTemplate.delete(oldKey);
-        }
-        if (newModel != null && !newModel.isBlank()) {
-            String newKey = String.format(RedisKeyConstants.PRODUCT_MODEL_INDEX_KEY_TEMPLATE, newModel);
-            redisTemplate.delete(newKey);
-        }
-        log.info("产品型号索引已失效: oldModel={}, newModel={}", oldModel, newModel);
-    }
 }

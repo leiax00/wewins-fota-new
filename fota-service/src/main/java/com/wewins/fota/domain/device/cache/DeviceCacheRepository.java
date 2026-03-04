@@ -9,15 +9,6 @@ public interface DeviceCacheRepository {
 
     void put(String imei, DeviceCache cache);
 
-    DeviceCache loadAndCache(String imei);
-
     void evict(String imei);
 
-    void warmUp(String[] imeis);
-
-    void evictBatch(String[] imeis);
-
-    void evictByProduct(Long productId);
-
-    String[] getDeviceKeys(String[] imeis);
 }

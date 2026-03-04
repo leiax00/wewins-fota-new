@@ -60,7 +60,10 @@ public class DeviceRepositoryImpl implements DeviceRepository {
 
     @Override
     public Optional<Device> findByImei(String imei) {
-        return Optional.ofNullable(deviceMapper.selectByImei(imei));
+        LambdaQueryWrapper<Device> queryWrapper = new LambdaQueryWrapper<Device>()
+                .isNull(Device::getDeletedAt);
+        queryWrapper.eq(Device::getImei, imei);
+        return Optional.ofNullable(deviceMapper.selectOne(queryWrapper));
     }
 
     @Override

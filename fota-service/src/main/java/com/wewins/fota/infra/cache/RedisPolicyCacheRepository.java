@@ -1,7 +1,6 @@
 package com.wewins.fota.infra.cache;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -29,11 +29,31 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
     public List<UpgradePolicy> getProductPolicies(Long productId, boolean includeTestPolicies) {
         try {
             String key = buildProductPolicyListKey(productId, includeTestPolicies);
-            Object cached = redisTemplate.opsForValue().get(key);
-            
-            if (cached != null) {
+            Set<Object> policyIds = redisTemplate.opsForSet().members(key);
+
+            if (policyIds != null && !policyIds.isEmpty()) {
+                List<String> policyKeys = new ArrayList<>(policyIds.size());
+                for (Object policyId : policyIds) {
+                    policyKeys.add(String.format(RedisKeyConstants.POLICY_KEY_TEMPLATE, policyId));
+                }
+
+                List<Object> cachedPolicies = redisTemplate.opsForValue().multiGet(policyKeys);
+                List<UpgradePolicy> policies = new ArrayList<>();
+                if (cachedPolicies != null) {
+                    for (Object cachedPolicy : cachedPolicies) {
+                        if (cachedPolicy == null) {
+                            continue;
+                        }
+
+                        UpgradePolicy policy = deserializePolicy(cachedPolicy.toString());
+                        if (policy != null) {
+                            policies.add(policy);
+                        }
+                    }
+                }
+
                 renewTtl(key);
-                return deserializePolicies(cached.toString());
+                return policies;
             }
         } catch (Exception e) {
             log.error("从 Redis 获取策略缓存失败: productId={}, includeTest={}", productId, includeTestPolicies, e);
@@ -45,10 +65,25 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
     public void cacheProductPolicies(Long productId, boolean includeTestPolicies, List<UpgradePolicy> policies) {
         try {
             String key = buildProductPolicyListKey(productId, includeTestPolicies);
-            String json = serializePolicies(policies);
-            
             long ttl = RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.POLICY_CACHE_TTL_SECONDS);
-            redisTemplate.opsForValue().set(key, json, Duration.ofSeconds(ttl));
+
+            Set<Object> policyIds = new HashSet<>();
+            for (UpgradePolicy policy : policies) {
+                if (policy == null || policy.getId() == null) {
+                    continue;
+                }
+
+                String policyKey = String.format(RedisKeyConstants.POLICY_KEY_TEMPLATE, policy.getId());
+                String policyJson = serializePolicy(policy);
+                redisTemplate.opsForValue().set(policyKey, policyJson, Duration.ofSeconds(ttl));
+                policyIds.add(policy.getId());
+            }
+
+            redisTemplate.delete(key);
+            if (!policyIds.isEmpty()) {
+                redisTemplate.opsForSet().add(key, policyIds.toArray());
+                redisTemplate.expire(key, Duration.ofSeconds(ttl));
+            }
             
             updateCacheIndex(productId, key);
             
@@ -94,19 +129,27 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
     @Override
     public void evictAll() {
         try {
-            Set<String> keys = redisTemplate.keys("fota:cache:product:policy:*");
+            Set<String> keys = scanKeys("fota:cache:list:product:policy:*");
             if (!keys.isEmpty()) {
                 redisTemplate.delete(keys);
                 log.info("所有策略缓存已失效: count={}", keys.size());
             }
             
-            Set<String> indexKeys = redisTemplate.keys("fota:cache:index:product:*");
+            Set<String> indexKeys = scanKeys("fota:cache:index:product:*");
             if (!indexKeys.isEmpty()) {
                 redisTemplate.delete(indexKeys);
             }
         } catch (Exception e) {
             log.error("失效所有策略缓存失败", e);
         }
+    }
+
+    private Set<String> scanKeys(String pattern) {
+        Set<String> keys = new java.util.HashSet<>();
+        try (var cursor = redisTemplate.scan(org.springframework.data.redis.core.ScanOptions.scanOptions().match(pattern).count(1000).build())) {
+            cursor.forEachRemaining(key -> keys.add(key.toString()));
+        }
+        return keys;
     }
 
     private String buildProductPolicyListKey(Long productId, boolean includeTestPolicies) {
@@ -135,13 +178,13 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
         }
     }
 
-    private String serializePolicies(List<UpgradePolicy> policies) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(policies);
+    private String serializePolicy(UpgradePolicy policy) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(policy);
     }
 
-    private List<UpgradePolicy> deserializePolicies(String json) {
+    private UpgradePolicy deserializePolicy(String json) {
         try {
-            return objectMapper.readValue(json, new TypeReference<>() {});
+            return objectMapper.readValue(json, UpgradePolicy.class);
         } catch (JsonProcessingException e) {
             log.error("反序列化策略缓存失败", e);
             return null;

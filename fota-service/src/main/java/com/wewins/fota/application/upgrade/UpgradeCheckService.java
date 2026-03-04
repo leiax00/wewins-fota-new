@@ -243,19 +243,30 @@ public class UpgradeCheckService {
      * @return 设备信息，如果不存在则返回 null
      */
     private Device loadDevice(String imei) {
-        // 先从缓存获取
         DeviceCache cached = deviceCacheService.get(imei);
         if (cached != null) {
             log.debug("设备缓存命中: imei={}, deviceId={}", imei, cached.getDeviceId());
-            // 缓存命中，直接返回（假设缓存中已有完整信息）
-            // 实际场景可能需要查询数据库获取最新状态
+            Device device = new Device();
+            device.setId(cached.getDeviceId());
+            device.setImei(imei);
+            device.setProductId(cached.getProductId());
+            device.setCurrentVersionId(cached.getCurrentVersionId());
+            device.setTags(cached.getTags());
+            device.setImportBatchId(cached.getImportBatchId());
+            return device;
         }
 
-        // 缓存未命中，从数据库加载
         Device device = deviceRepository.findByImei(imei).orElse(null);
         if (device != null) {
-            // 写入缓存
-            // deviceCacheService.put(imei, buildDeviceCache(device));
+            DeviceCache cache = DeviceCache.builder()
+                    .deviceId(device.getId())
+                    .productId(device.getProductId())
+                    .currentVersionId(device.getCurrentVersionId())
+                    .tags(device.getTags())
+                    .importBatchId(device.getImportBatchId())
+                    .build();
+            deviceCacheService.put(imei, cache);
+            log.debug("设备缓存已写入: imei={}, deviceId={}", imei, device.getId());
         }
 
         return device;

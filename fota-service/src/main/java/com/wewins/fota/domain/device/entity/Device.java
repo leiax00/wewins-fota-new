@@ -3,10 +3,7 @@ package com.wewins.fota.domain.device.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
@@ -22,6 +19,7 @@ import java.time.LocalDateTime;
  * @author FOTA Team
  * @since 2026-02-05
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Builder
 @NoArgsConstructor

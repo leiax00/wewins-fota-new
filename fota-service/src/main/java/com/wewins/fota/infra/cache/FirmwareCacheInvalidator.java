@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class FirmwareCacheInvalidator {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final CacheIndexService cacheIndexService;
 
     public void invalidateOnFirmwarePublish(Long productId, Long versionId, String tag) {
         String firmwareKey = String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId);
@@ -25,23 +26,8 @@ public class FirmwareCacheInvalidator {
             redisTemplate.delete(tagKey);
         }
         
+        cacheIndexService.invalidateFirmwareCache(versionId);
+        
         log.info("固件缓存已失效: productId={}, versionId={}", productId, versionId);
-    }
-
-    public void invalidateOnFirmwareTagChange(Long productId, Long versionId, String oldTag, String newTag) {
-        if (oldTag != null && !oldTag.isBlank()) {
-            String oldTagKey = String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, oldTag);
-            redisTemplate.delete(oldTagKey);
-        }
-        if (newTag != null && !newTag.isBlank()) {
-            String newTagKey = String.format(RedisKeyConstants.FIRMWARE_TAG_INDEX_KEY_TEMPLATE, productId, newTag);
-            redisTemplate.delete(newTagKey);
-        }
-        
-        String firmwareKey = String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId);
-        redisTemplate.delete(firmwareKey);
-        
-        log.info("固件标签索引已失效: productId={}, versionId={}, oldTag={}, newTag={}", 
-            productId, versionId, oldTag, newTag);
     }
 }
