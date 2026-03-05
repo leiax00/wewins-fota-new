@@ -46,7 +46,7 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
     }
 
     @Override
-    public Optional<Product> findByModel(String model) {
+    public LookupCacheResult getModelLookup(String model) {
         try {
             String key = buildProductModelIndexKey(model);
             Object cached = redisTemplate.opsForValue().get(key);
@@ -55,18 +55,17 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
                 cacheMetricsService.recordProductCacheHit();
                 String value = cached.toString();
                 if (MODEL_NOT_FOUND_SENTINEL.equals(value)) {
-                    return Optional.empty();
+                    return LookupCacheResult.hitNotFound();
                 }
                 renewTtl(key);
-                Long productId = Long.parseLong(value);
-                return findById(productId);
+                return LookupCacheResult.hit(Long.parseLong(value));
             }
             cacheMetricsService.recordProductCacheMiss();
         } catch (Exception e) {
             log.error("从 Redis 获取产品型号索引失败: model={}", model, e);
             cacheMetricsService.recordProductCacheMiss();
         }
-        return Optional.empty();
+        return LookupCacheResult.miss();
     }
 
     @Override

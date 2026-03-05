@@ -6,9 +6,23 @@ import java.util.Optional;
 
 public interface ProductCacheRepository {
 
+    record LookupCacheResult(boolean hit, Long productId) {
+        public static LookupCacheResult miss() {
+            return new LookupCacheResult(false, null);
+        }
+
+        public static LookupCacheResult hit(Long productId) {
+            return new LookupCacheResult(true, productId);
+        }
+
+        public static LookupCacheResult hitNotFound() {
+            return new LookupCacheResult(true, null);
+        }
+    }
+
     Optional<Product> findById(Long productId);
 
-    Optional<Product> findByModel(String model);
+    LookupCacheResult getModelLookup(String model);
 
     void cacheProduct(Product product);
 

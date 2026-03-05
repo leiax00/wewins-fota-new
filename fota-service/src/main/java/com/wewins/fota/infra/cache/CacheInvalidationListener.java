@@ -1,19 +1,13 @@
 package com.wewins.fota.infra.cache;
 
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.infra.cache.event.ChangeType;
-import com.wewins.fota.infra.cache.event.DeviceBatchChangedEvent;
-import com.wewins.fota.infra.cache.event.DeviceChangedEvent;
-import com.wewins.fota.infra.cache.event.FirmwareChangedEvent;
-import com.wewins.fota.infra.cache.event.PolicyChangedEvent;
-import com.wewins.fota.infra.cache.event.ProductChangedEvent;
+import com.wewins.fota.infra.cache.event.*;
 import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
@@ -43,7 +37,7 @@ public class CacheInvalidationListener {
     public void onPolicyChanged(PolicyChangedEvent event) {
         long start = System.currentTimeMillis();
         log.info("收到策略变更事件: productId={}, policyId={}, type={}",
-            event.getProductId(), event.getPolicyId(), event.getChangeType());
+                event.getProductId(), event.getPolicyId(), event.getChangeType());
 
         policyCacheInvalidator.invalidateOnPolicyChange(event.getProductId(), event.getPolicyId());
         cacheMetricsService.recordPolicyCacheInvalidation();
@@ -56,10 +50,10 @@ public class CacheInvalidationListener {
     public void onFirmwareChanged(FirmwareChangedEvent event) {
         long start = System.currentTimeMillis();
         log.info("收到固件变更事件: productId={}, versionId={}, type={}",
-            event.getProductId(), event.getVersionId(), event.getChangeType());
+                event.getProductId(), event.getVersionId(), event.getChangeType());
 
         firmwareCacheInvalidator.invalidateOnFirmwarePublish(
-            event.getProductId(), event.getVersionId(), event.getVersion(), event.getInternalVersion());
+                event.getProductId(), event.getVersionId(), event.getVersion(), event.getInternalVersion());
         cacheMetricsService.recordFirmwareCacheInvalidation();
         cacheMetricsService.recordCacheInvalidationEvent("firmware");
         cacheMetricsService.recordInvalidationDuration(System.currentTimeMillis() - start);

@@ -144,10 +144,21 @@ public class ProductRepositoryImpl implements ProductRepository {
             return Optional.empty();
         }
 
-        Optional<Product> cached = productCacheRepository.findByModel(model);
-        if (cached.isPresent()) {
-            log.debug("产品型号索引缓存命中: model={}", model);
-            return cached;
+        ProductCacheRepository.LookupCacheResult lookup = productCacheRepository.getModelLookup(model);
+        if (lookup.hit()) {
+            if (lookup.productId() == null) {
+                log.debug("产品型号负缓存命中: model={}", model);
+                return Optional.empty();
+            }
+
+            Optional<Product> cached = productCacheRepository.findById(lookup.productId());
+            if (cached.isPresent()) {
+                log.debug("产品型号索引缓存命中: model={}, productId={}", model, lookup.productId());
+                return cached;
+            }
+
+            log.debug("产品型号索引命中但产品缓存缺失，回源并修复索引: model={}, productId={}", model, lookup.productId());
+            productCacheRepository.evictByModel(model);
         }
 
         Product product = productMapper.selectOne(
