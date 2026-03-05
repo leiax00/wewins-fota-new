@@ -114,6 +114,8 @@ public final class RedisKeyConstants {
      */
     public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
+    public static final long DEVICE_NOT_FOUND_TTL_SECONDS = 60;
+
     public static final long DEFAULT_NOT_FOUND_TTL_SECONDS = 60;
 
     /**

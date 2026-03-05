@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.device.cache;
 
+import com.wewins.fota.domain.cache.CacheLookupResult;
+
 import java.util.List;
 
 /**
@@ -7,9 +9,11 @@ import java.util.List;
  */
 public interface DeviceCacheRepository {
 
-    DeviceCache get(String imei);
+    CacheLookupResult<DeviceCache> get(String imei);
 
     void put(String imei, DeviceCache cache);
+
+    void putNotFound(String imei);
 
     void evict(String imei);
 

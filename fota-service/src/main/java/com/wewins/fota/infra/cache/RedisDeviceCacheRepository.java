@@ -2,6 +2,7 @@ package com.wewins.fota.infra.cache;
 
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
+import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
@@ -29,6 +30,7 @@ public class RedisDeviceCacheRepository implements DeviceCacheRepository {
 
     private static final int DEFAULT_EVICT_BATCH_SIZE = 500;
     private static final int MAX_EVICT_BATCH_SIZE = 5000;
+    private static final String DEVICE_NOT_FOUND_SENTINEL = "NF";
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final CacheMetricsService cacheMetricsService;
@@ -40,20 +42,24 @@ public class RedisDeviceCacheRepository implements DeviceCacheRepository {
     private int evictBatchSize;
 
     @Override
-    public DeviceCache get(String imei) {
+    public CacheLookupResult<DeviceCache> get(String imei) {
         try {
             String key = String.format(RedisKeyConstants.DEVICE_KEY_TEMPLATE, imei);
             Object cached = redisTemplate.opsForValue().get(key);
             if (cached instanceof DeviceCache) {
                 cacheMetricsService.recordDeviceCacheHit();
-                return (DeviceCache) cached;
+                return CacheLookupResult.hit((DeviceCache) cached);
+            }
+            if (DEVICE_NOT_FOUND_SENTINEL.equals(cached)) {
+                cacheMetricsService.recordDeviceCacheHit();
+                return CacheLookupResult.hitNotFound();
             }
             cacheMetricsService.recordDeviceCacheMiss();
-            return null;
+            return CacheLookupResult.miss();
         } catch (Exception e) {
             log.error("从 Redis 获取设备缓存失败: imei={}", imei, e);
             cacheMetricsService.recordDeviceCacheMiss();
-            return null;
+            return CacheLookupResult.miss();
         }
     }
 
@@ -67,6 +73,17 @@ public class RedisDeviceCacheRepository implements DeviceCacheRepository {
             log.debug("设备缓存已更新: imei={}, deviceId={}", imei, cache.getDeviceId());
         } catch (Exception e) {
             log.error("写入 Redis 设备缓存失败: imei={}", imei, e);
+        }
+    }
+
+    @Override
+    public void putNotFound(String imei) {
+        try {
+            String key = String.format(RedisKeyConstants.DEVICE_KEY_TEMPLATE, imei);
+            long ttl = RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.DEVICE_NOT_FOUND_TTL_SECONDS);
+            redisTemplate.opsForValue().set(key, DEVICE_NOT_FOUND_SENTINEL, Duration.ofSeconds(ttl));
+        } catch (Exception e) {
+            log.error("写入设备负缓存失败: imei={}", imei, e);
         }
     }
 

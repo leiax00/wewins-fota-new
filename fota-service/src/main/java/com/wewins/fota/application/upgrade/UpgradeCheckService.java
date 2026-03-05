@@ -13,6 +13,7 @@ import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
+import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
@@ -243,7 +244,13 @@ public class UpgradeCheckService {
      * @return 设备信息，如果不存在则返回 null
      */
     private Device loadDevice(String imei) {
-        DeviceCache cached = deviceCacheService.get(imei);
+        CacheLookupResult<DeviceCache> lookup = deviceCacheService.get(imei);
+        DeviceCache cached = lookup.value();
+        if (lookup.hit() && cached == null) {
+            log.debug("设备负缓存命中: imei={}", imei);
+            return null;
+        }
+
         if (cached != null) {
             log.debug("设备缓存命中: imei={}, deviceId={}", imei, cached.getDeviceId());
             Device device = new Device();
@@ -267,6 +274,8 @@ public class UpgradeCheckService {
                     .build();
             deviceCacheService.put(imei, cache);
             log.debug("设备缓存已写入: imei={}, deviceId={}", imei, device.getId());
+        } else {
+            deviceCacheService.putNotFound(imei);
         }
 
         return device;

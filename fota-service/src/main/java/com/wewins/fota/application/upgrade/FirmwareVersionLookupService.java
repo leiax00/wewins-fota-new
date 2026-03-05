@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.cache.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
@@ -88,10 +89,10 @@ public class FirmwareVersionLookupService {
      * @return 固件版本 ID，如果未找到返回 null
      */
     private Long findByUniqueKey(String version, String internalVersion, Long productId) {
-        FirmwareVersionLookupCacheRepository.LookupCacheResult cached =
+        CacheLookupResult<Long> cached =
                 firmwareVersionLookupCacheRepository.get(productId, version, internalVersion);
         if (cached.hit()) {
-            return cached.versionId();
+            return cached.value();
         }
 
         Optional<FirmwareVersion> firmware = firmwareVersionRepository
@@ -113,10 +114,10 @@ public class FirmwareVersionLookupService {
      * @return 固件版本 ID，如果未找到返回 null
      */
     private Long findByVersionOnly(String version, Long productId) {
-        FirmwareVersionLookupCacheRepository.LookupCacheResult cached =
+        CacheLookupResult<Long> cached =
                 firmwareVersionLookupCacheRepository.get(productId, version, null);
         if (cached.hit()) {
-            return cached.versionId();
+            return cached.value();
         }
 
         Optional<FirmwareVersion> firmware = firmwareVersionRepository

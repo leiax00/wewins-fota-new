@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
+import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.product.cache.ProductCacheRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
@@ -46,7 +47,7 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
     }
 
     @Override
-    public LookupCacheResult getModelLookup(String model) {
+    public CacheLookupResult<Long> getModelLookup(String model) {
         try {
             String key = buildProductModelIndexKey(model);
             Object cached = redisTemplate.opsForValue().get(key);
@@ -55,17 +56,17 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
                 cacheMetricsService.recordProductCacheHit();
                 String value = cached.toString();
                 if (MODEL_NOT_FOUND_SENTINEL.equals(value)) {
-                    return LookupCacheResult.hitNotFound();
+                    return CacheLookupResult.hitNotFound();
                 }
                 renewTtl(key);
-                return LookupCacheResult.hit(Long.parseLong(value));
+                return CacheLookupResult.hit(Long.parseLong(value));
             }
             cacheMetricsService.recordProductCacheMiss();
         } catch (Exception e) {
             log.error("从 Redis 获取产品型号索引失败: model={}", model, e);
             cacheMetricsService.recordProductCacheMiss();
         }
-        return LookupCacheResult.miss();
+        return CacheLookupResult.miss();
     }
 
     @Override

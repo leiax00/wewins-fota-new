@@ -2,6 +2,7 @@ package com.wewins.fota.infra.persistence.mybatis.product;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.product.cache.ProductCacheRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -144,20 +145,20 @@ public class ProductRepositoryImpl implements ProductRepository {
             return Optional.empty();
         }
 
-        ProductCacheRepository.LookupCacheResult lookup = productCacheRepository.getModelLookup(model);
+        CacheLookupResult<Long> lookup = productCacheRepository.getModelLookup(model);
         if (lookup.hit()) {
-            if (lookup.productId() == null) {
+            if (lookup.value() == null) {
                 log.debug("产品型号负缓存命中: model={}", model);
                 return Optional.empty();
             }
 
-            Optional<Product> cached = productCacheRepository.findById(lookup.productId());
+            Optional<Product> cached = productCacheRepository.findById(lookup.value());
             if (cached.isPresent()) {
-                log.debug("产品型号索引缓存命中: model={}, productId={}", model, lookup.productId());
+                log.debug("产品型号索引缓存命中: model={}, productId={}", model, lookup.value());
                 return cached;
             }
 
-            log.debug("产品型号索引命中但产品缓存缺失，回源并修复索引: model={}, productId={}", model, lookup.productId());
+            log.debug("产品型号索引命中但产品缓存缺失，回源并修复索引: model={}, productId={}", model, lookup.value());
             productCacheRepository.evictByModel(model);
         }
 
