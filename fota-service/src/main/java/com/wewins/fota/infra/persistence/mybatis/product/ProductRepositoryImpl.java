@@ -160,6 +160,8 @@ public class ProductRepositoryImpl implements ProductRepository {
             productCacheRepository.cacheProduct(product);
             productCacheRepository.cacheProductByModel(model, product.getId());
             log.debug("产品型号索引缓存已写入: model={}, productId={}", model, product.getId());
+        } else {
+            productCacheRepository.cacheModelNotFound(model);
         }
 
         return Optional.ofNullable(product);

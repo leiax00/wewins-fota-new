@@ -23,6 +23,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RedisPolicyCacheRepository implements PolicyCacheRepository {
 
+    private static final String EMPTY_POLICY_SENTINEL = "__EMPTY__";
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
     private final CacheMetricsService cacheMetricsService;
@@ -34,6 +36,11 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
             Set<Object> policyIds = redisTemplate.opsForSet().members(key);
 
             if (policyIds != null && !policyIds.isEmpty()) {
+                if (policyIds.size() == 1 && policyIds.contains(EMPTY_POLICY_SENTINEL)) {
+                    cacheMetricsService.recordPolicyCacheHit();
+                    return List.of();
+                }
+
                 List<String> policyKeys = new ArrayList<>(policyIds.size());
                 for (Object policyId : policyIds) {
                     policyKeys.add(String.format(RedisKeyConstants.POLICY_KEY_TEMPLATE, policyId));
@@ -101,6 +108,10 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
             if (!policyIds.isEmpty()) {
                 redisTemplate.opsForSet().add(key, policyIds.toArray());
                 redisTemplate.expire(key, Duration.ofSeconds(ttl));
+            } else {
+                long emptyTtl = RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.POLICY_EMPTY_CACHE_TTL_SECONDS);
+                redisTemplate.opsForSet().add(key, EMPTY_POLICY_SENTINEL);
+                redisTemplate.expire(key, Duration.ofSeconds(emptyTtl));
             }
             
             updateCacheIndex(productId, key);

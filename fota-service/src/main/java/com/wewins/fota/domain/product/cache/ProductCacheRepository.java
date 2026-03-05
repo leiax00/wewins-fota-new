@@ -14,6 +14,8 @@ public interface ProductCacheRepository {
 
     void cacheProductByModel(String model, Long productId);
 
+    void cacheModelNotFound(String model);
+
     void evict(Long productId);
 
     void evictByModel(String model);

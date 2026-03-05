@@ -142,10 +142,8 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
 
         List<UpgradePolicy> policies = upgradePolicyMapper.selectList(query);
 
-        if (!policies.isEmpty()) {
-            policyCacheRepository.cacheProductPolicies(productId, includeTestPolicies, policies);
-            log.debug("策略缓存已写入: productId={}, includeTest={}, count={}", productId, includeTestPolicies, policies.size());
-        }
+        policyCacheRepository.cacheProductPolicies(productId, includeTestPolicies, policies);
+        log.debug("策略缓存已写入: productId={}, includeTest={}, count={}", productId, includeTestPolicies, policies.size());
 
         return policies;
     }

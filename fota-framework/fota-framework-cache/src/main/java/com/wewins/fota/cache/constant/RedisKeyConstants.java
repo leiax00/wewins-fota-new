@@ -114,6 +114,8 @@ public final class RedisKeyConstants {
      */
     public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
+    public static final long DEFAULT_NOT_FOUND_TTL_SECONDS = 60;
+
     /**
      * 策略信息缓存 TTL（24 小时）
      * <p>
@@ -122,6 +124,11 @@ public final class RedisKeyConstants {
      */
     public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
+
+    /*
+    * 策略负缓存ttl
+    */
+    public static final long POLICY_EMPTY_CACHE_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
     /**
      * 产品信息缓存 TTL（7 天）
      * <p>
@@ -129,6 +136,11 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /*
+    * 产品负缓存TTL
+    */
+    public static final long PRODUCT_MODEL_NOT_FOUND_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
 
     /**
      * 固件信息缓存 TTL（30 天）
@@ -152,7 +164,7 @@ public final class RedisKeyConstants {
      * 用于防止不存在版本反复穿透数据库
      * </p>
      */
-    public static final long FIRMWARE_LOOKUP_NOT_FOUND_TTL_SECONDS = 60;
+    public static final long FIRMWARE_LOOKUP_NOT_FOUND_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
 
     /**
      * 配置信息缓存 TTL（6 小时）

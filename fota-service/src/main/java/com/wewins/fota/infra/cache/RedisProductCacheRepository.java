@@ -20,6 +20,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class RedisProductCacheRepository implements ProductCacheRepository {
 
+    private static final String MODEL_NOT_FOUND_SENTINEL = "NF";
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
     private final CacheMetricsService cacheMetricsService;
@@ -51,8 +53,12 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
             
             if (cached != null) {
                 cacheMetricsService.recordProductCacheHit();
+                String value = cached.toString();
+                if (MODEL_NOT_FOUND_SENTINEL.equals(value)) {
+                    return Optional.empty();
+                }
                 renewTtl(key);
-                Long productId = Long.parseLong(cached.toString());
+                Long productId = Long.parseLong(value);
                 return findById(productId);
             }
             cacheMetricsService.recordProductCacheMiss();
@@ -89,6 +95,17 @@ public class RedisProductCacheRepository implements ProductCacheRepository {
             log.debug("产品型号索引已更新: model={}, productId={}", model, productId);
         } catch (Exception e) {
             log.error("写入 Redis 产品型号索引失败: model={}", model, e);
+        }
+    }
+
+    @Override
+    public void cacheModelNotFound(String model) {
+        try {
+            String key = buildProductModelIndexKey(model);
+            long ttl = RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.PRODUCT_MODEL_NOT_FOUND_TTL_SECONDS);
+            redisTemplate.opsForValue().set(key, MODEL_NOT_FOUND_SENTINEL, Duration.ofSeconds(ttl));
+        } catch (Exception e) {
+            log.error("写入产品型号负缓存失败: model={}", model, e);
         }
     }
 
