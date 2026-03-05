@@ -263,3 +263,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260305_01_devices_imei_partial_unique_index
+      author: fota-team
+      comment: "devices IMEI 唯一性调整为仅活跃记录唯一（deleted_at IS NULL）"
+      changes:
+        - sqlFile:
+            path: changes/20260305_01_devices_imei_partial_unique_index.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
