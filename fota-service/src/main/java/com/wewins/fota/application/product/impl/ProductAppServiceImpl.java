@@ -87,7 +87,12 @@ public class ProductAppServiceImpl implements ProductAppService {
         validateProductNameUnique(product.getName(), null);
 
         productRepository.create(product);
-        eventPublisher.publishEvent(new ProductChangedEvent(this, product.getId(), ChangeType.CREATED));
+        eventPublisher.publishEvent(new ProductChangedEvent(
+                this,
+                product.getId(),
+                ChangeType.CREATED,
+                null,
+                product.getModel()));
 
         log.info("产品创建成功: productId={}, name={}", product.getId(), product.getName());
         return product;
@@ -112,7 +117,12 @@ public class ProductAppServiceImpl implements ProductAppService {
         validateProductNameUnique(product.getName(), product.getId());
 
         productRepository.updateById(product);
-        eventPublisher.publishEvent(new ProductChangedEvent(this, product.getId(), ChangeType.UPDATED));
+        eventPublisher.publishEvent(new ProductChangedEvent(
+                this,
+                product.getId(),
+                ChangeType.UPDATED,
+                existingProduct.getModel(),
+                product.getModel()));
 
         log.info("产品更新成功: productId={}, name={}", product.getId(), product.getName());
         return product;
@@ -130,10 +140,15 @@ public class ProductAppServiceImpl implements ProductAppService {
         }
 
         // 检查产品是否存在
-        getById(id);
+        Product existingProduct = getById(id);
 
         boolean result = productRepository.deleteById(id);
-        eventPublisher.publishEvent(new ProductChangedEvent(this, id, ChangeType.DELETED));
+        eventPublisher.publishEvent(new ProductChangedEvent(
+                this,
+                id,
+                ChangeType.DELETED,
+                existingProduct.getModel(),
+                null));
 
         log.info("产品删除成功: productId={}, result={}", id, result);
         return result;

@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.device.cache;
 
+import java.util.List;
+
 /**
  * 设备缓存仓储（领域端口）。
  */
@@ -10,5 +12,7 @@ public interface DeviceCacheRepository {
     void put(String imei, DeviceCache cache);
 
     void evict(String imei);
+
+    void evictBatch(List<String> imeis);
 
 }

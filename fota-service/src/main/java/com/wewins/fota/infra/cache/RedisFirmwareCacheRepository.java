@@ -6,6 +6,7 @@ import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
 import com.wewins.fota.domain.firmware.cache.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -21,6 +22,7 @@ public class RedisFirmwareCacheRepository implements FirmwareCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final CacheMetricsService cacheMetricsService;
 
     @Override
     public Optional<FirmwareVersion> findById(Long versionId) {
@@ -30,10 +32,16 @@ public class RedisFirmwareCacheRepository implements FirmwareCacheRepository {
             
             if (cached != null) {
                 renewTtl(key);
-                return Optional.ofNullable(deserializeFirmware(cached.toString()));
+                FirmwareVersion firmware = deserializeFirmware(cached.toString());
+                if (firmware != null) {
+                    cacheMetricsService.recordFirmwareCacheHit();
+                    return Optional.of(firmware);
+                }
             }
+            cacheMetricsService.recordFirmwareCacheMiss();
         } catch (Exception e) {
             log.error("从 Redis 获取固件缓存失败: versionId={}", versionId, e);
+            cacheMetricsService.recordFirmwareCacheMiss();
         }
         return Optional.empty();
     }

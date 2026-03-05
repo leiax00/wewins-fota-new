@@ -13,8 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
-import java.util.Objects;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
@@ -33,11 +32,7 @@ public class CacheInvalidationListener {
         long start = System.currentTimeMillis();
         log.info("收到产品变更事件: productId={}, type={}", event.getProductId(), event.getChangeType());
 
-        if (Objects.requireNonNull(event.getChangeType()) == ChangeType.STATUS_CHANGED) {
-            productCacheInvalidator.invalidateOnProductStatusChange(event.getProductId());
-        } else {
-            productCacheInvalidator.invalidateOnProductChange(event.getProductId());
-        }
+        productCacheInvalidator.invalidateOnProductChange(event.getProductId(), event.getOldModel(), event.getNewModel());
         cacheMetricsService.recordProductCacheInvalidation();
         cacheMetricsService.recordCacheInvalidationEvent("product");
         cacheMetricsService.recordInvalidationDuration(System.currentTimeMillis() - start);
@@ -84,10 +79,11 @@ public class CacheInvalidationListener {
     @Async
     public void onDeviceBatchChanged(DeviceBatchChangedEvent event) {
         long start = System.currentTimeMillis();
-        log.info("收到批量设备变更事件: count={}, type={}", event.getImeis().size(), event.getChangeType());
+        int size = event.getImeis() == null ? 0 : event.getImeis().size();
+        log.info("收到批量设备变更事件: count={}, type={}", size, event.getChangeType());
 
-        for (String imei : event.getImeis()) {
-            deviceCacheRepository.evict(imei);
+        if (size > 0) {
+            deviceCacheRepository.evictBatch(event.getImeis());
         }
         cacheMetricsService.recordDeviceCacheEviction();
         cacheMetricsService.recordCacheInvalidationEvent("device_batch");

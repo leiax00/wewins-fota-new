@@ -28,6 +28,9 @@ public class CacheMetricsService {
     private final Counter firmwareCacheMisses;
     private final Counter firmwareCacheInvalidations;
 
+    private final Counter firmwareLookupCacheHits;
+    private final Counter firmwareLookupCacheMisses;
+
     private final Counter deviceCacheHits;
     private final Counter deviceCacheMisses;
     private final Counter deviceCacheEvictions;
@@ -81,6 +84,16 @@ public class CacheMetricsService {
         this.firmwareCacheInvalidations = Counter.builder(METRIC_PREFIX + "invalidations")
                 .tag("cache", "firmware")
                 .description("Firmware cache invalidations")
+                .register(meterRegistry);
+
+        this.firmwareLookupCacheHits = Counter.builder(METRIC_PREFIX + "hits")
+                .tag("cache", "firmware_lookup")
+                .description("Firmware lookup cache hits")
+                .register(meterRegistry);
+
+        this.firmwareLookupCacheMisses = Counter.builder(METRIC_PREFIX + "misses")
+                .tag("cache", "firmware_lookup")
+                .description("Firmware lookup cache misses")
                 .register(meterRegistry);
 
         this.deviceCacheHits = Counter.builder(METRIC_PREFIX + "hits")
@@ -142,6 +155,14 @@ public class CacheMetricsService {
 
     public void recordFirmwareCacheInvalidation() {
         firmwareCacheInvalidations.increment();
+    }
+
+    public void recordFirmwareLookupCacheHit() {
+        firmwareLookupCacheHits.increment();
+    }
+
+    public void recordFirmwareLookupCacheMiss() {
+        firmwareLookupCacheMisses.increment();
     }
 
     public void recordDeviceCacheHit() {

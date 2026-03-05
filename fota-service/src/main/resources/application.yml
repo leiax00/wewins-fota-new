@@ -200,6 +200,8 @@ app:
     policy-ttl: ${APP_CACHE_POLICY_TTL:1h}
     # 限流默认窗口大小（默认 60 秒）
     default-rate-limit-window: ${APP_CACHE_DEFAULT_RATE_LIMIT_WINDOW:60s}
+    device-evict-mode: ${APP_CACHE_DEVICE_EVICT_MODE:collection}
+    device-evict-batch-size: ${APP_CACHE_DEVICE_EVICT_BATCH_SIZE:500}
 
   # 固件下载配置
   firmware:

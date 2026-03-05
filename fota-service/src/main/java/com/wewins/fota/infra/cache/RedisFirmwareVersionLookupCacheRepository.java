@@ -3,6 +3,7 @@ package com.wewins.fota.infra.cache;
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
 import com.wewins.fota.domain.firmware.cache.FirmwareVersionLookupCacheRepository;
+import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -22,28 +23,34 @@ public class RedisFirmwareVersionLookupCacheRepository implements FirmwareVersio
     private static final String NULL_TAG = "__NULL__";
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final CacheMetricsService cacheMetricsService;
 
     @Override
     public LookupCacheResult get(Long productId, String version, String internalVersion) {
         if (productId == null || !StringUtils.hasText(version)) {
+            cacheMetricsService.recordFirmwareLookupCacheMiss();
             return LookupCacheResult.miss();
         }
         try {
             String key = buildKey(productId, version, internalVersion);
             Object cached = redisTemplate.opsForValue().get(key);
             if (cached == null) {
+                cacheMetricsService.recordFirmwareLookupCacheMiss();
                 return LookupCacheResult.miss();
             }
             String value = cached.toString();
             if (NOT_FOUND_SENTINEL.equals(value)) {
+                cacheMetricsService.recordFirmwareLookupCacheMiss();
                 return LookupCacheResult.hitNotFound();
             }
             Long versionId = Long.valueOf(value);
             renewTtl(key);
+            cacheMetricsService.recordFirmwareLookupCacheHit();
             return LookupCacheResult.hit(versionId);
         } catch (Exception e) {
             log.warn("读取固件版本映射缓存失败: productId={}, version={}, internalVersion={}",
                     productId, version, internalVersion, e);
+            cacheMetricsService.recordFirmwareLookupCacheMiss();
             return LookupCacheResult.miss();
         }
     }

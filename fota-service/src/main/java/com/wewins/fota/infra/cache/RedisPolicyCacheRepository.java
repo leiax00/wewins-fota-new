@@ -6,6 +6,7 @@ import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
 import com.wewins.fota.domain.policy.cache.PolicyCacheRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -24,6 +25,7 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final CacheMetricsService cacheMetricsService;
 
     @Override
     public List<UpgradePolicy> getProductPolicies(Long productId, boolean includeTestPolicies) {
@@ -61,14 +63,18 @@ public class RedisPolicyCacheRepository implements PolicyCacheRepository {
 
                 if (hasMissingPolicy) {
                     redisTemplate.delete(key);
+                    cacheMetricsService.recordPolicyCacheMiss();
                     return null;
                 }
 
                 renewTtl(key);
+                cacheMetricsService.recordPolicyCacheHit();
                 return policies;
             }
+            cacheMetricsService.recordPolicyCacheMiss();
         } catch (Exception e) {
             log.error("从 Redis 获取策略缓存失败: productId={}, includeTest={}", productId, includeTestPolicies, e);
+            cacheMetricsService.recordPolicyCacheMiss();
         }
         return null;
     }
