@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.common.enums.CheckMode;
 import com.wewins.fota.common.exception.BizException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -297,60 +298,56 @@ class UpgradeRequestValidatorTest {
 
     @Nested
     @DisplayName("validateAuto 方法测试")
-    class ValidateAutoTests {
+    class ValidateCheckModeTests {
 
         @Test
         @DisplayName("auto 为 null - 应该通过")
         void shouldPass_whenAutoIsNull() {
             // Given
-            Integer auto = null;
+            CheckMode auto = null;
 
             // When & Then
-            validator.validateAuto(auto);
+            validator.validateCheckMode(auto);
         }
 
         @Test
         @DisplayName("auto 为 0（手动检查）- 应该通过")
         void shouldPass_whenAutoIsZero() {
             // Given
-            Integer auto = 0;
+            CheckMode auto = CheckMode.MANUAL;
 
             // When & Then
-            validator.validateAuto(auto);
+            validator.validateCheckMode(auto);
         }
 
         @Test
         @DisplayName("auto 为 1（自动检查）- 应该通过")
         void shouldPass_whenAutoIsOne() {
             // Given
-            Integer auto = 1;
+            CheckMode auto = CheckMode.AUTO;
 
             // When & Then
-            validator.validateAuto(auto);
+            validator.validateCheckMode(auto);
         }
 
         @Test
         @DisplayName("auto 小于 0 - 应该抛出异常")
-        void shouldThrow_whenAutoIsNegative() {
+        void shouldBeNull_whenAutoIsNegative() {
             // Given
-            Integer auto = -1;
+            CheckMode auto = CheckMode.fromValue(-1);
 
             // When & Then
-            assertThatThrownBy(() -> validator.validateAuto(auto))
-                    .isInstanceOf(BizException.class)
-                    .hasMessageContaining("auto 参数只能是 0（手动检查）或 1（自动检查）");
+            assertThat(auto).isNull();
         }
 
         @Test
         @DisplayName("auto 大于 1 - 应该抛出异常")
-        void shouldThrow_whenAutoIsOverOne() {
+        void shouldBeNull_whenAutoIsOverOne() {
             // Given
-            Integer auto = 2;
+            CheckMode auto = CheckMode.fromValue(2);
 
             // When & Then
-            assertThatThrownBy(() -> validator.validateAuto(auto))
-                    .isInstanceOf(BizException.class)
-                    .hasMessageContaining("auto 参数只能是 0（手动检查）或 1（自动检查）");
+            assertThat(auto).isNull();
         }
     }
 
@@ -424,7 +421,7 @@ class UpgradeRequestValidatorTest {
             String productModel = "asr_yemen_m476_vsim";
             String imei = "354972069009027";
             String version = "Mobile.Router.B03";
-            Integer auto = 0;
+            CheckMode auto = CheckMode.MANUAL;
 
             // When & Then
             validator.validateAllParams(productModel, imei, version, auto);
@@ -437,7 +434,7 @@ class UpgradeRequestValidatorTest {
             String productModel = "asr_yemen_m476_vsim";
             String imei = "354972069009027";
             String version = "Mobile.Router.B03";
-            Integer auto = null;
+            CheckMode auto = null;
 
             // When & Then
             validator.validateAllParams(productModel, imei, version, auto);
@@ -450,12 +447,12 @@ class UpgradeRequestValidatorTest {
             String productModel = "asr_yemen_m476_vsim";
             String imei = "354972069009027";
             String version = "Mobile.Router.B03";
-            Integer auto = 2;
+            CheckMode auto = CheckMode.fromValue(2);
 
             // When & Then
             assertThatThrownBy(() -> validator.validateAllParams(productModel, imei, version, auto))
                     .isInstanceOf(BizException.class)
-                    .hasMessageContaining("auto 参数只能是");
+                    .hasMessageContaining("auto 参数只能是0, 1");
         }
     }
 

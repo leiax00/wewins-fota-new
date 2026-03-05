@@ -57,7 +57,7 @@ class CacheInvalidationIntegrationTest {
 
             listener.onProductChanged(event);
 
-            verify(productCacheInvalidator).invalidateOnProductChange(1L);
+            verify(productCacheInvalidator).invalidateOnProductChange(1L, null, null);
         }
 
         @Test
@@ -67,7 +67,7 @@ class CacheInvalidationIntegrationTest {
 
             listener.onProductChanged(event);
 
-            verify(productCacheInvalidator).invalidateOnProductChange(1L);
+            verify(productCacheInvalidator).invalidateOnProductChange(1L, null, null);
         }
 
         @Test
@@ -77,7 +77,7 @@ class CacheInvalidationIntegrationTest {
 
             listener.onProductChanged(event);
 
-            verify(productCacheInvalidator).invalidateOnProductChange(1L);
+            verify(productCacheInvalidator).invalidateOnProductChange(1L, null, null);
         }
 
         @Test
@@ -87,7 +87,7 @@ class CacheInvalidationIntegrationTest {
 
             listener.onProductChanged(event);
 
-            verify(productCacheInvalidator).invalidateOnProductStatusChange(1L);
+            verify(productCacheInvalidator).invalidateOnProductChange(1L, null, null);
         }
     }
 

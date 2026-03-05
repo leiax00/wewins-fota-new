@@ -270,9 +270,9 @@ class RedisDistributedLockServiceTest {
         // Act
         lockService.tryLock("test_lock");
 
-        // Assert: 验证 key 格式包含时间戳
+        // Assert: 验证 key 使用固定格式（不含时间戳）
         verify(valueOperations).setIfAbsent(
-                contains("fota:lock:test_lock:"),
+                eq("fota:lock:test_lock"),
                 anyString(),
                 anyLong(),
                 any(TimeUnit.class)

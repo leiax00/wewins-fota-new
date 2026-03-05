@@ -244,28 +244,28 @@ class LegacyAndNewApiUnifiedTest {
         void whenMultiplePoliciesMatch_shouldSelectHighestPriority() {
             // Given: 多个策略
             Device device = Device.builder()
-                    .id(1L)
                     .imei("354972069009027")
                     .productId(100L)
                     .currentVersionId(101L)
                     .build();
+            device.setId(1L);
 
             // 策略1：无环境限制，优先级 10
             UpgradePolicy policy1 = new UpgradePolicy();
             policy1.setId(1L);
-            policy1.setTargetEnvironment(null);
+            policy1.setName(null);
             policy1.setPriority(10);
 
             // 策略2：测试环境，优先级 20
             UpgradePolicy policy2 = new UpgradePolicy();
             policy2.setId(2L);
-            policy2.setTargetEnvironment("test");
+            policy2.setName("test");
             policy2.setPriority(20);
 
             // 策略3：生产环境，优先级 30
             UpgradePolicy policy3 = new UpgradePolicy();
             policy3.setId(3L);
-            policy3.setTargetEnvironment("prod");
+            policy3.setName("prod");
             policy3.setPriority(30);
 
             List<UpgradePolicy> policies = List.of(policy1, policy2, policy3);
@@ -273,7 +273,7 @@ class LegacyAndNewApiUnifiedTest {
             // When: dev=1 (测试设备)
             Integer dev = 1;
             List<UpgradePolicy> matched = policies.stream()
-                    .filter(p -> policyMatcher.matchesDevMode(p.getTargetEnvironment(), dev))
+                    .filter(p -> policyMatcher.matchesDevMode(p.getName(), dev))
                     .sorted((a, b) -> b.getPriority().compareTo(a.getPriority()))
                     .toList();
 

@@ -1,8 +1,8 @@
 package com.wewins.fota.application.upgrade;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.LongNode;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import org.junit.jupiter.api.BeforeEach;
@@ -184,7 +184,7 @@ class UpgradeCheckServiceVersionMatchTest {
         void whenSourceVersionsHasManyVersions_shouldMatchCorrectly() {
             // Given
             UpgradePolicy policy = new UpgradePolicy();
-            JsonNode sourceVersions = jsonNodeFactory.arrayNode();
+            ArrayNode sourceVersions = jsonNodeFactory.arrayNode();
             for (long i = 0; i < 1000; i++) {
                 sourceVersions.add(i);
             }
@@ -203,7 +203,7 @@ class UpgradeCheckServiceVersionMatchTest {
         void whenSourceVersionsHasManyVersions_shouldNotMatchCorrectly() {
             // Given
             UpgradePolicy policy = new UpgradePolicy();
-            JsonNode sourceVersions = jsonNodeFactory.arrayNode();
+            ArrayNode sourceVersions = jsonNodeFactory.arrayNode();
             for (long i = 0; i < 1000; i++) {
                 sourceVersions.add(i);
             }
@@ -244,11 +244,11 @@ class UpgradeCheckServiceVersionMatchTest {
         void whenMultiplePolicies_shouldFilterByVersion() {
             // Given
             Device device = Device.builder()
-                    .id(1L)
                     .imei("869123456789012")
                     .productId(100L)
                     .currentVersionId(101L)
                     .build();
+            device.setId(1L);
 
             // 策略1：无版本限制
             UpgradePolicy policy1 = new UpgradePolicy();
@@ -296,11 +296,11 @@ class UpgradeCheckServiceVersionMatchTest {
         void whenDeviceVersionIsNull_shouldOnlyMatchUnrestrictedPolicies() {
             // Given
             Device device = Device.builder()
-                    .id(1L)
                     .imei("869123456789012")
                     .productId(100L)
                     .currentVersionId(null)
                     .build();
+            device.setId(1L);
 
             // 策略1：无版本限制
             UpgradePolicy policy1 = new UpgradePolicy();

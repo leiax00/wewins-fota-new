@@ -62,25 +62,24 @@ class UpgradeResponseBuilderTest {
 
         // 创建测试设备
         testDevice = Device.builder()
-                .id(1000L)
                 .imei("354972069009027")
                 .productId(1L)
                 .currentVersionId(10L)
                 .build();
+        testDevice.setId(1000L);
 
         // 创建测试策略
         testPolicy = UpgradePolicy.builder()
-                .id(100L)
                 .productId(1L)
                 .name("测试策略")
                 .targetVersionId(20L)
                 .priority(100)
                 .status(PolicyStatus.ACTIVE)
                 .build();
+        testPolicy.setId(100L);
 
         // 创建测试固件版本
         testFirmware = FirmwareVersion.builder()
-                .id(20L)
                 .productId(1L)
                 .version("v2.0.0")
                 .internalVersion("BUILD_02")
@@ -90,9 +89,10 @@ class UpgradeResponseBuilderTest {
                 .md5("abc123def456")
                 .sha256("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
                 .packageStatus("READY")
-                .createdAt(LocalDateTime.of(2026, 2, 1, 10, 0, 0))
                 .packageUploadedAt(LocalDateTime.of(2026, 2, 1, 10, 30, 0))
                 .build();
+        testFirmware.setId(20L);
+        testFirmware.setCreatedAt(LocalDateTime.of(2026, 2, 1, 10, 0, 0));
     }
 
     @Nested
@@ -106,7 +106,7 @@ class UpgradeResponseBuilderTest {
             String expectedUrl = "https://cdn.example.com/fota/fw/1/test-firmware.zip?pid=100&rid=" + testRequestId;
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn(expectedUrl);
 
             // When
@@ -125,7 +125,7 @@ class UpgradeResponseBuilderTest {
         void buildResponse_shouldIncludeFirmwareInfo() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
@@ -173,7 +173,7 @@ class UpgradeResponseBuilderTest {
         void buildResponse_shouldHandleNullDownloadUrl() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenThrow(new RuntimeException("签名服务异常"));
 
             // When
@@ -195,12 +195,11 @@ class UpgradeResponseBuilderTest {
             // Given - 设置多语言元数据
             ObjectNode meta = objectMapper.createObjectNode();
             ObjectNode i18n = meta.putObject("i18n");
-            ObjectNode zhNode = i18n.putObject("zh");
-            zhNode.put("changelog", "修复蓝牙断连问题\n优化功耗");
+            i18n.put("zh", "修复蓝牙断连问题\n优化功耗");
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
@@ -216,13 +215,11 @@ class UpgradeResponseBuilderTest {
             // Given
             ObjectNode meta = objectMapper.createObjectNode();
             ObjectNode i18n = meta.putObject("i18n");
-            ObjectNode enNode = i18n.putObject("en");
-            enNode.put("description", "Simple description");
-            enNode.put("changelog", "1. Fix bug A\n2. Fix bug B");
+            i18n.put("en", "1. Fix bug A\n2. Fix bug B");
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
@@ -242,7 +239,7 @@ class UpgradeResponseBuilderTest {
         void buildResponse_shouldUseLongerInterval_forAutoMode() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When - 自动模式
@@ -257,7 +254,7 @@ class UpgradeResponseBuilderTest {
         void buildResponse_shouldUseDefaultInterval_forManualMode() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When - 手动模式
@@ -277,7 +274,7 @@ class UpgradeResponseBuilderTest {
         void buildResponse_shouldCallSignedUrlService_withCorrectParams() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString(), anyLong(), anyString()))
+            when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
@@ -285,9 +282,7 @@ class UpgradeResponseBuilderTest {
 
             // Then
             verify(signedUrlService).generateSignedUrl(
-                    eq("fota/fw/1/test-firmware.zip"),
-                    eq(100L),
-                    eq(testRequestId)
+                    eq("fota/fw/1/test-firmware.zip")
             );
         }
     }

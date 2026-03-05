@@ -3,21 +3,24 @@ package com.wewins.fota.application.upgrade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
+import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
+import com.wewins.fota.application.upgrade.dto.CheckResult;
+import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
-import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
+import com.wewins.fota.domain.reporting.service.CheckLogGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,14 +29,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyInt;
 
 /**
  * UpgradeCheckService 灰度发布检查测试
@@ -72,6 +74,12 @@ class UpgradeCheckServiceGrayTest {
     private GrayReleaseService grayReleaseService;
     @Mock
     private UpgradeResponseBuilder upgradeResponseBuilder;
+    @Mock
+    private UpgradeRequestValidator requestValidator;
+    @Mock
+    private CheckLogGateway checkLogGateway;
+    @Mock
+    private DeviceCheckLogBuilder checkLogBuilder;
 
     private UpgradeCheckService upgradeCheckService;
     private ObjectMapper objectMapper;
@@ -87,10 +95,12 @@ class UpgradeCheckServiceGrayTest {
                 bitmapRepository,
                 policyMatcher,
                 productRepository,
-                firmwareVersionRepository,
                 firmwareVersionLookupService,
                 grayReleaseService,
-                upgradeResponseBuilder
+                upgradeResponseBuilder,
+                requestValidator,
+                checkLogGateway,
+                checkLogBuilder
         );
         objectMapper = new ObjectMapper();
     }
@@ -105,24 +115,36 @@ class UpgradeCheckServiceGrayTest {
             // Arrange
             String imei = "354972069009027";
             Device device = createDevice(imei, 1L, 1L, null);
+            Product product = createProduct(1L, "TEST-MODEL-001");
             UpgradePolicy policy = createPolicy(1L, 50); // 50% 灰度
 
-            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
-                    .thenReturn(new RateLimitDecision(true, null, 0));
+            long resetAt = System.currentTimeMillis() / 1000 + 60;
+            when(deviceRateLimiter.allow(anyString(), any(), any()))
+                    .thenReturn(RateLimitDecision.allowed(9, resetAt));
+            when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(1L))
+            when(firmwareVersionLookupService.findVersionId(anyString(), any(), anyLong())).thenReturn(1L);
+            when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
-            when(dataIntegrityService.isProductActive(any())).thenReturn(true);
-            when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 50)).thenReturn(true); // 命中灰度
-            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTimeWindow(any())).thenReturn(true);
+
+            CheckResult expectedResult = CheckResult.builder()
+                    .hasUpdate(true)
+                    .decision(UpgradeDecision.UPDATE)
+                    .requestId("test-request-id")
+                    .build();
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+                    .thenReturn(expectedResult);
 
             // Act
-            UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
+            UpgradeCheckReqDTO request = createRequest(imei, "TEST-MODEL-001");
+            CheckResult result = upgradeCheckService.checkUpgrade(request);
 
             // Assert
             assertTrue(result.getHasUpdate(), "应该有更新");
-            assertEquals("UPDATE", result.getDecision());
+            assertEquals(UpgradeDecision.UPDATE, result.getDecision());
 
             // 验证灰度检查被调用
             verify(grayReleaseService).hitsGrayBucket(imei, 50);
@@ -134,24 +156,28 @@ class UpgradeCheckServiceGrayTest {
             // Arrange
             String imei = "354972069009027";
             Device device = createDevice(imei, 1L, 1L, null);
+            Product product = createProduct(1L, "TEST-MODEL-001");
             UpgradePolicy policy = createPolicy(1L, 10); // 10% 灰度
 
-            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
-                    .thenReturn(new RateLimitDecision(true, null, 0));
+            long resetAt = System.currentTimeMillis() / 1000 + 60;
+            when(deviceRateLimiter.allow(anyString(), any(), any()))
+                    .thenReturn(RateLimitDecision.allowed(9, resetAt));
+            when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(1L))
+            when(firmwareVersionLookupService.findVersionId(anyString(), any(), anyLong())).thenReturn(1L);
+            when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
-            when(dataIntegrityService.isProductActive(any())).thenReturn(true);
-            when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 10)).thenReturn(false); // 未命中灰度
-            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTimeWindow(any())).thenReturn(true);
 
             // Act
-            UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
+            UpgradeCheckReqDTO request = createRequest(imei, "TEST-MODEL-001");
+            CheckResult result = upgradeCheckService.checkUpgrade(request);
 
             // Assert
             assertFalse(result.getHasUpdate(), "不应该有更新");
-            assertEquals("NO_UPDATE", result.getDecision());
+            assertEquals(UpgradeDecision.NO_UPDATE, result.getDecision());
 
             // 验证灰度检查被调用
             verify(grayReleaseService).hitsGrayBucket(imei, 10);
@@ -163,19 +189,31 @@ class UpgradeCheckServiceGrayTest {
             // Arrange
             String imei = "354972069009027";
             Device device = createDevice(imei, 1L, 1L, null);
+            Product product = createProduct(1L, "TEST-MODEL-001");
             UpgradePolicy policy = createPolicy(1L, null); // null 灰度比例
 
-            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
-                    .thenReturn(new RateLimitDecision(true, null, 0));
+            long resetAt = System.currentTimeMillis() / 1000 + 60;
+            when(deviceRateLimiter.allow(anyString(), any(), any()))
+                    .thenReturn(RateLimitDecision.allowed(9, resetAt));
+            when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(1L))
+            when(firmwareVersionLookupService.findVersionId(anyString(), any(), anyLong())).thenReturn(1L);
+            when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
-            when(dataIntegrityService.isProductActive(any())).thenReturn(true);
-            when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
-            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTimeWindow(any())).thenReturn(true);
+
+            CheckResult expectedResult = CheckResult.builder()
+                    .hasUpdate(true)
+                    .decision(UpgradeDecision.UPDATE)
+                    .requestId("test-request-id")
+                    .build();
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+                    .thenReturn(expectedResult);
 
             // Act
-            UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
+            UpgradeCheckReqDTO request = createRequest(imei, "TEST-MODEL-001");
+            CheckResult result = upgradeCheckService.checkUpgrade(request);
 
             // Assert
             assertTrue(result.getHasUpdate(), "应该有更新");
@@ -190,24 +228,36 @@ class UpgradeCheckServiceGrayTest {
             // Arrange
             String imei = "354972069009027";
             Device device = createDevice(imei, 1L, 1L, null);
+            Product product = createProduct(1L, "TEST-MODEL-001");
             UpgradePolicy policy = createPolicy(1L, 100); // 100% 灰度
 
-            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
-                    .thenReturn(new RateLimitDecision(true, null, 0));
+            long resetAt = System.currentTimeMillis() / 1000 + 60;
+            when(deviceRateLimiter.allow(anyString(), any(), any()))
+                    .thenReturn(RateLimitDecision.allowed(9, resetAt));
+            when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(1L))
+            when(firmwareVersionLookupService.findVersionId(anyString(), any(), anyLong())).thenReturn(1L);
+            when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
-            when(dataIntegrityService.isProductActive(any())).thenReturn(true);
-            when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
-            when(grayReleaseService.hitsGrayBucket(imei, 100)).thenReturn(true); // 100% 应该返回 true
-            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTimeWindow(any())).thenReturn(true);
+
+            CheckResult expectedResult = CheckResult.builder()
+                    .hasUpdate(true)
+                    .decision(UpgradeDecision.UPDATE)
+                    .requestId("test-request-id")
+                    .build();
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+                    .thenReturn(expectedResult);
 
             // Act
-            UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
+            UpgradeCheckReqDTO request = createRequest(imei, "TEST-MODEL-001");
+            CheckResult result = upgradeCheckService.checkUpgrade(request);
 
             // Assert
             assertTrue(result.getHasUpdate(), "应该有更新");
-            verify(grayReleaseService).hitsGrayBucket(imei, 100);
+            // 100% 灰度直接返回 true，不调用 grayReleaseService
+            verify(grayReleaseService, never()).hitsGrayBucket(anyString(), anyInt());
         }
 
         @Test
@@ -216,20 +266,24 @@ class UpgradeCheckServiceGrayTest {
             // Arrange
             String imei = "354972069009027";
             Device device = createDevice(imei, 1L, 1L, null);
+            Product product = createProduct(1L, "TEST-MODEL-001");
             UpgradePolicy policy = createPolicy(1L, 0); // 0% 灰度
 
-            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
-                    .thenReturn(new RateLimitDecision(true, null, 0));
+            long resetAt = System.currentTimeMillis() / 1000 + 60;
+            when(deviceRateLimiter.allow(anyString(), any(), any()))
+                    .thenReturn(RateLimitDecision.allowed(9, resetAt));
+            when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(upgradePolicyRepository.findActiveByProductIdOrderByPriorityDesc(1L))
+            when(firmwareVersionLookupService.findVersionId(anyString(), any(), anyLong())).thenReturn(1L);
+            when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
-            when(dataIntegrityService.isProductActive(any())).thenReturn(true);
-            when(dataIntegrityService.isFirmwareVersionActive(any())).thenReturn(true);
+            when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
+            when(policyMatcher.matchesTimeWindow(any())).thenReturn(true);
             when(grayReleaseService.hitsGrayBucket(imei, 0)).thenReturn(false); // 0% 应该返回 false
-            when(policyMatcher.matchesTargetMode(any(), any(), any(), any())).thenReturn(true);
 
             // Act
-            UpgradeCheckService.CheckResult result = upgradeCheckService.checkUpgrade(imei);
+            UpgradeCheckReqDTO request = createRequest(imei, "TEST-MODEL-001");
+            CheckResult result = upgradeCheckService.checkUpgrade(request);
 
             // Assert
             assertFalse(result.getHasUpdate(), "不应该有更新");
@@ -241,14 +295,28 @@ class UpgradeCheckServiceGrayTest {
      * 创建设备实体
      */
     private Device createDevice(String imei, Long productId, Long versionId, JsonNode tags) {
-        return Device.builder()
-                .id(1L)
+        Device device = Device.builder()
                 .imei(imei)
                 .productId(productId)
                 .currentVersionId(versionId)
                 .status("ACTIVE")
                 .tags(tags)
                 .build();
+        device.setId(1L);
+        return device;
+    }
+
+    /**
+     * 创建产品实体
+     */
+    private Product createProduct(Long id, String model) {
+        Product product = Product.builder()
+                .name("测试产品")
+                .model(model)
+                .manufacturer("测试制造商")
+                .build();
+        product.setId(id);
+        return product;
     }
 
     /**
@@ -256,8 +324,7 @@ class UpgradeCheckServiceGrayTest {
      */
     private UpgradePolicy createPolicy(Long productId, Integer grayRate) {
         ObjectNode sourceVersions = objectMapper.createObjectNode().put("dummy", "value");
-        return UpgradePolicy.builder()
-                .id(1L)
+        UpgradePolicy policy = UpgradePolicy.builder()
                 .productId(productId)
                 .name("测试策略")
                 .targetVersionId(2L)
@@ -266,5 +333,20 @@ class UpgradeCheckServiceGrayTest {
                 .grayRate(grayRate)
                 .status(PolicyStatus.ACTIVE)
                 .build();
+        policy.setId(1L);
+        return policy;
+    }
+
+    /**
+     * 创建请求 DTO
+     */
+    private UpgradeCheckReqDTO createRequest(String imei, String productModel) {
+        UpgradeCheckReqDTO request = new UpgradeCheckReqDTO();
+        request.setImei(imei);
+        request.setProduct(productModel);
+        request.setVersion("v1.0.0");
+        request.setAuto(1);
+        request.setLang("en");
+        return request;
     }
 }

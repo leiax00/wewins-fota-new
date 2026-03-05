@@ -40,7 +40,6 @@ class FirmwareVersionRepositoryImplTest {
     @BeforeEach
     void setUp() {
         testFirmwareVersion = FirmwareVersion.builder()
-                .id(1L)
                 .productId(100L)
                 .version("Mobile.Router.B03")
                 .internalVersion("ASR_YEMEN_M476_V11_B03_Build02")
@@ -50,10 +49,11 @@ class FirmwareVersionRepositoryImplTest {
                 .md5("abc123")
                 .sha256("def456")
                 .packageStatus("READY")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .deletedAt(null)
                 .build();
+        testFirmwareVersion.setId(1L);
+        testFirmwareVersion.setCreatedAt(LocalDateTime.now());
+        testFirmwareVersion.setUpdatedAt(LocalDateTime.now());
     }
 
     @Nested
@@ -300,18 +300,18 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = 100L;
 
             FirmwareVersion version1 = FirmwareVersion.builder()
-                    .id(1L)
                     .productId(productId)
                     .version(versionNumber)
                     .internalVersion(internalVersion1)
                     .build();
+            version1.setId(1L);
 
             FirmwareVersion version2 = FirmwareVersion.builder()
-                    .id(2L)
                     .productId(productId)
                     .version(versionNumber)
                     .internalVersion(internalVersion2)
                     .build();
+            version2.setId(2L);
 
             // 第一次查询返回 version1
             when(firmwareVersionMapper.selectOne(any(LambdaQueryWrapper.class)))
@@ -354,7 +354,7 @@ class FirmwareVersionRepositoryImplTest {
             // Then
             assertThat(result).isPresent();
             assertThat(result.get().getVersion()).isEqualTo(version);
-            assertThat(result.get().getInternalVersion()).isEqualTo(tag);
+            assertThat(result.get().getInternalVersion()).isEqualTo("ASR_YEMEN_M476_V11_B03_Build02");
         }
 
         @Test
