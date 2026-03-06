@@ -14,6 +14,8 @@ import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.device.value.DeviceVersionPart;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.enums.PolicyStatus;
@@ -30,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -294,10 +297,17 @@ class UpgradeCheckServiceGrayTest {
      * 创建设备实体
      */
     private Device createDevice(String imei, Long productId, Long versionId, JsonNode tags) {
+        DeviceVersionParts versionParts = DeviceVersionParts.builder().parts(
+                Map.of(
+                        "main", DeviceVersionPart.builder()
+                                .versionId(versionId)
+                                .build()
+                )
+        ).build();
         Device device = Device.builder()
                 .imei(imei)
                 .productId(productId)
-                .currentVersionId(versionId)
+                .versionParts(versionParts)
                 .status("ACTIVE")
                 .tags(tags)
                 .build();
