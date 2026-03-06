@@ -1,13 +1,10 @@
 package com.wewins.fota.adapter.assembler;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.application.device.support.DeviceNameContext;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -16,10 +13,7 @@ import java.util.Map;
  * 设备 DTO 转换器
  */
 @Component
-@RequiredArgsConstructor
 public class DeviceAssembler {
-
-    private final ObjectMapper objectMapper;
 
     /**
      * 将 DeviceReqDTO 转换为 Device 实体
@@ -33,16 +27,8 @@ public class DeviceAssembler {
                 .imei(req.getImei())
                 .productId(req.getProductId())
                 .versionParts(req.getVersionParts())
-                .status(req.getStatus());
-
-        if (req.getTags() != null && !req.getTags().isBlank()) {
-            try {
-                builder.tags(objectMapper.readValue(req.getTags(), new TypeReference<Map<String, String>>() {
-                }));
-            } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException("tags JSON 格式错误: " + e.getMessage(), e);
-            }
-        }
+                .status(req.getStatus())
+                .tags(req.getTags());
 
         return builder.build();
     }
@@ -52,13 +38,16 @@ public class DeviceAssembler {
      */
     public DeviceRespDTO toDeviceResp(
             Device device,
-            String productName,
-            Map<Long, String> versionNameMap,
-            String importBatchName
+            DeviceNameContext nameContext
     ) {
         if (device == null) {
             return null;
         }
+
+        String productName = nameContext.productNameMap().get(device.getProductId());
+        Map<Long, String> versionNameMap = nameContext.versionNameMap();
+        String importBatchName = nameContext.batchNameMap().get(device.getImportBatchId());
+
         DeviceVersionParts versionParts = device.getVersionParts();
         if (versionParts != null && versionParts.hasVersion()) {
             versionParts.getParts().values().forEach(item -> {
@@ -91,13 +80,7 @@ public class DeviceAssembler {
                 .updatedAt(device.getUpdatedAt())
                 .updatedBy(device.getUpdatedBy());
 
-        if (device.getTags() != null && !device.getTags().isEmpty()) {
-            try {
-                builder.tags(objectMapper.writeValueAsString(device.getTags()));
-            } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException("tags JSON 序列化失败: " + e.getMessage(), e);
-            }
-        }
+        builder.tags(device.getTags());
 
         return builder.build();
     }

@@ -1,14 +1,12 @@
-package com.wewins.fota.application.firmware.upload.impl;
+package com.wewins.fota.application.firmware;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wewins.fota.application.firmware.upload.FirmwareUploadAppService;
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.infra.validation.FirmwareFileValidator;
 import com.wewins.fota.storage.core.FileTransferService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -36,7 +34,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
+public class FirmwareUploadAppService {
 
     private static final int BUFFER_SIZE = 16 * 1024; // 16KB
 
@@ -70,7 +68,7 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
      * @param objectMapper             Jackson对象映射器
      * @param stagingTempDir          临时文件目录（用于路径安全校验）
      */
-    public FirmwareUploadAppServiceImpl(
+    public FirmwareUploadAppService(
             FileTransferService fileTransferService,
             FirmwareFileValidator firmwareFileValidator,
             RedisTemplate<String, Object> redisTemplate,
@@ -83,7 +81,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
         this.stagingTempDir = stagingTempDir;
     }
 
-    @Override
     public FirmwareUploadSession uploadToFirmwareStaging(MultipartFile file, Long productId) {
         // 1. 参数校验
         if (file == null || file.isEmpty()) {
@@ -166,7 +163,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
         }
     }
 
-    @Override
     public FirmwareUploadSession getUploadSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sessionId 不能为空");
@@ -184,7 +180,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
         return session;
     }
 
-    @Override
     public FirmwareUploadSession consumeUploadSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sessionId 不能为空");
@@ -232,7 +227,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
         return session;
     }
 
-    @Override
     public boolean cancelUploadSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sessionId 不能为空");
@@ -347,7 +341,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
     private record HashDigestResult(String md5, String sha256) {
     }
 
-    @Override
     public void saveUploadSession(FirmwareUploadSession session) {
         if (session == null || session.getSessionId() == null || session.getSessionId().isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sessionId 不能为空");
@@ -364,7 +357,6 @@ public class FirmwareUploadAppServiceImpl implements FirmwareUploadAppService {
         }
     }
 
-    @Override
     public boolean deleteUploadSession(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sessionId 不能为空");

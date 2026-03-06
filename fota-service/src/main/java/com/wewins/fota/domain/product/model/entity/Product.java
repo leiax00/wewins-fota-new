@@ -1,13 +1,8 @@
 package com.wewins.fota.domain.product.model.entity;
 
 import com.wewins.fota.domain.base.entity.DomainEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**

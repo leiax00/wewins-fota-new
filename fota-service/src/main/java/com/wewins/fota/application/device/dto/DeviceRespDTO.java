@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 设备响应 DTO
@@ -63,10 +64,7 @@ public class DeviceRespDTO {
      */
     private LocalDateTime firstSeenAt;
 
-    /**
-     * 标签 JSON 字符串
-     */
-    private String tags;
+    private Map<String, String> tags;
 
     /**
      * 导入批次 ID

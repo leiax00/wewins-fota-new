@@ -3,6 +3,8 @@ package com.wewins.fota.application.device.dto;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import lombok.Data;
 
+import java.util.Map;
+
 /**
  * 设备创建/更新请求 DTO
  */
@@ -29,8 +31,5 @@ public class DeviceReqDTO {
      */
     private String status;
 
-    /**
-     * 设备标签（JSON 字符串，可选）
-     */
-    private String tags;
+    private Map<String, String> tags;
 }

@@ -1,33 +1,35 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.adapter.assembler.FirmwareVersionAssembler;
 import com.wewins.fota.adapter.api.admin.dto.firmware.AttachPackageReqDTO;
-import com.wewins.fota.application.common.ReferenceNameResolver;
+import com.wewins.fota.adapter.assembler.FirmwareVersionAssembler;
+import com.wewins.fota.application.firmware.FirmwareUploadAppService;
 import com.wewins.fota.application.firmware.FirmwareVersionAppService;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionRespDTO;
-import com.wewins.fota.application.firmware.upload.FirmwareUploadAppService;
+import com.wewins.fota.application.product.query.ProductNameQueryService;
+import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
-import com.wewins.fota.domain.product.repository.ProductRepository;
-import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.storage.core.FileTransferService;
 import com.wewins.fota.storage.naming.StorageObjectKeyGenerator;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -55,8 +57,7 @@ public class FirmwareVersionController {
     private final FirmwareUploadAppService firmwareUploadAppService;
     private final FileTransferService fileTransferService;
     private final StorageObjectKeyGenerator storageObjectKeyGenerator;
-    private final ProductRepository productRepository;
-    private final ReferenceNameResolver referenceNameResolver;
+    private final ProductNameQueryService productNameQueryService;
 
     /**
      * 分页查询固件版本列表
@@ -86,7 +87,7 @@ public class FirmwareVersionController {
                 .collect(Collectors.toSet());
 
         // 使用 ReferenceNameResolver 批量查询产品名称
-        Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
+        Map<Long, String> productNameMap = productNameQueryService.resolveProductNames(productIds);
 
         // 转换为 DTO，填充产品名称
         List<FirmwareVersionRespDTO> records = firmwareVersions.stream()
@@ -224,7 +225,7 @@ public class FirmwareVersionController {
     /**
      * 更新固件版本
      *
-     * @param id 固件版本 ID
+     * @param id     固件版本 ID
      * @param reqDTO 固件版本信息
      * @return 更新后的固件版本
      */
@@ -431,8 +432,8 @@ public class FirmwareVersionController {
     /**
      * 为已有版本补传固件包。
      *
-     * @param id      固件版本ID
-     * @param reqDTO  请求参数（包含uploadSessionId）
+     * @param id     固件版本ID
+     * @param reqDTO 请求参数（包含uploadSessionId）
      * @return 更新后的固件版本
      */
     @PostMapping("/{id}/attach-package")
@@ -593,8 +594,8 @@ public class FirmwareVersionController {
      * 如果删除失败，仅记录日志，不影响主流程（可能导致孤儿文件，但可通过后续清理任务处理）
      * </p>
      *
-     * @param oldObjectKey   旧的对象存储键（可能为 null）
-     * @param newObjectKey   新的对象存储键
+     * @param oldObjectKey      旧的对象存储键（可能为 null）
+     * @param newObjectKey      新的对象存储键
      * @param firmwareVersionId 固件版本 ID（用于日志）
      */
     private void cleanupReplacedObject(String oldObjectKey, String newObjectKey, Long firmwareVersionId) {
@@ -628,6 +629,7 @@ public class FirmwareVersionController {
     private record ProcessedUploadSession(
             FirmwareVersionReqDTO requestDTO,
             String uploadSessionId
-    ) {}
+    ) {
+    }
 
 }
