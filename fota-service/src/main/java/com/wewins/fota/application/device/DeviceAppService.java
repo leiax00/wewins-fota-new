@@ -16,6 +16,7 @@ import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -145,6 +147,7 @@ public class DeviceAppService {
     private void normalizeAndValidate(Device device, boolean creating) {
         String normalizedImei = normalizeImei(device.getImei());
         String normalizedStatus = normalizeStatus(device.getStatus());
+        DeviceVersionParts normalizedVersionParts = normalizeVersionParts(device.getVersionParts());
 
         if (device.getProductId() == null) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "产品 ID 不能为空");
@@ -153,9 +156,8 @@ public class DeviceAppService {
         productRepository.findById(device.getProductId())
                 .orElseThrow(() -> new BizException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        DeviceVersionParts versionParts = device.getVersionParts();
-        if (versionParts != null && versionParts.hasVersion()) {
-            Set<Long> ids = versionParts.getVersionIds();
+        if (normalizedVersionParts != null && normalizedVersionParts.hasVersion()) {
+            Set<Long> ids = normalizedVersionParts.getVersionIds();
             ids.forEach(item -> {
                 FirmwareVersion firmwareVersion = firmwareVersionRepository.findById(item)
                         .orElseThrow(() -> new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND));
@@ -173,6 +175,43 @@ public class DeviceAppService {
 
         device.setImei(normalizedImei);
         device.setStatus(normalizedStatus);
+        device.setVersionParts(normalizedVersionParts);
+    }
+
+    private DeviceVersionParts normalizeVersionParts(DeviceVersionParts versionParts) {
+        if (versionParts == null || versionParts.getParts() == null || versionParts.getParts().isEmpty()) {
+            return versionParts;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LinkedHashMap<String, DeviceVersionPart> normalizedParts = new LinkedHashMap<>();
+
+        versionParts.getParts().forEach((partName, part) -> {
+            if (part == null || part.getVersionId() == null) {
+                return;
+            }
+            DeviceVersionPart normalizedPart = DeviceVersionPart.builder()
+                    .versionId(part.getVersionId())
+                    .version(part.getVersion())
+                    .internalVersion(part.getInternalVersion())
+                    .updatedAt(part.getUpdatedAt() != null ? part.getUpdatedAt() : now)
+                    .build();
+            normalizedParts.put(partName, normalizedPart);
+        });
+
+        if (normalizedParts.isEmpty()) {
+            return null;
+        }
+
+        String primaryPart = versionParts.getPrimaryPart();
+        if (primaryPart == null || primaryPart.isBlank()) {
+            primaryPart = "main";
+        }
+
+        return DeviceVersionParts.builder()
+                .primaryPart(primaryPart)
+                .parts(normalizedParts)
+                .build();
     }
 
     private String normalizeImei(String imei) {

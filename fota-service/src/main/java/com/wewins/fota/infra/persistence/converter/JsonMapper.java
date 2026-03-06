@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.domain.base.vo.JsonValue;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.policy.model.enums.TimeWindowType;
 import com.wewins.fota.domain.policy.model.vo.PolicyTimeWindow;
+import io.lettuce.core.json.JsonObject;
 import org.mapstruct.Named;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -69,7 +71,30 @@ public class JsonMapper {
             return null;
         }
         try {
-            return objectMapper.writeValueAsString(value);
+            ObjectNode root = objectMapper.createObjectNode();
+            ObjectNode partsNode = objectMapper.createObjectNode();
+            if (value.hasVersion()) {
+                value.getParts().forEach((partName, part) -> {
+                    if (part != null) {
+                        ObjectNode partNode = objectMapper.createObjectNode();
+                        Long versionId = part.getVersionId();
+                        if (versionId != null) {
+                            partNode.put("versionId", versionId);
+                        }
+                        LocalDateTime updatedAt = part.getUpdatedAt();
+                        if (updatedAt != null) {
+                            partNode.put("updatedAt", updatedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                        }
+                        partsNode.set(partName, partNode);
+                    }
+                });
+            }
+
+            root.set("parts", partsNode);
+            if (StringUtils.hasText(value.getPrimaryPart())) {
+                root.put("primaryPart", value.getPrimaryPart());
+            }
+            return objectMapper.writeValueAsString(root);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("DeviceVersionParts JSON 序列化失败", e);
         }

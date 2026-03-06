@@ -290,6 +290,7 @@ export default {
     statusRequired: 'Please select device status',
     statusPlaceholder: 'Please select device status',
     currentVersion: 'Current Version',
+    firstSeenAt: 'First Seen At',
     lastSeen: 'Last Seen',
     lastSeenAt: 'Last Seen At',
     import: 'Batch Import',

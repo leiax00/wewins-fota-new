@@ -1,6 +1,5 @@
 package com.wewins.fota.application.firmware.dto;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.Data;
 

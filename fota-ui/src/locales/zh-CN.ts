@@ -290,6 +290,7 @@ export default {
     statusRequired: '请选择设备状态',
     statusPlaceholder: '请选择设备状态',
     currentVersion: '当前版本',
+    firstSeenAt: '首次在线时间',
     lastSeen: '最后在线',
     lastSeenAt: '最后在线时间',
     import: '批量导入',

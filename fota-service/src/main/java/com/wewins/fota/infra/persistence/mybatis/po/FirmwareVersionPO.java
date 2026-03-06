@@ -1,17 +1,20 @@
 package com.wewins.fota.infra.persistence.mybatis.po;
 
 import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.wewins.fota.database.entity.BaseEntity;
+import com.wewins.fota.database.handler.JsonbStringTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@TableName(value = "firmware_versions")
+@TableName(value = "firmware_versions", autoResultMap = true)
 public class FirmwareVersionPO extends BaseEntity implements Serializable {
     /**
      * 关联的产品 ID
@@ -96,6 +99,7 @@ public class FirmwareVersionPO extends BaseEntity implements Serializable {
      * 通过 JsonNodeTypeHandler 自动处理 JsonNode 与 JSONB 之间的转换
      * </p>
      */
+    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
     private String tags;
 
     /**
@@ -125,6 +129,7 @@ public class FirmwareVersionPO extends BaseEntity implements Serializable {
      * </pre>
      * </p>
      */
+    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
     private String meta;
 
     /**

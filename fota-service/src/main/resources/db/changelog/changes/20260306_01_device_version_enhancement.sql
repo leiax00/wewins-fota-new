@@ -5,7 +5,7 @@
 --
 -- 变更说明:
 -- 1. 添加 version_parts JSONB 字段（多部分版本存储）
--- 2. 添加 first_seen_at 字段（首次上线时间，默认当前时间）
+-- 2. 添加 first_seen_at 字段（首次上线时间，默认 NULL）
 -- 3. 添加 initial_version_parts JSONB 字段（初始版本记录）
 -- 4. 移除冗余字段 current_version_id（使用 version_parts 替代）
 -- 5. 创建 GIN 索引支持 JSONB 查询
@@ -16,7 +16,7 @@
 ALTER TABLE devices 
 ADD COLUMN IF NOT EXISTS version_parts JSONB 
 DEFAULT '{"parts": {}, "primaryPart": "main"}'::jsonb,
-ADD COLUMN IF NOT EXISTS first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS first_seen_at TIMESTAMP,
 ADD COLUMN IF NOT EXISTS initial_version_parts JSONB 
 DEFAULT '{"parts": {}, "primaryPart": "main"}'::jsonb;
 
