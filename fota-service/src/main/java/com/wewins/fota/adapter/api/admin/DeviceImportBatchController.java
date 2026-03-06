@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.DeviceAssembler;
 import com.wewins.fota.adapter.assembler.DeviceImportBatchAssembler;
 import com.wewins.fota.application.common.ReferenceNameResolver;
-import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.application.device.DeviceImportBatchAppService;
 import com.wewins.fota.application.device.dto.DeviceImportBatchPageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceImportBatchRespDTO;
@@ -17,25 +16,16 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.entity.DeviceImportBatch;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
+import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
+import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -198,10 +188,7 @@ public class DeviceImportBatchController {
                     .map(Device::getProductId)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
-            Set<Long> versionIds = devices.stream()
-                    .map(Device::getCurrentVersionId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+            Set<Long> versionIds = getFirmVersionIds(devices);
 
             // 使用 ReferenceNameResolver 批量查询名称
             Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
@@ -212,7 +199,8 @@ public class DeviceImportBatchController {
                     .map(device -> deviceAssembler.toDeviceResp(
                             device,
                             productNameMap.get(device.getProductId()),
-                            versionNameMap.get(device.getCurrentVersionId())
+                            versionNameMap,
+                            null
                     ))
                     .toList();
 
@@ -230,5 +218,26 @@ public class DeviceImportBatchController {
             log.warn("获取批次下的设备列表参数错误: batchId={}, message={}", id, e.getMessage());
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
+    }
+
+    private Set<Long> getFirmVersionIds(List<Device> devices) {
+        Set<Long> ids = new HashSet<>();
+        for (Device device : devices) {
+            ids.addAll(getFirmVersionIds(device));
+        }
+        return ids;
+    }
+
+    private Set<Long> getFirmVersionIds(Device device) {
+        Set<Long> ids = new HashSet<>();
+        DeviceVersionParts versionParts = device.getVersionParts();
+        DeviceVersionParts initialVersionParts = device.getInitialVersionParts();
+        if (versionParts != null && versionParts.hasVersion()) {
+            ids.addAll(versionParts.getVersionIds());
+        }
+        if (initialVersionParts != null && initialVersionParts.hasVersion()) {
+            ids.addAll(initialVersionParts.getVersionIds());
+        }
+        return ids;
     }
 }

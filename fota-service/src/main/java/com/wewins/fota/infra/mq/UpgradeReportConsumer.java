@@ -3,7 +3,6 @@ package com.wewins.fota.infra.mq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.wewins.fota.application.reporting.DeviceUpgradeEventAppService;
-import com.wewins.fota.application.reporting.DeviceVersionUpdateService;
 import com.wewins.fota.application.reporting.UpgradeEventDeduplicationService;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +52,6 @@ public class UpgradeReportConsumer {
     private final ObjectMapper objectMapper;
     private final DeviceUpgradeEventAppService deviceUpgradeEventAppService;
     private final UpgradeEventDeduplicationService deduplicationService;
-    private final DeviceVersionUpdateService deviceVersionUpdateService;
     private final MessageConverter messageConverter;
 
     /**
@@ -160,9 +158,6 @@ public class UpgradeReportConsumer {
 
         // 5. 标记为已处理
         deduplicationService.markAsProcessed(newEventIds);
-
-        // 6. 异步更新设备版本（UP_OK 事件）
-        deviceVersionUpdateService.processUpgradeSuccessEvents(newEvents);
 
         log.info("事件处理完成: processed={}", newEvents.size());
     }

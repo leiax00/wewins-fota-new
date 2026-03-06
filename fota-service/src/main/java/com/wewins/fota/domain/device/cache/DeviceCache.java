@@ -1,6 +1,7 @@
 package com.wewins.fota.domain.device.cache;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,11 +22,15 @@ public class DeviceCache implements Serializable {
 
     private Long productId;
 
-    private Long currentVersionId;
-
     private JsonNode tags;
 
     private Long importBatchId;
+
+    private DeviceVersionParts versionParts;
+
+    private DeviceVersionParts initialVersionParts;
+
+    private LocalDateTime firstSeenAt;
 
     private LocalDateTime cachedAt;
 }

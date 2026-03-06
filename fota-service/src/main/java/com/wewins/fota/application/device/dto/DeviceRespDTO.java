@@ -1,5 +1,6 @@
 package com.wewins.fota.application.device.dto;
 
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import lombok.Builder;
 import lombok.Data;
 
@@ -35,7 +36,12 @@ public class DeviceRespDTO {
     /**
      * 当前固件版本 ID
      */
-    private Long currentVersionId;
+    private DeviceVersionParts versionParts;
+
+    /**
+     * 当前固件版本 ID
+     */
+    private DeviceVersionParts initialVersionParts;
 
     /**
      * 当前固件版本号
@@ -51,6 +57,11 @@ public class DeviceRespDTO {
      * 最后在线时间
      */
     private LocalDateTime lastSeenAt;
+
+    /**
+     * 第一次在线时间
+     */
+    private LocalDateTime firstSeenAt;
 
     /**
      * 标签 JSON 字符串

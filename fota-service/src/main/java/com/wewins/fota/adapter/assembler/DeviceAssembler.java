@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
 import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 设备 DTO 转换器
@@ -28,7 +31,7 @@ public class DeviceAssembler {
         Device.DeviceBuilder builder = Device.builder()
                 .imei(req.getImei())
                 .productId(req.getProductId())
-                .currentVersionId(req.getCurrentVersionId())
+                .versionParts(req.getVersionParts())
                 .status(req.getStatus());
 
         if (req.getTags() != null && !req.getTags().isBlank()) {
@@ -43,25 +46,30 @@ public class DeviceAssembler {
     }
 
     /**
-     * 将 Device 实体转换为 DeviceRespDTO（不含关联名称）
-     */
-    public DeviceRespDTO toDeviceResp(Device device) {
-        return toDeviceResp(device, null, null, null);
-    }
-
-    /**
-     * 将 Device 实体转换为 DeviceRespDTO（含关联名称，3参数版本）
-     */
-    public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName) {
-        return toDeviceResp(device, productName, versionName, null);
-    }
-
-    /**
      * 将 Device 实体转换为 DeviceRespDTO（含关联名称，4参数版本）
      */
-    public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName, String importBatchName) {
+    public DeviceRespDTO toDeviceResp(
+            Device device,
+            String productName,
+            Map<Long, String> versionNameMap,
+            String importBatchName
+    ) {
         if (device == null) {
             return null;
+        }
+        DeviceVersionParts versionParts = device.getVersionParts();
+        if (versionParts != null && versionParts.hasVersion()) {
+            versionParts.getParts().values().forEach(item -> {
+                Long versionId = item.getVersionId();
+                item.setVersion(versionNameMap.get(versionId));
+            });
+        }
+        DeviceVersionParts initialVersionParts = device.getInitialVersionParts();
+        if (initialVersionParts != null && initialVersionParts.hasVersion()) {
+            initialVersionParts.getParts().values().forEach(item -> {
+                Long versionId = item.getVersionId();
+                item.setVersion(versionNameMap.get(versionId));
+            });
         }
 
         DeviceRespDTO.DeviceRespDTOBuilder builder = DeviceRespDTO.builder()
@@ -69,10 +77,11 @@ public class DeviceAssembler {
                 .imei(device.getImei())
                 .productId(device.getProductId())
                 .productName(productName)
-                .currentVersionId(device.getCurrentVersionId())
-                .versionName(versionName)
+                .versionParts(versionParts)
+                .initialVersionParts(initialVersionParts)
                 .status(device.getStatus())
                 .lastSeenAt(device.getLastSeenAt())
+                .firstSeenAt(device.getFirstSeenAt())
                 .importBatchId(device.getImportBatchId())
                 .importBatchName(importBatchName)
                 .createdAt(device.getCreatedAt())

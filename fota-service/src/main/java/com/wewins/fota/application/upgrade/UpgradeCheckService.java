@@ -3,22 +3,23 @@ package com.wewins.fota.application.upgrade;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wewins.fota.common.enums.CheckMode;
-import com.wewins.fota.common.util.IdGenerator;
+import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
-import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
-import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
+import com.wewins.fota.common.enums.CheckMode;
+import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.domain.cache.CacheLookupResult;
 import com.wewins.fota.domain.device.cache.DeviceCache;
 import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.enums.TriggerMode;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -31,9 +32,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
-
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
 
 /**
  * 设备检查升级应用服务
@@ -61,7 +59,6 @@ public class UpgradeCheckService {
 
     private final DeviceRepository deviceRepository;
     private final DeviceCacheRepository deviceCacheService;
-    private final DataIntegrityService dataIntegrityService;
     private final UpgradePolicyRepository upgradePolicyRepository;
     private final DeviceRateLimiter deviceRateLimiter;
     private final DeviceActivityBitmapRepository bitmapRepository;
@@ -77,7 +74,6 @@ public class UpgradeCheckService {
     public UpgradeCheckService(
             DeviceRepository deviceRepository,
             @Qualifier("redisDeviceCacheRepository") DeviceCacheRepository deviceCacheService,
-            DataIntegrityService dataIntegrityService,
             UpgradePolicyRepository upgradePolicyRepository,
             DeviceRateLimiter deviceRateLimiter,
             @Qualifier("redisDeviceActivityBitmapRepository") DeviceActivityBitmapRepository bitmapRepository,
@@ -92,7 +88,6 @@ public class UpgradeCheckService {
     ) {
         this.deviceRepository = deviceRepository;
         this.deviceCacheService = deviceCacheService;
-        this.dataIntegrityService = dataIntegrityService;
         this.upgradePolicyRepository = upgradePolicyRepository;
         this.deviceRateLimiter = deviceRateLimiter;
         this.bitmapRepository = bitmapRepository;
@@ -219,10 +214,10 @@ public class UpgradeCheckService {
      * 使用 try-catch 确保日志记录失败不影响主流程
      * </p>
      *
-     * @param request   升级检查请求
-     * @param device      设备信息（可能为 null）
-     * @param policy      匹配的策略（可能为 null）
-     * @param result      检查结果
+     * @param request    升级检查请求
+     * @param device     设备信息（可能为 null）
+     * @param policy     匹配的策略（可能为 null）
+     * @param result     检查结果
      * @param logContext HTTP 请求上下文
      */
     private void recordCheckLog(UpgradeCheckReqDTO request, Device device, UpgradePolicy policy, CheckResult result, CheckLogContext logContext) {
@@ -257,7 +252,7 @@ public class UpgradeCheckService {
             device.setId(cached.getDeviceId());
             device.setImei(imei);
             device.setProductId(cached.getProductId());
-            device.setCurrentVersionId(cached.getCurrentVersionId());
+            device.setVersionParts(cached.getVersionParts());
             device.setTags(cached.getTags());
             device.setImportBatchId(cached.getImportBatchId());
             return device;
@@ -268,7 +263,7 @@ public class UpgradeCheckService {
             DeviceCache cache = DeviceCache.builder()
                     .deviceId(device.getId())
                     .productId(device.getProductId())
-                    .currentVersionId(device.getCurrentVersionId())
+                    .versionParts(device.getVersionParts())
                     .tags(device.getTags())
                     .importBatchId(device.getImportBatchId())
                     .build();
@@ -279,20 +274,6 @@ public class UpgradeCheckService {
         }
 
         return device;
-    }
-
-    /**
-     * 验证产品和固件版本是否有效
-     *
-     * @param device 设备信息
-     * @return true 如果有效
-     */
-    private boolean validateProductAndFirmware(Device device) {
-        if (device == null) {
-            return false;
-        }
-        return dataIntegrityService.isProductActive(device.getProductId())
-                && dataIntegrityService.isFirmwareVersionActive(device.getCurrentVersionId());
     }
 
     /**
@@ -415,8 +396,8 @@ public class UpgradeCheckService {
     /**
      * dev 参数匹配：dev=1 临时标注为测试设备
      *
-     * @param policy        升级策略
-     * @param isTestDevice           是否是测试设备
+     * @param policy       升级策略
+     * @param isTestDevice 是否是测试设备
      * @return true 如果匹配
      */
     private boolean matchesDevMode(UpgradePolicy policy, boolean isTestDevice) {
@@ -427,8 +408,8 @@ public class UpgradeCheckService {
     /**
      * checkMode 参数匹配：对应策略的 triggerMode
      *
-     * @param policy 升级策略
-     * @param checkMode   触发模式
+     * @param policy    升级策略
+     * @param checkMode 触发模式
      * @return true 如果匹配
      */
     private boolean matchesTriggerMode(UpgradePolicy policy, CheckMode checkMode) {
@@ -503,40 +484,5 @@ public class UpgradeCheckService {
         }
 
         return false;
-    }
-
-    /**
-     * 构建检查结果
-     * <p>
-     * 使用 UpgradeResponseBuilder 构建完整的响应，包括：
-     * <ul>
-     *   <li>固件元数据（版本号、文件大小、校验和）</li>
-     *   <li>签名下载 URL（集成 SignedUrlService）</li>
-     *   <li>多语言发布说明</li>
-     *   <li>控制参数（checkInterval, downloadDelay）</li>
-     * </ul>
-     * </p>
-     *
-     * @param device    设备信息
-     * @param policy    升级策略
-     * @param requestId 请求唯一标识
-     * @param lang      语言代码（可选）
-     * @param autoMode  是否自动检查模式（可选）
-     * @return 检查结果
-     */
-    private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String requestId, String lang, Boolean autoMode) {
-        return upgradeResponseBuilder.buildResponse(device, policy, requestId, lang, autoMode);
-    }
-
-    /**
-     * 构建检查结果（无语言参数的简化版本）
-     *
-     * @param device    设备信息
-     * @param policy    升级策略
-     * @param requestId 请求唯一标识
-     * @return 检查结果
-     */
-    private CheckResult buildCheckResult(Device device, UpgradePolicy policy, String requestId) {
-        return upgradeResponseBuilder.buildResponse(device, policy, requestId, null, false);
     }
 }

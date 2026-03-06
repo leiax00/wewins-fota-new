@@ -41,7 +41,7 @@ class UpgradeCheckServiceCheckIntervalTest {
      * 调用 private 方法进行测试
      */
     private void invokeAdjustCheckInterval(CheckResult result, Integer auto) throws Exception {
-        adjustCheckIntervalMethod.invoke(new UpgradeCheckService(null, null, null, null, null, null, null, null,
+        adjustCheckIntervalMethod.invoke(new UpgradeCheckService(null, null, null, null, null, null, null,
                 null, null, null, null, null, null), result, auto);
     }
 

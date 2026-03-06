@@ -274,3 +274,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260306_01_device_version_enhancement
+      author: fota-team
+      comment: "设备版本字段增强：添加 version_parts、first_seen_at、initial_version_parts 字段，移除冗余的 current_version_id"
+      changes:
+        - sqlFile:
+            path: changes/20260306_01_device_version_enhancement.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

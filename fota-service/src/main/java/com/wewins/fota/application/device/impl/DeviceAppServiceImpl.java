@@ -17,6 +17,7 @@ import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -99,7 +100,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
 
         if (log.isDebugEnabled()) {
             log.debug("创建设备: imei={}, productId={}, currentVersionId={}, status={}",
-                    device.getImei(), device.getProductId(), device.getCurrentVersionId(), device.getStatus());
+                    device.getImei(), device.getProductId(), device.getVersionParts(), device.getStatus());
         }
 
         normalizeAndValidate(device, true);
@@ -118,7 +119,7 @@ public class DeviceAppServiceImpl implements DeviceAppService {
 
         if (log.isDebugEnabled()) {
             log.debug("更新设备: deviceId={}, imei={}, productId={}, currentVersionId={}, status={}",
-                    device.getId(), device.getImei(), device.getProductId(), device.getCurrentVersionId(), device.getStatus());
+                    device.getId(), device.getImei(), device.getProductId(), device.getVersionParts(), device.getStatus());
         }
 
         getById(device.getId());
@@ -158,13 +159,16 @@ public class DeviceAppServiceImpl implements DeviceAppService {
         productRepository.findById(device.getProductId())
                 .orElseThrow(() -> new BizException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        Long currentVersionId = device.getCurrentVersionId();
-        if (currentVersionId != null) {
-            FirmwareVersion firmwareVersion = firmwareVersionRepository.findById(currentVersionId)
-                    .orElseThrow(() -> new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND));
-            if (!device.getProductId().equals(firmwareVersion.getProductId())) {
-                throw new BizException(ErrorCode.DEVICE_FIRMWARE_PRODUCT_MISMATCH);
-            }
+        DeviceVersionParts versionParts = device.getVersionParts();
+        if (versionParts != null && versionParts.hasVersion()) {
+            Set<Long> ids = versionParts.getVersionIds();
+            ids.forEach(item -> {
+                FirmwareVersion firmwareVersion = firmwareVersionRepository.findById(item)
+                        .orElseThrow(() -> new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND));
+                if (!device.getProductId().equals(firmwareVersion.getProductId())) {
+                    throw new BizException(ErrorCode.DEVICE_FIRMWARE_PRODUCT_MISMATCH);
+                }
+            });
         }
 
         Long excludeId = creating ? null : device.getId();

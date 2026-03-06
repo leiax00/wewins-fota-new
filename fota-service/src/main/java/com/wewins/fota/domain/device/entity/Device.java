@@ -3,6 +3,8 @@ package com.wewins.fota.domain.device.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.wewins.fota.database.entity.BaseEntity;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
+import com.wewins.fota.infra.persistence.mybatis.handler.DeviceVersionPartsTypeHandler;
 import lombok.*;
 import org.apache.ibatis.type.JdbcType;
 
@@ -40,11 +42,6 @@ public class Device extends BaseEntity implements Serializable {
     private Long productId;
 
     /**
-     * 当前固件版本 ID
-     */
-    private Long currentVersionId;
-
-    /**
      * 设备状态（ACTIVE, INACTIVE, LOST, etc.）
      */
     private String status;
@@ -53,6 +50,8 @@ public class Device extends BaseEntity implements Serializable {
      * 最后一次在线时间
      */
     private LocalDateTime lastSeenAt;
+
+    private LocalDateTime firstSeenAt;
 
     /**
      * 设备标签（JSONB 对象，KV 结构）
@@ -81,6 +80,48 @@ public class Device extends BaseEntity implements Serializable {
      */
     @TableField(typeHandler = com.wewins.fota.database.handler.JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
     private JsonNode tags;
+
+    /**
+     * 多部分版本信息（JSONB）
+     * <p>
+     * 存储设备各个部分的版本信息，支持多组件固件升级
+     * </p>
+     * <p>
+     * 示例：
+     * <pre>
+     * {
+     *   "parts": {
+     *     "main": {"versionId": 101, "version": "1.0.0", "updatedAt": "2026-03-06T01:00:00"},
+     *     "bootloader": {"versionId": 202, "version": "2.1.0", "updatedAt": "2026-02-28T10:00:00"}
+     *   },
+     *   "primaryPart": "main"
+     * }
+     * </pre>
+     * </p>
+     */
+    @TableField(typeHandler = com.wewins.fota.infra.persistence.mybatis.handler.DeviceVersionPartsTypeHandler.class, jdbcType = JdbcType.OTHER)
+    private DeviceVersionParts versionParts;
+
+    /**
+     * 第一次上线的版本信息（JSONB）
+     * <p>
+     * 记录设备首次上线时的版本信息，用于版本回溯和分析
+     * </p>
+     * <p>
+     * 示例：
+     * <pre>
+     * {
+     *   "parts": {
+     *     "main": {"versionId": 100, "version": "0.9.0", "updatedAt": "2026-03-01T00:00:00"},
+     *     "bootloader": {"versionId": 200, "version": "2.0.0", "updatedAt": "2026-03-01T00:00:00"}
+     *   },
+     *   "primaryPart": "main"
+     * }
+     * </pre>
+     * </p>
+     */
+    @TableField(typeHandler = DeviceVersionPartsTypeHandler.class, jdbcType = JdbcType.OTHER)
+    private DeviceVersionParts initialVersionParts;
 
     /**
      * 导入批次ID

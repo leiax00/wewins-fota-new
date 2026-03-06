@@ -19,6 +19,7 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.device.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
+import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.product.entity.Product;
@@ -84,10 +85,7 @@ public class DeviceController {
                 .map(Device::getProductId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Set<Long> versionIds = devices.stream()
-                .map(Device::getCurrentVersionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<Long> versionIds = getFirmVersionIds(devices);
         Set<Long> batchIds = devices.stream()
                 .map(Device::getImportBatchId)
                 .filter(Objects::nonNull)
@@ -103,8 +101,8 @@ public class DeviceController {
                 .map(device -> deviceAssembler.toDeviceResp(
                         device,
                         productNameMap.get(device.getProductId()),
-                        versionNameMap.get(device.getCurrentVersionId()),
-                        batchNameMap.get(device.getImportBatchId())
+                        versionNameMap,
+                        batchNameMap.get(device.getProductId())
                 ))
                 .toList();
 
@@ -236,7 +234,7 @@ public class DeviceController {
 
         if (log.isDebugEnabled()) {
             log.debug("创建设备: imei={}, productId={}, currentVersionId={}, status={}",
-                    reqDTO.getImei(), reqDTO.getProductId(), reqDTO.getCurrentVersionId(), reqDTO.getStatus());
+                    reqDTO.getImei(), reqDTO.getProductId(), reqDTO.getVersionParts(), reqDTO.getStatus());
         }
 
         try {
@@ -296,18 +294,36 @@ public class DeviceController {
                 .map(Product::getName)
                 .orElse(null);
         String versionName = null;
-        if (device.getCurrentVersionId() != null) {
-            versionName = firmwareVersionRepository.findById(device.getCurrentVersionId())
-                    .map(FirmwareVersion::getVersion)
-                    .orElse(null);
-        }
+        Set<Long> firmVersionIds = getFirmVersionIds(device);
+        Map<Long, String> versionNameMap = referenceNameResolver.resolveFirmwareVersionNames(firmVersionIds);
         String importBatchName = null;
         if (device.getImportBatchId() != null) {
             importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
                     .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
                     .orElse(null);
         }
-        return deviceAssembler.toDeviceResp(device, productName, versionName, importBatchName);
+        return deviceAssembler.toDeviceResp(device, productName, versionNameMap, importBatchName);
+    }
+
+    private Set<Long> getFirmVersionIds(List<Device> devices) {
+        Set<Long> ids = new HashSet<>();
+        for (Device device : devices) {
+            ids.addAll(getFirmVersionIds(device));
+        }
+        return ids;
+    }
+
+    private Set<Long> getFirmVersionIds(Device device) {
+        Set<Long> ids = new HashSet<>();
+        DeviceVersionParts versionParts = device.getVersionParts();
+        DeviceVersionParts initialVersionParts = device.getInitialVersionParts();
+        if (versionParts != null && versionParts.hasVersion()) {
+            ids.addAll(versionParts.getVersionIds());
+        }
+        if (initialVersionParts != null && initialVersionParts.hasVersion()) {
+            ids.addAll(initialVersionParts.getVersionIds());
+        }
+        return ids;
     }
 
     /**

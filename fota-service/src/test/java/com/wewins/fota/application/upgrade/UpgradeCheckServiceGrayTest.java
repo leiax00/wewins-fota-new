@@ -89,7 +89,6 @@ class UpgradeCheckServiceGrayTest {
         upgradeCheckService = new UpgradeCheckService(
                 deviceRepository,
                 deviceCacheRepository,
-                dataIntegrityService,
                 upgradePolicyRepository,
                 deviceRateLimiter,
                 bitmapRepository,
