@@ -17,12 +17,12 @@ import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -299,7 +299,7 @@ public class DeviceController {
         String importBatchName = null;
         if (device.getImportBatchId() != null) {
             importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
-                    .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
+                    .map(DeviceImportBatch::getBatchName)
                     .orElse(null);
         }
         return deviceAssembler.toDeviceResp(device, productName, versionNameMap, importBatchName);

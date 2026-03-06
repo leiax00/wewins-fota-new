@@ -1,8 +1,8 @@
 package com.wewins.fota.application.upgrade;
 
-import com.wewins.fota.domain.cache.CacheLookupResult;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.cache.FirmwareVersionLookupCacheRepository;
+import com.wewins.fota.domain.base.vo.CacheLookupResult;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.repository.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

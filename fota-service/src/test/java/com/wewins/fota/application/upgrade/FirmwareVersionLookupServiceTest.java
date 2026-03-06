@@ -1,7 +1,7 @@
 package com.wewins.fota.application.upgrade;
 
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.cache.FirmwareVersionLookupCacheRepository;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.repository.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;

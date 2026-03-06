@@ -1,17 +1,18 @@
 package com.wewins.fota.application.policy.impl;
 
 import com.wewins.fota.application.policy.PolicySnapshotService;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
-import com.wewins.fota.domain.policy.snapshot.PolicySnapshot;
-import com.wewins.fota.domain.policy.snapshot.PolicySnapshotRepository;
+import com.wewins.fota.domain.policy.model.entity.PolicySnapshot;
+import com.wewins.fota.domain.policy.model.vo.PolicyTimeWindow;
+import com.wewins.fota.domain.policy.repository.PolicySnapshotRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.StreamSupport;
 
 /**
  * 策略快照应用服务实现
@@ -33,6 +34,8 @@ import java.util.stream.StreamSupport;
 @Slf4j
 @Service
 public class PolicySnapshotServiceImpl implements PolicySnapshotService {
+
+    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private final PolicySnapshotRepository snapshotRepository;
     private final UpgradePolicyRepository policyRepository;
@@ -268,45 +271,29 @@ public class PolicySnapshotServiceImpl implements PolicySnapshotService {
      * 提取源版本 ID 列表
      */
     private List<Long> extractSourceVersions(UpgradePolicy policy) {
-        if (policy.getSourceVersions() == null || !policy.getSourceVersions().isArray()) {
+        if (policy.getSourceVersions() == null || policy.getSourceVersions().isEmpty()) {
             return List.of();
         }
-
-        return StreamSupport.stream(
-                        Spliterators.spliteratorUnknownSize(
-                                policy.getSourceVersions().fieldNames(),
-                                Spliterator.ORDERED),
-                        false
-                ).mapToLong(fieldName -> {
-                    try {
-                        return policy.getSourceVersions().get(fieldName).asLong();
-                    } catch (Exception e) {
-                        return 0;
-                    }
-                })
-                .boxed()
-                .toList();
+        return new ArrayList<>(policy.getSourceVersions());
     }
 
     /**
      * 提取时间窗口配置
      */
     private PolicySnapshot.TimeWindowConfig extractTimeWindow(UpgradePolicy policy) {
-        if (policy.getTimeWindow() == null) {
+        PolicyTimeWindow timeWindow = policy.getTimeWindow();
+        if (timeWindow == null) {
             return null;
         }
 
         return PolicySnapshot.TimeWindowConfig.builder()
-                .type(nullSafeText(policy.getTimeWindow().path("type").asText()))
-                .startAt(nullSafeText(policy.getTimeWindow().path("startAt").asText()))
-                .endAt(nullSafeText(policy.getTimeWindow().path("endAt").asText()))
+                .type(timeWindow.getType() == null ? null : timeWindow.getType().getCode())
+                .startAt(timeWindow.getStartAt() == null ? null : timeWindow.getStartAt().format(ISO_FORMATTER))
+                .endAt(timeWindow.getEndAt() == null ? null : timeWindow.getEndAt().format(ISO_FORMATTER))
                 .build();
     }
 
     /**
      * 安全的空文本处理
      */
-    private String nullSafeText(String text) {
-        return "null".equals(text) || text.isBlank() ? null : text;
-    }
 }

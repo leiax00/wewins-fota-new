@@ -2,7 +2,7 @@ package com.wewins.fota.application.firmware;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 
 import java.util.List;
 

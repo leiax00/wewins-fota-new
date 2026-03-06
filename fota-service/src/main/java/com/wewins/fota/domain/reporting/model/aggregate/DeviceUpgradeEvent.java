@@ -1,6 +1,6 @@
 package com.wewins.fota.domain.reporting.model.aggregate;
 
-import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
+import com.wewins.fota.domain.reporting.model.enums.DeviceUpgradeEventType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

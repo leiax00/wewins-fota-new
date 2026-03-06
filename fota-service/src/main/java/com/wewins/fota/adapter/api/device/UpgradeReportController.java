@@ -6,7 +6,7 @@ import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
 import com.wewins.fota.application.reporting.UpgradeReportAppService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.util.HttpUtils;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,6 @@
 package com.wewins.fota.infra.gateway;
 
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

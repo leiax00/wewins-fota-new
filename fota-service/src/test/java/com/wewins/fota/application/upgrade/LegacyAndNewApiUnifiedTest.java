@@ -1,10 +1,8 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -2,7 +2,7 @@ package com.wewins.fota.adapter.assembler;
 
 import com.wewins.fota.application.product.dto.ProductReqDTO;
 import com.wewins.fota.application.product.dto.ProductRespDTO;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import org.springframework.stereotype.Component;
 
 /**

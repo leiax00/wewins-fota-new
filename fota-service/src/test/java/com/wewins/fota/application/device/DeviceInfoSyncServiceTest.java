@@ -2,13 +2,13 @@ package com.wewins.fota.application.device;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import org.junit.jupiter.api.BeforeEach;

@@ -11,7 +11,7 @@ import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;

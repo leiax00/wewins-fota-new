@@ -1,7 +1,5 @@
 package com.wewins.fota.application.device;
 
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**

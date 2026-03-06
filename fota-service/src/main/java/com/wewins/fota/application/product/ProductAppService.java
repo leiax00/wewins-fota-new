@@ -2,7 +2,7 @@ package com.wewins.fota.application.product;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.product.dto.ProductPageReqDTO;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 
 import java.util.List;
 

@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 设备升级事件应用服务。

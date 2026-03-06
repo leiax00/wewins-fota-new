@@ -1,7 +1,7 @@
 package com.wewins.fota.infra.gateway;
 
 import com.wewins.fota.common.util.IdGenerator;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import com.wewins.fota.mq.core.MqMessagePublisher;

@@ -1,8 +1,5 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
@@ -12,16 +9,16 @@ import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.common.enums.CheckMode;
 import com.wewins.fota.common.util.IdGenerator;
-import com.wewins.fota.domain.cache.CacheLookupResult;
-import com.wewins.fota.domain.device.cache.DeviceCache;
-import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.base.vo.CacheLookupResult;
+import com.wewins.fota.domain.device.model.vo.DeviceCache;
+import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
+import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog;
 import com.wewins.fota.domain.reporting.service.CheckLogGateway;
@@ -32,6 +29,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 设备检查升级应用服务
@@ -310,10 +308,10 @@ public class UpgradeCheckService {
                 device.getProductId(), isTestDevice);
 
         // 获取设备标签（用于 env 标签匹配和 targetMode=DEVICE_TAGS）
-        JsonNode deviceTags = device.getTags();
+        Map<String, String> deviceTags = device.getTags();
 
         // 过滤策略
-        final JsonNode finalTags = augmentTagsWithDevMode(deviceTags, dev);
+        final Map<String, String> finalTags = augmentTagsWithDevMode(deviceTags, dev);
         final Long finalVersionId = versionId;
         final String imei = device.getImei();
         final Long batchId = device.getImportBatchId();
@@ -349,9 +347,9 @@ public class UpgradeCheckService {
         }
 
         // 检查设备标签中的 env 字段
-        JsonNode tags = device.getTags();
-        if (tags != null && !tags.isNull() && tags.has("env")) {
-            String env = tags.path("env").asText();
+        Map<String, String> tags = device.getTags();
+        if (tags != null) {
+            String env = tags.get("env");
             return "test".equalsIgnoreCase(env) || "dev".equalsIgnoreCase(env);
         }
 
@@ -368,24 +366,18 @@ public class UpgradeCheckService {
      * @param dev        临时测试设备标识
      * @return 增强后的标签
      */
-    private JsonNode augmentTagsWithDevMode(
-            JsonNode deviceTags, Integer dev) {
+    private Map<String, String> augmentTagsWithDevMode(
+            Map<String, String> deviceTags, Integer dev) {
         if (dev == null || dev != 1) {
             return deviceTags;
         }
 
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode augmented;
-
-            if (deviceTags == null || deviceTags.isEmpty() || deviceTags.isNull()) {
-                augmented = mapper.createObjectNode();
-            } else {
-                augmented = deviceTags.deepCopy();
+            java.util.LinkedHashMap<String, String> augmented = new java.util.LinkedHashMap<>();
+            if (deviceTags != null) {
+                augmented.putAll(deviceTags);
             }
-
             augmented.put("env", "test");
-
             return augmented;
         } catch (Exception e) {
             log.warn("增强设备标签失败，使用原始标签", e);
@@ -465,8 +457,7 @@ public class UpgradeCheckService {
      * @return true 如果版本匹配
      */
     private boolean matchesSourceVersion(UpgradePolicy policy, Long versionId) {
-        JsonNode sourceVersions = policy.getSourceVersions();
-        if (sourceVersions == null || sourceVersions.isEmpty()) {
+        if (policy.getSourceVersions() == null || policy.getSourceVersions().isEmpty()) {
             return true; // 策略没有版本限制
         }
 
@@ -474,15 +465,7 @@ public class UpgradeCheckService {
             return false; // 设备版本无法识别，不匹配有限制的策略
         }
 
-        // 检查 versionId 是否在 sourceVersions 数组中
-        if (sourceVersions.isArray()) {
-            for (JsonNode node : sourceVersions) {
-                if (versionId.equals(node.asLong())) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return policy.getSourceVersions().contains(versionId);
     }
+
 }

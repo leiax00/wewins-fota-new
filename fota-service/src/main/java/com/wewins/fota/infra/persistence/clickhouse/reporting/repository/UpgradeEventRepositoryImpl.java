@@ -8,7 +8,6 @@ import com.wewins.fota.infra.persistence.clickhouse.reporting.mapper.DeviceCheck
 import com.wewins.fota.infra.persistence.clickhouse.reporting.mapper.DeviceUpgradeEventMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;

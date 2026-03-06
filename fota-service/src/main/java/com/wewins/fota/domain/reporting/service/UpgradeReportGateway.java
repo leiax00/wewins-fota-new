@@ -1,6 +1,6 @@
 package com.wewins.fota.domain.reporting.service;
 
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 
 /**
  * 设备上报网关（领域端口）。

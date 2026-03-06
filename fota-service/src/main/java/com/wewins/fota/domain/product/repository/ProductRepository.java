@@ -1,7 +1,7 @@
 package com.wewins.fota.domain.product.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 
 import java.time.LocalDateTime;
 import java.util.List;

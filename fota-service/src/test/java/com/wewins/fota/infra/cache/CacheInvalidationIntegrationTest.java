@@ -1,16 +1,18 @@
 package com.wewins.fota.infra.cache;
 
-import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.domain.firmware.cache.FirmwareCacheRepository;
-import com.wewins.fota.domain.policy.cache.PolicyCacheRepository;
-import com.wewins.fota.domain.product.cache.ProductCacheRepository;
+import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
+import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
+import com.wewins.fota.domain.policy.repository.PolicyCacheRepository;
+import com.wewins.fota.domain.product.repository.ProductCacheRepository;
 import com.wewins.fota.infra.cache.event.ChangeType;
 import com.wewins.fota.infra.cache.event.DeviceChangedEvent;
 import com.wewins.fota.infra.cache.event.FirmwareChangedEvent;
 import com.wewins.fota.infra.cache.event.PolicyChangedEvent;
 import com.wewins.fota.infra.cache.event.ProductChangedEvent;
-import com.wewins.fota.infra.cache.metrics.CacheMetricsService;
-import org.junit.jupiter.api.BeforeEach;
+import com.wewins.fota.infra.cache.invalidator.FirmwareCacheInvalidator;
+import com.wewins.fota.infra.cache.invalidator.PolicyCacheInvalidator;
+import com.wewins.fota.infra.cache.invalidator.ProductCacheInvalidator;
+import com.wewins.fota.infra.cache.service.CacheMetricsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

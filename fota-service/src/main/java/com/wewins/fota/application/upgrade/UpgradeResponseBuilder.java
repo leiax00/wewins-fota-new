@@ -1,19 +1,18 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
+import java.util.Map;
 import java.util.Locale;
 
 /**
@@ -123,40 +122,40 @@ public class UpgradeResponseBuilder {
     }
 
     private String extractReleaseNote(FirmwareVersion firmware, String lang) {
-        JsonNode meta = firmware.getMeta();
+        Map<String, Object> meta = firmware.getMeta();
         if (meta != null) {
-            if (meta.has("i18n")) {
-                JsonNode i18n = meta.get("i18n");
+            if (meta.get("i18n") instanceof Map<?, ?> i18nRaw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> i18n = (Map<String, Object>) i18nRaw;
                 String effectiveLang = determineEffectiveLanguage(lang, i18n);
 
-                JsonNode langNode = i18n.get(effectiveLang);
+                Object langNode = i18n.get(effectiveLang);
                 if (langNode != null) {
-                    return langNode.asText();
+                    return String.valueOf(langNode);
                 }
             }
-            if (meta.has("changelog") && meta.get("changelog").isTextual()) {
-                return meta.get("changelog").asText();
+            if (meta.get("changelog") instanceof String changelog && !changelog.isBlank()) {
+                return changelog;
             }
         }
 
         return getSimpleReleaseNote(firmware);
     }
 
-    private String determineEffectiveLanguage(String lang, JsonNode i18n) {
+    private String determineEffectiveLanguage(String lang, Map<String, Object> i18n) {
         if (lang == null || lang.isBlank()) {
             lang = "en";
         }
 
         // 1. 精确匹配
-        if (i18n.has(lang)) {
+        if (i18n.containsKey(lang)) {
             return lang;
         }
 
         // 2. 前缀匹配：设备传 zh，匹配 zh-CN、zh-TW 等
         if (!lang.contains("-")) {
             String prefix = lang + "-";
-            for (Iterator<String> it = i18n.fieldNames(); it.hasNext(); ) {
-                String key = it.next();
+            for (String key : i18n.keySet()) {
                 if (key.startsWith(prefix)) {
                     return key;
                 }
@@ -164,13 +163,13 @@ public class UpgradeResponseBuilder {
         }
 
         // 4. 回退到 en
-        if (i18n.has("en")) {
+        if (i18n.containsKey("en")) {
             return "en";
         }
 
         // 5. 返回第一个可用语言
         if (!i18n.isEmpty()) {
-            return i18n.fieldNames().next();
+            return i18n.keySet().iterator().next();
         }
 
         return "en";

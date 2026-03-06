@@ -8,7 +8,7 @@ import com.wewins.fota.application.device.dto.DeviceImportExecuteReqDTO;
 import com.wewins.fota.application.device.dto.DeviceImportRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.cache.dto.DeviceImportSession;
-import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.model.entity.Device;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;

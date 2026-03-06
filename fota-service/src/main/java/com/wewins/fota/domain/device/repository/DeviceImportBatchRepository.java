@@ -1,7 +1,7 @@
 package com.wewins.fota.domain.device.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,7 +1,7 @@
 package com.wewins.fota.application.reporting;
 
 import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.wewins.fota.domain.firmware.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 
 import java.util.List;
 import java.util.Map;

@@ -1,8 +1,8 @@
 package com.wewins.fota.application.policy.dto;
 
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TargetMode;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TargetMode;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

@@ -1,21 +1,18 @@
 package com.wewins.fota.application.policy.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.policy.UpgradePolicyAppService;
 import com.wewins.fota.application.policy.dto.UpgradePolicyPageReqDTO;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TargetMode;
-import com.wewins.fota.domain.policy.enums.TimeWindowType;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TargetMode;
+import com.wewins.fota.domain.policy.model.enums.TimeWindowType;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.vo.PolicyTimeWindow;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.infra.cache.event.ChangeType;
@@ -29,10 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -46,8 +43,6 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
     // ==================== 常量定义 ====================
 
     private static final String PACKAGE_STATUS_READY = "READY";
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-
     // 校验上限常量
     private static final int MAX_SOURCE_VERSIONS = 50;
     private static final int MAX_TARGET_DEVICE_IDS = 1000;
@@ -450,19 +445,17 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * </p>
      */
     private void normalizeAndValidateSourceVersions(UpgradePolicy policy) {
-        JsonNode sourceVersions = policy.getSourceVersions();
-        if (sourceVersions == null || sourceVersions.isNull() || !sourceVersions.isArray()) {
+        Set<Long> sourceVersions = policy.getSourceVersions();
+        if (sourceVersions == null || sourceVersions.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 必须为非空数组");
         }
 
-        ArrayNode normalized = JsonNodeFactory.instance.arrayNode();
         LinkedHashSet<Long> deduplicated = new LinkedHashSet<>();
 
-        for (JsonNode item : sourceVersions) {
-            if (item == null || !item.isIntegralNumber()) {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 仅支持数字版本 ID");
+        for (Long versionId : sourceVersions) {
+            if (versionId == null) {
+                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 不允许包含空值");
             }
-            Long versionId = item.asLong();
             if (versionId <= 0) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 版本 ID 必须为正整数");
             }
@@ -476,8 +469,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "sourceVersions 数量不能超过 " + MAX_SOURCE_VERSIONS);
         }
 
-        deduplicated.forEach(normalized::add);
-        policy.setSourceVersions(normalized);
+        policy.setSourceVersions(deduplicated);
     }
 
     /**
@@ -490,9 +482,9 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         TargetMode targetMode = TargetMode.of(policy.getTargetMode());
         policy.setTargetMode(targetMode.getCode());
 
-        ArrayNode imeis = normalizeImeiArray(policy.getTargetImeis(), MAX_TARGET_DEVICE_IDS, "targetImeis");
-        ArrayNode batchIds = normalizePositiveStringArray(policy.getTargetDeviceBatchIds(), MAX_TARGET_DEVICE_BATCH_IDS, "targetDeviceBatchIds");
-        ObjectNode tags = normalizeTagObject(policy.getTargetDeviceTags());
+        Set<String> imeis = normalizeImeiSet(policy.getTargetImeis(), MAX_TARGET_DEVICE_IDS, "targetImeis");
+        Set<Long> batchIds = normalizePositiveLongSet(policy.getTargetDeviceBatchIds(), MAX_TARGET_DEVICE_BATCH_IDS, "targetDeviceBatchIds");
+        Map<String, Object> tags = normalizeTagMap(policy.getTargetDeviceTags());
 
         switch (targetMode) {
             case ALL -> {
@@ -549,39 +541,32 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
      * </p>
      */
     private void normalizeAndValidateTimeWindow(UpgradePolicy policy) {
-        JsonNode timeWindow = policy.getTimeWindow();
-        if (timeWindow == null || timeWindow.isNull() || !timeWindow.isObject()) {
+        PolicyTimeWindow timeWindow = policy.getTimeWindow();
+        if (timeWindow == null) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow 必须为对象");
         }
 
-        TimeWindowType type = TimeWindowType.of(readRequiredText(timeWindow, "type"));
+        TimeWindowType type = timeWindow.getType();
         if (type == null) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow.type 仅支持 UNLIMITED、RANGE 或 DAILY");
         }
 
         // UNLIMITED 模式：时间字段必须为 null 或不存在
         if (type == TimeWindowType.UNLIMITED) {
-            JsonNode startAtNode = timeWindow.get("startAt");
-            JsonNode endAtNode = timeWindow.get("endAt");
-            // 检查是否为 null 或不存在
-            if ((startAtNode != null && !startAtNode.isNull()) ||
-                (endAtNode != null && !endAtNode.isNull())) {
+            if (timeWindow.getStartAt() != null || timeWindow.getEndAt() != null) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
                         "timeWindow 在 UNLIMITED 模式下 startAt 和 endAt 必须为 null");
             }
-
-            // 规范化存储：设置 null 值
-            ObjectNode normalized = JsonNodeFactory.instance.objectNode();
-            normalized.put("type", type.getCode());
-            normalized.putNull("startAt");
-            normalized.putNull("endAt");
-            policy.setTimeWindow(normalized);
+            policy.setTimeWindow(PolicyTimeWindow.builder().type(type).startAt(null).endAt(null).build());
             return;
         }
 
         // RANGE 和 DAILY 模式：时间字段不能为空
-        LocalDateTime startAt = parseLocalDateTime(readRequiredText(timeWindow, "startAt"));
-        LocalDateTime endAt = parseLocalDateTime(readRequiredText(timeWindow, "endAt"));
+        LocalDateTime startAt = timeWindow.getStartAt();
+        LocalDateTime endAt = timeWindow.getEndAt();
+        if (startAt == null || endAt == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow.startAt 和 timeWindow.endAt 不能为空");
+        }
 
         // 左闭右开区间：startAt 必须 < endAt
         if (!startAt.isBefore(endAt)) {
@@ -605,12 +590,7 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
         }
 
-        // 规范化存储（LocalDateTime 约定为 UTC，存储为 ISO8601 字符串）
-        ObjectNode normalized = JsonNodeFactory.instance.objectNode();
-        normalized.put("type", type.getCode());
-        normalized.put("startAt", startAt.format(ISO_FORMATTER));
-        normalized.put("endAt", endAt.format(ISO_FORMATTER));
-        policy.setTimeWindow(normalized);
+        policy.setTimeWindow(PolicyTimeWindow.builder().type(type).startAt(startAt).endAt(endAt).build());
     }
 
     /**
@@ -650,95 +630,33 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
 
     // ==================== 辅助方法 ====================
 
-    /**
-     * 规范化正整数字符串数组
-     *
-     * @param node JsonNode 数组
-     * @param maxSize 最大数量
-     * @param fieldName 字段名称（用于错误消息）
-     * @return 规范化后的 ArrayNode，如果输入为空则返回 null
-     */
-    private ArrayNode normalizePositiveStringArray(JsonNode node, int maxSize, String fieldName) {
-        if (node == null || node.isNull()) {
+    private Set<Long> normalizePositiveLongSet(Set<Long> values, int maxSize, String fieldName) {
+        if (values == null || values.isEmpty()) {
             return null;
         }
-        if (!node.isArray()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 必须为数组");
-        }
-        if (node.isEmpty()) {
-            return null;
-        }
-
-        LinkedHashSet<String> deduplicated = new LinkedHashSet<>();
-        for (JsonNode item : node) {
-            String value;
-            if (item.isTextual()) {
-                value = item.asText().trim();
-            } else if (item.isIntegralNumber()) {
-                value = String.valueOf(item.asLong());
-            } else {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持字符串或数字");
-            }
-
-            if (value.isEmpty()) {
+        LinkedHashSet<Long> deduplicated = new LinkedHashSet<>();
+        for (Long value : values) {
+            if (value == null) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 不允许包含空值");
             }
-
-            // 验证是否为有效数字（正整数）
-            try {
-                long num = Long.parseLong(value);
-                if (num <= 0) {
-                    throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持正整数");
-                }
-            } catch (NumberFormatException e) {
+            if (value <= 0) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持正整数");
             }
-
             deduplicated.add(value);
         }
-
         if (deduplicated.size() > maxSize) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 数量不能超过 " + maxSize);
         }
-
-        ArrayNode normalized = JsonNodeFactory.instance.arrayNode();
-        deduplicated.forEach(normalized::add);
-        return normalized;
+        return deduplicated;
     }
 
-    /**
-     * 规范化IMEI数组
-     * <p>
-     * IMEI必须是15位数字
-     * </p>
-     *
-     * @param node JsonNode 数组
-     * @param maxSize 最大数量
-     * @param fieldName 字段名称（用于错误消息）
-     * @return 规范化后的 ArrayNode，如果输入为空则返回 null
-     */
-    private ArrayNode normalizeImeiArray(JsonNode node, int maxSize, String fieldName) {
-        if (node == null || node.isNull()) {
+    private Set<String> normalizeImeiSet(Set<String> values, int maxSize, String fieldName) {
+        if (values == null || values.isEmpty()) {
             return null;
         }
-        if (!node.isArray()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 必须为数组");
-        }
-        if (node.isEmpty()) {
-            return null;
-        }
-
         LinkedHashSet<String> deduplicated = new LinkedHashSet<>();
-        for (JsonNode item : node) {
-            String value;
-            if (item.isTextual()) {
-                value = item.asText().trim();
-            } else if (item.isIntegralNumber()) {
-                value = String.valueOf(item.asLong());
-            } else {
-                throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 仅支持字符串");
-            }
-
+        for (String raw : values) {
+            String value = raw == null ? "" : raw.trim();
             if (value.isEmpty()) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 不允许包含空值");
             }
@@ -755,42 +673,23 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
         if (deduplicated.size() > maxSize) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(), fieldName + " 数量不能超过 " + maxSize);
         }
-
-        ArrayNode normalized = JsonNodeFactory.instance.arrayNode();
-        deduplicated.forEach(normalized::add);
-        return normalized;
+        return deduplicated;
     }
 
-    /**
-     * 规范化标签对象（深度验证）
-     * <p>
-     * 验证标签 key 的格式、value 的类型、标签数量限制
-     * </p>
-     *
-     * @param node JsonNode 对象
-     * @return 规范化后的 ObjectNode，如果输入为空则返回 null
-     */
-    private ObjectNode normalizeTagObject(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return null;
-        }
-        if (!node.isObject() || node.isEmpty()) {
+    private Map<String, Object> normalizeTagMap(Map<String, Object> tags) {
+        if (tags == null || tags.isEmpty()) {
             return null;
         }
 
         // 验证标签数量
-        if (node.size() > MAX_TAG_KEYS) {
+        if (tags.size() > MAX_TAG_KEYS) {
             throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
                     "targetDeviceTags 标签数量不能超过 " + MAX_TAG_KEYS);
         }
 
-        // 深度验证并复制
-        ObjectNode normalized = JsonNodeFactory.instance.objectNode();
-        var fields = node.fields();
-
-        while (fields.hasNext()) {
-            var entry = fields.next();
-            String key = entry.getKey();
+        LinkedHashMap<String, Object> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : tags.entrySet()) {
+            String key = entry.getKey() == null ? "" : entry.getKey().trim();
 
             // 验证 key 格式
             if (!TAG_KEY_PATTERN.matcher(key).matches()) {
@@ -799,60 +698,14 @@ public class UpgradePolicyAppServiceImpl implements UpgradePolicyAppService {
             }
 
             // 验证 value 类型（仅支持简单类型）
-            JsonNode value = entry.getValue();
-            if (!value.isTextual() && !value.isIntegralNumber() && !value.isBoolean()) {
+            Object value = entry.getValue();
+            if (!(value instanceof String) && !(value instanceof Number) && !(value instanceof Boolean)) {
                 throw new BizException(ErrorCode.BAD_REQUEST.getCode(),
                         "targetDeviceTags value 仅支持字符串/数字/布尔类型: key=" + key);
             }
-
-            normalized.set(key, value);
+            normalized.put(key, value);
         }
 
         return normalized;
-    }
-
-    /**
-     * 从 JsonNode 中读取必填文本字段
-     *
-     * @param parent 父节点
-     * @param fieldName 字段名称
-     * @return 字段值（已 trim）
-     */
-    private String readRequiredText(JsonNode parent, String fieldName) {
-        JsonNode valueNode = parent.get(fieldName);
-        if (valueNode == null || !valueNode.isTextual() || valueNode.asText().trim().isEmpty()) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "timeWindow." + fieldName + " 不能为空");
-        }
-        return valueNode.asText().trim();
-    }
-
-    /**
-     * 从 JsonNode 中读取可选文本字段
-     *
-     * @param parent 父节点
-     * @param fieldName 字段名称
-     * @return 字段值（已 trim），如果字段不存在或为空则返回 null
-     */
-    private String readOptionalText(JsonNode parent, String fieldName) {
-        JsonNode valueNode = parent.get(fieldName);
-        if (valueNode == null || !valueNode.isTextual()) {
-            return null;
-        }
-        String text = valueNode.asText().trim();
-        return text.isEmpty() ? null : text;
-    }
-
-    /**
-     * 解析 LocalDateTime（输入已被 Jackson 转换为 UTC）
-     *
-     * @param dateTimeStr ISO8601 格式的时间字符串（不带时区）
-     * @return LocalDateTime（UTC）
-     */
-    private LocalDateTime parseLocalDateTime(String dateTimeStr) {
-        try {
-            return LocalDateTime.parse(dateTimeStr);
-        } catch (DateTimeParseException e) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "时间格式必须为 ISO8601: " + dateTimeStr);
-        }
     }
 }

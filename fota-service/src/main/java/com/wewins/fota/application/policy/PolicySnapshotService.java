@@ -1,6 +1,6 @@
 package com.wewins.fota.application.policy;
 
-import com.wewins.fota.domain.policy.snapshot.PolicySnapshot;
+import com.wewins.fota.domain.policy.model.entity.PolicySnapshot;
 
 import java.util.Optional;
 

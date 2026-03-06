@@ -1,13 +1,12 @@
 package com.wewins.fota.application.device;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.wewins.fota.domain.device.entity.Device;
+import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
-import com.wewins.fota.domain.device.cache.DeviceCacheRepository;
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
+import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -115,9 +115,9 @@ public class DeviceInfoSyncService {
     }
     
     private String extractPartName(FirmwareVersion firmwareVersion) {
-        JsonNode meta = firmwareVersion.getMeta();
-        if (meta != null && meta.has("part")) {
-            return meta.get("part").asText();
+        Map<String, Object> meta = firmwareVersion.getMeta();
+        if (meta != null && meta.get("part") instanceof String part && !part.isBlank()) {
+            return part;
         }
         return "main";
     }

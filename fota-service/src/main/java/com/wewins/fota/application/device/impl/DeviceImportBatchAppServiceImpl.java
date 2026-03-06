@@ -5,7 +5,7 @@ import com.wewins.fota.application.device.DeviceImportBatchAppService;
 import com.wewins.fota.application.device.dto.DeviceImportBatchPageReqDTO;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

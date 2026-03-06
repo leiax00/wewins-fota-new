@@ -1,9 +1,10 @@
 package com.wewins.fota.infra.persistence.mybatis.product;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.cache.ProductCacheRepository;
-import com.wewins.fota.infra.persistence.mybatis.product.mapper.ProductMapper;
+import com.wewins.fota.domain.product.model.entity.Product;
+import com.wewins.fota.domain.product.repository.ProductCacheRepository;
+import com.wewins.fota.infra.persistence.mybatis.mapper.ProductMapper;
+import com.wewins.fota.infra.persistence.mybatis.repository.ProductRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;

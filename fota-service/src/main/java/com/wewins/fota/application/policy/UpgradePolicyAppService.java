@@ -2,7 +2,7 @@ package com.wewins.fota.application.policy;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.policy.dto.UpgradePolicyPageReqDTO;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 
 /**
  * 升级策略应用服务接口

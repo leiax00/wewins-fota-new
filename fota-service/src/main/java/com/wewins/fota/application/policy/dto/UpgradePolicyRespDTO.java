@@ -1,7 +1,7 @@
 package com.wewins.fota.application.policy.dto;
 
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
 import lombok.Builder;
 import lombok.Data;
 

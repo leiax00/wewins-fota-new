@@ -1,6 +1,6 @@
 package com.wewins.fota.application.device.dto;
 
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import lombok.Data;
 
 /**

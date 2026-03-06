@@ -14,8 +14,7 @@ import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.storage.core.FileTransferService;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -466,8 +464,9 @@ public class FirmwareVersionController {
             updateDTO.setFileSize(session.getFileSize());
             updateDTO.setMd5(session.getMd5());
             updateDTO.setSha256(session.getSha256());
-            updateDTO.setTags(existingVersion.getTags() != null ? existingVersion.getTags().toString() : null);
-            updateDTO.setMeta(existingVersion.getMeta() != null ? existingVersion.getMeta().toString() : null);
+            FirmwareVersionRespDTO existingDto = firmwareVersionAssembler.toFirmwareVersionResp(existingVersion);
+            updateDTO.setTags(existingDto.getTags());
+            updateDTO.setMeta(existingDto.getMeta());
 
             FirmwareVersion firmwareVersion = firmwareVersionAssembler.toFirmwareVersionEntity(updateDTO);
             firmwareVersion.setId(id);

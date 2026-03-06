@@ -1,8 +1,8 @@
 package com.wewins.fota.application.config;
 
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

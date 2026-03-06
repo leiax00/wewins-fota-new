@@ -1,11 +1,12 @@
 package com.wewins.fota.adapter.assembler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.value.DeviceVersionParts;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -36,7 +37,8 @@ public class DeviceAssembler {
 
         if (req.getTags() != null && !req.getTags().isBlank()) {
             try {
-                builder.tags(objectMapper.readTree(req.getTags()));
+                builder.tags(objectMapper.readValue(req.getTags(), new TypeReference<Map<String, String>>() {
+                }));
             } catch (JsonProcessingException e) {
                 throw new IllegalArgumentException("tags JSON 格式错误: " + e.getMessage(), e);
             }
@@ -89,8 +91,12 @@ public class DeviceAssembler {
                 .updatedAt(device.getUpdatedAt())
                 .updatedBy(device.getUpdatedBy());
 
-        if (device.getTags() != null) {
-            builder.tags(device.getTags().toString());
+        if (device.getTags() != null && !device.getTags().isEmpty()) {
+            try {
+                builder.tags(objectMapper.writeValueAsString(device.getTags()));
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("tags JSON 序列化失败: " + e.getMessage(), e);
+            }
         }
 
         return builder.build();

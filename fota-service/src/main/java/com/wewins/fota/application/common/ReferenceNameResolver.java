@@ -1,10 +1,10 @@
 package com.wewins.fota.application.common;
 
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

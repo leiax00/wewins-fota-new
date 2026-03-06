@@ -1,7 +1,7 @@
 package com.wewins.fota.adapter.api.device.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
+import com.wewins.fota.domain.reporting.model.enums.DeviceUpgradeEventType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

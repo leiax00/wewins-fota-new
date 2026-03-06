@@ -5,7 +5,7 @@ import com.wewins.fota.application.firmware.FirmwareVersionAppService;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.infra.cache.event.ChangeType;
 import com.wewins.fota.infra.cache.event.FirmwareChangedEvent;

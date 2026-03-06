@@ -1,14 +1,15 @@
 package com.wewins.fota.adapter.assembler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionRespDTO;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 固件版本 DTO 转换器
@@ -39,19 +40,17 @@ public class FirmwareVersionAssembler {
                 .sha256(req.getSha256())
                 .packageStatus(req.getPackageStatus());
 
-        // 转换 tags JSON 字符串为 JsonNode
         if (req.getTags() != null && !req.getTags().isBlank()) {
             try {
-                builder.tags(objectMapper.readTree(req.getTags()));
+                builder.tags(objectMapper.readValue(req.getTags(), Map.class));
             } catch (JsonProcessingException e) {
                 throw new IllegalArgumentException("tags JSON 格式错误: " + e.getMessage(), e);
             }
         }
 
-        // 转换 meta JSON 字符串为 JsonNode
         if (req.getMeta() != null && !req.getMeta().isBlank()) {
             try {
-                builder.meta(objectMapper.readTree(req.getMeta()));
+                builder.meta(objectMapper.readValue(req.getMeta(), Map.class));
             } catch (JsonProcessingException e) {
                 throw new IllegalArgumentException("meta JSON 格式错误: " + e.getMessage(), e);
             }
@@ -97,14 +96,20 @@ public class FirmwareVersionAssembler {
                 .updatedAt(firmwareVersion.getUpdatedAt())
                 .updatedBy(firmwareVersion.getUpdatedBy());
 
-        // 转换 tags JsonNode 为 JSON 字符串
         if (firmwareVersion.getTags() != null) {
-            builder.tags(firmwareVersion.getTags().toString());
+            try {
+                builder.tags(objectMapper.writeValueAsString(firmwareVersion.getTags()));
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("tags JSON 序列化失败: " + e.getMessage(), e);
+            }
         }
 
-        // 转换 meta JsonNode 为 JSON 字符串
         if (firmwareVersion.getMeta() != null) {
-            builder.meta(firmwareVersion.getMeta().toString());
+            try {
+                builder.meta(objectMapper.writeValueAsString(firmwareVersion.getMeta()));
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("meta JSON 序列化失败: " + e.getMessage(), e);
+            }
         }
 
         return builder.build();

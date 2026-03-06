@@ -1,16 +1,18 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.enums.TimeWindowType;
+import com.wewins.fota.domain.policy.model.vo.PolicyTimeWindow;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 策略匹配器
@@ -55,12 +57,12 @@ public class PolicyMatcher {
             UpgradePolicy policy,
             String deviceImei,
             Long deviceBatchId,
-            JsonNode deviceTags
+            Map<String, String> deviceTags
     ) {
         String targetMode = policy.getTargetMode();
-        JsonNode targetImeis = policy.getTargetImeis();
-        JsonNode targetDeviceBatchIds = policy.getTargetDeviceBatchIds();
-        JsonNode targetDeviceTags = policy.getTargetDeviceTags();
+        Set<String> targetImeis = policy.getTargetImeis();
+        Set<Long> targetDeviceBatchIds = policy.getTargetDeviceBatchIds();
+        Map<String, Object> targetDeviceTags = policy.getTargetDeviceTags();
 
         // targetMode 为空时默认为 ALL
         String mode = (targetMode == null || targetMode.isBlank()) ? TARGET_MODE_ALL : targetMode.toUpperCase();
@@ -84,8 +86,8 @@ public class PolicyMatcher {
      * @param deviceImei  设备 IMEI
      * @return true 如果设备 IMEI 在列表中
      */
-    private boolean matchesDeviceIds(JsonNode targetImeis, String deviceImei) {
-        if (targetImeis == null || !targetImeis.isArray() || targetImeis.isEmpty()) {
+    private boolean matchesDeviceIds(Set<String> targetImeis, String deviceImei) {
+        if (targetImeis == null || targetImeis.isEmpty()) {
             log.debug("策略未指定目标 IMEI 列表，不匹配");
             return false;
         }
@@ -95,10 +97,8 @@ public class PolicyMatcher {
             return false;
         }
 
-        for (JsonNode node : targetImeis) {
-            if (deviceImei.equals(node.asText())) {
-                return true;
-            }
+        if (targetImeis.contains(deviceImei)) {
+            return true;
         }
 
         log.debug("设备 IMEI 不在目标列表中: deviceImei={}", deviceImei);
@@ -112,8 +112,8 @@ public class PolicyMatcher {
      * @param deviceBatchId  设备导入批次 ID
      * @return true 如果设备批次在列表中
      */
-    private boolean matchesDeviceBatches(JsonNode targetBatchIds, Long deviceBatchId) {
-        if (targetBatchIds == null || !targetBatchIds.isArray() || targetBatchIds.isEmpty()) {
+    private boolean matchesDeviceBatches(Set<Long> targetBatchIds, Long deviceBatchId) {
+        if (targetBatchIds == null || targetBatchIds.isEmpty()) {
             log.debug("策略未指定目标批次列表，不匹配");
             return false;
         }
@@ -123,10 +123,8 @@ public class PolicyMatcher {
             return false;
         }
 
-        for (JsonNode node : targetBatchIds) {
-            if (deviceBatchId.equals(node.asLong())) {
-                return true;
-            }
+        if (targetBatchIds.contains(deviceBatchId)) {
+            return true;
         }
 
         log.debug("设备批次不在目标列表中: deviceBatchId={}", deviceBatchId);
@@ -162,33 +160,34 @@ public class PolicyMatcher {
      * @param deviceTags       设备的实际标签（tags 字段）
      * @return true 如果设备标签满足策略要求
      */
-    public boolean matchesDeviceTags(JsonNode policyTargetTags, JsonNode deviceTags) {
+    public boolean matchesDeviceTags(Map<String, Object> policyTargetTags, Map<String, String> deviceTags) {
         // 1. 策略没有标签要求 → 匹配
-        if (policyTargetTags == null || policyTargetTags.isEmpty() || policyTargetTags instanceof NullNode) {
+        if (policyTargetTags == null || policyTargetTags.isEmpty()) {
             return true;
         }
 
         // 2. 设备没有标签且策略有要求 → 不匹配
-        if (deviceTags == null || deviceTags.isEmpty() || deviceTags instanceof NullNode) {
+        if (deviceTags == null || deviceTags.isEmpty()) {
             return false;
         }
 
         // 3. 遍历策略要求的每个标签，检查设备标签是否匹配
-        for (String requiredKey : getFieldNames(policyTargetTags)) {
-            JsonNode requiredValue = policyTargetTags.get(requiredKey);
+        for (Map.Entry<String, Object> entry : policyTargetTags.entrySet()) {
+            String requiredKey = entry.getKey();
+            Object requiredValue = entry.getValue();
 
             // 检查设备标签是否有这个键
-            if (!deviceTags.has(requiredKey)) {
+            if (!deviceTags.containsKey(requiredKey)) {
                 log.debug("设备标签缺少必需字段: requiredKey={}", requiredKey);
                 return false;
             }
 
-            JsonNode deviceValue = deviceTags.get(requiredKey);
+            String deviceValue = deviceTags.get(requiredKey);
 
             // 检查值是否匹配
             if (!valuesEqual(requiredValue, deviceValue)) {
                 log.debug("设备标签值不匹配: key={}, required={}, actual={}",
-                        requiredKey, requiredValue.asText(), deviceValue.asText());
+                        requiredKey, requiredValue, deviceValue);
                 return false;
             }
         }
@@ -197,21 +196,7 @@ public class PolicyMatcher {
     }
 
     /**
-     * 获取 JsonNode 的所有字段名
-     *
-     * @param node JSON 节点
-     * @return 字段名集合
-     */
-    private java.util.Set<String> getFieldNames(JsonNode node) {
-        java.util.Set<String> fieldNames = new java.util.HashSet<>();
-        if (node != null && node.isObject()) {
-            node.fieldNames().forEachRemaining(fieldNames::add);
-        }
-        return fieldNames;
-    }
-
-    /**
-     * 比较两个 JsonNode 的值是否相等
+     * 比较策略标签值与设备标签值是否相等
      * <p>
      * 支持类型：
      * </p>
@@ -226,32 +211,28 @@ public class PolicyMatcher {
      * @param value2 第二个值
      * @return true 如果值相等
      */
-    private boolean valuesEqual(JsonNode value1, JsonNode value2) {
-        // 处理 null 值
-        if (value1 == null || value1.isNull()) {
-            return value2 == null || value2.isNull();
+    private boolean valuesEqual(Object requiredValue, String actualValue) {
+        if (requiredValue == null) {
+            return actualValue == null;
         }
-        if (value2 == null || value2.isNull()) {
+        if (actualValue == null) {
             return false;
         }
 
-        // 字符串比较（最常见场景）
-        if (value1.isTextual() && value2.isTextual()) {
-            return value1.asText().equals(value2.asText());
+        if (requiredValue instanceof String value) {
+            return value.equals(actualValue);
         }
-
-        // 数值比较
-        if (value1.isNumber() && value2.isNumber()) {
-            return value1.asDouble() == value2.asDouble();
+        if (requiredValue instanceof Number value) {
+            try {
+                return Double.compare(value.doubleValue(), Double.parseDouble(actualValue)) == 0;
+            } catch (NumberFormatException e) {
+                return false;
+            }
         }
-
-        // 布尔比较
-        if (value1.isBoolean() && value2.isBoolean()) {
-            return value1.asBoolean() == value2.asBoolean();
+        if (requiredValue instanceof Boolean value) {
+            return value == Boolean.parseBoolean(actualValue);
         }
-
-        // 其他类型使用 JsonNode 的 equals 方法
-        return value1.equals(value2);
+        return requiredValue.toString().equals(actualValue);
     }
 
     /**
@@ -303,33 +284,29 @@ public class PolicyMatcher {
      * @param timeWindow 时间窗口配置（JSONB）
      * @return true 如果当前时间在时间窗口内
      */
-    public boolean matchesTimeWindow(JsonNode timeWindow) {
+    public boolean matchesTimeWindow(PolicyTimeWindow timeWindow) {
         // 1. 没有时间窗口限制 → 匹配
-        if (timeWindow == null || timeWindow.isEmpty() || timeWindow instanceof NullNode) {
+        if (timeWindow == null || timeWindow.getType() == null) {
             return true;
         }
 
         try {
-            // 2. 获取时间窗口类型
-            String type = nullSafeText(timeWindow.path("type"));
-            if (type == null) {
-                log.debug("时间窗口缺少类型字段，默认匹配");
+            TimeWindowType type = timeWindow.getType();
+            if (type == TimeWindowType.UNLIMITED) {
                 return true;
             }
-
-            // 3. 获取起止时间
-            String startAt = nullSafeText(timeWindow.path("startAt"));
-            String endAt = nullSafeText(timeWindow.path("endAt"));
-
+            LocalDateTime startAt = timeWindow.getStartAt();
+            LocalDateTime endAt = timeWindow.getEndAt();
             if (startAt == null || endAt == null) {
                 log.debug("时间窗口缺少时间字段，默认匹配");
                 return true;
             }
 
             // 4. 根据类型进行匹配
-            return switch (type.toUpperCase()) {
-                case "RANGE" -> matchesRangeWindow(startAt, endAt);
-                case "DAILY" -> matchesDailyWindow(startAt, endAt);
+            return switch (type) {
+                case RANGE -> matchesRangeWindow(startAt, endAt);
+                case DAILY -> matchesDailyWindow(startAt, endAt);
+                case UNLIMITED -> true;
                 default -> {
                     log.warn("未知的时间窗口类型: {}, 默认匹配", type);
                     yield true;
@@ -360,26 +337,15 @@ public class PolicyMatcher {
      * @param endAt   结束时间
      * @return true 如果当前时间在范围内
      */
-    private boolean matchesRangeWindow(String startAt, String endAt) {
-        try {
-            Instant now = Instant.now();
-            Instant start = parseInstant(startAt);
-            Instant end = parseInstant(endAt);
-
-            // 检查是否在时间窗口内：[start, end)
-            boolean inWindow = !now.isBefore(start) && now.isBefore(end);
-
-            if (!inWindow) {
-                log.debug("不在 RANGE 时间窗口内: now={}, start={}, end={}",
-                        now, start, end);
-            }
-
-            return inWindow;
-
-        } catch (DateTimeParseException e) {
-            log.warn("RANGE 时间窗口解析失败: startAt={}, endAt={}", startAt, endAt, e);
-            return true; // 容错处理
+    private boolean matchesRangeWindow(LocalDateTime startAt, LocalDateTime endAt) {
+        Instant now = Instant.now();
+        Instant start = toUtcInstant(startAt);
+        Instant end = toUtcInstant(endAt);
+        boolean inWindow = !now.isBefore(start) && now.isBefore(end);
+        if (!inWindow) {
+            log.debug("不在 RANGE 时间窗口内: now={}, start={}, end={}", now, start, end);
         }
+        return inWindow;
     }
 
     /**
@@ -395,13 +361,8 @@ public class PolicyMatcher {
      * @param dateTimeStr 时间字符串
      * @return Instant 对象
      */
-    private Instant parseInstant(String dateTimeStr) {
-        // 如果以 Z 结尾，直接解析为 Instant
-        if (dateTimeStr.endsWith("Z")) {
-            return Instant.parse(dateTimeStr);
-        }
-        // 否则解析为 LocalDateTime，然后视为 UTC 转换为 Instant
-        return LocalDateTime.parse(dateTimeStr).atZone(ZoneId.of("UTC")).toInstant();
+    private Instant toUtcInstant(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.of("UTC")).toInstant();
     }
 
     /**
@@ -417,15 +378,6 @@ public class PolicyMatcher {
      * @param dateTimeStr 时间字符串
      * @return ZonedDateTime 对象（UTC 时区）
      */
-    private ZonedDateTime parseZonedDateTime(String dateTimeStr) {
-        // 如果以 Z 结尾，直接解析
-        if (dateTimeStr.endsWith("Z")) {
-            return ZonedDateTime.parse(dateTimeStr).withZoneSameInstant(ZoneId.of("UTC"));
-        }
-        // 否则解析为 LocalDateTime，然后视为 UTC
-        return LocalDateTime.parse(dateTimeStr).atZone(ZoneId.of("UTC"));
-    }
-
     /**
      * 检查每日周期时间窗口
      * <p>
@@ -450,55 +402,21 @@ public class PolicyMatcher {
      * @param endAt   结束时间（只取时间部分）
      * @return true 如果当前时间在每日窗口内
      */
-    private boolean matchesDailyWindow(String startAt, String endAt) {
-        try {
-            // 解析时间窗口（获取 HH:mm:ss 部分）
-            ZonedDateTime startZoned = parseZonedDateTime(startAt);
-            ZonedDateTime endZoned = parseZonedDateTime(endAt);
+    private boolean matchesDailyWindow(LocalDateTime startAt, LocalDateTime endAt) {
+        LocalTime startTime = startAt.toLocalTime();
+        LocalTime endTime = endAt.toLocalTime();
+        LocalTime nowTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC")).toLocalTime();
 
-            // 获取当前 UTC 日期
-            ZonedDateTime nowUtc = ZonedDateTime.ofInstant(Instant.now(), ZoneId.of("UTC"));
-
-            // 将时间窗口应用到今天的 UTC 日期
-            ZonedDateTime todayStart = nowUtc
-                    .withHour(startZoned.getHour())
-                    .withMinute(startZoned.getMinute())
-                    .withSecond(startZoned.getSecond())
-                    .withNano(0);
-
-            ZonedDateTime todayEnd = nowUtc
-                    .withHour(endZoned.getHour())
-                    .withMinute(endZoned.getMinute())
-                    .withSecond(endZoned.getSecond())
-                    .withNano(0);
-
-            // 处理跨天情况（如 23:00:00 到 02:00:00）
-            if (todayEnd.isBefore(todayStart)) {
-                // 结束时间在第二天
-                boolean inWindow = !nowUtc.isBefore(todayStart) || nowUtc.isBefore(todayEnd.plusDays(1));
-
-                if (!inWindow) {
-                    log.debug("不在 DAILY 时间窗口内（跨天）: now={}, start={}, end={}",
-                            nowUtc, todayStart, todayEnd.plusDays(1));
-                }
-
-                return inWindow;
-            } else {
-                // 正常情况：起止时间在同一天
-                boolean inWindow = !nowUtc.isBefore(todayStart) && nowUtc.isBefore(todayEnd);
-
-                if (!inWindow) {
-                    log.debug("不在 DAILY 时间窗口内: now={}, start={}, end={}",
-                            nowUtc, todayStart, todayEnd);
-                }
-
-                return inWindow;
-            }
-
-        } catch (DateTimeParseException e) {
-            log.warn("DAILY 时间窗口解析失败: startAt={}, endAt={}", startAt, endAt, e);
-            return true; // 容错处理
+        boolean inWindow;
+        if (endTime.isAfter(startTime)) {
+            inWindow = !nowTime.isBefore(startTime) && nowTime.isBefore(endTime);
+        } else {
+            inWindow = !nowTime.isBefore(startTime) || nowTime.isBefore(endTime);
         }
+        if (!inWindow) {
+            log.debug("不在 DAILY 时间窗口内: now={}, start={}, end={}", nowTime, startTime, endTime);
+        }
+        return inWindow;
     }
 
     /**
@@ -569,17 +487,4 @@ public class PolicyMatcher {
         return true;
     }
 
-    /**
-     * 安全的空文本处理
-     *
-     * @param text 文本
-     * @return 去除空白后的文本，null 或空白时返回 null
-     */
-    private String nullSafeText(JsonNode text) {
-        if (text == null || text.isNull()) {
-            return null;
-        }
-        String result = text.asText();
-        return ("null".equals(result) || result.isBlank()) ? null : result;
-    }
 }

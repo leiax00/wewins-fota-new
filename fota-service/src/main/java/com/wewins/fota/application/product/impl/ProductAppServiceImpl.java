@@ -5,7 +5,7 @@ import com.wewins.fota.application.product.ProductAppService;
 import com.wewins.fota.application.product.dto.ProductPageReqDTO;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.product.entity.Product;
+import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.infra.cache.event.ChangeType;
 import com.wewins.fota.infra.cache.event.ProductChangedEvent;

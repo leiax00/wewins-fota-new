@@ -1,8 +1,8 @@
 package com.wewins.fota.domain.policy.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;

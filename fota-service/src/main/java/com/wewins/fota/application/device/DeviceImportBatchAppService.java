@@ -2,7 +2,7 @@ package com.wewins.fota.application.device;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.application.device.dto.DeviceImportBatchPageReqDTO;
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 
 /**
  * 设备导入批次应用服务接口
