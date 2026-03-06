@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.device.model.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DeviceVersionParts {
 
     /**
@@ -38,6 +41,7 @@ public class DeviceVersionParts {
     /**
      * 获取主要版本 ID
      */
+    @JsonIgnore
     public Long getPrimaryVersionId() {
         DeviceVersionPart part = parts.get(primaryPart);
         return part != null ? part.getVersionId() : null;
@@ -46,11 +50,13 @@ public class DeviceVersionParts {
     /**
      * 获取主要版本号
      */
+    @JsonIgnore
     public String getPrimaryVersion() {
         DeviceVersionPart part = parts.get(primaryPart);
         return part != null ? part.getVersion() : null;
     }
 
+    @JsonIgnore
     public Set<Long> getVersionIds() {
         return parts.values().stream()
                 .map(DeviceVersionPart::getVersionId).collect(Collectors.toSet());
