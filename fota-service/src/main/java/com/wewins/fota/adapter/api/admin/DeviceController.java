@@ -2,7 +2,8 @@ package com.wewins.fota.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.DeviceAssembler;
-import com.wewins.fota.application.common.ReferenceNameResolver;
+import com.wewins.fota.application.device.support.DeviceDisplayNameService;
+import com.wewins.fota.application.device.support.DeviceNameContext;
 import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.application.device.dto.BatchOperationReqDTO;
 import com.wewins.fota.application.device.dto.BatchOperationResultDTO;
@@ -17,12 +18,7 @@ import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.repository.DeviceImportBatchRepository;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.domain.device.model.entity.Device;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,8 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * 设备管理控制器
@@ -53,10 +48,7 @@ public class DeviceController {
 
     private final DeviceAppService deviceAppService;
     private final DeviceAssembler deviceAssembler;
-    private final ProductRepository productRepository;
-    private final FirmwareVersionRepository firmwareVersionRepository;
-    private final DeviceImportBatchRepository deviceImportBatchRepository;
-    private final ReferenceNameResolver referenceNameResolver;
+    private final DeviceDisplayNameService deviceDisplayNameService;
 
     /**
      * 分页查询设备列表
@@ -72,40 +64,19 @@ public class DeviceController {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询设备: productId={}, imei={}, status={}, page={}, size={}",
-                    reqDTO.getProductId(), reqDTO.getImei(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询设备: productId={}, imei={}, status={}, importBatchId={}, page={}, size={}",
+                    reqDTO.getProductId(), reqDTO.getImei(), reqDTO.getStatus(), reqDTO.getImportBatchId(), reqDTO.getPage(), reqDTO.getSize());
         }
 
         Page<Device> pageResult = deviceAppService.pageDevices(reqDTO);
         List<Device> devices = pageResult.getRecords();
 
         // 提取当前页中所有不同的产品 ID、版本 ID 和批次 ID
-        Set<Long> productIds = devices.stream()
-                .map(Device::getProductId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Set<Long> versionIds = devices.stream()
-                .map(Device::getCurrentVersionId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Set<Long> batchIds = devices.stream()
-                .map(Device::getImportBatchId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        // 使用 ReferenceNameResolver 批量查询名称
-        Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
-        Map<Long, String> versionNameMap = referenceNameResolver.resolveFirmwareVersionNames(versionIds);
-        Map<Long, String> batchNameMap = referenceNameResolver.resolveImportBatchNames(batchIds);
+        DeviceNameContext nameContext = deviceDisplayNameService.resolveForDevices(devices);
 
         // 转换为 DTO，填充产品名称、版本名称和批次名称
         List<DeviceRespDTO> records = devices.stream()
-                .map(device -> deviceAssembler.toDeviceResp(
-                        device,
-                        productNameMap.get(device.getProductId()),
-                        versionNameMap.get(device.getCurrentVersionId()),
-                        batchNameMap.get(device.getImportBatchId())
-                ))
+                .map(device -> deviceAssembler.toDeviceResp(device, nameContext))
                 .toList();
 
         PageResponse<DeviceRespDTO> response = PageResponse.of(
@@ -236,7 +207,7 @@ public class DeviceController {
 
         if (log.isDebugEnabled()) {
             log.debug("创建设备: imei={}, productId={}, currentVersionId={}, status={}",
-                    reqDTO.getImei(), reqDTO.getProductId(), reqDTO.getCurrentVersionId(), reqDTO.getStatus());
+                    reqDTO.getImei(), reqDTO.getProductId(), reqDTO.getVersionParts(), reqDTO.getStatus());
         }
 
         try {
@@ -292,22 +263,8 @@ public class DeviceController {
     }
 
     private DeviceRespDTO fillName(Device device) {
-        String productName = productRepository.findById(device.getProductId())
-                .map(Product::getName)
-                .orElse(null);
-        String versionName = null;
-        if (device.getCurrentVersionId() != null) {
-            versionName = firmwareVersionRepository.findById(device.getCurrentVersionId())
-                    .map(FirmwareVersion::getVersion)
-                    .orElse(null);
-        }
-        String importBatchName = null;
-        if (device.getImportBatchId() != null) {
-            importBatchName = deviceImportBatchRepository.findById(device.getImportBatchId())
-                    .map(com.wewins.fota.domain.device.entity.DeviceImportBatch::getBatchName)
-                    .orElse(null);
-        }
-        return deviceAssembler.toDeviceResp(device, productName, versionName, importBatchName);
+        DeviceNameContext nameContext = deviceDisplayNameService.resolveForDevice(device);
+        return deviceAssembler.toDeviceResp(device, nameContext);
     }
 
     /**

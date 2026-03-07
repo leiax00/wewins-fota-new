@@ -1,5 +1,7 @@
 package com.wewins.fota.domain.reporting.model.aggregate;
 
+import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
+import com.wewins.fota.common.enums.CheckMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -62,9 +64,22 @@ public class DeviceCheckLog implements Serializable {
     private Long policyId;
 
     /**
+     * 下发给设备的下载 URL
+     * <p>
+     * 包含 pid 和 rid 参数，用于关联后续的升级事件
+     * </p>
+     */
+    private String downloadUrl;
+
+    /**
      * 当前固件版本
      */
-    private String currentVersion;
+    private String version;
+
+    /**
+     * 设备内部版本号（build tag）
+     */
+    private String internalVersion;
 
     /**
      * 目标固件版本
@@ -75,38 +90,29 @@ public class DeviceCheckLog implements Serializable {
     private String targetVersion;
 
     /**
+     * 目标固件内部版本号（build tag）
+     */
+    private String targetInternalVersion;
+
+    /**
      * 目标版本 ID
      */
     private Long targetVersionId;
 
     /**
-     * 检查决策
-     * <p>
-     * 决策结果：UPDATE（有更新）、NO_UPDATE（无更新）、RATE_LIMITED（限流）、GRAY_MISS（未命中灰度）
-     * </p>
+     * 检查结果
      */
-    private String decision;
+    private UpgradeDecision checkRst;
 
     /**
      * 检查模式
-     * <p>
-     * auto（自动检查）、manual（手动检查）
-     * </p>
      */
-    private String checkMode;
+    private CheckMode checkMode;
 
     /**
      * 语言设置
      */
     private String language;
-
-    /**
-     * 设备标签（JSON）
-     * <p>
-     * 存储设备上报的标签信息
-     * </p>
-     */
-    private String deviceTags;
 
     /**
      * 扩展标签（JSON）
@@ -123,14 +129,6 @@ public class DeviceCheckLog implements Serializable {
      * </p>
      */
     private Integer isDev;
-
-    /**
-     * 是否有更新
-     * <p>
-     * 0：无更新，1：有更新
-     * </p>
-     */
-    private Integer hasUpdate;
 
     /**
      * 灰度桶号

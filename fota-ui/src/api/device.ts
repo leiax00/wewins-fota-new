@@ -21,11 +21,12 @@ export interface DeviceItem {
   imei: string
   productId: number
   productName?: string
-  currentVersionId?: number
-  versionName?: string
+  versionParts?: DeviceVersionParts
+  initialVersionParts?: DeviceVersionParts
   status: DeviceStatus
+  firstSeenAt?: string
   lastSeenAt?: string
-  tags?: string
+  tags?: Record<string, string>
   importBatchId?: number
   importBatchName?: string
   createdAt: string
@@ -37,9 +38,21 @@ export interface DeviceItem {
 export interface DevicePayload {
   imei: string
   productId: number
-  currentVersionId?: number
+  versionParts?: DeviceVersionParts
   status: DeviceStatus
-  tags?: string
+  tags?: Record<string, string>
+}
+
+export interface DeviceVersionPart {
+  versionId: number
+  version?: string
+  internalVersion?: string
+  updatedAt?: string
+}
+
+export interface DeviceVersionParts {
+  parts?: Record<string, DeviceVersionPart>
+  primaryPart?: string
 }
 
 export interface DeviceImportParams {

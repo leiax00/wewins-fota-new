@@ -20,6 +20,31 @@ public class FirmwareVersionReqDTO {
     private String version;
 
     /**
+     * 内部版本号（build tag）
+     * <p>
+     * 用于与 version 组合唯一确定固件版本
+     * </p>
+     */
+    private String internalVersion;
+
+    /**
+     * 固件包状态（可选）
+     * <p>
+     * 可选值：
+     * <ul>
+     *   <li>NONE - 无固件包（占位版本号）</li>
+     *   <li>UPLOADED - 已上传临时文件</li>
+     *   <li>READY - 已转存到对象存储，可下载</li>
+     *   <li>FAILED - 上传或转存失败</li>
+     * </ul>
+     * </p>
+     * <p>
+     * 若不提供，则根据是否有 uploadSessionId 或 fileUrl 自动判断
+     * </p>
+     */
+    private String packageStatus;
+
+    /**
      * 上传会话 ID（可选）
      * <p>
      * 若提供则优先使用上传会话中的包信息，忽略 fileUrl/fileSize/md5/sha256 字段。

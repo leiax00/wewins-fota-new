@@ -6,19 +6,19 @@
 
     <insert id="insert" parameterType="com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog">
         INSERT INTO device_check_logs (
-            event_time, device_id, imei, product_id, policy_id,
-            current_version, target_version, target_version_id, decision,
-            check_mode, language, device_tags, ext_tags, is_dev,
-            has_update, gray_bucket, is_gray_hit,
+            event_time, device_id, imei, product_id, policy_id, download_url,
+            version, internal_version, target_version, target_internal_version, target_version_id, check_rst,
+            check_mode, language, ext_tags, is_dev,
+            gray_bucket, is_gray_hit,
             response_check_interval, download_delay,
             request_id,
             client_ip, user_agent, region,
             error_code, error_message
         ) VALUES (
-            #{eventTime}, #{deviceId}, #{imei}, #{productId}, #{policyId},
-            #{currentVersion}, #{targetVersion}, #{targetVersionId}, #{decision},
-            #{checkMode}, #{language}, #{deviceTags}, #{extTags}, #{isDev},
-            #{hasUpdate}, #{grayBucket}, #{isGrayHit},
+            #{eventTime}, #{deviceId}, #{imei}, #{productId}, #{policyId}, #{downloadUrl},
+            #{version}, #{internalVersion}, #{targetVersion}, #{targetInternalVersion}, #{targetVersionId}, #{checkRst.code},
+            #{checkMode.code}, #{language}, #{extTags}, #{isDev},
+            #{grayBucket}, #{isGrayHit},
             #{responseCheckInterval}, #{downloadDelay},
             #{requestId},
             toIPv4OrNull(#{clientIp}), #{userAgent}, #{region},
@@ -28,20 +28,20 @@
 
     <insert id="insertBatch">
         INSERT INTO device_check_logs (
-            event_time, device_id, imei, product_id, policy_id,
-            current_version, target_version, target_version_id, decision,
-            check_mode, language, device_tags, ext_tags, is_dev,
-            has_update, gray_bucket, is_gray_hit,
+            event_time, device_id, imei, product_id, policy_id, download_url,
+            version, internal_version, target_version, target_internal_version, target_version_id, check_rst,
+            check_mode, language, ext_tags, is_dev,
+            gray_bucket, is_gray_hit,
             response_check_interval, download_delay,
             request_id,
             client_ip, user_agent, region,
             error_code, error_message
         ) VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.eventTime}, #{item.deviceId}, #{item.imei}, #{item.productId}, #{item.policyId},
-             #{item.currentVersion}, #{item.targetVersion}, #{item.targetVersionId}, #{item.decision},
-             #{item.checkMode}, #{item.language}, #{item.deviceTags}, #{item.extTags}, #{item.isDev},
-             #{item.hasUpdate}, #{item.grayBucket}, #{item.isGrayHit},
+            (#{item.eventTime}, #{item.deviceId}, #{item.imei}, #{item.productId}, #{item.policyId}, #{item.downloadUrl},
+             #{item.version}, #{item.internalVersion}, #{item.targetVersion}, #{item.targetInternalVersion}, #{item.targetVersionId}, #{item.checkRst.code},
+             #{item.checkMode.code}, #{item.language}, #{item.extTags}, #{item.isDev},
+             #{item.grayBucket}, #{item.isGrayHit},
              #{item.responseCheckInterval}, #{item.downloadDelay},
              #{item.requestId},
              toIPv4OrNull(#{item.clientIp}), #{item.userAgent}, #{item.region},

@@ -1,5 +1,7 @@
 package com.wewins.fota.application.policy.dto;
 
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
 import lombok.Builder;
 import lombok.Data;
 
@@ -45,9 +47,9 @@ public class UpgradePolicyRespDTO {
     private Integer priority;
 
     /**
-     * 触发模式：AUTO / MANUAL
+     * 触发模式
      */
-    private String triggerMode;
+    private TriggerMode triggerMode;
 
     /**
      * 时间窗口配置
@@ -81,17 +83,8 @@ public class UpgradePolicyRespDTO {
 
     /**
      * 策略状态
-     * <p>可选值：</p>
-     * <ul>
-     *   <li>DRAFT - 草稿</li>
-     *   <li>TESTING - 测试中</li>
-     *   <li>VERIFIED - 已验证</li>
-     *   <li>ACTIVE - 生产中</li>
-     *   <li>PAUSED - 暂停</li>
-     *   <li>EXPIRED - 过期</li>
-     * </ul>
      */
-    private String status;
+    private PolicyStatus status;
 
     /**
      * 备注

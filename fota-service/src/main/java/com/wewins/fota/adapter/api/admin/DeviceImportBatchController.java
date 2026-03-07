@@ -3,39 +3,28 @@ package com.wewins.fota.adapter.api.admin;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.DeviceAssembler;
 import com.wewins.fota.adapter.assembler.DeviceImportBatchAssembler;
-import com.wewins.fota.application.common.ReferenceNameResolver;
-import com.wewins.fota.application.device.DeviceAppService;
 import com.wewins.fota.application.device.DeviceImportBatchAppService;
 import com.wewins.fota.application.device.dto.DeviceImportBatchPageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceImportBatchRespDTO;
 import com.wewins.fota.application.device.dto.DevicePageReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
+import com.wewins.fota.application.device.support.DeviceDisplayNameService;
+import com.wewins.fota.application.device.support.DeviceNameContext;
+import com.wewins.fota.application.product.query.ProductNameQueryService;
 import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.device.entity.Device;
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
-import com.wewins.fota.domain.firmware.entity.FirmwareVersion;
-import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import com.wewins.fota.domain.product.entity.Product;
-import com.wewins.fota.domain.product.repository.ProductRepository;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -58,9 +47,8 @@ public class DeviceImportBatchController {
     private final DeviceImportBatchAssembler deviceImportBatchAssembler;
     private final DeviceRepository deviceRepository;
     private final DeviceAssembler deviceAssembler;
-    private final ProductRepository productRepository;
-    private final FirmwareVersionRepository firmwareVersionRepository;
-    private final ReferenceNameResolver referenceNameResolver;
+    private final ProductNameQueryService productNameQueryService;
+    private final DeviceDisplayNameService deviceDisplayNameService;
 
     /**
      * 分页查询批次列表
@@ -92,7 +80,7 @@ public class DeviceImportBatchController {
             // 批量查询产品名称（仅在有产品ID时执行）
             Map<Long, String> productNameMap;
             if (!productIds.isEmpty()) {
-                productNameMap = referenceNameResolver.resolveProductNames(productIds);
+                productNameMap = productNameQueryService.resolveProductNames(productIds);
             } else {
                 productNameMap = Collections.emptyMap();
             }
@@ -144,7 +132,7 @@ public class DeviceImportBatchController {
             // 查询产品名称
             String productName = null;
             if (batch.getProductId() != null) {
-                Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(
+                Map<Long, String> productNameMap = productNameQueryService.resolveProductNames(
                         Set.of(batch.getProductId()));
                 productName = productNameMap.get(batch.getProductId());
             }
@@ -163,7 +151,7 @@ public class DeviceImportBatchController {
     /**
      * 获取批次下的设备列表
      *
-     * @param id 批次ID
+     * @param id     批次ID
      * @param reqDTO 分页查询参数
      * @return 设备列表
      */
@@ -193,27 +181,11 @@ public class DeviceImportBatchController {
                     new Page<>(reqDTO.getPage(), reqDTO.getSize()), id);
             List<Device> devices = pageResult.getRecords();
 
-            // 提取当前页中所有不同的产品 ID 和版本 ID
-            Set<Long> productIds = devices.stream()
-                    .map(Device::getProductId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-            Set<Long> versionIds = devices.stream()
-                    .map(Device::getCurrentVersionId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            // 使用 ReferenceNameResolver 批量查询名称
-            Map<Long, String> productNameMap = referenceNameResolver.resolveProductNames(productIds);
-            Map<Long, String> versionNameMap = referenceNameResolver.resolveFirmwareVersionNames(versionIds);
+            DeviceNameContext nameContext = deviceDisplayNameService.resolveForDevices(devices);
 
             // 转换为 DTO，填充产品名称和版本名称
             List<DeviceRespDTO> records = devices.stream()
-                    .map(device -> deviceAssembler.toDeviceResp(
-                            device,
-                            productNameMap.get(device.getProductId()),
-                            versionNameMap.get(device.getCurrentVersionId())
-                    ))
+                    .map(device -> deviceAssembler.toDeviceResp(device, nameContext))
                     .toList();
 
             PageResponse<DeviceRespDTO> response = PageResponse.of(
@@ -231,4 +203,5 @@ public class DeviceImportBatchController {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
     }
+
 }

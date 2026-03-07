@@ -1,6 +1,6 @@
 package com.wewins.fota.application.policy.dto;
 
-import com.wewins.fota.domain.policy.enums.TimeWindowType;
+import com.wewins.fota.domain.policy.model.enums.TimeWindowType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 

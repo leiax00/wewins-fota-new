@@ -18,6 +18,7 @@ import {
 import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch'
 import { searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -153,13 +154,13 @@ const tagPairs = computed({
   },
   set: (pairs: Array<{ key: string; value: string; editing?: boolean }>) => {
     form.tagKeys = pairs.map((p) => p.key).filter((k) => k.trim())
-    form.tagValues = pairs.map((p) => p.value)
+    form.tagValues = pairs.map((p) => p.value.trim())
     form.tagEditing = pairs.map((p) => p.editing || false)
     // 同步更新 targetDeviceTags
     form.targetDeviceTags = {}
     pairs.forEach((p) => {
       if (p.key.trim()) {
-        form.targetDeviceTags[p.key.trim()] = p.value
+        form.targetDeviceTags[p.key.trim()] = p.value.trim()
       }
     })
   },
@@ -210,6 +211,16 @@ const targetImeisComputed = computed({
       .filter((s) => s.length > 0)
   },
 })
+
+/**
+ * 格式化版本显示：版本号 (内部版本: xxx) 或仅版本号
+ */
+const formatVersionLabel = (version: FirmwareVersionItem): string => {
+  if (version.internalVersion) {
+    return `${version.version} (${version.internalVersion})`
+  }
+  return version.version
+}
 
 const formRules = {
   productId: [{ required: true, message: t('policy.productIdRequired'), trigger: 'change' }],
@@ -549,7 +560,7 @@ const submitForm = async () => {
           endAt: form.timeWindow.endAt,
         }
 
-    const payload = {
+    const payload = trimFormValues({
       productId: form.productId!,
       firmwareVersionId: form.firmwareVersionId!,
       name: form.name,
@@ -564,7 +575,7 @@ const submitForm = async () => {
       targetDeviceTags: form.targetMode === 'DEVICE_TAGS' ? form.targetDeviceTags : undefined,
       status: form.status,
       remark: form.remark || undefined,
-    }
+    })
 
     if (isEditMode.value && editingId.value) {
       await updatePolicy(editingId.value, payload)
@@ -655,7 +666,7 @@ onMounted(() => {
               <el-option
                 v-for="firmware in firmwareOptions"
                 :key="firmware.id"
-                :label="firmware.version"
+                :label="formatVersionLabel(firmware)"
                 :value="firmware.id"
               />
             </el-select>
@@ -800,7 +811,7 @@ onMounted(() => {
             <el-option
               v-for="version in sourceVersionOptions"
               :key="version.id"
-              :label="`${version.version}`"
+              :label="formatVersionLabel(version)"
               :value="version.id"
             />
           </el-select>

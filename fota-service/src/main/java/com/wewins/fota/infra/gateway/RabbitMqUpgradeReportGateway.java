@@ -1,9 +1,8 @@
 package com.wewins.fota.infra.gateway;
 
-import com.wewins.fota.application.reporting.dto.UpgradeEventMessage;
+import com.wewins.fota.common.util.IdGenerator;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent;
-import com.wewins.fota.domain.reporting.model.value.DeviceUpgradeEventType;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
 import com.wewins.fota.domain.reporting.service.UpgradeReportGateway;
 import com.wewins.fota.mq.core.MqMessagePublisher;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 /**
  * 设备上报网关的 RabbitMQ 实现。
@@ -33,29 +30,34 @@ public class RabbitMqUpgradeReportGateway implements UpgradeReportGateway {
     /**
      * 通过 RabbitMQ 投递上报事件。
      *
-     * @param report 设备上报模型
+     * @param report 设备上报领域模型
      */
     @Override
     public void accept(UpgradeReport report) {
-        try {
-            UpgradeEventMessage message = UpgradeEventMessage.builder()
-                    .events(List.of(buildEvent(report)))
-                    .build();
+        if (report == null) {
+            log.warn("上报数据为空，跳过投递");
+            return;
+        }
 
-            mqMessagePublisher.publishJson(upgradeEventQueue, message);
+        try {
+            DeviceUpgradeEvent payload = buildEvent(report);
+            mqMessagePublisher.publishJson(upgradeEventQueue, payload);
         } catch (Exception e) {
-            log.error("设备上报消息发送失败: imei={}, eventType={}", report.getImei(), report.getEventType(), e);
+            log.error("设备上报消息发送失败: imei={}, requestId={}, event={}",
+                    report.getImei(), report.getRequestId(), report.getEvent(), e);
             throw new IllegalStateException("设备上报消息发送失败", e);
         }
     }
 
     private DeviceUpgradeEvent buildEvent(UpgradeReport report) {
         return DeviceUpgradeEvent.builder()
+                .eventId(IdGenerator.uuid())
                 .imei(report.getImei())
-                .eventType(DeviceUpgradeEventType.fromDbValue(report.getEventType()))
-                .downloadUrl(report.getDownloadUrl())
-                .details(report.getExt())
+                .requestId(report.getRequestId())
+                .eventType(report.getEvent())
+                .details(report.getDetailsJson())
                 .clientIp(report.getClientIp())
+                .region(report.getRegion())
                 .build();
     }
 }

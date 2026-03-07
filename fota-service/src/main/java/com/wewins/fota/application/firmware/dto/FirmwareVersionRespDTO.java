@@ -1,6 +1,5 @@
 package com.wewins.fota.application.firmware.dto;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.Data;
 
@@ -32,6 +31,11 @@ public class FirmwareVersionRespDTO {
      * 版本号
      */
     private String version;
+
+    /**
+     * 内部版本号（build tag）
+     */
+    private String internalVersion;
 
     /**
      * 固件文件下载地址

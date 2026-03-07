@@ -121,7 +121,6 @@ GET /internal/config/snapshot/control?product_id=xxx&ver=7
 
 * 已编译的策略选择器（version / tags / region）
 * 灰度参数（hash bucket）
-* 配额参数（region 级 max_limit）
 * 目标固件元数据（URL 模板 / hash / size）
 * 控制参数（next_check_interval 默认值）
 
@@ -152,7 +151,7 @@ pol:active_ver:{product}=ver // 切换指针
 
 依赖：
 
-* 本地 Redis（策略快照、stop、quota、限流、设备索引）
+* 本地 Redis（策略快照、stop、限流、设备索引）
 * 本地内存缓存（Caffeine）
 
 不依赖：

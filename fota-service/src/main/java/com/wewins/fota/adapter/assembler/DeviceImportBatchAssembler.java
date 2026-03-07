@@ -1,7 +1,7 @@
 package com.wewins.fota.adapter.assembler;
 
 import com.wewins.fota.application.device.dto.DeviceImportBatchRespDTO;
-import com.wewins.fota.domain.device.entity.DeviceImportBatch;
+import com.wewins.fota.domain.device.model.entity.DeviceImportBatch;
 import org.springframework.stereotype.Component;
 
 /**

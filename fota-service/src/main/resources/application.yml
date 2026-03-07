@@ -200,11 +200,28 @@ app:
     policy-ttl: ${APP_CACHE_POLICY_TTL:1h}
     # 限流默认窗口大小（默认 60 秒）
     default-rate-limit-window: ${APP_CACHE_DEFAULT_RATE_LIMIT_WINDOW:60s}
+    device-evict-mode: ${APP_CACHE_DEVICE_EVICT_MODE:collection}
+    device-evict-batch-size: ${APP_CACHE_DEVICE_EVICT_BATCH_SIZE:500}
 
-  # 固件上传清理任务配置
-  firmware-upload:
-    cleanup:
-      # 是否启用清理任务（默认启用）
-      enabled: ${APP_FIRMWARE_UPLOAD_CLEANUP_ENABLED:true}
-      # 清理任务 Cron 表达式（默认每 30 分钟）
-      cleanup-cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}
+  # 固件下载配置
+  firmware:
+    download:
+      # 签名模式：self-signed（自签名）或 s3-presigned（S3 预签名）或 none (不签名)
+      sign-mode: ${FIRMWARE_DOWNLOAD_SIGN_MODE:none}
+      # RustFS/CDN 基础域名（用于拼接完整下载 URL）
+      # 优先使用环境变量，未配置时回退到 S3 endpoint
+      base-url: ${FIRMWARE_DOWNLOAD_BASE_URL:${app.storage.s3.endpoint:}}
+      # 自签名配置
+      self-signed:
+        secret-key: ${FIRMWARE_SIGN_SECRET:-}
+        default-expire-seconds: ${FIRMWARE_SELF_SIGNED_EXPIRE:86400}
+      # S3 预签名配置
+      s3-presigned:
+        default-expire-seconds: ${FIRMWARE_S3_PRESIGNED_EXPIRE:3600}
+    # 上传清理配置
+    upload:
+      cleanup:
+        enabled: ${APP_FIRMWARE_UPLOAD_CLEANUP_ENABLED:true}
+        temp-dir: ${APP_FIRMWARE_UPLOAD_TEMP_DIR:data/storage/tmp}
+        max-file-age: ${APP_FIRMWARE_UPLOAD_MAX_FILE_AGE:2h}
+        cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}

@@ -11,6 +11,7 @@ import {
   type PermissionItem,
   type PermissionTreeNode,
 } from '@/api/system'
+import { trimFormValues } from '@/utils/form'
 
 interface PermissionRow extends PermissionItem {
   children?: PermissionRow[]
@@ -47,7 +48,8 @@ const mapTree = (nodes: PermissionTreeNode[]): PermissionRow[] => {
 }
 
 const matchRow = (row: PermissionRow): boolean => {
-  const nameMatch = !query.name || row.name.toLowerCase().includes(query.name.toLowerCase()) || row.code.toLowerCase().includes(query.name.toLowerCase())
+  const trimmedName = query.name.trim().toLowerCase()
+  const nameMatch = !trimmedName || row.name.toLowerCase().includes(trimmedName) || row.code.toLowerCase().includes(trimmedName)
   const typeMatch = !query.type || row.type === query.type
   const statusMatch = !query.status || row.status === query.status
   return nameMatch && typeMatch && statusMatch
@@ -208,7 +210,7 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload = {
+    const payload = trimFormValues({
       code: form.code,
       name: form.name,
       type: form.type,
@@ -216,7 +218,7 @@ const submitForm = async () => {
       method: form.method,
       parentId: form.parentId,
       status: form.status,
-    }
+    })
 
     if (dialogMode.value === 'create') {
       await createPermission(payload)

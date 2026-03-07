@@ -9,13 +9,27 @@ package com.wewins.fota.cache.constant;
  * 命名规范：fota:{module}:{key}
  * </p>
  * <p>
+ * 缓存模式规范：
+ * <ul>
+ *   <li>单个对象缓存：fota:{module}:{id} - Type: String (JSON)</li>
+ *   <li>列表缓存：fota:cache:list:{module}:{parentId} - Type: Set (存 ID 列表)</li>
+ *   <li>缓存索引：fota:cache:index:{module}:{id} - Type: Set (存相关缓存 Key)</li>
+ * </ul>
+ * </p>
+ * <p>
  * 示例：
  * <ul>
- *   <li>fota:device:861234567890123 - 设备信息缓存</li>
- *   <li>fota:policy:101 - 策略缓存</li>
- *   <li>fota:product:1001 - 产品信息缓存</li>
- *   <li>fota:config:cn - 配置快照</li>
+ *   <li>fota:device:{imei} - 设备信息缓存</li>
+ *   <li>fota:policy:{policyId} - 策略缓存</li>
+ *   <li>fota:product:{productId} - 产品信息缓存</li>
+ *   <li>fota:firmware:{versionId} - 固件信息缓存</li>
+ *   <li>fota:cache:list:product:policy:{productId}:{type} - 产品策略列表（ID集合）</li>
+ *   <li>fota:cache:index:product:{productId} - 产品缓存索引</li>
+ *   <li>fota:config:{region} - 配置快照</li>
  * </ul>
+ * </p>
+ * <p>
+ * 详细规范参考：docs/03-standards/redis-cache-standards.md
  * </p>
  *
  * @author FOTA Team
@@ -74,13 +88,13 @@ public final class RedisKeyConstants {
     /**
      * 分布式锁 Key 模板
      * <p>
-     * 使用方式：String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName, lockValue)
+     * 使用方式：String.format(RedisKeyConstants.LOCK_KEY_TEMPLATE, lockName)
      * </p>
      * <p>
-     * 示例：fota:lock:device_import:batch_123
+     * 示例：fota:lock:device_import
      * </p>
      */
-    public static final String LOCK_KEY_TEMPLATE = "fota:lock:%s:%s";
+    public static final String LOCK_KEY_TEMPLATE = "fota:lock:%s";
 
     /**
      * 限流 Key 模板
@@ -100,15 +114,59 @@ public final class RedisKeyConstants {
      */
     public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-    /**
-     * 策略信息缓存 TTL（1 小时）
-     */
-    public static final long POLICY_CACHE_TTL_SECONDS = 60 * 60;
+    public static final long DEVICE_NOT_FOUND_TTL_SECONDS = 60;
+
+    public static final long DEFAULT_NOT_FOUND_TTL_SECONDS = 60;
 
     /**
-     * 产品信息缓存 TTL（1 小时）
+     * 策略信息缓存 TTL（24 小时）
+     * <p>
+     * 滑动 TTL（续期），热点数据持续缓存
+     * </p>
      */
-    public static final long PRODUCT_CACHE_TTL_SECONDS = 60 * 60;
+    public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;
+
+
+    /*
+    * 策略负缓存ttl
+    */
+    public static final long POLICY_EMPTY_CACHE_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
+    /**
+     * 产品信息缓存 TTL（7 天）
+     * <p>
+     * 滑动 TTL（续期），产品信息极少变更
+     * </p>
+     */
+    public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /*
+    * 产品负缓存TTL
+    */
+    public static final long PRODUCT_MODEL_NOT_FOUND_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
+
+    /**
+     * 固件信息缓存 TTL（30 天）
+     * <p>
+     * 滑动 TTL（续期），固件发布后基本不变
+     * </p>
+     */
+    public static final long FIRMWARE_CACHE_TTL_SECONDS = 30L * 24 * 60 * 60;
+
+    /**
+     * 固件版本映射缓存 TTL（24 小时）
+     * <p>
+     * 映射关系：productId + version + internalVersion -> versionId
+     * </p>
+     */
+    public static final long FIRMWARE_LOOKUP_CACHE_TTL_SECONDS = 24 * 60 * 60;
+
+    /**
+     * 固件版本映射负缓存 TTL（60 秒）
+     * <p>
+     * 用于防止不存在版本反复穿透数据库
+     * </p>
+     */
+    public static final long FIRMWARE_LOOKUP_NOT_FOUND_TTL_SECONDS = DEFAULT_NOT_FOUND_TTL_SECONDS;
 
     /**
      * 配置信息缓存 TTL（6 小时）
@@ -201,35 +259,51 @@ public final class RedisKeyConstants {
      */
     public static final String POLICY_ACTIVE_VER_KEY_TEMPLATE = "fota:pol:active_ver:%s";
 
-    // ========== 限流配额常量 ==========
-
     /**
-     * 策略配额 Key 模板
+     * 策略快照同步时间戳 Key 模板
      * <p>
-     * 使用方式：String.format(RedisKeyConstants.POLICY_QUOTA_KEY_TEMPLATE, policyId, date)
+     * 使用方式：String.format(RedisKeyConstants.POLICY_SYNC_TS_KEY_TEMPLATE, productId)
      * </p>
      * <p>
-     * 示例：fota:quota:policy:101:20260217
+     * 示例：fota:pol:sync_ts:1001
      * </p>
      * <p>
-     * 说明：策略每日配额计数器，用于灰度发布控制
+     * 说明：记录最后一次成功同步的时间戳，用于判断是否需要降级
      * </p>
      */
-    public static final String POLICY_QUOTA_KEY_TEMPLATE = "fota:quota:policy:%s:%s";
+    public static final String POLICY_SYNC_TS_KEY_TEMPLATE = "fota:pol:sync_ts:%s";
 
     /**
-     * 灰度计数 Key 模板
+     * 策略快照写入锁 Key 模板
      * <p>
-     * 使用方式：String.format(RedisKeyConstants.GRAY_COUNT_KEY_TEMPLATE, policyId, date)
+     * 使用方式：String.format(RedisKeyConstants.POLICY_WRITE_LOCK_KEY_TEMPLATE, productId)
      * </p>
      * <p>
-     * 示例：fota:gray:count:101:20260217
+     * 示例：fota:pol:write_lock:1001
      * </p>
      * <p>
-     * 说明：灰度发布设备计数器，记录命中灰度的设备数量
+     * 说明：防止多个版本同时写入快照的分布式锁
      * </p>
      */
-    public static final String GRAY_COUNT_KEY_TEMPLATE = "fota:gray:count:%s:%s";
+    public static final String POLICY_WRITE_LOCK_KEY_TEMPLATE = "fota:pol:write_lock:%s";
+
+    /**
+     * 策略快照 TTL（7 天）
+     * <p>
+     * 快照保留时间，超过此时间自动过期
+     * </p>
+     */
+    public static final long POLICY_SNAPSHOT_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /**
+     * 策略快照同步时间戳 TTL（30 天）
+     */
+    public static final long POLICY_SYNC_TS_TTL_SECONDS = 30L * 24 * 60 * 60;
+
+    /**
+     * 策略快照写入锁 TTL（30 秒）
+     */
+    public static final long POLICY_WRITE_LOCK_TTL_SECONDS = 30;
 
     // ========== 服务注册常量 ==========
 
@@ -362,4 +436,97 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long DEVICE_IMPORT_SESSION_TTL_SECONDS = 2 * 60 * 60;
+
+    // ========== 缓存索引常量 ==========
+
+    /**
+     * 产品策略列表缓存 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, type)
+     * </p>
+     * <p>
+     * 示例：fota:cache:list:product:policy:1001:all
+     * </p>
+     * <p>
+     * 说明：缓存产品的策略列表（ID集合），type 为 "all" 或 "prod" 区分是否包含测试策略
+     * </p>
+     */
+    public static final String PRODUCT_POLICY_LIST_KEY_TEMPLATE = "fota:cache:list:product:policy:%s:%s";
+
+    /**
+     * 产品型号索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_MODEL_INDEX_KEY_TEMPLATE, model)
+     * </p>
+     * <p>
+     * 示例：fota:cache:product:model:M476
+     * </p>
+     * <p>
+     * 说明：通过产品型号反向查找产品 ID
+     * </p>
+     */
+    public static final String PRODUCT_MODEL_INDEX_KEY_TEMPLATE = "fota:cache:product:model:%s";
+
+    /**
+     * 产品缓存索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.PRODUCT_CACHE_INDEX_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:index:product:1001
+     * </p>
+     * <p>
+     * 说明：记录产品相关的所有缓存键，支持批量失效
+     * </p>
+     */
+    public static final String PRODUCT_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:product:%s";
+
+    /**
+     * 策略缓存索引 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.POLICY_CACHE_INDEX_KEY_TEMPLATE, policyId)
+     * </p>
+     * <p>
+     * 示例：fota:cache:index:policy:101
+     * </p>
+     * <p>
+     * 说明：记录策略相关的所有缓存键，支持批量失效
+     * </p>
+     */
+    public static final String POLICY_CACHE_INDEX_KEY_TEMPLATE = "fota:cache:index:policy:%s";
+
+    /**
+     * 缓存索引通用 TTL（24 小时）
+     * <p>
+     * 与策略缓存 TTL 保持一致，确保索引不会比缓存更早过期
+     * </p>
+     */
+    public static final long CACHE_INDEX_TTL_SECONDS = 24 * 60 * 60;
+
+    // ========== 固件缓存常量 ==========
+
+    /**
+     * 固件信息 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_KEY_TEMPLATE, versionId)
+     * </p>
+     * <p>
+     * 示例：fota:firmware:201
+     * </p>
+     * <p>
+     * 说明：单个固件版本的完整信息缓存
+     * </p>
+     */
+    public static final String FIRMWARE_KEY_TEMPLATE = "fota:firmware:%s";
+
+    /**
+     * 固件版本映射 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.FIRMWARE_LOOKUP_KEY_TEMPLATE, productId, version, internalVersion)
+     * </p>
+     * <p>
+     * 示例：fota:cache:firmware:lookup:1001:Mobile.Router.B03:ASR_YEMEN_M476_V11_B03_Build02
+     * </p>
+     */
+    public static final String FIRMWARE_LOOKUP_KEY_TEMPLATE = "fota:cache:firmware:lookup:%s:%s:%s";
 }

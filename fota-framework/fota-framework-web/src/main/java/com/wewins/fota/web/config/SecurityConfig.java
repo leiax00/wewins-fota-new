@@ -72,7 +72,7 @@ public class SecurityConfig {
 
                 // 配置请求授权
                 .authorizeHttpRequests(auth -> auth
-                        // 公开接口：登录、健康检查、静态资源、API 文档
+                        // 公开接口：登录、健康检查、静态资源、API 文档、设备升级检查
                         .requestMatchers(
                                 "/api/sys/auth/**",
                                 "/actuator/health",
@@ -82,7 +82,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/webjars/**"
+                                "/webjars/**",
+                                "/v1/upgrade/**",
+                                "/fota/version/**"
                         ).permitAll()
 
                         // Actuator 端点需要认证

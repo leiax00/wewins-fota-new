@@ -166,7 +166,7 @@
 
 ### 完成内容
 - ✅ Redis 配置补齐（StringRedisTemplate、Lua 脚本支持、Jackson 安全优化）
-- ✅ RedisKeyConstants 扩展（Bitmap、策略快照、限流配额相关键）
+- ✅ RedisKeyConstants 扩展（Bitmap、策略快照、限流相关键）
 - ✅ 设备活跃度 Bitmap 实现（markActive、isActive、countActive、countActiveUnion）
 - ✅ 限流功能实现（固定窗口算法、LastSeen 限频）
 - ✅ UpgradeCheckService 集成（限流检查、Bitmap 标记）
@@ -266,7 +266,7 @@ Week 1 完成统计：
 ### 2026-02-17
 - ✅ Day 4 完成（Redis 缓存架构）
 - ✅ Redis 配置补齐（StringRedisTemplate、Lua 脚本支持、Jackson 安全优化）
-- ✅ RedisKeyConstants 扩展（Bitmap、策略快照、限流配额相关键）
+- ✅ RedisKeyConstants 扩展（Bitmap、策略快照、限流相关键）
 - ✅ 设备活跃度 Bitmap 实现（markActive、isActive、countActive、countActiveUnion）
 - ✅ 限流功能实现（固定窗口算法、LastSeen 限频）
 - ✅ UpgradeCheckService 集成（限流检查、Bitmap 标记）

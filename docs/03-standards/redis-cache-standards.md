@@ -1,7 +1,8 @@
 # Redis 缓存标准与规范
 
-> **版本**: v1.0
+> **版本**: v1.1
 > **创建日期**: 2026-02-17
+> **最后更新**: 2026-03-04
 > **适用范围**: FOTA 平台所有 Redis 相关代码
 
 ---
@@ -10,12 +11,14 @@
 
 1. [Redis Key 命名规范](#redis-key-命名规范)
 2. [TTL 设置原则](#ttl-设置原则)
-3. [数据类型使用规范](#数据类型使用规范)
-4. [Bitmap 使用规范](#bitmap-使用规范)
-5. [限流实现规范](#限流实现规范)
-6. [序列化规范](#序列化规范)
-7. [性能优化建议](#性能优化建议)
-8. [监控与告警](#监控与告警)
+3. [缓存模式最佳实践](#缓存模式最佳实践)
+4. [设备缓存设计规范](#设备缓存设计规范)
+5. [数据类型使用规范](#数据类型使用规范)
+6. [Bitmap 使用规范](#bitmap-使用规范)
+7. [限流实现规范](#限流实现规范)
+8. [序列化规范](#序列化规范)
+9. [性能优化建议](#性能优化建议)
+10. [监控与告警](#监控与告警)
 
 ---
 
@@ -51,9 +54,6 @@ fota:active:20260217
 # 限流
 fota:ratelimit:upgrade:127.0.0.1
 
-# 配额计数（策略ID + 日期）
-fota:quota:policy:101:20260217
-
 # 灰度计数
 fota:gray:count:101:20260217
 
@@ -76,42 +76,269 @@ fota:lock:device_import:batch_123
 
 ## TTL 设置原则
 
-### TTL 常量定义
+### 分层 TTL 策略
+
+基于**设备缓存沉默期释放内存**和**共享缓存续期保持热点数据**的设计目标，采用分层 TTL 策略：
 
 所有 TTL 必须在 `RedisKeyConstants` 中定义常量：
 
 ```java
-// 设备信息缓存 TTL（24 小时）
-public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;
+// ========== 设备缓存（固定TTL，不续期）==========
+public static final long DEVICE_CACHE_TTL_SECONDS = 24 * 60 * 60;  // 24小时
 
-// 策略信息缓存 TTL（1 小时）
-public static final long POLICY_CACHE_TTL_SECONDS = 60 * 60;
+// ========== 共享缓存（滑动TTL，续期）==========
+public static final long POLICY_CACHE_TTL_SECONDS = 24 * 60 * 60;      // 24小时
+public static final long PRODUCT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60; // 7天
+public static final long FIRMWARE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30天
 
-// 活跃度 Bitmap TTL（90 天，用于离线分析）
-public static final long ACTIVE_BITMAP_TTL_SECONDS = 90 * 24 * 60 * 60;
-
-// 限流窗口 TTL（60 秒）
-public static final long RATE_LIMIT_TTL_SECONDS = 60;
+// ========== 其他缓存 ==========
+public static final long ACTIVE_BITMAP_TTL_SECONDS = 90 * 24 * 60 * 60; // 90天
+public static final long RATE_LIMIT_TTL_SECONDS = 60;                 // 60秒
 ```
 
-### TTL 设置建议
+### 分层 TTL 配置表
 
-| 数据类型 | 建议 TTL | 原因 |
-|---------|---------|------|
-| 设备信息 | 24h | 设备信息变更不频繁 |
-| 策略快照 | 1-6h | 策略可能动态调整 |
-| 产品信息 | 1h | 产品配置相对稳定 |
-| 活跃度 Bitmap | 90天 | 用于离线分析 |
-| 限流窗口 | 60s | 短期限流 |
-| 临时键（BITOP） | 60s | 临时计算结果 |
-| 分布式锁 | 30s | 防止死锁 |
+| 缓存类型 | TTL | 续期策略 | 一致性保证 | 原因 |
+|---------|-----|---------|-----------|------|
+| **设备缓存** | 24小时 | ❌ 不续期 | 被动过期 | 沉默期释放内存（主要内存占用） |
+| **策略缓存** | 24小时 | ✅ **续期** | 主动失效 | 热点数据持续缓存 |
+| **产品信息** | 7天 | ✅ **续期** | 主动失效 | 产品信息极少变更 |
+| **固件版本** | 30天 | ✅ **续期** | 主动失效 | 固件发布后基本不变 |
+| **活跃度 Bitmap** | 90天 | ❌ 不续期 | 按日创建 | 用于离线分析 |
+| **限流窗口** | 60秒 | ❌ 不续期 | 窗口重置 | 短期限流 |
+| **临时键（BITOP）** | 60秒 | ❌ 不续期 | 临时使用 | 临时计算结果 |
+| **分布式锁** | 30秒 | ❌ 不续期 | 心跳续期 | 防止死锁 |
+
+### 续期策略详解
+
+#### 设备缓存：固定 TTL（不续期）
+
+```java
+// ✅ 设备缓存读取时不续期
+public DeviceCache get(String imei) {
+    String key = String.format(DEVICE_KEY_TEMPLATE, imei);
+    Object cached = redisTemplate.opsForValue().get(key);
+    // ❌ 不调用 expire()，让缓存自然过期
+    return (DeviceCache) cached;
+}
+```
+
+**原因**：脉冲模式 Day 2-3 沉默期，设备不检查 → 缓存自然过期 → 释放内存
+
+#### 共享缓存：滑动 TTL（续期）
+
+```java
+// ✅ 共享缓存读取时续期
+public List<UpgradePolicy> getProductPolicies(Long productId, boolean includeTest) {
+    String key = buildKey(productId, includeTest);
+    String json = redisTemplate.opsForValue().get(key);
+    
+    if (json != null) {
+        // ✅ 续期：热点数据持续保持缓存
+        long ttl = getRandomizedTtl(POLICY_CACHE_TTL_SECONDS);
+        redisTemplate.expire(key, Duration.ofSeconds(ttl));
+        return deserializePolicies(json);
+    }
+    
+    return null;
+}
+```
+
+**原因**：共享缓存被千万设备频繁访问，续期保证热点数据持续缓存，性能最优
 
 ### TTL 设置注意事项
 
-1. **必须设置 TTL**：除特殊需求外，所有 key 必须设置过期时间
-2. **避免 TTL 集中**：大量 key 同时过期会导致 Redis 阻塞
-3. **TTL 随机化**：对于批量 key，TTL 应加入随机偏移（±10%）
-4. **监控过期率**：定期检查 key 过期情况，避免缓存雪崩
+1. **分层配置**：根据数据类型选择合适的 TTL 和续期策略
+2. **必须设置 TTL**：除特殊需求外，所有 key 必须设置过期时间
+3. **避免 TTL 集中**：大量 key 同时过期会导致 Redis 阻塞
+4. **TTL 随机化**：对于批量 key，TTL 应加入随机偏移（±10%）
+5. **监控过期率**：定期检查 key 过期情况，避免缓存雪崩
+6. **主动失效**：共享缓存必须实现主动失效机制（管理后台修改时立即失效）
+
+---
+
+## 缓存模式最佳实践
+
+### 缓存模式选择
+
+针对列表/集合缓存，有两种主要模式：
+
+| 模式 | 存储方式 | 读取流程 | 更新范围 | 推荐场景 |
+|------|---------|---------|---------|---------|
+| **Embedded Pattern** | 完整对象列表 | 1次 GET | 全量更新 | 小型列表（<10项），极少变更 |
+| **Keys Pattern** | ID列表 + 单独对象 | SMEMBERS + MGET | 增量更新 | 中大型列表（10-100项），频繁更新 |
+
+### Keys Pattern（推荐）
+
+**适用场景**：产品策略列表
+
+**存储结构**：
+
+```redis
+# 列表缓存（只存 ID）
+fota:cache:list:product:policy:{productId}:{type}    Type: Set
+
+# 单个对象缓存
+fota:policy:{policyId}                               Type: String (JSON)
+fota:firmware:{versionId}                            Type: String (JSON)
+```
+
+**读取流程**：
+
+```java
+public List<UpgradePolicy> findByProductId(Long productId, String type) {
+    String idsKey = String.format(PRODUCT_POLICY_LIST_KEY_TEMPLATE, productId, type);
+    Set<Object> policyIds = redisTemplate.opsForSet().members(idsKey);
+    if (policyIds == null || policyIds.isEmpty()) {
+        return loadFromDatabase(productId, type);
+    }
+    List<String> policyKeys = policyIds.stream()
+        .map(id -> String.format(POLICY_KEY_TEMPLATE, id))
+        .collect(Collectors.toList());
+    List<Object> policies = redisTemplate.opsForValue().multiGet(policyKeys);
+    return policies.stream().filter(Objects::nonNull).map(obj -> (UpgradePolicy) obj).collect(Collectors.toList());
+}
+```
+
+**更新优势**：
+
+| 操作 | Embedded Pattern | Keys Pattern | 收益 |
+|------|-----------------|--------------|------|
+| **新增策略** | 读写 100KB | 写 5KB + 1个ID | **95%** ↓ |
+| **更新策略** | 读写 100KB | 写 5KB | **95%** ↓ |
+| **删除策略** | 读写 100KB | 删 5KB + 1个ID | **95%** ↓ |
+
+**命名规范**：
+
+```java
+// ✅ 正确：去掉 ids 层级，Redis Type 本身能区分
+fota:cache:list:product:policy:{productId}:{type}      // Type: Set = ID列表
+
+// ❌ 错误：不必要的 ids 层级
+fota:cache:list:product:policy:ids:{productId}:{type}  // 冗余
+```
+
+### Embedded Pattern（不推荐用于列表）
+
+**问题**：
+
+```java
+// 场景：产品有 50 个策略项，每个 1KB
+// 当前缓存：完整列表（50KB）
+
+// 新增一个策略项
+1. GET fota:cache:product:policy:1001:all   // 读取 50KB
+2. 反序列化 → List<UpgradePolicy>           // 解析 50 个对象
+3. policyList.add(newPolicy);               // 新增第 51 个
+4. 序列化 → JSON (51KB)                     // 序列化 51 个对象
+5. SET fota:cache:product:policy:1001:all   // 写入 51KB
+
+// 总流量：101KB（读 50KB + 写 51KB）
+// 更新范围：全量更新（50→51个对象）
+```
+
+**仅适用场景**：
+- 小型列表（<10项）
+- 几乎不变更的静态数据
+
+### 迁移计划
+
+#### 阶段 1：策略列表缓存（立即）
+- ✅ 完成迁移到 Keys Pattern
+- ✅ 更新范围显著减少
+
+---
+
+## 设备缓存设计规范
+
+### DeviceCache 字段定义
+
+设备缓存需要包含 **check 流程中使用的所有字段**：
+
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DeviceCache implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    // 核心字段（必需）
+    private Long deviceId;              // 设备 ID（标记活跃、索引）
+    private Long productId;             // 产品 ID（查找产品和策略）
+    private Long currentVersionId;      // 当前版本 ID（版本匹配）
+    
+    // 策略匹配字段（必需）
+    private JsonNode tags;              // 设备标签（测试设备判断 + 策略标签匹配）
+    private Long importBatchId;         // 批量导入 ID（批量导入标签匹配）
+    
+    // 缓存元数据（可选）
+    private LocalDateTime cachedAt;     // 缓存时间戳
+}
+```
+
+### 字段用途说明
+
+| 字段 | 使用场景 | 代码位置 | 必需性 |
+|------|---------|---------|--------|
+| `deviceId` | 标记设备活跃 | `bitmapRepository.markActive(LocalDate.now(), device.getId())` | ✅ 必需 |
+| `productId` | 产品查询 + 策略匹配 | `findApplicablePolicies(device, versionId, ...)` | ✅ 必需 |
+| `currentVersionId` | 版本匹配 | `loadDevice()` | ✅ 必需 |
+| `tags` | 测试设备判断 | `isTestDevice(Device device, Integer dev)` | ✅ 必需 |
+| `tags` | 策略标签匹配 | `policyMatcher.matchesTargetMode(policy, imei, batchId, finalTags)` | ✅ 必需 |
+| `importBatchId` | 批量导入标签匹配 | `policyMatcher.matchesTargetMode(policy, imei, batchId, finalTags)` | ✅ 必需 |
+| `cachedAt` | 缓存时间戳 | 可选，用于监控 | ⚠️ 可选 |
+
+### 缓存读写实现
+
+```java
+private Device loadDevice(String imei) {
+    // 1. 从缓存读取
+    DeviceCache cached = deviceCacheService.get(imei);
+    if (cached != null) {
+        log.debug("设备缓存命中: imei={}, deviceId={}", imei, cached.getDeviceId());
+        
+        // 构建完整 Device 对象（包含 tags 和 importBatchId）
+        Device device = new Device();
+        device.setId(cached.getDeviceId());
+        device.setImei(imei);
+        device.setProductId(cached.getProductId());
+        device.setCurrentVersionId(cached.getCurrentVersionId());
+        device.setTags(cached.getTags());              // ✅ 必需
+        device.setImportBatchId(cached.getImportBatchId());  // ✅ 必需
+        return device;
+    }
+
+    // 2. 缓存未命中，从数据库加载
+    Device device = deviceRepository.findByImei(imei).orElse(null);
+    if (device != null) {
+        // 构建缓存对象
+        DeviceCache cache = DeviceCache.builder()
+                .deviceId(device.getId())
+                .productId(device.getProductId())
+                .currentVersionId(device.getCurrentVersionId())
+                .tags(device.getTags())                // ✅ 必需
+                .importBatchId(device.getImportBatchId())  // ✅ 必需
+                .cachedAt(LocalDateTime.now())         // 可选
+                .build();
+        deviceCacheService.put(imei, cache);
+        log.debug("设备缓存已写入: imei={}, deviceId={}", imei, device.getId());
+    }
+
+    return device;
+}
+```
+
+### 内存估算
+
+| 方案 | 字段数 | 单个对象大小 | 1000万设备总内存 |
+|------|-------|------------|----------------|
+| **当前（3字段）** | deviceId, productId, currentVersionId | ~150 bytes | ~1.5 GB |
+| **优化后（5字段）** | + tags, importBatchId | ~500 bytes | ~5 GB |
+| **完整 Device 对象** | 12+ 字段 | ~1 KB | ~10 GB |
+
+**结论**：精简 DeviceCache 方案内存占用可接受（5GB），同时保证性能。
 
 ---
 
@@ -126,7 +353,7 @@ public static final long RATE_LIMIT_TTL_SECONDS = 60;
 SET fota:device:861234567890123 '{"id":123,"imei":"861234567890123"}' EX 86400
 
 # 计数器
-INCR fota:quota:policy:101:20260217
+INCR fota:gray:count:101:20260217
 ```
 
 **注意事项**：
@@ -584,3 +811,38 @@ public class RedisDeviceActivityBitmapRepository {
 - Spring Data Redis：https://docs.spring.io/spring-data/redis/docs/current/reference/html/
 - Lettuce 客户端：https://lettuce.io/
 - Redis Bitmap 最佳实践：https://redis.io/docs/data-types/bitmaps/
+
+---
+
+## 变更日志
+
+### v1.1 (2026-03-04)
+
+**新增内容**：
+1. ✅ **缓存模式最佳实践**章节
+   - Keys Pattern vs Embedded Pattern 对比
+   - Keys Pattern 详细实现指南
+   - 列表缓存迁移计划
+
+2. ✅ **设备缓存设计规范**章节
+   - DeviceCache 字段定义（包含 tags 和 importBatchId）
+   - 字段用途说明
+   - 缓存读写实现示例
+   - 内存估算对比
+
+**设计决策**：
+- 列表缓存采用 **Keys Pattern**（ID列表 + MGET）
+- 命名简化：去掉 `ids` 层级（`fota:cache:list:product:policy:{productId}:{type}`）
+- 设备缓存精简：保留 DeviceCache，包含策略匹配必需字段（tags、importBatchId）
+
+### v1.0 (2026-02-17)
+
+- ✅ 初始版本
+- ✅ Redis Key 命名规范
+- ✅ TTL 设置原则
+- ✅ 数据类型使用规范
+- ✅ Bitmap 使用规范
+- ✅ 限流实现规范
+- ✅ 序列化规范
+- ✅ 性能优化建议
+- ✅ 监控与告警

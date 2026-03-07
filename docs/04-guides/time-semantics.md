@@ -111,8 +111,8 @@ GET /v1/upgrade/check?product=test&imei=123456789012345&version=v1.0.0
   "new_firmware": "v2.0.0",
   "download_url": "https://cdn.xxx.com/pkg.bin?p_id=101&sig=...",
   "control": {
-    "checkInterval": 86400,    // 秒
-    "downloadDelay": 300       // 秒
+    "check_interval": 86400,    // 秒
+    "download_delay": 300       // 秒
   }
 }
 ```

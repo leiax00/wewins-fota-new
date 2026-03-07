@@ -1,21 +1,19 @@
 package com.wewins.fota.adapter.assembler;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.application.device.support.DeviceNameContext;
 import com.wewins.fota.application.device.dto.DeviceReqDTO;
 import com.wewins.fota.application.device.dto.DeviceRespDTO;
-import com.wewins.fota.domain.device.entity.Device;
-import lombok.RequiredArgsConstructor;
+import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 设备 DTO 转换器
  */
 @Component
-@RequiredArgsConstructor
 public class DeviceAssembler {
-
-    private final ObjectMapper objectMapper;
 
     /**
      * 将 DeviceReqDTO 转换为 Device 实体
@@ -28,40 +26,41 @@ public class DeviceAssembler {
         Device.DeviceBuilder builder = Device.builder()
                 .imei(req.getImei())
                 .productId(req.getProductId())
-                .currentVersionId(req.getCurrentVersionId())
-                .status(req.getStatus());
-
-        if (req.getTags() != null && !req.getTags().isBlank()) {
-            try {
-                builder.tags(objectMapper.readTree(req.getTags()));
-            } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException("tags JSON 格式错误: " + e.getMessage(), e);
-            }
-        }
+                .versionParts(req.getVersionParts())
+                .status(req.getStatus())
+                .tags(req.getTags());
 
         return builder.build();
     }
 
     /**
-     * 将 Device 实体转换为 DeviceRespDTO（不含关联名称）
-     */
-    public DeviceRespDTO toDeviceResp(Device device) {
-        return toDeviceResp(device, null, null, null);
-    }
-
-    /**
-     * 将 Device 实体转换为 DeviceRespDTO（含关联名称，3参数版本）
-     */
-    public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName) {
-        return toDeviceResp(device, productName, versionName, null);
-    }
-
-    /**
      * 将 Device 实体转换为 DeviceRespDTO（含关联名称，4参数版本）
      */
-    public DeviceRespDTO toDeviceResp(Device device, String productName, String versionName, String importBatchName) {
+    public DeviceRespDTO toDeviceResp(
+            Device device,
+            DeviceNameContext nameContext
+    ) {
         if (device == null) {
             return null;
+        }
+
+        String productName = nameContext.productNameMap().get(device.getProductId());
+        Map<Long, String> versionNameMap = nameContext.versionNameMap();
+        String importBatchName = nameContext.batchNameMap().get(device.getImportBatchId());
+
+        DeviceVersionParts versionParts = device.getVersionParts();
+        if (versionParts != null && versionParts.hasVersion()) {
+            versionParts.getParts().values().forEach(item -> {
+                Long versionId = item.getVersionId();
+                item.setVersion(versionNameMap.get(versionId));
+            });
+        }
+        DeviceVersionParts initialVersionParts = device.getInitialVersionParts();
+        if (initialVersionParts != null && initialVersionParts.hasVersion()) {
+            initialVersionParts.getParts().values().forEach(item -> {
+                Long versionId = item.getVersionId();
+                item.setVersion(versionNameMap.get(versionId));
+            });
         }
 
         DeviceRespDTO.DeviceRespDTOBuilder builder = DeviceRespDTO.builder()
@@ -69,10 +68,11 @@ public class DeviceAssembler {
                 .imei(device.getImei())
                 .productId(device.getProductId())
                 .productName(productName)
-                .currentVersionId(device.getCurrentVersionId())
-                .versionName(versionName)
+                .versionParts(versionParts)
+                .initialVersionParts(initialVersionParts)
                 .status(device.getStatus())
                 .lastSeenAt(device.getLastSeenAt())
+                .firstSeenAt(device.getFirstSeenAt())
                 .importBatchId(device.getImportBatchId())
                 .importBatchName(importBatchName)
                 .createdAt(device.getCreatedAt())
@@ -80,9 +80,7 @@ public class DeviceAssembler {
                 .updatedAt(device.getUpdatedAt())
                 .updatedBy(device.getUpdatedBy());
 
-        if (device.getTags() != null) {
-            builder.tags(device.getTags().toString());
-        }
+        builder.tags(device.getTags());
 
         return builder.build();
     }

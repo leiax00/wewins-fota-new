@@ -27,7 +27,7 @@
 3. **策略匹配**：
 * 匹配产品与版本号。
 * 通过 `Hash(imei) % 100` 判断是否命中灰度。
-* 校验时间窗口与任务配额（Redis 计数器）。
+* 校验时间窗口。
 
 
 4. **下发响应**：返回 RustFS 生成的带签名下载 URL（内嵌 `policy_id`）及下一次检查间隔 `next_check_interval`。
@@ -185,6 +185,7 @@
 * **服务端响应**：
 ```json
 {
+   "code": 0,
    "release_start_date": "2026-02-03T10:28:56",
    "release_note": "xxxxxxx",
    "new_firmware": "v2.0.0",
@@ -192,11 +193,31 @@
    "file_size": 20000000,
    "file_size_text": "19MB",
    "control": {
-      "checkInterval": 86400,
-      "downloadDelay": 300
+      "check_interval": 86400,
+      "download_delay": 300
    }
 }
+```
 
+* **code 字段说明**：
+
+| code | 含义 | 说明 |
+|------|------|------|
+| 0 | 有可用更新 | 设备应下载并安装固件 |
+| 1 | 无更新 | 设备当前已是最新版本 |
+| 2 | 请求被限流 | 请求过于频繁，需等待后重试 |
+| 3 | 设备不存在 | 设备未在系统中注册 |
+| 4 | 错误 | 处理过程中发生错误 |
+
+* **无更新时响应示例**：
+```json
+{
+   "code": 1,
+   "control": {
+      "check_interval": 86400,
+      "download_delay": 0
+   }
+}
 ```
 
 
@@ -214,19 +235,36 @@
 * **上报请求 (POST /v1/upgrade/report)**
 ```json
 {
-   "imei": 861234567890123,
+   "imei": "861234567890123",
    "url": "http://foid-dl.xxx.com/xxx.bin?xxxxxx",
-   "event": "", // 状态枚举： DL_START, DL_OK, DL_FAIL, UP_OK
+   "event": "",
    "details": {}
 }
-
 ```
 
+* **字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `imei` | String | 设备 IMEI（15位数字字符串，使用 String 防止前导0丢失） |
+| `url` | String | 下载 URL（包含 pid, rid 参数用于溯源） |
+| `event` | String | 事件类型（见下表） |
+| `details` | Object | 扩展详情（错误码、进度等） |
+
+* **事件类型 (event)**：
+
+| 值 | 说明 |
+|------|------|
+| `DL_START` | 开始下载 |
+| `DL_OK` | 下载成功 |
+| `DL_FAIL` | 下载失败 |
+| `UP_OK` | 升级成功 |
+| `UP_FAIL` | 升级失败 |
 
 * **服务端处理**：
 1. API 接收请求后，直接丢入 **RabbitMQ**。
 2. **立即返回 200 OK**（不等待数据库写入）。
-3. **Consumer 消费**：批量将日志写入 **ClickHouse**；如果是 `UP_SUCCESS`，则异步更新 **PostgreSQL** 中的设备当前版本号。
+3. **Consumer 消费**：批量将日志写入 **ClickHouse**；如果是 `UP_OK`，则异步更新 **PostgreSQL** 中的设备当前版本号。
 
 
 
@@ -239,7 +277,7 @@
 1. **退避算法 (Exponential Backoff)**：
    如果设备请求 API 失败（如 503 繁忙），下次重试时间应遵循  增长，并叠加随机抖动（Jitter）。
 2. **静默期控制**：
-   如果 API 返回 `checkInterval` 为 0 或特定错误码，设备应进入“静默模式”，在接下来的 24 小时内禁止再次请求。
+   如果 API 返回 `check_interval` 为 0 或特定错误码，设备应进入“静默模式”，在接下来的 24 小时内禁止再次请求。
 3. **断点续传**：
    固件下载必须支持 HTTP Range 请求。设备下载中断后，应从上次偏移量继续，减少 CDN 带宽浪费。 (目前我们的设备不支持，不做强制要求)
 

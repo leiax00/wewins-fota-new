@@ -26,7 +26,7 @@ import java.util.stream.Stream;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "app.firmware-upload.cleanup", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "app.firmware.upload.cleanup", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class FirmwareUploadCleanupTask {
 
     private final FirmwareUploadCleanupProperties properties;
@@ -49,7 +49,7 @@ public class FirmwareUploadCleanupTask {
      * </ul>
      * </p>
      */
-    @Scheduled(cron = "${app.firmware-upload.cleanup-cron:0 */30 * * * *}")
+    @Scheduled(cron = "${app.firmware.upload.cleanup.cron:0 */30 * * * *}")
     public void cleanupExpiredTemporaryFiles() {
         if (!properties.isEnabled()) {
             log.debug("固件上传临时文件清理任务已禁用");
@@ -99,7 +99,7 @@ public class FirmwareUploadCleanupTask {
                     .peek(result -> {
                         if (result == 1) {
                             deletedCount.incrementAndGet();
-                        } else if (result == -1) {
+                        } else {
                             failedCount.incrementAndGet();
                         }
                     })

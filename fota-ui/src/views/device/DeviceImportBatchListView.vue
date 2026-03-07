@@ -10,6 +10,7 @@ import {
   type DeviceItem,
 } from '@/api/deviceImportBatch'
 import { searchProducts, type ProductItem } from '@/api/product'
+import { trimFormValues } from '@/utils/form'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -85,7 +86,7 @@ const fetchList = async () => {
 
   loading.value = true
   try {
-    const result = await pageBatches(query)
+    const result = await pageBatches(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {

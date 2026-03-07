@@ -90,6 +90,38 @@ public class RedisConfiguration {
     }
 
     /**
+     * 配置分布式锁释放 Lua 脚本
+     * <p>
+     * 脚本语义：
+     * <ul>
+     *   <li>原子操作：只有持有正确 token 的请求才能释放锁</li>
+     *   <li>返回 1 表示释放成功</li>
+     *   <li>返回 0 表示释放失败（不是持有者或锁已过期）</li>
+     * </ul>
+     * </p>
+     * <p>
+     * 使用方式：
+     * <pre>
+     * Long result = stringRedisTemplate.execute(
+     *     releaseLockScript,
+     *     Collections.singletonList("fota:lock:name:timestamp"),
+     *     "uuid-token"  // 锁 token
+     * );
+     * boolean released = result != null && result == 1L;
+     * </pre>
+     * </p>
+     *
+     * @return 分布式锁释放脚本 bean
+     */
+    @Bean
+    public DefaultRedisScript<Long> releaseLockScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setResultType(Long.class);
+        script.setScriptSource(new ResourceScriptSource(new ClassPathResource("redis/quota/release_lock.lua")));
+        return script;
+    }
+
+    /**
      * 配置 RedisTemplate
      * <p>
      * 使用 String 序列化器作为 key 序列化器

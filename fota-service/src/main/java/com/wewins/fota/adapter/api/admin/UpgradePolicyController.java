@@ -11,7 +11,8 @@ import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
-import com.wewins.fota.domain.policy.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -218,7 +219,7 @@ public class UpgradePolicyController {
         if (id == null || id <= 0) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
-        if (reqDTO == null || reqDTO.getStatus() == null || reqDTO.getStatus().isBlank()) {
+        if (reqDTO == null || reqDTO.getStatus() == null) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "状态不能为空");
         }
 
@@ -227,7 +228,7 @@ public class UpgradePolicyController {
         }
 
         try {
-            UpgradePolicy updated = upgradePolicyAppService.updateStatus(id, reqDTO.getStatus());
+            UpgradePolicy updated = upgradePolicyAppService.updateStatus(id, reqDTO.getStatus().getCode());
             log.info("策略状态更新成功: policyId={}, newStatus={}", id, reqDTO.getStatus());
             return ApiResponse.success(upgradePolicyAssembler.toUpgradePolicyResp(updated));
         } catch (BizException e) {
@@ -243,13 +244,13 @@ public class UpgradePolicyController {
      * 状态更新请求 DTO
      */
     public static class StatusUpdateReqDTO {
-        private String status;
+        private PolicyStatus status;
 
-        public String getStatus() {
+        public PolicyStatus getStatus() {
             return status;
         }
 
-        public void setStatus(String status) {
+        public void setStatus(PolicyStatus status) {
             this.status = status;
         }
     }

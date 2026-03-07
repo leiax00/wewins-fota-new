@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   cancelUploadSession,
   createFirmwareVersion,
@@ -43,6 +44,7 @@ const query = reactive({
   size: 20,
   productId: undefined as number | undefined,
   version: '',
+  internalVersion: '',
 })
 
 const productSearchOptions = ref<ProductItem[]>([])
@@ -67,10 +69,11 @@ const formRef = ref()
 const form = reactive({
   productId: undefined as number | undefined,
   version: '',
+  internalVersion: '',
   noPackage: false,
   uploadSessionId: '',
-  tags: '',
-  meta: '',
+  tags: {} as Record<string, unknown>,
+  meta: {} as Record<string, unknown>,
 })
 
 /**
@@ -304,7 +307,7 @@ const handleProductSearch = async (keyword: string) => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageFirmwareVersions(query)
+    const result = await pageFirmwareVersions(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -320,10 +323,11 @@ const openCreateDialog = () => {
   editingId.value = null
   form.productId = undefined
   form.version = ''
+  form.internalVersion = ''
   form.noPackage = false
   form.uploadSessionId = ''
-  form.tags = ''
-  form.meta = ''
+  form.tags = {}
+  form.meta = {}
   resetUploadState()
   dialogVisible.value = true
 }
@@ -336,10 +340,12 @@ const openEditDialog = (row: FirmwareVersionItem) => {
   editingId.value = row.id
   form.productId = row.productId
   form.version = row.version
+  form.internalVersion = row.internalVersion || ''
   form.noPackage = row.packageStatus === 'NONE'
   form.uploadSessionId = ''
-  form.tags = row.tags || ''
-  form.meta = row.meta || ''
+  // 解析 JSON 字符串为对象
+  form.tags = row.tags ? JSON.parse(row.tags) : {}
+  form.meta = row.meta ? JSON.parse(row.meta) : {}
   resetUploadState()
   dialogVisible.value = true
 }
@@ -351,12 +357,14 @@ const submitForm = async () => {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const payload: Record<string, unknown> = {
+    const payload: Record<string, unknown> = trimFormValues({
       productId: form.productId!,
       version: form.version,
-      tags: form.tags || undefined,
-      meta: form.meta || undefined,
-    }
+      internalVersion: form.internalVersion || undefined,
+      // 序列化对象为 JSON 字符串，空对象不发送
+      tags: Object.keys(form.tags).length > 0 ? JSON.stringify(form.tags) : undefined,
+      meta: Object.keys(form.meta).length > 0 ? JSON.stringify(form.meta) : undefined,
+    })
 
     // 处理包状态
     if (form.noPackage) {
@@ -423,6 +431,7 @@ const resetSearch = () => {
   query.page = 1
   query.productId = undefined
   query.version = ''
+  query.internalVersion = ''
   void fetchList()
 }
 
@@ -494,6 +503,13 @@ onMounted(() => {
           style="width: 140px"
           @keyup.enter="fetchList"
         />
+        <el-input
+          v-model="query.internalVersion"
+          placeholder="内部版本"
+          clearable
+          style="width: 140px"
+          @keyup.enter="fetchList"
+        />
         <el-button @click="fetchList">
           {{ t('common.search') }}
         </el-button>
@@ -516,11 +532,6 @@ onMounted(() => {
       stripe
     >
       <el-table-column
-        prop="version"
-        :label="t('firmware.version')"
-        min-width="120"
-      />
-      <el-table-column
         prop="productId"
         :label="t('firmware.product')"
         min-width="160"
@@ -529,6 +540,18 @@ onMounted(() => {
           {{ row.productName || row.productId }}
         </template>
       </el-table-column>
+      <el-table-column
+        prop="version"
+        :label="t('firmware.version')"
+        min-width="160"
+        show-overflow-tooltipx
+      />
+      <el-table-column
+        prop="internalVersion"
+        label="内部版本"
+        min-width="200"
+        show-overflow-tooltip
+      />
       <el-table-column
         prop="packageStatus"
         label="包状态"
@@ -632,6 +655,7 @@ onMounted(() => {
         <el-select
           v-model="form.productId"
           :loading="productSearchLoading"
+          :disabled="dialogMode === 'edit'"
           filterable
           remote
           reserve-keyword
@@ -654,6 +678,18 @@ onMounted(() => {
         <el-input
           v-model="form.version"
           placeholder="1.0.0"
+          :disabled="dialogMode === 'edit'"
+        />
+      </el-form-item>
+
+      <el-form-item
+        prop="internalVersion"
+        label="内部版本"
+      >
+        <el-input
+          v-model="form.internalVersion"
+          placeholder="如：v1.0.0-rc.1"
+          :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
 

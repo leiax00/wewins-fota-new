@@ -1,12 +1,21 @@
 package com.wewins.fota.adapter.api.device;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
 import com.wewins.fota.application.reporting.UpgradeReportAppService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
-import com.wewins.fota.domain.reporting.model.UpgradeReport;
+import com.wewins.fota.common.util.HttpUtils;
+import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 设备升级状态上报控制器
@@ -16,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author FOTA Team
  * @since 2026-02-11
+ * @see <a href="docs/04-technical/upgrade-report-api.md">上报 API 规范文档</a>
  */
 @Slf4j
 @RestController
@@ -25,6 +35,10 @@ import org.springframework.web.bind.annotation.*;
 public class UpgradeReportController {
 
     private final UpgradeReportAppService upgradeReportAppService;
+    private final ObjectMapper objectMapper;
+
+    @Value("${app.node.code:main}")
+    private String region;
 
     /**
      * 上报升级状态
@@ -33,77 +47,36 @@ public class UpgradeReportController {
      * </p>
      *
      * @param requestBody 上报请求体
+     * @param httpRequest HTTP 请求（用于提取客户端 IP）
      * @return 200 OK
      */
     @PostMapping("/report")
-    public ResponseEntity<Void> reportUpgrade(@RequestBody UpgradeReportRequestBody requestBody) {
-        upgradeReportAppService.reportUpgrade(buildReport(requestBody));
+    public ResponseEntity<Void> reportUpgrade(
+            @Valid @RequestBody UpgradeReportDTO requestBody,
+            HttpServletRequest httpRequest) {
+        String detailsJson = serializeDetails(requestBody.getDetails());
+        String clientIp = HttpUtils.extractClientIp(httpRequest);
+        UpgradeReport report = upgradeReportAppService.toDomain(requestBody, detailsJson, clientIp, region);
+        upgradeReportAppService.reportUpgrade(report);
 
         return ResponseEntity.ok().build();
     }
 
     /**
-     * 构建设备升级上报领域模型
+     * 序列化 details Map 为 JSON 字符串
      *
-     * @param requestBody 上报请求体
-     * @return 上报对象
+     * @param details 详情 Map
+     * @return JSON 字符串，序列化失败时返回 null
      */
-    private UpgradeReport buildReport(UpgradeReportRequestBody requestBody) {
-        return UpgradeReport.builder()
-                .imei(requestBody.getImei())
-                .currentVersion(requestBody.getCurrentVersion())
-                .targetVersion(requestBody.getTargetVersion())
-                .eventType(requestBody.getEventType())
-                .downloadUrl(requestBody.getDownloadUrl())
-                .clientIp(requestBody.getClientIp())
-                .userAgent(requestBody.getUserAgent())
-                .ext(requestBody.getExt())
-                .build();
-    }
-
-    /**
-     * 设备升级上报请求体
-     */
-    @lombok.Data
-    public static class UpgradeReportRequestBody {
-        /**
-         * 设备 IMEI
-         */
-        private String imei;
-
-        /**
-         * 当前固件版本
-         */
-        private String currentVersion;
-
-        /**
-         * 目标版本
-         */
-        private String targetVersion;
-
-        /**
-         * 事件类型
-         */
-        private String eventType;
-
-        /**
-         * 下载 URL
-         */
-        private String downloadUrl;
-
-        /**
-         * 客户端 IP
-         */
-        private String clientIp;
-
-        /**
-         * 用户代理
-         */
-        private String userAgent;
-
-        /**
-         * 扩展数据
-         */
-        private String ext;
+    private String serializeDetails(Map<String, Object> details) {
+        if (details == null || details.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(details);
+        } catch (JsonProcessingException e) {
+            log.warn("序列化 details 失败: {}", e.getMessage());
+            return null;
+        }
     }
 }

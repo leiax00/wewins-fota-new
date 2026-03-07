@@ -1,8 +1,8 @@
 package com.wewins.fota.application.policy.dto;
 
-import com.wewins.fota.domain.policy.enums.PolicyStatus;
-import com.wewins.fota.domain.policy.enums.TargetMode;
-import com.wewins.fota.domain.policy.enums.TriggerMode;
+import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
+import com.wewins.fota.domain.policy.model.enums.TargetMode;
+import com.wewins.fota.domain.policy.model.enums.TriggerMode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -53,16 +53,9 @@ public class UpgradePolicyReqDTO {
     private Integer priority;
 
     /**
-     * 触发模式：AUTO / MANUAL
+     * 触发模式
      */
-    private String triggerMode;
-
-    /**
-     * 获取触发模式枚举
-     */
-    public TriggerMode getTriggerModeEnum() {
-        return TriggerMode.of(triggerMode);
-    }
+    private TriggerMode triggerMode;
 
     /**
      * 时间窗口配置
@@ -130,24 +123,8 @@ public class UpgradePolicyReqDTO {
 
     /**
      * 策略状态
-     * <p>可选值：</p>
-     * <ul>
-     *   <li>DRAFT - 草稿</li>
-     *   <li>TESTING - 测试中</li>
-     *   <li>VERIFIED - 已验证</li>
-     *   <li>ACTIVE - 生产中</li>
-     *   <li>PAUSED - 暂停</li>
-     *   <li>EXPIRED - 过期</li>
-     * </ul>
      */
-    private String status;
-
-    /**
-     * 获取状态枚举
-     */
-    public PolicyStatus getStatusEnum() {
-        return PolicyStatus.of(status);
-    }
+    private PolicyStatus status;
 
     /**
      * 备注

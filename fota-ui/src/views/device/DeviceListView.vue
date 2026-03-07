@@ -17,6 +17,7 @@ import { deviceStatusTypeMap, resolveStatusLabelKey, resolveStatusType } from '@
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
 import { formatDateTime } from '@/utils/date'
+import { trimFormValues } from '@/utils/form'
 import {
   createDevice,
   deleteDevice,
@@ -25,6 +26,7 @@ import {
   type BatchOperationType,
   type DeviceItem,
   type DeviceStatus,
+  type DeviceVersionParts,
 } from '@/api/device'
 import { searchProducts, type ProductItem } from '@/api/product'
 import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch'
@@ -89,7 +91,7 @@ const form = reactive({
   productId: undefined as number | undefined,
   currentVersionId: undefined as number | undefined,
   status: 'OFFLINE' as DeviceStatus,
-  tags: '',
+  tags: {} as Record<string, unknown>,
 })
 
 const statusOptions: DeviceStatus[] = ['ONLINE', 'OFFLINE', 'LOST']
@@ -106,40 +108,21 @@ const imeiValidator = (_rule: unknown, value: string, callback: (error?: Error) 
   callback()
 }
 
-const tagsValidator = (_rule: unknown, value: string, callback: (error?: Error) => void) => {
+const tagsValidator = (_rule: unknown, value: Record<string, unknown>, callback: (error?: Error) => void) => {
   // 如果有 JsonFieldEditor 的校验错误，优先显示
   if (tagsValidationErrors.value.length > 0) {
     callback(new Error(tagsValidationErrors.value[0]))
     return
   }
 
-  // 保留原有兜底校验逻辑
-  if (!value || !value.trim()) {
+  // 空对象是有效的
+  if (!value || Object.keys(value).length === 0) {
     callback()
     return
   }
 
-  try {
-    const parsed = JSON.parse(value.trim())
-
-    if (Array.isArray(parsed)) {
-      callback(new Error(t('device.tagsMustBeObject')))
-      return
-    }
-
-    if (parsed === null || typeof parsed !== 'object') {
-      callback(new Error(t('device.tagsMustBeObject')))
-      return
-    }
-
-    callback()
-  } catch (error) {
-    if (error instanceof Error) {
-      callback(error)
-    } else {
-      callback(new Error(t('device.tagsJsonInvalid')))
-    }
-  }
+  // value 已经是对象类型，直接通过
+  callback()
 }
 
 /**
@@ -241,7 +224,7 @@ const handleBatchOperationSuccess = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const result = await pageDevices(query)
+    const result = await pageDevices(trimFormValues(query))
     list.value = result.records || []
     total.value = result.total || 0
   } finally {
@@ -270,7 +253,7 @@ const openCreateDialog = () => {
   form.productId = undefined
   form.currentVersionId = undefined
   form.status = 'OFFLINE'
-  form.tags = ''
+  form.tags = {}
   tagsValidationErrors.value = []
   firmwareOptions.value = []
   formRef.value?.clearValidate()
@@ -282,9 +265,9 @@ const openEditDialog = async (row: DeviceItem) => {
   editingId.value = row.id
   form.imei = row.imei
   form.productId = row.productId
-  form.currentVersionId = row.currentVersionId
+  form.currentVersionId = getPrimaryVersionId(row.versionParts)
   form.status = row.status
-  form.tags = row.tags || ''
+  form.tags = row.tags || {}
   tagsValidationErrors.value = []
 
   // 将当前产品添加到搜索选项中，确保编辑时能正确显示产品名称
@@ -315,9 +298,18 @@ const submitForm = async () => {
     const payload = {
       imei: form.imei.trim(),
       productId: form.productId!,
-      currentVersionId: form.currentVersionId || undefined,
+      versionParts: form.currentVersionId
+        ? {
+            primaryPart: 'main',
+            parts: {
+              main: {
+                versionId: form.currentVersionId,
+              },
+            },
+          }
+        : undefined,
       status: form.status,
-      tags: form.tags?.trim() || undefined,
+      tags: Object.keys(form.tags).length > 0 ? (form.tags as Record<string, string>) : undefined,
     }
 
     if (dialogMode.value === 'create') {
@@ -396,11 +388,46 @@ watch(batchOperationDialogVisible, (val) => {
   }
 })
 
-const getVersionName = (row: DeviceItem) => {
-  if (row.versionName) return row.versionName
-  if (!row.currentVersionId) return '-'
-  const version = firmwareOptions.value.find(item => item.id === row.currentVersionId)
-  return version?.version || `${row.currentVersionId}`
+const getPrimaryPartName = (parts?: DeviceVersionParts) => {
+  if (!parts) return 'main'
+  return parts.primaryPart || 'main'
+}
+
+const getPrimaryVersionId = (parts?: DeviceVersionParts) => {
+  if (!parts?.parts) return undefined
+  const primaryPart = getPrimaryPartName(parts)
+  return parts.parts[primaryPart]?.versionId
+}
+
+const formatVersionParts = (parts?: DeviceVersionParts) => {
+  if (!parts?.parts || Object.keys(parts.parts).length === 0) return []
+  const primaryPart = getPrimaryPartName(parts)
+  return Object.entries(parts.parts).map(([partName, info]) => {
+    let version = info.version || '-'
+    if (info.internalVersion) {
+      version += `(${info.internalVersion})`
+    }
+    return {
+      partName,
+      isPrimary: partName === primaryPart,
+      versionId: info.versionId,
+      version: version,
+      updatedAt: info.updatedAt,
+    };
+  })
+}
+
+const getDeviceEnv = (row: DeviceItem) => {
+  const env = row.tags?.env
+  if (typeof env !== 'string') {
+    return ''
+  }
+  return env.trim().toLowerCase()
+}
+
+const isTestDevice = (row: DeviceItem) => {
+  const env = getDeviceEnv(row)
+  return env === 'test' || env === 'dev'
 }
 
 onMounted(() => {
@@ -598,11 +625,146 @@ onMounted(() => {
       v-loading="loading"
       :data="list"
       stripe
+      row-key="id"
     >
+      <el-table-column type="expand" width="56">
+        <template #default="{ row }">
+          <div class="device-expand-content">
+            <div class="expand-grid">
+              <div class="expand-left">
+                <div class="expand-section compact">
+                  <div class="compact-section-title">{{ t('device.basicInfo') }}</div>
+                  <div class="compact-section-body">
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.deviceId') }}</span>
+                      <span class="compact-value">{{ row.id }}</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.productId') }}</span>
+                      <span class="compact-value">{{ row.productName || '-' }}</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.importBatch') }}</span>
+                      <el-tag v-if="row.importBatchName" size="small" type="info" effect="plain">
+                        {{ row.importBatchName }}
+                      </el-tag>
+                      <span v-else class="compact-value">-</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.status') }}</span>
+                      <div class="status-cell">
+                        <el-tag size="small" :type="resolveStatusType(deviceStatusTypeMap, row.status)">
+                          {{ t(resolveStatusLabelKey(row.status)) }}
+                        </el-tag>
+                        <el-tag v-if="isTestDevice(row)" size="small" type="warning" effect="plain">
+                          {{ t('device.testFlag') }}
+                        </el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="expand-section compact">
+                  <div class="compact-section-title">{{ t('device.timeInfo') }}</div>
+                  <div class="compact-section-body">
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.firstSeenAt') }}</span>
+                      <span class="compact-value">{{ formatDateTime(row.firstSeenAt) }}</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('device.lastSeenAt') }}</span>
+                      <span class="compact-value">{{ formatDateTime(row.lastSeenAt) }}</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('common.createTime') }}</span>
+                      <span class="compact-value">{{ formatDateTime(row.createdAt) }}</span>
+                    </div>
+                    <div class="compact-info-item">
+                      <span class="compact-label">{{ t('common.updateTime') }}</span>
+                      <span class="compact-value">{{ formatDateTime(row.updatedAt) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="expand-right">
+                <div class="expand-section compact">
+                  <div class="compact-section-title">{{ t('device.currentVersionParts') }}</div>
+                  <div class="compact-section-body">
+                    <div class="version-tags compact">
+                      <el-tag
+                        v-for="part in formatVersionParts(row.versionParts)"
+                        :key="`current-${row.id}-${part.partName}`"
+                        size="small"
+                        :type="part.isPrimary ? 'primary' : 'info'"
+                        effect="plain"
+                        class="version-tag"
+                      >
+                        {{ part.partName }}: {{ part.version }}
+                      </el-tag>
+                      <span v-if="formatVersionParts(row.versionParts).length === 0" class="compact-value">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="expand-section compact">
+                  <div class="compact-section-title">{{ t('device.initialFirmwareVersion') }}</div>
+                  <div class="compact-section-body">
+                    <div class="version-tags compact">
+                      <el-tag
+                        v-for="part in formatVersionParts(row.initialVersionParts)"
+                        :key="`initial-${row.id}-${part.partName}`"
+                        size="small"
+                        type="warning"
+                        effect="plain"
+                        class="version-tag"
+                      >
+                        {{ part.partName }}: {{ part.version }}
+                      </el-tag>
+                      <span v-if="formatVersionParts(row.initialVersionParts).length === 0" class="compact-value">-</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="expand-section compact">
+                  <div class="compact-section-title">{{ t('device.tags') }}</div>
+                  <div class="compact-section-body">
+                    <div v-if="row.tags && Object.keys(row.tags).length" class="target-tag-pairs compact">
+                      <div
+                        v-for="([key, value], idx) in Object.entries(row.tags).slice(0, 8)"
+                        :key="`tag-${row.id}-${idx}`"
+                        class="tag-pair-item"
+                      >
+                        <el-tag size="small" type="warning" effect="plain" class="tag-pair-key">
+                          {{ key }}
+                        </el-tag>
+                        <span class="tag-pair-separator">:</span>
+                        <span class="tag-pair-value">{{ value }}</span>
+                      </div>
+                    </div>
+                    <span v-else class="compact-value">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="audit-info">
+              <div class="audit-item">
+                <span class="audit-label">{{ t('common.createdBy') }}</span>
+                <span class="audit-value">{{ row.createdBy ?? '-' }}</span>
+              </div>
+              <div class="audit-item">
+                <span class="audit-label">{{ t('common.updatedBy') }}</span>
+                <span class="audit-value">{{ row.updatedBy ?? '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column
         prop="imei"
         :label="t('device.imei')"
-        min-width="160"
+        min-width="180"
       />
       <el-table-column
         prop="productId"
@@ -613,43 +775,6 @@ onMounted(() => {
           {{ row.productName }}
         </template>
       </el-table-column>
-      <el-table-column
-        prop="versionName"
-        :label="t('device.currentVersionId')"
-        min-width="180"
-      >
-        <template #default="{ row }">
-          {{ getVersionName(row) }}
-        </template>
-      </el-table-column>
-      <el-table-column
-        prop="status"
-        :label="t('device.status')"
-        width="120"
-      >
-        <template #default="{ row }">
-          <el-tag
-            size="small"
-            :type="resolveStatusType(deviceStatusTypeMap, row.status)"
-          >
-            {{ t(resolveStatusLabelKey(row.status)) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        :label="t('device.lastSeenAt')"
-        width="170"
-      >
-        <template #default="{ row }">
-          {{ formatDateTime(row.lastSeenAt) }}
-        </template>
-      </el-table-column>
-      <el-table-column
-        prop="tags"
-        :label="t('device.tags')"
-        min-width="220"
-        show-overflow-tooltip
-      />
       <el-table-column
         :label="t('device.importBatch')"
         min-width="150"
@@ -663,6 +788,41 @@ onMounted(() => {
             {{ row.importBatchName }}
           </el-tag>
           <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        :label="t('device.firstSeenAt')"
+        width="170"
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.firstSeenAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column
+        :label="t('device.lastSeenAt')"
+        width="170"
+      >
+        <template #default="{ row }">
+          {{ formatDateTime(row.lastSeenAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column
+        prop="status"
+        :label="t('device.status')"
+        width="160"
+      >
+        <template #default="{ row }">
+          <div class="status-cell">
+            <el-tag
+              size="small"
+              :type="resolveStatusType(deviceStatusTypeMap, row.status)"
+            >
+              {{ t(resolveStatusLabelKey(row.status)) }}
+            </el-tag>
+            <el-tag v-if="isTestDevice(row)" size="small" type="warning" effect="plain">
+              {{ t('device.testFlag') }}
+            </el-tag>
+          </div>
         </template>
       </el-table-column>
 
@@ -724,6 +884,7 @@ onMounted(() => {
         <el-input
           v-model="form.imei"
           maxlength="15"
+          :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
       <el-form-item
@@ -844,5 +1005,167 @@ onMounted(() => {
 .advanced-filter-form,
 .advanced-filter-form * {
   pointer-events: auto !important;
+}
+
+.device-expand-content {
+  padding: 12px 16px;
+  background: var(--bg-hover);
+}
+
+.dark .device-expand-content {
+  background: var(--surface-fill);
+}
+
+.expand-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.expand-left,
+.expand-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.expand-section {
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.expand-section:hover {
+  border-color: var(--border-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dark .expand-section:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.compact-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.compact-section-body {
+  font-size: 12px;
+  color: var(--text-regular);
+}
+
+.compact-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.compact-info-item:last-child {
+  margin-bottom: 0;
+}
+
+.compact-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 70px;
+  text-align: right;
+}
+
+.compact-value {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.version-tags.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.version-tag {
+  font-size: 11px;
+}
+
+.target-tag-pairs.compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-pair-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #fef3e7;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.dark .tag-pair-item {
+  background: #3d3a2a;
+}
+
+.tag-pair-key {
+  font-weight: 600;
+}
+
+.tag-pair-separator {
+  color: #dcdfe6;
+}
+
+.tag-pair-value {
+  color: var(--text-regular);
+}
+
+.audit-info {
+  display: flex;
+  gap: 24px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.audit-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.audit-label {
+  color: #909399;
+  font-weight: 500;
+}
+
+.audit-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+:deep(.el-table__expanded-cell) {
+  padding: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .expand-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-info {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 </style>

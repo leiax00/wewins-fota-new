@@ -1,6 +1,9 @@
 package com.wewins.fota.application.device.dto;
 
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import lombok.Data;
+
+import java.util.Map;
 
 /**
  * 设备创建/更新请求 DTO
@@ -21,15 +24,12 @@ public class DeviceReqDTO {
     /**
      * 当前固件版本 ID（可选）
      */
-    private Long currentVersionId;
+    private DeviceVersionParts versionParts;
 
     /**
      * 设备状态（ONLINE/OFFLINE/LOST）
      */
     private String status;
 
-    /**
-     * 设备标签（JSON 字符串，可选）
-     */
-    private String tags;
+    private Map<String, String> tags;
 }

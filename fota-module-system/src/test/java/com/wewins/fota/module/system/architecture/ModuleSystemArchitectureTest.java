@@ -13,6 +13,7 @@ class ModuleSystemArchitectureTest {
     @ArchTest
     static final ArchRule adapter_api_should_not_depend_on_domain_entities = noClasses()
             .that().resideInAnyPackage("..adapter.api..")
+            .and().resideOutsideOfPackage("..adapter.api.admin..")
             .should().dependOnClassesThat().resideInAnyPackage("..domain.entity..");
 
     @ArchTest

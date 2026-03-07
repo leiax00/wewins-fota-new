@@ -1,9 +1,11 @@
 package com.wewins.fota.application.device.dto;
 
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 设备响应 DTO
@@ -35,7 +37,12 @@ public class DeviceRespDTO {
     /**
      * 当前固件版本 ID
      */
-    private Long currentVersionId;
+    private DeviceVersionParts versionParts;
+
+    /**
+     * 当前固件版本 ID
+     */
+    private DeviceVersionParts initialVersionParts;
 
     /**
      * 当前固件版本号
@@ -53,9 +60,11 @@ public class DeviceRespDTO {
     private LocalDateTime lastSeenAt;
 
     /**
-     * 标签 JSON 字符串
+     * 第一次在线时间
      */
-    private String tags;
+    private LocalDateTime firstSeenAt;
+
+    private Map<String, String> tags;
 
     /**
      * 导入批次 ID

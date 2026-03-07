@@ -22,8 +22,8 @@ import { validateBySchema } from '@/components/json-field/utils/validator'
 interface Props {
   /** 字典类型编码（如 'json_schema.device_tags'） */
   dictTypeCode: string
-  /** JSON 字符串（v-model） */
-  modelValue?: string
+  /** JSON 对象（v-model） */
+  modelValue?: Record<string, unknown>
   /** 默认模式 */
   mode?: 'form' | 'code'
   /** 是否允许切换模式 */
@@ -33,14 +33,14 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: '',
+  modelValue: undefined,
   mode: 'form',
   allowModeSwitch: true,
   disabled: false,
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
+  (e: 'update:modelValue', value: Record<string, unknown>): void
   (e: 'validation-change', errors: string[]): void
 }>()
 
@@ -51,9 +51,18 @@ const loading = ref(false)
 const loadError = ref('')
 const definitions = ref<JsonFieldDefinition[]>([])
 const currentMode = ref<'form' | 'code'>(props.mode)
-const codeText = ref(props.modelValue || '')
+const codeText = ref('')
 const knownData = ref<JsonObjectValue>({})
 const unknownData = ref<JsonObjectValue>({})
+
+/**
+ * 从对象同步代码文本
+ */
+const syncCodeFromModel = () => {
+  codeText.value = props.modelValue && Object.keys(props.modelValue).length > 0
+    ? JSON.stringify(props.modelValue, null, 2)
+    : ''
+}
 
 /**
  * 是否可以使用表单模式
@@ -116,20 +125,11 @@ const emitValidation = (errors: string[]) => {
  * 从 modelValue 同步表单状态
  */
 const syncFormStateFromModel = () => {
-  const parsed = safeParseJsonObject(props.modelValue)
-
-  if (!parsed.ok) {
-    // JSON 解析失败，切换到代码模式
-    codeText.value = props.modelValue || ''
-    if (currentMode.value === 'form') {
-      currentMode.value = 'code'
-    }
-    emitValidation([parsed.error])
-    return
-  }
+  // 直接使用对象类型
+  const data = props.modelValue || {}
 
   // 分离已知字段和未知字段
-  const split = splitKnownAndUnknown(parsed.data, definitions.value)
+  const split = splitKnownAndUnknown(data, definitions.value)
   knownData.value = applyDefaults(split.known, definitions.value)
   unknownData.value = split.unknown
 
@@ -170,8 +170,8 @@ const loadSchema = async () => {
     syncFormStateFromModel()
 
     // 同步默认值到父组件
-    // 如果 modelValue 为空，应用默认值后需要立即同步出去
-    if (!props.modelValue || !props.modelValue.trim()) {
+    // 如果 modelValue 为空对象，应用默认值后需要立即同步出去
+    if (!props.modelValue || Object.keys(props.modelValue).length === 0) {
       emitFromForm()
     }
   } catch (error) {
@@ -189,10 +189,9 @@ const loadSchema = async () => {
  */
 const emitFromForm = () => {
   const merged = mergeKnownAndUnknown(knownData.value, unknownData.value)
-  const normalized = stringifyJsonObject(merged)
 
   codeText.value = stringifyJsonObject(merged, true)
-  emit('update:modelValue', normalized)
+  emit('update:modelValue', merged)
 
   emitValidation(validateBySchema(merged, definitions.value, false))
 }
@@ -201,6 +200,11 @@ const emitFromForm = () => {
  * 代码模式实时校验（不格式化）
  */
 const validateCodeText = (value: string) => {
+  if (!value || !value.trim()) {
+    emitValidation([])
+    return
+  }
+
   const parsed = safeParseJsonObject(value)
   if (!parsed.ok) {
     emitValidation([parsed.error])
@@ -215,7 +219,19 @@ const validateCodeText = (value: string) => {
  */
 const onCodeInput = (value: string) => {
   codeText.value = value
-  emit('update:modelValue', value)
+
+  // 尝试解析为对象，如果成功则发出
+  if (!value || !value.trim()) {
+    emit('update:modelValue', {})
+    emitValidation([])
+    return
+  }
+
+  const parsed = safeParseJsonObject(value)
+  if (parsed.ok) {
+    emit('update:modelValue', parsed.data)
+  }
+  // 即使解析失败，也进行校验以显示错误
   validateCodeText(value)
 }
 
@@ -250,7 +266,7 @@ const formatCode = (showMessage = true) => {
     const formatted = JSON.stringify(parsed, null, 2)
     if (formatted !== codeText.value) {
       codeText.value = formatted
-      emit('update:modelValue', formatted)
+      emit('update:modelValue', parsed)
     }
 
     emitValidation(validateBySchema(parsed, definitions.value, false))
@@ -265,9 +281,8 @@ const formatCode = (showMessage = true) => {
 watch(
   () => props.modelValue,
   () => {
-    if (props.modelValue !== codeText.value) {
-      codeText.value = props.modelValue || ''
-    }
+    // 同步代码文本
+    syncCodeFromModel()
 
     if (definitions.value.length === 0) {
       return
@@ -281,7 +296,8 @@ watch(
 
     // 代码模式下仅做校验，不改写输入内容
     validateCodeText(codeText.value)
-  }
+  },
+  { deep: true }
 )
 
 // 监听 mode 属性变化
@@ -313,6 +329,8 @@ watch(
 
 // 组件挂载时加载 Schema
 onMounted(() => {
+  // 初始化代码文本
+  syncCodeFromModel()
   void loadSchema()
 })
 </script>
