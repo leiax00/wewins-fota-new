@@ -1,13 +1,10 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.domain.base.vo.CacheLookupResult;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -51,7 +48,7 @@ class FirmwareVersionLookupServiceTest {
     @BeforeEach
     void setUp() {
         when(firmwareVersionLookupCacheRepository.get(anyLong(), any(), any()))
-                .thenReturn(FirmwareVersionLookupCacheRepository.LookupCacheResult.miss());
+                .thenReturn(CacheLookupResult.miss());
 
         // 模拟数据：同一个 version 号有多个不同的 build
         firmwareV1Build01 = FirmwareVersion.builder()

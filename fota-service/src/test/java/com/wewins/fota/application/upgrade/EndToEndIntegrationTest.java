@@ -1,7 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
@@ -9,6 +8,8 @@ import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
@@ -20,15 +21,12 @@ import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.repository.UpgradeEventRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -79,10 +77,8 @@ class EndToEndIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
     private DeviceRateLimiter deviceRateLimiter;
 
-    @MockBean
     private DeviceActivityBitmapRepository bitmapRepository;
 
     private static List<Long> cleanupProductIds = new ArrayList<>();
@@ -408,8 +404,7 @@ class EndToEndIntegrationTest {
 
     private UpgradePolicy createUpgradePolicy(Long productId, Long targetVersionId,
                                               List<Long> sourceVersionIds, Integer grayRate) {
-        ArrayNode sourceVersionsArray = objectMapper.createArrayNode();
-        sourceVersionIds.forEach(sourceVersionsArray::add);
+        Set<Long> sourceVersionsArray = new HashSet<>(sourceVersionIds);
 
         UpgradePolicy policy = UpgradePolicy.builder()
                 .productId(productId)
@@ -431,7 +426,11 @@ class EndToEndIntegrationTest {
         Device device = Device.builder()
                 .imei(imei)
                 .productId(productId)
-                .currentVersionId(versionId)
+                .versionParts(
+                        DeviceVersionParts.builder()
+                                .parts(Map.of(
+                                        "main", DeviceVersionPart.builder().versionId(versionId).build())
+                                ).build())
                 .status("ACTIVE")
                 .build();
         device = deviceRepository.create(device);
