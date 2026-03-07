@@ -1,8 +1,8 @@
 package com.wewins.fota.infra.persistence.mybatis.repository;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
@@ -12,7 +12,6 @@ import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceMapper;
 import com.wewins.fota.infra.persistence.mybatis.po.DevicePO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -26,7 +25,6 @@ import java.util.Optional;
 public class DeviceRepositoryImpl implements DeviceRepository {
 
     private final DeviceMapper deviceMapper;
-    private final JdbcTemplate jdbcTemplate;
     private final DeviceConverter deviceConverter;
     private final ObjectMapper objectMapper;
 
@@ -41,8 +39,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
 
     @Override
     public Page<Device> pageDevices(Page<Device> page, Long productId, String imei, String status) {
-        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt);
+        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
 
         if (productId != null) {
             queryWrapper.eq(DevicePO::getProductId, productId);
@@ -70,8 +67,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
 
     @Override
     public Optional<Device> findByImei(String imei) {
-        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt);
+        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(DevicePO::getImei, imei);
         return Optional.ofNullable(deviceConverter.toDomain(deviceMapper.selectOne(queryWrapper)));
     }
@@ -93,8 +89,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     @Override
     public long countByImeiExcludingId(String imei, Long excludeId) {
         LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .eq(DevicePO::getImei, imei)
-                .isNull(DevicePO::getDeletedAt);
+                .eq(DevicePO::getImei, imei);
 
         if (excludeId != null) {
             queryWrapper.ne(DevicePO::getId, excludeId);
@@ -126,8 +121,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
 
     @Override
     public Page<Device> pageByImportBatchId(Page<Device> page, Long importBatchId) {
-        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt);
+        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
 
         if (importBatchId != null) {
             queryWrapper.eq(DevicePO::getImportBatchId, importBatchId);
@@ -145,7 +139,6 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     @Override
     public List<Device> findAllByImportBatchId(Long importBatchId) {
         LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt)
                 .eq(DevicePO::getImportBatchId, importBatchId);
         return deviceConverter.toDomainList(deviceMapper.selectList(queryWrapper));
     }
@@ -156,15 +149,13 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             return List.of();
         }
         LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt)
                 .in(DevicePO::getImei, imeis);
         return deviceConverter.toDomainList(deviceMapper.selectList(queryWrapper));
     }
 
     @Override
     public List<Device> findByConditions(Long productId, String imeiKeyword, String status, Long importBatchId) {
-        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
-                .isNull(DevicePO::getDeletedAt);
+        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
 
         if (productId != null) {
             queryWrapper.eq(DevicePO::getProductId, productId);
@@ -190,15 +181,16 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             return;
         }
 
-        // 分批更新，避免SQL过长
         int batchSize = 1000;
         for (int i = 0; i < deviceIds.size(); i += batchSize) {
             int end = Math.min(i + batchSize, deviceIds.size());
             List<Long> batchIds = deviceIds.subList(i, end);
 
-            // 使用JdbcTemplate直接执行SQL更新JSONB字段
-            String sql = "UPDATE devices SET tags = ?::jsonb, updated_at = NOW() WHERE id = ANY(?) AND deleted_at IS NULL";
-            jdbcTemplate.update(sql, tagsJson, batchIds.toArray(new Long[0]));
+            LambdaUpdateWrapper<DevicePO> updateWrapper = new LambdaUpdateWrapper<DevicePO>()
+                    .set(DevicePO::getTags, tagsJson)
+                    .in(DevicePO::getId, batchIds);
+
+            deviceMapper.update(null, updateWrapper);
         }
     }
 
@@ -223,15 +215,25 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     }
 
     @Override
-    public int batchSoftDelete(List<Long> deviceIds) {
+    public int batchDelete(List<Long> deviceIds) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             return 0;
         }
 
-        // 使用 JdbcTemplate 执行批量更新（更高效）
-        String sql = "UPDATE devices SET deleted_at = NOW(), updated_at = NOW() " +
-                     "WHERE id = ANY(?) AND deleted_at IS NULL";
-        return jdbcTemplate.update(sql, deviceIds.toArray(new Long[0]));
+        int batchSize = 1000;
+        int totalDeleted = 0;
+
+        for (int i = 0; i < deviceIds.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, deviceIds.size());
+            List<Long> batchIds = deviceIds.subList(i, end);
+
+            LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<DevicePO>()
+                    .in(DevicePO::getId, batchIds);
+
+            totalDeleted += deviceMapper.delete(queryWrapper);
+        }
+
+        return totalDeleted;
     }
 
     @Override

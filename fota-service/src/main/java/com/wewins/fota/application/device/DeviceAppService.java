@@ -573,7 +573,7 @@ public class DeviceAppService {
         switch (reqDTO.getOperationType()) {
             case DELETE_BY_BATCH -> {
                 List<Long> deviceIds = devices.stream().map(Device::getId).toList();
-                int deleted = deviceRepository.batchSoftDelete(deviceIds);
+                int deleted = deviceRepository.batchDelete(deviceIds);
                 successCount = deleted;
                 failedCount = totalCount - deleted;
                 log.info("批量删除完成: 总数={}, 成功={}, 失败={}", totalCount, successCount, failedCount);

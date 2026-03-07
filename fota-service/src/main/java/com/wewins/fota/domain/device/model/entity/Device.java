@@ -120,9 +120,4 @@ public class Device extends DomainEntity implements Serializable {
      * </p>
      */
     private Long importBatchId;
-
-    /**
-     * 软删除时间（逻辑删除）
-     */
-    private LocalDateTime deletedAt;
 }

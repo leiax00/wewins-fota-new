@@ -285,3 +285,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260307_01_remove_devices_soft_delete
+      author: fota-team
+      comment: "移除设备软删除字段：设备不需要软删除，直接硬删除即可"
+      changes:
+        - sqlFile:
+            path: changes/20260307_01_remove_devices_soft_delete.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
