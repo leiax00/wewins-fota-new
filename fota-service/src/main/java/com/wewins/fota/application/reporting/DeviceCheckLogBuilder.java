@@ -70,6 +70,7 @@ public class DeviceCheckLogBuilder {
                 .version(request.getVersion())
                 .internalVersion(request.getTag())
                 .targetVersion(result.getTargetVersion())
+                .targetInternalVersion(result.getTargetInternalVersion())
                 .targetVersionId(result.getTargetVersionId())
                 .checkRst(result.getDecision())
                 .checkMode(request.getCheckMode() != null ? request.getCheckMode() : CheckMode.AUTO)

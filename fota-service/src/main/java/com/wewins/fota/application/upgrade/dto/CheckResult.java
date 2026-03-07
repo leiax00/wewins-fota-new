@@ -39,6 +39,11 @@ public class CheckResult {
     private String targetVersion;
 
     /**
+     * 目标内部版本号
+     */
+    private String targetInternalVersion;
+
+    /**
      * 策略 ID
      */
     private Long policyId;

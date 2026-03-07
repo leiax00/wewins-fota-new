@@ -38,8 +38,9 @@ CREATE TABLE IF NOT EXISTS device_check_logs
 
     -- 检查结果
     check_rst Nullable(Enum8('UPDATE' = 0, 'NO_UPDATE' = 1, 'RATE_LIMITED' = 2, 'DEVICE_NOT_FOUND' = 3, 'ERROR' = 4)),
-    target_version Nullable(String),
     target_version_id Nullable(UInt64),
+    target_version Nullable(String),
+    target_internal_version Nullable(String),
     policy_id Nullable(UInt64),
     download_url Nullable(String),
     gray_bucket Nullable(UInt8),

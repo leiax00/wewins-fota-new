@@ -90,6 +90,11 @@ public class DeviceCheckLog implements Serializable {
     private String targetVersion;
 
     /**
+     * 目标固件内部版本号（build tag）
+     */
+    private String targetInternalVersion;
+
+    /**
      * 目标版本 ID
      */
     private Long targetVersionId;

@@ -96,6 +96,7 @@ public class UpgradeResponseBuilder {
                 .decision(UpgradeDecision.UPDATE)
                 .targetVersionId(targetFirmware.getId())
                 .targetVersion(targetFirmware.getVersion())
+                .targetInternalVersion(targetFirmware.getInternalVersion())
                 .policyId(policy.getId())
                 .requestId(requestId)
                 .checkInterval(checkInterval)
