@@ -5,9 +5,9 @@
 > **范围**: 核心链路最小可用版本
 
 **Sprint Owner**: FOTA 后端组
-**文档版本**: v1.5
+**文档版本**: v1.6
 **创建日期**: 2026-02-28
-**最后更新**: 2026-03-05
+**最后更新**: 2026-03-08
 
 ---
 
@@ -35,7 +35,7 @@
 - [x] dev 参数临时标注测试设备功能
 - [x] 签名下载 URL 生成功能
 - [x] 上报事件异步写入 ClickHouse
-- [x] Redis 策略快照缓存生效
+- [x] Redis 策略快照缓存能力已实现（主链路接入生效待补充证据）
 - [ ] 单元测试覆盖率 ≥ 60%
 - [ ] 性能测试达标（P99 < 50ms）
 
@@ -267,7 +267,7 @@ public class UpgradeCheckService {
             Device device, Long versionId, Integer dev, Integer auto) {
 
         return upgradePolicyRepository
-            .findActiveByProductIdOrderByPriorityDesc(device.getProductId())
+            .findEffectiveByProductIdOrderByPriorityDesc(device.getProductId(), dev != null && dev == 1)
             .stream()
             .filter(policy -> matchesDevMode(policy, dev))     // dev 参数匹配
             .filter(policy -> matchesTriggerMode(policy, auto)) // auto 参数匹配
@@ -884,8 +884,8 @@ Sprint 3: [███████████████████░] 98%
 - [x] dev 参数临时标注测试设备功能
 - [x] 签名下载 URL 生成功能
 - [x] 上报事件异步写入 ClickHouse
-- [x] Redis 策略快照缓存生效
-- [ ] 单元测试覆盖率 ≥ 60%（当前约 50%）
+- [x] Redis 策略快照缓存能力已实现（主链路接入生效待补充证据）
+- [ ] 单元测试覆盖率 ≥ 60%（当前缺少可审计覆盖率报告）
 - [ ] 性能测试达标（P99 < 50ms）
 
 ---
@@ -940,6 +940,13 @@ Sprint 3: [███████████████████░] 98%
 ---
 
 ## 📝 变更日志
+
+### 2026-03-08 (进度核对与文档校准 - v1.6)
+- ✅ **代码审查报告状态修正**: `UpgradePolicyRepositoryImpl.java` 已实现策略缓存读写（命中读取 + 回源写入缓存）
+- ✅ **一致性修正**: 对齐“阶段 4 已实现策略缓存”的既有结论，移除“缓存待实现”过期标注
+- ✅ **验收口径修正**: “Redis 策略快照缓存生效”调整为“能力已实现，主链路接入生效待补证据”
+- ✅ **证据口径修正**: “覆盖率当前约 50%”调整为“当前缺少可审计覆盖率报告”
+- 📊 **整体进度保持**: 98%（剩余项不变：单元测试覆盖率 ≥ 60%、性能测试 P99 < 50ms）
 
 ### 2026-03-05 (进度核对与文档校准 - v1.5)
 - ✅ **阶段 3 状态修正**: 本地文件降级（7.3）已实现，并补充重放能力说明
@@ -1046,7 +1053,7 @@ Sprint 3: [███████████████████░] 98%
 | `UpgradeReportConsumer.java` | MQ 消费者（批量+幂等） | ✅ |
 | `ProductRepositoryImpl.java` | 产品仓储实现 | ✅ |
 | `FirmwareVersionRepositoryImpl.java` | 固件版本仓储实现 | ✅ |
-| `UpgradePolicyRepositoryImpl.java` | 策略仓储实现（⚠️ 缓存待实现） | ⚠️ |
+| `UpgradePolicyRepositoryImpl.java` | 策略仓储实现（含缓存命中与回源写入） | ✅ |
 
 ### 灰度发布模块审查
 
