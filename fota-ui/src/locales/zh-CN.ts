@@ -333,6 +333,11 @@ export default {
     upgradeHistory: '升级历史',
     noUpgradeRecord: '暂无升级记录',
     basicInfo: '基本信息',
+    deviceId: '设备ID',
+    timeInfo: '时间信息',
+    currentVersionParts: '当前版本分片',
+    initialFirmwareVersion: '初始固件版本',
+    testFlag: '测试',
     // 批量操作
     batchOperation: '批量操作',
     selectOperationType: '选择操作类型',

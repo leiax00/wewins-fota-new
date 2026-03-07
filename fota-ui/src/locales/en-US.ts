@@ -333,6 +333,11 @@ export default {
     upgradeHistory: 'Upgrade History',
     noUpgradeRecord: 'No upgrade records',
     basicInfo: 'Basic Info',
+    deviceId: 'Device ID',
+    timeInfo: 'Time Info',
+    currentVersionParts: 'Current Version Parts',
+    initialFirmwareVersion: 'Initial Firmware Version',
+    testFlag: 'Test',
     // Batch operations
     batchOperation: 'Batch Operation',
     selectOperationType: 'Select Operation Type',

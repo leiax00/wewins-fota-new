@@ -417,6 +417,19 @@ const formatVersionParts = (parts?: DeviceVersionParts) => {
   })
 }
 
+const getDeviceEnv = (row: DeviceItem) => {
+  const env = row.tags?.env
+  if (typeof env !== 'string') {
+    return ''
+  }
+  return env.trim().toLowerCase()
+}
+
+const isTestDevice = (row: DeviceItem) => {
+  const env = getDeviceEnv(row)
+  return env === 'test' || env === 'dev'
+}
+
 onMounted(() => {
   void fetchList()
 })
@@ -620,10 +633,10 @@ onMounted(() => {
             <div class="expand-grid">
               <div class="expand-left">
                 <div class="expand-section compact">
-                  <div class="compact-section-title">基础信息</div>
+                  <div class="compact-section-title">{{ t('device.basicInfo') }}</div>
                   <div class="compact-section-body">
                     <div class="compact-info-item">
-                      <span class="compact-label">设备ID</span>
+                      <span class="compact-label">{{ t('device.deviceId') }}</span>
                       <span class="compact-value">{{ row.id }}</span>
                     </div>
                     <div class="compact-info-item">
@@ -639,15 +652,20 @@ onMounted(() => {
                     </div>
                     <div class="compact-info-item">
                       <span class="compact-label">{{ t('device.status') }}</span>
-                      <el-tag size="small" :type="resolveStatusType(deviceStatusTypeMap, row.status)">
-                        {{ t(resolveStatusLabelKey(row.status)) }}
-                      </el-tag>
+                      <div class="status-cell">
+                        <el-tag size="small" :type="resolveStatusType(deviceStatusTypeMap, row.status)">
+                          {{ t(resolveStatusLabelKey(row.status)) }}
+                        </el-tag>
+                        <el-tag v-if="isTestDevice(row)" size="small" type="warning" effect="plain">
+                          {{ t('device.testFlag') }}
+                        </el-tag>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="expand-section compact">
-                  <div class="compact-section-title">时间信息</div>
+                  <div class="compact-section-title">{{ t('device.timeInfo') }}</div>
                   <div class="compact-section-body">
                     <div class="compact-info-item">
                       <span class="compact-label">{{ t('device.firstSeenAt') }}</span>
@@ -671,7 +689,7 @@ onMounted(() => {
 
               <div class="expand-right">
                 <div class="expand-section compact">
-                  <div class="compact-section-title">当前版本分片</div>
+                  <div class="compact-section-title">{{ t('device.currentVersionParts') }}</div>
                   <div class="compact-section-body">
                     <div class="version-tags compact">
                       <el-tag
@@ -690,7 +708,7 @@ onMounted(() => {
                 </div>
 
                 <div class="expand-section compact">
-                  <div class="compact-section-title">初始固件版本</div>
+                  <div class="compact-section-title">{{ t('device.initialFirmwareVersion') }}</div>
                   <div class="compact-section-body">
                     <div class="version-tags compact">
                       <el-tag
@@ -732,11 +750,11 @@ onMounted(() => {
 
             <div class="audit-info">
               <div class="audit-item">
-                <span class="audit-label">创建人</span>
+                <span class="audit-label">{{ t('common.createdBy') }}</span>
                 <span class="audit-value">{{ row.createdBy ?? '-' }}</span>
               </div>
               <div class="audit-item">
-                <span class="audit-label">更新人</span>
+                <span class="audit-label">{{ t('common.updatedBy') }}</span>
                 <span class="audit-value">{{ row.updatedBy ?? '-' }}</span>
               </div>
             </div>
@@ -791,15 +809,20 @@ onMounted(() => {
       <el-table-column
         prop="status"
         :label="t('device.status')"
-        width="120"
+        width="160"
       >
         <template #default="{ row }">
-          <el-tag
-            size="small"
-            :type="resolveStatusType(deviceStatusTypeMap, row.status)"
-          >
-            {{ t(resolveStatusLabelKey(row.status)) }}
-          </el-tag>
+          <div class="status-cell">
+            <el-tag
+              size="small"
+              :type="resolveStatusType(deviceStatusTypeMap, row.status)"
+            >
+              {{ t(resolveStatusLabelKey(row.status)) }}
+            </el-tag>
+            <el-tag v-if="isTestDevice(row)" size="small" type="warning" effect="plain">
+              {{ t('device.testFlag') }}
+            </el-tag>
+          </div>
         </template>
       </el-table-column>
 
@@ -1122,6 +1145,12 @@ onMounted(() => {
 .audit-value {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 :deep(.el-table__expanded-cell) {
