@@ -147,19 +147,12 @@ public class FirmwareVersionLookupService {
             return null;
         }
 
-        // 1. 优先：version + tag 组合查找
-        if (StringUtils.hasText(tag)) {
-            Optional<FirmwareVersion> firmware = firmwareVersionRepository
-                    .findByUniqueKey(version, tag, productId);
-            if (firmware.isPresent()) {
-                return firmware.get();
-            }
+        Long versionId = findVersionId(version, tag, productId);
+        if (versionId == null) {
+            return null;
         }
 
-        // 2. 降级：仅 version 查找
-        return firmwareVersionRepository
-                .findByVersionNumberAndProductId(version, productId)
-                .orElse(null);
+        return firmwareVersionRepository.findById(versionId).orElse(null);
     }
 
     /**

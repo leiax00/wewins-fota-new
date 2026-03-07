@@ -69,10 +69,9 @@ public class DeviceVersionParts {
     /**
      * 更新某个部分的版本
      */
-    public void updatePart(String partName, Long versionId, String version, LocalDateTime updatedAt) {
+    public void updatePart(String partName, Long versionId, LocalDateTime updatedAt) {
         parts.put(partName, DeviceVersionPart.builder()
                 .versionId(versionId)
-                .version(version)
                 .updatedAt(updatedAt)
                 .build());
     }
@@ -91,5 +90,17 @@ public class DeviceVersionParts {
     public boolean matchesPartVersionId(String partName, Long versionId) {
         DeviceVersionPart part = parts.get(partName);
         return part != null && versionId != null && versionId.equals(part.getVersionId());
+    }
+
+    public boolean matchAny(Long versionId) {
+        return !parts.isEmpty() &&
+                versionId != null &&
+                parts.values().stream().anyMatch(
+                        p -> p.getVersionId().equals(versionId)
+                );
+    }
+
+    public boolean hasVersion(String partName) {
+        return parts.containsKey(partName);
     }
 }

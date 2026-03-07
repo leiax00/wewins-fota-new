@@ -20,12 +20,13 @@
 系统架构、技术选型、设计决策
 
 - [FOTA 系统架构及技术说明书](02-architecture/fota-architecture.md)
+- [升级检查流程架构](02-architecture/upgrade-check-flow-architecture.md) 🆕
 - [DDD 架构设计文档](02-architecture/ddd-architecture.md)
 - [DDD 实施指南](02-architecture/ddd-implementation-guide.md)
 - [API 分层与目录边界约定](02-architecture/api-layer-boundaries.md)
 - [文件存储策略说明](02-architecture/storage-strategy.md)
-- [前端架构设计](02-architecture/frontend-architecture.md) 🆕
-- [前端移动端策略 ADR](02-architecture/frontend-mobile-strategy-adr.md) 🆕
+- [前端架构设计](02-architecture/frontend-architecture.md)
+- [前端移动端策略 ADR](02-architecture/frontend-mobile-strategy-adr.md)
 
 ---
 
@@ -128,6 +129,12 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 ---
 
 ## 📝 文档更新日志
+
+### 2026-03-07
+- ✅ 新增升级检查流程架构文档
+- ✅ 定义分层设计、数据流、性能指标
+- ✅ MQ 异步处理配置（CheckLog、DeviceInfoUpdate）
+- ✅ 批量更新 SQL 设计（单条 SQL 更新 500 条）
 
 ### 2026-02-28
 - ✅ 更新 Sprint 2 进度为 85%

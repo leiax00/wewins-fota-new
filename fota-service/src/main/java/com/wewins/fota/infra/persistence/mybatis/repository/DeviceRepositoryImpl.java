@@ -3,22 +3,24 @@ package com.wewins.fota.infra.persistence.mybatis.repository;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.infra.persistence.converter.DeviceConverter;
+import com.wewins.fota.infra.persistence.mybatis.dto.DeviceBatchUpdateDTO;
 import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceMapper;
 import com.wewins.fota.infra.persistence.mybatis.po.DevicePO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * DeviceRepository 的 MyBatis 实现。
- */
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class DeviceRepositoryImpl implements DeviceRepository {
@@ -26,6 +28,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     private final DeviceMapper deviceMapper;
     private final JdbcTemplate jdbcTemplate;
     private final DeviceConverter deviceConverter;
+    private final ObjectMapper objectMapper;
 
     @Override
     public List<Device> findByConditions(Long productId, String imei) {
@@ -229,5 +232,47 @@ public class DeviceRepositoryImpl implements DeviceRepository {
         String sql = "UPDATE devices SET deleted_at = NOW(), updated_at = NOW() " +
                      "WHERE id = ANY(?) AND deleted_at IS NULL";
         return jdbcTemplate.update(sql, deviceIds.toArray(new Long[0]));
+    }
+
+    @Override
+    public void updateBatch(List<Device> devices) {
+        if (devices == null || devices.isEmpty()) {
+            return;
+        }
+
+        List<DeviceBatchUpdateDTO> batchList = new ArrayList<>(devices.size());
+        for (Device device : devices) {
+            if (device.getId() == null) {
+                continue;
+            }
+
+            DeviceBatchUpdateDTO dto = DeviceBatchUpdateDTO.builder()
+                    .id(device.getId())
+                    .firstSeenAt(device.getFirstSeenAt())
+                    .lastSeenAt(device.getLastSeenAt())
+                    .versionPartsJson(toJsonString(device.getVersionParts()))
+                    .initialVersionPartsJson(toJsonString(device.getInitialVersionParts()))
+                    .build();
+
+            batchList.add(dto);
+        }
+
+        if (batchList.isEmpty()) {
+            return;
+        }
+
+        deviceMapper.batchUpdateDeviceInfo(batchList);
+    }
+
+    private String toJsonString(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            log.warn("JSON 序列化失败: {}", obj, e);
+            return null;
+        }
     }
 }

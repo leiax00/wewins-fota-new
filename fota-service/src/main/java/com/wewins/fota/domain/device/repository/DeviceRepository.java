@@ -117,4 +117,11 @@ public interface DeviceRepository {
      * @return 删除数量
      */
     int batchSoftDelete(List<Long> deviceIds);
+
+    /**
+     * 批量更新设备信息
+     *
+     * @param devices 设备列表
+     */
+    void updateBatch(List<Device> devices);
 }

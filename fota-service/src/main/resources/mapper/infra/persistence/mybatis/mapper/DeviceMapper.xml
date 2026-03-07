@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wewins.fota.infra.persistence.mybatis.mapper.DeviceMapper">
+
+    <update id="batchUpdateDeviceInfo">
+        UPDATE devices d
+        SET 
+            first_seen_at = COALESCE(v.first_seen_at, d.first_seen_at),
+            last_seen_at = v.last_seen_at,
+            version_parts = COALESCE(v.version_parts::jsonb, d.version_parts),
+            initial_version_parts = COALESCE(v.initial_version_parts::jsonb, d.initial_version_parts),
+            updated_at = NOW()
+        FROM (VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.firstSeenAt}, #{item.lastSeenAt}, #{item.versionPartsJson}, #{item.initialVersionPartsJson})
+        </foreach>
+        ) AS v(id, first_seen_at, last_seen_at, version_parts, initial_version_parts)
+        WHERE d.id = v.id
+    </update>
+
+</mapper>
