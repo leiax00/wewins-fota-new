@@ -10,7 +10,7 @@ public interface DeviceRepository {
 
     List<Device> findByConditions(Long productId, String imei);
 
-    Page<Device> pageDevices(Page<Device> page, Long productId, String imei, String status);
+    Page<Device> pageDevices(Page<Device> page, Long productId, String imei, String status, Long importBatchId);
 
     Optional<Device> findById(Long id);
 

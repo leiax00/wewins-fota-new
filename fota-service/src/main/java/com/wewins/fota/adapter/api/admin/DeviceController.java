@@ -64,8 +64,8 @@ public class DeviceController {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("分页查询设备: productId={}, imei={}, status={}, page={}, size={}",
-                    reqDTO.getProductId(), reqDTO.getImei(), reqDTO.getStatus(), reqDTO.getPage(), reqDTO.getSize());
+            log.debug("分页查询设备: productId={}, imei={}, status={}, importBatchId={}, page={}, size={}",
+                    reqDTO.getProductId(), reqDTO.getImei(), reqDTO.getStatus(), reqDTO.getImportBatchId(), reqDTO.getPage(), reqDTO.getSize());
         }
 
         Page<Device> pageResult = deviceAppService.pageDevices(reqDTO);

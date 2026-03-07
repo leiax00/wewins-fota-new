@@ -34,6 +34,11 @@ public class DevicePageReqDTO {
     private String status;
 
     /**
+     * 导入批次 ID
+     */
+    private Long importBatchId;
+
+    /**
      * 校验并设置默认值
      */
     public void validate() {

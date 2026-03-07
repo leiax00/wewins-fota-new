@@ -38,7 +38,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     }
 
     @Override
-    public Page<Device> pageDevices(Page<Device> page, Long productId, String imei, String status) {
+    public Page<Device> pageDevices(Page<Device> page, Long productId, String imei, String status, Long importBatchId) {
         LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
 
         if (productId != null) {
@@ -49,6 +49,9 @@ public class DeviceRepositoryImpl implements DeviceRepository {
         }
         if (StringUtils.hasText(status)) {
             queryWrapper.eq(DevicePO::getStatus, status.trim().toUpperCase());
+        }
+        if (importBatchId != null) {
+            queryWrapper.eq(DevicePO::getImportBatchId, importBatchId);
         }
 
         queryWrapper.orderByDesc(DevicePO::getUpdatedAt);
