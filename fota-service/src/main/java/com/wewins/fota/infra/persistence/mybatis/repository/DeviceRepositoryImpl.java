@@ -186,11 +186,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             int end = Math.min(i + batchSize, deviceIds.size());
             List<Long> batchIds = deviceIds.subList(i, end);
 
-            LambdaUpdateWrapper<DevicePO> updateWrapper = new LambdaUpdateWrapper<DevicePO>()
-                    .set(DevicePO::getTags, tagsJson)
-                    .in(DevicePO::getId, batchIds);
-
-            deviceMapper.update(null, updateWrapper);
+            deviceMapper.batchUpdateTags(batchIds, tagsJson);
         }
     }
 

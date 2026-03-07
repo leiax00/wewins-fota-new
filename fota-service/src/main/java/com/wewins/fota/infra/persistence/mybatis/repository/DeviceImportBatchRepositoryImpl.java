@@ -69,7 +69,9 @@ public class DeviceImportBatchRepositoryImpl implements DeviceImportBatchReposit
 
     @Override
     public void create(DeviceImportBatch batch) {
-        deviceImportBatchMapper.insert(deviceImportBatchConverter.toPo(batch));
+        DeviceImportBatchPO po = deviceImportBatchConverter.toPo(batch);
+        deviceImportBatchMapper.insert(po);
+        batch.setId(po.getId());
     }
 
     @Override
