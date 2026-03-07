@@ -884,6 +884,7 @@ onMounted(() => {
         <el-input
           v-model="form.imei"
           maxlength="15"
+          :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
       <el-form-item

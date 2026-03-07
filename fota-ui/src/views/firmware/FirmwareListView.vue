@@ -655,6 +655,7 @@ onMounted(() => {
         <el-select
           v-model="form.productId"
           :loading="productSearchLoading"
+          :disabled="dialogMode === 'edit'"
           filterable
           remote
           reserve-keyword
@@ -677,6 +678,7 @@ onMounted(() => {
         <el-input
           v-model="form.version"
           placeholder="1.0.0"
+          :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
 
@@ -687,6 +689,7 @@ onMounted(() => {
         <el-input
           v-model="form.internalVersion"
           placeholder="如：v1.0.0-rc.1"
+          :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
 
