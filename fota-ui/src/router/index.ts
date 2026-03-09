@@ -46,6 +46,16 @@ const baseRoutes: RouteRecordRaw[] = [
     meta: { titleKey: 'login.login', requiresAuth: false },
   },
   {
+    path: '/monitor',
+    name: 'monitor',
+    component: () => import('@/views/monitor/MonitorView.vue'),
+    meta: {
+      i18nKey: 'menu.monitor',
+      permission: 'fota:monitor:read',
+      icon: 'Monitor',
+    },
+  },
+  {
     path: '/policy/create',
     name: 'policy-create',
     component: () => import('@/views/policy/PolicyFormView.vue'),

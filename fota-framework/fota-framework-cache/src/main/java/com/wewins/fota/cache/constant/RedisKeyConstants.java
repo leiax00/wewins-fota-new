@@ -529,4 +529,98 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final String FIRMWARE_LOOKUP_KEY_TEMPLATE = "fota:cache:firmware:lookup:%s:%s:%s";
+
+    // ========== Sprint 4: 控制参数常量 ==========
+
+    /**
+     * 全局控制参数 Key
+     * <p>
+     * 示例：fota:ctrl:global
+     * </p>
+     * <p>
+     * 说明：存储全局控制参数，如 checkIntervalMultiplier、downloadDelayMultiplier、forceMaintenance 等
+     * </p>
+     */
+    public static final String CTRL_GLOBAL_KEY = "fota:ctrl:global";
+
+    /**
+     * 产品级控制参数 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.CTRL_PRODUCT_KEY_TEMPLATE, productId)
+     * </p>
+     * <p>
+     * 示例：fota:ctrl:product:1001
+     * </p>
+     * <p>
+     * 说明：存储产品级控制参数，可覆盖全局参数
+     * </p>
+     */
+    public static final String CTRL_PRODUCT_KEY_TEMPLATE = "fota:ctrl:product:%s";
+
+    /**
+     * 控制参数 TTL（7 天）
+     * <p>
+     * 控制参数变更频率较低，可长期缓存
+     * </p>
+     */
+    public static final long CTRL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    // ========== Sprint 4: 负载历史常量 ==========
+
+    /**
+     * 负载历史 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.LOAD_HISTORY_KEY_TEMPLATE, date)
+     * </p>
+     * <p>
+     * 示例：fota:load:history:20260309
+     * </p>
+     * <p>
+     * 说明：存储每日负载历史数据（JSON 数组），用于趋势分析
+     * </p>
+     */
+    public static final String LOAD_HISTORY_KEY_TEMPLATE = "fota:load:history:%s";
+
+    /**
+     * 负载历史 TTL（7 天）
+     * <p>
+     * 保留最近 7 天的负载数据用于趋势分析
+     * </p>
+     */
+    public static final long LOAD_HISTORY_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    // ========== Sprint 4: Sentinel 规则常量 ==========
+
+    /**
+     * Sentinel 规则 Key 模板
+     * <p>
+     * 使用方式：String.format(RedisKeyConstants.SENTINEL_RULE_KEY_TEMPLATE, ruleName)
+     * </p>
+     * <p>
+     * 示例：fota:sentinel:rule:upgrade_check
+     * </p>
+     * <p>
+     * 说明：存储 Sentinel 限流/熔断规则（JSON）
+     * </p>
+     */
+    public static final String SENTINEL_RULE_KEY_TEMPLATE = "fota:sentinel:rule:%s";
+
+    /**
+     * Sentinel 规则列表 Key
+     * <p>
+     * 示例：fota:sentinel:rules
+     * </p>
+     * <p>
+     * 说明：存储所有规则名称的列表，用于批量加载
+     * </p>
+     */
+    public static final String SENTINEL_RULES_LIST_KEY = "fota:sentinel:rules";
+
+    /**
+     * Sentinel 规则 TTL（7 天）
+     * <p>
+     * 规则变更后需更新，保持较长时间避免频繁加载
+     * </p>
+     */
+    public static final long SENTINEL_RULE_TTL_SECONDS = 7 * 24 * 60 * 60;
 }
