@@ -2,7 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/dev/assets/oh-my-opencode.schema.json",
   "agents": {
     "sisyphus": {
-      "model": "zhipuai-coding-plan/glm-5"
+      "model": "zhipuai-coding-plan/glm-5",
+      "variant": "medium"
     },
     "hephaestus": {
       "model": "openai/gpt-5.3-codex",
@@ -19,7 +20,8 @@
       "model": "opencode/gpt-5-nano"
     },
     "multimodal-looker": {
-      "model": "google/gemini-3-flash-preview"
+      "model": "google/gemini-3-flash-preview",
+      "variant": "medium"
     },
     "prometheus": {
       "model": "openai/gpt-5.2",
@@ -34,7 +36,8 @@
       "variant": "medium"
     },
     "atlas": {
-      "model": "openai/gpt-5.2"
+      "model": "openai/gpt-5.2",
+      "variant": "medium"
     }
   },
   "categories": {
