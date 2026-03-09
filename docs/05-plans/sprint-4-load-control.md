@@ -198,12 +198,80 @@
   qps: 12000                 # 入口 QPS
 ```
 
-#### 1.3 规则持久化
+#### 1.3 规则持久化（混合方案）
 
-- **存储**: Redis
-- **管理方式**: 
-  - 方式1: 通过管理后台 API 修改
-  - 方式2: 启动时从 Redis 加载，运行时动态更新
+**设计原则**：配置文件提供默认值 + Redis 支持运行时动态覆盖
+
+```
+启动加载流程:
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  application.yml │ ──► │   合并覆盖        │ ──► │   最终生效规则    │
+│  (默认规则)      │     │   Redis 规则      │     │                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+        │                         │
+        ▼                         ▼
+   版本控制                    运行时动态
+   部署时确定                  无需重启
+```
+
+**配置文件 (application.yml)**:
+```yaml
+app:
+  sentinel:
+    enabled: true
+    rule-source: hybrid  # config(仅配置文件)/redis(仅Redis)/hybrid(合并)
+    flow-rules:
+      - resource: upgrade:check
+        grade: QPS
+        count: 2500
+        control-behavior: RATE_LIMITER
+        max-queueing-time-ms: 50
+        enabled: true
+      - resource: upgrade:report
+        grade: QPS
+        count: 5000
+        enabled: true
+    degrade-rules:
+      - resource: UpgradeCheckService
+        grade: RT
+        count: 50
+        time-window: 30
+        min-request-amount: 100
+        slow-ratio-threshold: 0.5
+        enabled: true
+    redis:
+      flow-rules-key: fota:sentinel:flow:rules
+      degrade-rules-key: fota:sentinel:degrade:rules
+```
+
+**规则来源模式**:
+
+| 模式 | 行为 | 适用场景 |
+|------|------|---------|
+| `config` | 仅使用配置文件 | 规则固定，无需动态调整 |
+| `redis` | 仅使用 Redis | 完全动态，Redis 必须可用 |
+| `hybrid` | 配置文件 + Redis 合并（推荐） | 有默认值，支持动态覆盖 |
+
+**合并策略 (hybrid 模式)**:
+1. 加载配置文件中的规则作为基础
+2. 从 Redis 加载动态规则
+3. 按 `resource` 字段合并：Redis 规则覆盖配置文件规则
+4. Redis 中不存在的规则保留配置文件默认值
+
+**管理 API**:
+
+```
+GET  /api/admin/sentinel/config     # 查看当前配置
+GET  /api/admin/sentinel/rules      # 查看当前规则
+PUT  /api/admin/sentinel/rules/flow   # 更新流控规则（写入 Redis）
+PUT  /api/admin/sentinel/rules/degrade # 更新熔断规则（写入 Redis）
+POST /api/admin/sentinel/rules/refresh # 手动刷新规则
+```
+
+**多实例同步**:
+- 所有实例共享同一个 Redis
+- 规则更新写入 Redis 后，各实例每 30 秒自动刷新
+- 也可通过 `/rules/refresh` API 手动触发立即生效
 
 #### 1.4 多实例独立限流说明
 
@@ -682,8 +750,10 @@ record RealtimeMetrics(
 | 1.2 | 配置 Sentinel 规则 | QPS 限流 + 熔断降级 | 1h | ✅ |
 | 1.3 | 实现 SmartBackoffHandler | 智能退避算法 | 2h | ✅ |
 | 1.4 | 实现 UpgradeCheckBlockHandler | 被拒绝时返回动态间隔 | 1h | ✅ |
-| 1.5 | UpgradeCheckController 集成 | 添加 @SentinelResource 注解 | 1h | ✅ |
-| 1.6 | 单元测试 | Sentinel 相关测试 | 1h | ✅ |
+| 1.5 | 创建 SentinelProperties 配置类 | 混合方案支持 | 0.5h | ✅ |
+| 1.6 | 创建 SentinelRuleManager 规则管理服务 | 配置文件 + Redis 合并 | 1h | ✅ |
+| 1.7 | 创建 SentinelAdminController | 规则管理 API | 1h | ✅ |
+| 1.8 | 单元测试 | Sentinel 相关测试 | 1h | ✅ |
 
 ### 阶段 2: 系统负载评估 (Day 3)
 
@@ -707,9 +777,11 @@ record RealtimeMetrics(
 |---|------|------|------|------|
 | 3.1 | DynamicIntervalService | 根据负载计算间隔 | 2h | ✅ |
 | 3.2 | 控制参数 Redis 存储 | 全局 + 产品级 | 1h | ✅ |
-| 3.3 | ControlParameterController | 参数查询/更新 API | 2h | ✅ |
-| 3.4 | UpgradeResponseBuilder 集成 | 注入动态间隔 | 1h | ✅ |
-| 3.5 | 单元测试 | 动态间隔测试 | 1h | ✅ |
+| 3.3 | 控制参数 Repository 接口 | 控制参数存储接口 | 0.5h | ✅ |
+| 3.4 | 控制 Parameter Repository 实现 | Redis 控制参数存储实现 | 1h | ✅ |
+| 3.5 | ControlParameterController | 参数查询/更新 API | 1h | ✅ |
+| 3.6 | UpgradeResponseBuilder 集成 | 注入动态间隔 | 1h | ✅ |
+| 3.7 | 单元测试 | 动态间隔测试 | 1h | ✅ |
 
 ### 阶段 4: 监控集成 (Day 5-6)
 
@@ -719,10 +791,11 @@ record RealtimeMetrics(
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
 | 4.1 | MonitorApiController | 监控数据 API | 2h | ✅ |
-| 4.2 | 前端监控仪表盘 | Vue 组件开发 | 4h | ✅ |
-| 4.3 | 实时数据刷新 | 5秒轮询刷新 | 1h | ✅ |
+| 4.2 | MonitorView.vue | 监控仪表盘页面组件 | 4h | ✅ |
+| 4.3 | monitor.ts API 接口 | 监控 API 接口 | 0.5h | ✅ |
 | 4.4 | 国际化支持 | 中英文支持 | 0.5h | ✅ |
-| 4.5 | 路由配置 | /monitor 路由 | 0.5h | ✅ |
+| 4.5 | 实时数据刷新 | 5 秒轮询刷新 | 1h | ✅ |
+| 4.6 | 单元测试 | 监控功能测试 | 1h | ✅ |
 
 ### 阶段 5: 验收 (Day 7)
 
@@ -766,7 +839,10 @@ Sprint 4: [████████████████████] 100%
 | `application/load` | `DynamicIntervalService.java` | 动态间隔计算服务 |
 | `application/load` | `SmartBackoffHandler.java` | 智能退避处理器 |
 | `infra/sentinel` | `SentinelConfig.java` | Sentinel 配置类 |
+| `infra/sentinel/config` | `SentinelProperties.java` | Sentinel 配置属性类 |
+| `infra/sentinel/config` | `SentinelRuleManager.java` | 规则管理服务（合并配置+Redis） |
 | `infra/sentinel` | `UpgradeCheckBlockHandler.java` | 升级检查 BlockHandler |
+| `adapter/api/admin` | `SentinelAdminController.java` | Sentinel 规则管理 Admin API |
 | `infra/cache/repository` | `RedisLoadHistoryRepository.java` | Redis 负载历史存储 |
 | `infra/cache/repository` | `RedisControlParameterRepository.java` | Redis 控制参数存储 |
 | `adapter/api/admin` | `ControlParameterController.java` | 控制参数 Admin API |
@@ -785,6 +861,15 @@ Sprint 4: [████████████████████] 100%
 - `adapter/api/device/UpgradeCheckController.java` - 添加 @SentinelResource 注解
 
 **前端 Vue (3 个文件)**:
+
+| 路径 | 文件 | 说明 |
+|------|------|------|
+| `src/api` | `monitor.ts` | 监控 API 接口 |
+| `src/views/monitor` | `MonitorView.vue` | 监控仪表盘页面组件 |
+| `src/locales` | `zh-CN.ts` | 新增监控相关国际化文本 |
+| `src/router` | `index.ts` | 新增 /monitor 路由 |
+
+## 🔗 相关文档
 
 | 路径 | 文件 | 说明 |
 |------|------|------|
