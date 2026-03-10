@@ -64,7 +64,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 UPDATE sys_permissions
 SET menu_config = '{
   "hidden": false,
-  "keepAlive": true,
+  "keepAlive": false,
   "tabClosable": true,
   "breadcrumbHidden": false,
   "tabHidden": false,
