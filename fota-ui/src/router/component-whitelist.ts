@@ -1,5 +1,6 @@
 export type ComponentKey =
   | 'dashboard/index'
+  | 'monitor/index'
   | 'product/index'
   | 'firmware/index'
   | 'policy/index'
@@ -15,6 +16,7 @@ export type ComponentLoader = () => Promise<unknown>
 
 export const componentMap: Record<ComponentKey, ComponentLoader> = {
   'dashboard/index': () => import('@/views/dashboard/DashboardView.vue'),
+  'monitor/index': () => import('@/views/monitor/MonitorView.vue'),
   'product/index': () => import('@/views/product/ProductListView.vue'),
   'firmware/index': () => import('@/views/firmware/FirmwareListView.vue'),
   'policy/index': () => import('@/views/policy/PolicyListView.vue'),

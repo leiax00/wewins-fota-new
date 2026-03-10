@@ -37,23 +37,13 @@ declare module 'vue-router' {
   }
 }
 
-// 基础路由（登录、403、404）
+// 基础路由（登录、403、404、隐藏的表单页）
 const baseRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
     component: () => import('@/views/login/LoginView.vue'),
     meta: { titleKey: 'login.login', requiresAuth: false },
-  },
-  {
-    path: '/monitor',
-    name: 'monitor',
-    component: () => import('@/views/monitor/MonitorView.vue'),
-    meta: {
-      i18nKey: 'menu.monitor',
-      permission: 'fota:monitor:read',
-      icon: 'Monitor',
-    },
   },
   {
     path: '/policy/create',

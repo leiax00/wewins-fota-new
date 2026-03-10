@@ -8,6 +8,8 @@ import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.common.exception.BizException;
+import com.wewins.fota.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -106,8 +108,8 @@ public class SentinelRuleManager {
             log.info("Flow rules updated to Redis: {} rules", rules.size());
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize flow rules", e);
-            throw new com.wewins.fota.common.exception.BizException(
-                    com.wewins.fota.common.exception.ErrorCode.INTERNAL_ERROR,
+            throw new BizException(
+                    ErrorCode.INTERNAL_ERROR.getCode(),
                     "流控规则序列化失败: " + e.getMessage(), e);
         }
     }
@@ -128,8 +130,8 @@ public class SentinelRuleManager {
             log.info("Degrade rules updated to Redis: {} rules", rules.size());
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize degrade rules", e);
-            throw new com.wewins.fota.common.exception.BizException(
-                    com.wewins.fota.common.exception.ErrorCode.INTERNAL_ERROR,
+            throw new BizException(
+                    ErrorCode.INTERNAL_ERROR.getCode(),
                     "降级规则序列化失败: " + e.getMessage(), e);
         }
     }
