@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,6 +24,10 @@ public class RealtimeMetricsDTO {
 
     private double currentQps;
 
+    private double checkQps;
+
+    private double reportQps;
+
     private double p99Latency;
 
     private int activeRequests;
@@ -30,6 +35,30 @@ public class RealtimeMetricsDTO {
     private double blockRate;
 
     private String circuitState;
+
+    private String region;
+
+    private String host;
+
+    private double hostCpuUsage;
+
+    private double hostMemoryUsage;
+
+    private double networkInBytes;
+
+    private double networkOutBytes;
+
+    private HostMetricsDTO hostSummary;
+
+    private InstanceMetricsDTO instanceSummary;
+
+    private List<HostMetricsDTO> hosts;
+
+    private List<InstanceMetricsDTO> instances;
+
+    private ControlStateDTO controlState;
+
+    private List<HotProductDTO> hotProducts;
 
     private Instant timestamp;
 }

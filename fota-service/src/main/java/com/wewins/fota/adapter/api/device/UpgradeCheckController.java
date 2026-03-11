@@ -9,11 +9,11 @@ import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.util.HttpUtils;
+import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.sentinel.UpgradeCheckBlockHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,9 +43,7 @@ public class UpgradeCheckController {
 
     private final UpgradeCheckService upgradeCheckService;
     private final UpgradeCheckBlockHandler blockHandler;
-
-    @Value("${app.node.code:main}")
-    private String region;
+    private final NodeIdentity nodeIdentity;
 
     /**
      * 检查设备升级（GET 方法）
@@ -133,7 +131,7 @@ public class UpgradeCheckController {
         return CheckLogContext.builder()
                 .clientIp(HttpUtils.extractClientIp(httpRequest))
                 .userAgent(httpRequest.getHeader("User-Agent"))
-                .region(region)
+                .region(nodeIdentity.regionCode())
                 .build();
     }
 

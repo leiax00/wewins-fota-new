@@ -1,0 +1,125 @@
+# FOTA 服务告警规则
+
+groups:
+  - name: fota-alerts
+    interval: 30s
+    rules:
+      # ==================== 服务可用性 ====================
+      
+      # 服务实例不可用
+      - alert: ServiceDown
+        expr: up{job="fota-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "FOTA 服务实例不可用"
+          description: "实例 {{ $labels.instance }} 已宕机超过 1 分钟"
+
+      # ==================== JVM 指标 ====================
+      
+      # JVM 堆内存使用率过高
+      - alert: HighHeapMemory
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM 堆内存使用率过高"
+          description: "实例 {{ $labels.instance }} 堆内存使用率 {{ $value | humanizePercentage }}，已持续 5 分钟"
+
+      # JVM 堆内存使用率严重
+      - alert: CriticalHeapMemory
+        expr: jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "JVM 堆内存即将耗尽"
+          description: "实例 {{ $labels.instance }} 堆内存使用率 {{ $value | humanizePercentage }}，可能导致 OOM"
+
+      # GC 时间过长
+      - alert: LongGCPause
+        expr: rate(jvm_gc_pause_seconds_sum[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GC 暂停时间过长"
+          description: "实例 {{ $labels.instance }} 过去 5 分钟 GC 暂停率 {{ $value }}s/s"
+
+      # ==================== HTTP 指标 ====================
+      
+      # API 响应时间过高
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le)) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API P99 延迟过高"
+          description: "P99 延迟 {{ $value | humanizeDuration }}，已持续 5 分钟"
+
+      # API 响应时间严重
+      - alert: CriticalLatency
+        expr: histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API P99 延迟严重"
+          description: "P99 延迟 {{ $value | humanizeDuration }}，严重影响用户体验"
+
+      # HTTP 错误率过高
+      - alert: HighErrorRate
+        expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API 错误率过高"
+          description: "5xx 错误率 {{ $value | humanizePercentage }}，已持续 5 分钟"
+
+      # ==================== 系统指标 ====================
+      
+      # CPU 使用率过高
+      - alert: HighCPUUsage
+        expr: system_cpu_usage > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "实例 {{ $labels.instance }} CPU 使用率 {{ $value | humanizePercentage }}"
+
+      # CPU 使用率严重
+      - alert: CriticalCPUUsage
+        expr: system_cpu_usage > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPU 使用率严重过高"
+          description: "实例 {{ $labels.instance }} CPU 使用率 {{ $value | humanizePercentage }}，可能导致服务不可用"
+
+      # ==================== 业务指标 ====================
+      
+      # 限流率过高
+      - alert: HighRateLimit
+        expr: rate(fota_rate_limited_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "限流率过高"
+          description: "资源 {{ $labels.resource }} 限流率 {{ $value }}/s，可能需要扩容"
+
+      # 升级失败率过高
+      - alert: HighUpgradeFailure
+        expr: rate(fota_upgrade_events_total{event="DL_FAIL"}[15m]) / rate(fota_upgrade_events_total{event="DL_START"}[15m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "升级失败率过高"
+          description: "产品 {{ $labels.product }} 升级失败率 {{ $value | humanizePercentage }}"

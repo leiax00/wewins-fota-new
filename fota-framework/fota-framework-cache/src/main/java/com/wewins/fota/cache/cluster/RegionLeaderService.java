@@ -32,10 +32,10 @@ public class RegionLeaderService {
 
     @PostConstruct
     public void init() {
-        String regionCode = RegionCodeResolver.resolveRegionCode(clusterProperties.getNode().getCode());
+        String nodeCode = clusterProperties.getNode().getCode();
+        String regionCode = RegionCodeResolver.resolveRegionCode(nodeCode);
         this.leaderKey = String.format(RedisKeyConstants.REGION_LEADER_KEY_TEMPLATE, regionCode);
-        String instanceId = clusterProperties.getRegistry().getInstanceId();
-        this.token = regionCode + ":" + instanceId + ":" + UUID.randomUUID();
+        this.token = regionCode + ":" + nodeCode + ":" + UUID.randomUUID();
         tryAcquire();
     }
 

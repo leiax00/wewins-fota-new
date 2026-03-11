@@ -109,7 +109,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       probes:
@@ -119,6 +119,14 @@ management:
     metrics:
       export:
         enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name:fota-service}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
 
 # 日志配置
 logging:
@@ -144,12 +152,17 @@ app:
     baseUrl: ${NODE_BASE_URL:https://main.api.xxx.com}
     timeZone: ${NODE_TIME_ZONE:Asia/Shanghai}
 
+
   # 服务注册
   registry:
     enabled: ${REGISTRY_ENABLED:true}
     ttlSeconds: ${REGISTRY_TTL_SECONDS:90}
-    heartbeatIntervalMs: ${REGISTRY_HEARTBEAT_INTERVAL_MS:20000}
-    instanceId: ${INSTANCE_ID:1}
+    heartbeatIntervalMs: ${REGISTRY_HEARTBEAT_INTERVAL_MS:30000}
+
+  monitoring:
+    prometheus:
+      enabled: ${PROMETHEUS_ENABLED:true}
+      url: ${PROMETHEUS_URL:http://localhost:19090}
 
   # 分区主节点选举
   leader:

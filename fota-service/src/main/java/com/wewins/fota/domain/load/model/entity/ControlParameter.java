@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.load.model.entity;
 
+import com.wewins.fota.domain.load.model.enums.ProductPriority;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,6 +28,16 @@ public class ControlParameter {
 
     private Double downloadDelayMultiplier;
 
+    private Double intervalBias;
+
+    private Integer minCheckIntervalSeconds;
+
+    private Integer maxCheckIntervalSeconds;
+
+    private ProductPriority priority;
+
+    private Boolean hotspotProtectionEnabled;
+
     private Boolean forceMaintenance;
 
     private String maintenanceMessage;
@@ -47,6 +58,11 @@ public class ControlParameter {
         return ControlParameter.builder()
                 .checkIntervalMultiplier(1.0)
                 .downloadDelayMultiplier(1.0)
+                .intervalBias(1.0)
+                .minCheckIntervalSeconds(1800)
+                .maxCheckIntervalSeconds(172800)
+                .priority(ProductPriority.NORMAL)
+                .hotspotProtectionEnabled(false)
                 .forceMaintenance(false)
                 .maintenanceMessage("")
                 .updatedAt(Instant.now())
@@ -58,6 +74,11 @@ public class ControlParameter {
                 .productId(productId)
                 .checkIntervalMultiplier(1.0)
                 .downloadDelayMultiplier(1.0)
+                .intervalBias(1.0)
+                .minCheckIntervalSeconds(1800)
+                .maxCheckIntervalSeconds(172800)
+                .priority(ProductPriority.NORMAL)
+                .hotspotProtectionEnabled(false)
                 .forceMaintenance(false)
                 .maintenanceMessage("")
                 .updatedAt(Instant.now())

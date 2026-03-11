@@ -36,7 +36,6 @@ public class ClusterProperties {
     public static class ServiceRegistry {
         private boolean enabled = true;
         private long ttlSeconds = 90;
-        private String instanceId = "1";
     }
 
     @Data

@@ -3,6 +3,8 @@ package com.wewins.fota.application.load;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
+import com.wewins.fota.infra.metrics.NodeIdentity;
+import com.wewins.fota.infra.metrics.PrometheusClient;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,12 +16,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * 系统负载指标服务实现
- * <p>
- * 采集 CPU、内存、QPS、延迟、连接池等指标，计算综合负载评分
- * </p>
- */
 @Slf4j
 @Service
 public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
@@ -27,13 +23,22 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     private final OperatingSystemMXBean osBean;
     private final MemoryMXBean memoryBean;
     private final MeterRegistry meterRegistry;
+    private final PrometheusClient prometheusClient;
+    private final String hostLabel;
+    private final String region;
 
     private final AtomicReference<LoadSnapshot> cachedSnapshot = new AtomicReference<>();
     private final AtomicReference<Instant> lastUpdateTime = new AtomicReference<>(Instant.EPOCH);
     private static final Duration CACHE_TTL = Duration.ofSeconds(1);
 
-    public SystemLoadIndicatorImpl(MeterRegistry meterRegistry) {
+    public SystemLoadIndicatorImpl(
+            MeterRegistry meterRegistry,
+            PrometheusClient prometheusClient,
+            NodeIdentity nodeIdentity) {
         this.meterRegistry = meterRegistry;
+        this.prometheusClient = prometheusClient;
+        this.hostLabel = nodeIdentity.hostCode();
+        this.region = nodeIdentity.regionCode();
         this.osBean = ManagementFactory.getOperatingSystemMXBean();
         this.memoryBean = ManagementFactory.getMemoryMXBean();
     }
@@ -73,7 +78,17 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
         double p99Latency = getP99Latency();
         double connectionPoolUsage = getConnectionPoolUsage();
 
-        int totalScore = calculateTotalScore(cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage);
+        double hostCpuUsage = getHostCpuUsage();
+        double hostMemoryUsage = getHostMemoryUsage();
+        double networkInBytes = getNetworkInBytes();
+        double networkOutBytes = getNetworkOutBytes();
+        double checkQps = getCheckQps();
+        double reportQps = getReportQps();
+
+        int totalScore = calculateTotalScore(
+                cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage,
+                hostCpuUsage, hostMemoryUsage, checkQps, reportQps
+        );
         LoadLevel level = LoadLevel.fromScore(totalScore);
 
         return LoadSnapshot.builder()
@@ -85,11 +100,24 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
                 .qps(qps)
                 .p99Latency(p99Latency)
                 .connectionPoolUsage(connectionPoolUsage)
+                .hostCpuUsage(hostCpuUsage)
+                .hostMemoryUsage(hostMemoryUsage)
+                .networkInBytes(networkInBytes)
+                .networkOutBytes(networkOutBytes)
+                .checkQps(checkQps)
+                .reportQps(reportQps)
                 .build();
     }
 
     private double getCpuUsage() {
         try {
+            var gauge = meterRegistry.find("system.cpu.usage").gauge();
+            if (gauge != null) {
+                double usage = gauge.value();
+                if (usage >= 0 && usage <= 1) {
+                    return usage * 100;
+                }
+            }
             double load = osBean.getSystemLoadAverage();
             int processors = osBean.getAvailableProcessors();
             if (load < 0 || processors <= 0) {
@@ -118,6 +146,10 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     }
 
     private double getCurrentQps() {
+        double regionQps = prometheusClient.getRegionHttpQps(region);
+        if (regionQps >= 0) {
+            return regionQps;
+        }
         try {
             var timer = meterRegistry.find("http.server.requests").timer();
             if (timer == null) {
@@ -132,6 +164,10 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     }
 
     private double getP99Latency() {
+        double regionP99 = prometheusClient.getRegionP99Latency(region);
+        if (regionP99 >= 0) {
+            return regionP99;
+        }
         try {
             var timer = meterRegistry.find("http.server.requests").timer();
             if (timer == null) {
@@ -163,17 +199,65 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
         }
     }
 
-    private int calculateTotalScore(double cpu, double memory, double qps, double p99, double pool) {
-        int cpuScore = calculateMetricScore(cpu, 70, 90, 30);
-        int memoryScore = calculateMetricScore(memory, 75, 90, 20);
-        int qpsScore = calculateMetricScore(qps, 8000, 12000, 20);
-        int p99Score = calculateMetricScore(p99, 30, 50, 15);
-        int poolScore = calculateMetricScore(pool, 80, 95, 15);
+    private double getHostCpuUsage() {
+        if (hostLabel == null || hostLabel.isEmpty()) {
+            return -1;
+        }
+        return prometheusClient.getHostCpuUsage(hostLabel);
+    }
 
-        return cpuScore + memoryScore + qpsScore + p99Score + poolScore;
+    private double getHostMemoryUsage() {
+        if (hostLabel == null || hostLabel.isEmpty()) {
+            return -1;
+        }
+        return prometheusClient.getHostMemoryUsage(hostLabel);
+    }
+
+    private double getNetworkInBytes() {
+        if (hostLabel == null || hostLabel.isEmpty()) {
+            return -1;
+        }
+        return prometheusClient.getHostNetworkInBytes(hostLabel);
+    }
+
+    private double getNetworkOutBytes() {
+        if (hostLabel == null || hostLabel.isEmpty()) {
+            return -1;
+        }
+        return prometheusClient.getHostNetworkOutBytes(hostLabel);
+    }
+
+    private double getCheckQps() {
+        return prometheusClient.getRegionCheckQps(region);
+    }
+
+    private double getReportQps() {
+        return prometheusClient.getRegionReportQps(region);
+    }
+
+    private int calculateTotalScore(
+            double cpu, double memory, double qps, double p99, double pool,
+            double hostCpu, double hostMemory, double checkQps, double reportQps) {
+        
+        int cpuScore = calculateMetricScore(cpu, 70, 90, 20);
+        int memoryScore = calculateMetricScore(memory, 75, 90, 15);
+        int qpsScore = calculateMetricScore(qps, 8000, 12000, 15);
+        int p99Score = calculateMetricScore(p99, 30, 50, 10);
+        int poolScore = calculateMetricScore(pool, 80, 95, 10);
+
+        int hostCpuScore = hostCpu >= 0 ? calculateMetricScore(hostCpu, 70, 90, 15) : 0;
+        int hostMemoryScore = hostMemory >= 0 ? calculateMetricScore(hostMemory, 75, 90, 10) : 0;
+        int checkQpsScore = checkQps >= 0 ? calculateMetricScore(checkQps, 2000, 3000, 3) : 0;
+        int reportQpsScore = reportQps >= 0 ? calculateMetricScore(reportQps, 4000, 6000, 2) : 0;
+
+        return cpuScore + memoryScore + qpsScore + p99Score + poolScore
+                + hostCpuScore + hostMemoryScore + checkQpsScore + reportQpsScore;
     }
 
     private int calculateMetricScore(double value, double warning, double critical, int maxScore) {
+        if (value < 0) {
+            return 0;
+        }
         if (value >= critical) {
             return maxScore;
         }

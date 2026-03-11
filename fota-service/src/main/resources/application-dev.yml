@@ -29,6 +29,15 @@ security:
     secret: ${JWT_SECRET:wewins-fota-jwt-secret-key-change-in-development-2026}
 
 app:
+  mode: main
+
+  # 节点配置（main 和 region 共用）
+  node:
+    code: main-lax-svc
+    name: 主区域
+    baseUrl: https://main.api.xxx.com
+    timeZone: Asia/Shanghai
+
   main:
     bootstrapSecret: ${APP_MAIN_BOOTSTRAP_SECRET:development-bootstrap-secret}
 

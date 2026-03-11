@@ -4,21 +4,6 @@ import com.wewins.fota.domain.load.model.enums.LoadLevel;
 
 import java.time.Instant;
 
-/**
- * 系统负载快照
- * <p>
- * 记录某一时刻的系统负载状态，用于负载评估和趋势分析
- * </p>
- *
- * @param timestamp          快照时间戳
- * @param totalScore         综合评分 (0-100)
- * @param level              负载级别
- * @param cpuUsage           CPU 使用率 %
- * @param memoryUsage        JVM 堆内存使用率 %
- * @param qps                当前 QPS
- * @param p99Latency         P99 延迟 ms
- * @param connectionPoolUsage 连接池使用率 %
- */
 public record LoadSnapshot(
         Instant timestamp,
         int totalScore,
@@ -27,7 +12,13 @@ public record LoadSnapshot(
         double memoryUsage,
         double qps,
         double p99Latency,
-        double connectionPoolUsage
+        double connectionPoolUsage,
+        double hostCpuUsage,
+        double hostMemoryUsage,
+        double networkInBytes,
+        double networkOutBytes,
+        double checkQps,
+        double reportQps
 ) {
     public LoadSnapshot {
         if (timestamp == null) {
@@ -62,6 +53,12 @@ public record LoadSnapshot(
         private double qps;
         private double p99Latency;
         private double connectionPoolUsage;
+        private double hostCpuUsage;
+        private double hostMemoryUsage;
+        private double networkInBytes;
+        private double networkOutBytes;
+        private double checkQps;
+        private double reportQps;
 
         public LoadSnapshotBuilder timestamp(Instant timestamp) {
             this.timestamp = timestamp;
@@ -103,6 +100,36 @@ public record LoadSnapshot(
             return this;
         }
 
+        public LoadSnapshotBuilder hostCpuUsage(double hostCpuUsage) {
+            this.hostCpuUsage = hostCpuUsage;
+            return this;
+        }
+
+        public LoadSnapshotBuilder hostMemoryUsage(double hostMemoryUsage) {
+            this.hostMemoryUsage = hostMemoryUsage;
+            return this;
+        }
+
+        public LoadSnapshotBuilder networkInBytes(double networkInBytes) {
+            this.networkInBytes = networkInBytes;
+            return this;
+        }
+
+        public LoadSnapshotBuilder networkOutBytes(double networkOutBytes) {
+            this.networkOutBytes = networkOutBytes;
+            return this;
+        }
+
+        public LoadSnapshotBuilder checkQps(double checkQps) {
+            this.checkQps = checkQps;
+            return this;
+        }
+
+        public LoadSnapshotBuilder reportQps(double reportQps) {
+            this.reportQps = reportQps;
+            return this;
+        }
+
         public LoadSnapshot build() {
             if (level == null) {
                 level = LoadLevel.fromScore(totalScore);
@@ -110,7 +137,7 @@ public record LoadSnapshot(
             if (timestamp == null) {
                 timestamp = Instant.now();
             }
-            return new LoadSnapshot(timestamp, totalScore, level, cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage);
+            return new LoadSnapshot(timestamp, totalScore, level, cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage, hostCpuUsage, hostMemoryUsage, networkInBytes, networkOutBytes, checkQps, reportQps);
         }
     }
 }

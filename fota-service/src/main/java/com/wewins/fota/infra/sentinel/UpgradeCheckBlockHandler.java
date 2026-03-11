@@ -6,6 +6,7 @@ import com.wewins.fota.application.load.SmartBackoffHandler;
 import com.wewins.fota.domain.load.model.vo.BackoffResult;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
+import com.wewins.fota.infra.metrics.FotaMetrics;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowException;
@@ -24,6 +25,7 @@ public class UpgradeCheckBlockHandler {
 
     private final SmartBackoffHandler backoffHandler;
     private final SystemLoadIndicator loadIndicator;
+    private final FotaMetrics fotaMetrics;
 
     public UpgradeCheckRespDTO handleBlock(
             com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO request,
@@ -32,6 +34,7 @@ public class UpgradeCheckBlockHandler {
         LoadSnapshot load = loadIndicator.getSnapshot();
         String reason = getBlockedReason(ex);
         BackoffResult backoff = backoffHandler.calculateBackoff(reason, load);
+        fotaMetrics.recordRateLimited("upgrade:check", reason);
 
         log.warn("Request blocked: imei={}, reason={}, backoff={}s",
                 request.getImei(), reason, backoff.retryAfterSeconds());

@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.application.load.DynamicIntervalService;
 import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckContext;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
@@ -28,6 +29,7 @@ import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog;
 import com.wewins.fota.domain.reporting.service.CheckLogGateway;
+import com.wewins.fota.infra.metrics.FotaMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -77,6 +79,8 @@ public class UpgradeCheckService {
     private final DeviceCheckLogBuilder checkLogBuilder;
     private final DeviceInfoUpdateGateway deviceInfoUpdateGateway;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final DynamicIntervalService dynamicIntervalService;
+    private final FotaMetrics fotaMetrics;
 
     public UpgradeCheckService(
             DeviceRepository deviceRepository,
@@ -93,7 +97,9 @@ public class UpgradeCheckService {
             CheckLogGateway checkLogGateway,
             DeviceCheckLogBuilder checkLogBuilder,
             DeviceInfoUpdateGateway deviceInfoUpdateGateway,
-            FirmwareVersionRepository firmwareVersionRepository) {
+            FirmwareVersionRepository firmwareVersionRepository,
+            DynamicIntervalService dynamicIntervalService,
+            FotaMetrics fotaMetrics) {
         this.deviceRepository = deviceRepository;
         this.deviceCacheService = deviceCacheService;
         this.upgradePolicyRepository = upgradePolicyRepository;
@@ -109,6 +115,8 @@ public class UpgradeCheckService {
         this.checkLogBuilder = checkLogBuilder;
         this.deviceInfoUpdateGateway = deviceInfoUpdateGateway;
         this.firmwareVersionRepository = firmwareVersionRepository;
+        this.dynamicIntervalService = dynamicIntervalService;
+        this.fotaMetrics = fotaMetrics;
     }
 
     /**
@@ -172,6 +180,7 @@ public class UpgradeCheckService {
             return ctx.getResult();
         } finally {
             recordCheckLog(ctx);
+            recordBusinessMetrics(ctx);
             checkAndSendDeviceInfoUpdate(ctx);
         }
     }
@@ -247,7 +256,12 @@ public class UpgradeCheckService {
         
         if (policies.isEmpty()) {
             log.debug("未找到适用的升级策略: deviceId={}, versionId={}", ctx.deviceId(), ctx.getVersionId());
-            ctx.setResult(CheckResult.noUpdate(ctx.getRequestId()));
+            CheckResult result = CheckResult.noUpdate(ctx.getRequestId());
+            result.setCheckInterval(dynamicIntervalService.calculateCheckInterval(
+                    ctx.productId(),
+                    ctx.getRequest().getCheckMode() == CheckMode.AUTO
+            ));
+            ctx.setResult(result);
             return;
         }
 
@@ -348,6 +362,9 @@ public class UpgradeCheckService {
     }
 
     private void recordCheckLog(CheckContext ctx) {
+        if (!ctx.hasResult()) {
+            return;
+        }
         try {
             DeviceCheckLog checkLog = checkLogBuilder.build(
                     ctx.getRequest(), 
@@ -361,6 +378,26 @@ public class UpgradeCheckService {
             log.error("检查日志记录失败: imei={}, requestId={}",
                     ctx.imei(),
                     ctx.getRequestId(), e);
+        }
+    }
+
+    private void recordBusinessMetrics(CheckContext ctx) {
+        if (!ctx.hasResult()) {
+            return;
+        }
+        String productCode = ctx.getProduct() != null ? ctx.getProduct().getModel() : ctx.productModel();
+        String decision = ctx.getResult().getDecision() != null ? ctx.getResult().getDecision().name() : "UNKNOWN";
+        fotaMetrics.recordDeviceCheck(productCode, decision);
+
+        if (ctx.getMatchedPolicy() != null) {
+            boolean grayHit = ctx.getMatchedPolicy().getGrayRate() != null && ctx.getMatchedPolicy().getGrayRate() > 0;
+            fotaMetrics.recordPolicyMatch(productCode, true, grayHit);
+        } else {
+            fotaMetrics.recordPolicyMatch(productCode, false, false);
+        }
+
+        if (ctx.getRateLimitDecision() != null && !ctx.getRateLimitDecision().isAllowed()) {
+            fotaMetrics.recordRateLimited("device-rate-limit", ctx.getRateLimitDecision().getReason());
         }
     }
 

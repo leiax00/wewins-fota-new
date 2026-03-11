@@ -2,6 +2,7 @@ package com.wewins.fota.application.load;
 
 import com.wewins.fota.domain.load.model.entity.ControlParameter;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
+import com.wewins.fota.domain.load.model.enums.ProductPriority;
 import com.wewins.fota.domain.load.repository.ControlParameterRepository;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
 import lombok.RequiredArgsConstructor;
@@ -27,19 +28,23 @@ public class DynamicIntervalService {
 
     public int calculateCheckInterval(Long productId, Boolean autoMode) {
         LoadLevel level = loadIndicator.getLoadLevel();
+        ControlParameter param = getEffectiveParameter(productId);
         double loadMultiplier = getLoadMultiplier(level);
-        double controlMultiplier = getControlCheckIntervalMultiplier(productId);
+        double controlMultiplier = getCheckIntervalMultiplier(param);
+        double biasMultiplier = getIntervalBias(param) * getPriorityBias(param);
 
         int baseInterval = Boolean.TRUE.equals(autoMode) ? BASE_AUTO_INTERVAL : BASE_MANUAL_INTERVAL;
-        int interval = (int) (baseInterval * loadMultiplier * controlMultiplier);
+        int interval = (int) Math.round(baseInterval * loadMultiplier * controlMultiplier * biasMultiplier);
+        interval = applyJitter(interval);
 
-        return clamp(interval, MIN_CHECK_INTERVAL, MAX_CHECK_INTERVAL);
+        return clamp(interval, getMinCheckInterval(param), getMaxCheckInterval(param));
     }
 
     public int calculateDownloadDelay(Long productId) {
         LoadLevel level = loadIndicator.getLoadLevel();
         double loadMultiplier = getLoadMultiplier(level);
-        double controlMultiplier = getControlDownloadDelayMultiplier(productId);
+        ControlParameter param = getEffectiveParameter(productId);
+        double controlMultiplier = getDownloadDelayMultiplier(param);
 
         int delay = (int) (BASE_DOWNLOAD_DELAY * loadMultiplier * controlMultiplier);
         return Math.max(0, delay);
@@ -51,39 +56,97 @@ public class DynamicIntervalService {
     }
 
     private double getLoadMultiplier(LoadLevel level) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
         return switch (level) {
-            case LOW -> 0.8 + random.nextDouble(0.2);
-            case NORMAL -> 1.0 + random.nextDouble(0.5);
-            case HIGH -> 1.5 + random.nextDouble(1.0);
-            case CRITICAL -> 2.5 + random.nextDouble(1.5);
+            case LOW -> 0.9;
+            case NORMAL -> 1.0;
+            case HIGH -> 1.6;
+            case CRITICAL -> 3.2;
         };
     }
 
-    private double getControlCheckIntervalMultiplier(Long productId) {
-        ControlParameter param = getEffectiveParameter(productId);
+    private double getCheckIntervalMultiplier(ControlParameter param) {
         if (param != null && param.getCheckIntervalMultiplier() != null) {
             return param.getCheckIntervalMultiplier();
         }
         return 1.0;
     }
 
-    private double getControlDownloadDelayMultiplier(Long productId) {
-        ControlParameter param = getEffectiveParameter(productId);
+    private double getDownloadDelayMultiplier(ControlParameter param) {
         if (param != null && param.getDownloadDelayMultiplier() != null) {
             return param.getDownloadDelayMultiplier();
         }
         return 1.0;
     }
 
+    private double getIntervalBias(ControlParameter param) {
+        if (param != null && param.getIntervalBias() != null && param.getIntervalBias() > 0) {
+            return param.getIntervalBias();
+        }
+        return 1.0;
+    }
+
+    private double getPriorityBias(ControlParameter param) {
+        ProductPriority priority = param != null && param.getPriority() != null
+                ? param.getPriority()
+                : ProductPriority.NORMAL;
+        return priority.getIntervalBias();
+    }
+
+    private int getMinCheckInterval(ControlParameter param) {
+        if (param != null && param.getMinCheckIntervalSeconds() != null && param.getMinCheckIntervalSeconds() > 0) {
+            return param.getMinCheckIntervalSeconds();
+        }
+        return MIN_CHECK_INTERVAL;
+    }
+
+    private int getMaxCheckInterval(ControlParameter param) {
+        if (param != null && param.getMaxCheckIntervalSeconds() != null && param.getMaxCheckIntervalSeconds() > 0) {
+            return param.getMaxCheckIntervalSeconds();
+        }
+        return MAX_CHECK_INTERVAL;
+    }
+
     private ControlParameter getEffectiveParameter(Long productId) {
+        ControlParameter global = controlParameterRepository.getGlobal().orElse(ControlParameter.createGlobalDefault());
         if (productId != null) {
             Optional<ControlParameter> productParam = controlParameterRepository.getByProduct(productId);
             if (productParam.isPresent()) {
-                return productParam.get();
+                return merge(global, productParam.get());
             }
         }
-        return controlParameterRepository.getGlobal().orElse(null);
+        return global;
+    }
+
+    private ControlParameter merge(ControlParameter global, ControlParameter product) {
+        if (global == null) {
+            return product;
+        }
+        if (product == null) {
+            return global;
+        }
+        return ControlParameter.builder()
+                .productId(product.getProductId())
+                .checkIntervalMultiplier(firstNonNull(product.getCheckIntervalMultiplier(), global.getCheckIntervalMultiplier()))
+                .downloadDelayMultiplier(firstNonNull(product.getDownloadDelayMultiplier(), global.getDownloadDelayMultiplier()))
+                .intervalBias(firstNonNull(product.getIntervalBias(), global.getIntervalBias()))
+                .minCheckIntervalSeconds(firstNonNull(product.getMinCheckIntervalSeconds(), global.getMinCheckIntervalSeconds()))
+                .maxCheckIntervalSeconds(firstNonNull(product.getMaxCheckIntervalSeconds(), global.getMaxCheckIntervalSeconds()))
+                .priority(firstNonNull(product.getPriority(), global.getPriority()))
+                .hotspotProtectionEnabled(firstNonNull(product.getHotspotProtectionEnabled(), global.getHotspotProtectionEnabled()))
+                .forceMaintenance(firstNonNull(product.getForceMaintenance(), global.getForceMaintenance()))
+                .maintenanceMessage(firstNonNull(product.getMaintenanceMessage(), global.getMaintenanceMessage()))
+                .updatedAt(firstNonNull(product.getUpdatedAt(), global.getUpdatedAt()))
+                .updatedBy(firstNonNull(product.getUpdatedBy(), global.getUpdatedBy()))
+                .build();
+    }
+
+    private int applyJitter(int interval) {
+        double jitter = ThreadLocalRandom.current().nextDouble(0.95, 1.05);
+        return (int) Math.round(interval * jitter);
+    }
+
+    private <T> T firstNonNull(T primary, T fallback) {
+        return primary != null ? primary : fallback;
     }
 
     private int clamp(int value, int min, int max) {

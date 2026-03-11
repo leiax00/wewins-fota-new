@@ -6,12 +6,15 @@ import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
 import com.wewins.fota.application.reporting.UpgradeReportAppService;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.util.HttpUtils;
+import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.model.entity.UpgradeReport;
+import com.wewins.fota.infra.metrics.FotaMetrics;
+import com.wewins.fota.infra.metrics.NodeIdentity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,9 +39,10 @@ public class UpgradeReportController {
 
     private final UpgradeReportAppService upgradeReportAppService;
     private final ObjectMapper objectMapper;
-
-    @Value("${app.node.code:main}")
-    private String region;
+    private final DeviceRepository deviceRepository;
+    private final ProductRepository productRepository;
+    private final FotaMetrics fotaMetrics;
+    private final NodeIdentity nodeIdentity;
 
     /**
      * 上报升级状态
@@ -56,10 +60,23 @@ public class UpgradeReportController {
             HttpServletRequest httpRequest) {
         String detailsJson = serializeDetails(requestBody.getDetails());
         String clientIp = HttpUtils.extractClientIp(httpRequest);
-        UpgradeReport report = upgradeReportAppService.toDomain(requestBody, detailsJson, clientIp, region);
+        UpgradeReport report = upgradeReportAppService.toDomain(
+                requestBody,
+                detailsJson,
+                clientIp,
+                nodeIdentity.regionCode()
+        );
         upgradeReportAppService.reportUpgrade(report);
+        fotaMetrics.recordUpgradeEvent(resolveProductCode(requestBody.getImei()), requestBody.getEvent().name());
 
         return ResponseEntity.ok().build();
+    }
+
+    private String resolveProductCode(String imei) {
+        return deviceRepository.findByImei(imei)
+                .flatMap(device -> productRepository.findById(device.getProductId()))
+                .map(product -> product.getModel())
+                .orElse("unknown");
     }
 
     /**

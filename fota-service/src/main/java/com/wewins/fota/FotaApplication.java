@@ -2,6 +2,7 @@ package com.wewins.fota;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 import java.util.TimeZone;
 
@@ -26,6 +27,7 @@ import java.util.TimeZone;
  * @since 0.1.0
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class FotaApplication {
 
     /**
