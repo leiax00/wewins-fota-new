@@ -257,10 +257,7 @@ public class UpgradeCheckService {
         if (policies.isEmpty()) {
             log.debug("未找到适用的升级策略: deviceId={}, versionId={}", ctx.deviceId(), ctx.getVersionId());
             CheckResult result = CheckResult.noUpdate(ctx.getRequestId());
-            result.setCheckInterval(dynamicIntervalService.calculateCheckInterval(
-                    ctx.productId(),
-                    ctx.getRequest().getCheckMode() == CheckMode.AUTO
-            ));
+            result.setCheckInterval(dynamicIntervalService.calculateCheckInterval(ctx.productId()));
             ctx.setResult(result);
             return;
         }
@@ -273,8 +270,7 @@ public class UpgradeCheckService {
                 ctx.getDevice(),
                 ctx.getMatchedPolicy(),
                 ctx.getRequestId(),
-                ctx.getRequest().getLang(),
-                ctx.getRequest().getCheckMode() == CheckMode.AUTO
+                ctx.getRequest().getLang()
         );
         ctx.setResult(result);
     }
@@ -385,15 +381,19 @@ public class UpgradeCheckService {
         if (!ctx.hasResult()) {
             return;
         }
-        String productCode = ctx.getProduct() != null ? ctx.getProduct().getModel() : ctx.productModel();
+        String imei = ctx.imei();
+        String productModel = ctx.getProduct() != null ? ctx.getProduct().getModel() : ctx.productModel();
         String decision = ctx.getResult().getDecision() != null ? ctx.getResult().getDecision().name() : "UNKNOWN";
-        fotaMetrics.recordDeviceCheck(productCode, decision);
+        fotaMetrics.recordDeviceCheck(productModel, decision);
 
-        if (ctx.getMatchedPolicy() != null) {
-            boolean grayHit = ctx.getMatchedPolicy().getGrayRate() != null && ctx.getMatchedPolicy().getGrayRate() > 0;
-            fotaMetrics.recordPolicyMatch(productCode, true, grayHit);
+        UpgradePolicy policy = ctx.getMatchedPolicy();
+        if (policy != null) {
+            // 判断是否命中灰度
+            int grayRate = policy.getGrayRate();
+            boolean grayHit = grayRate > 0 && grayReleaseService.hitsGrayBucket(imei, grayRate);
+            fotaMetrics.recordPolicyMatch(productModel, true, grayHit);
         } else {
-            fotaMetrics.recordPolicyMatch(productCode, false, false);
+            fotaMetrics.recordPolicyMatch(productModel, false, false);
         }
 
         if (ctx.getRateLimitDecision() != null && !ctx.getRateLimitDecision().isAllowed()) {

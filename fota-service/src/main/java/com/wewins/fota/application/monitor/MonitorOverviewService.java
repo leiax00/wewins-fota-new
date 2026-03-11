@@ -32,8 +32,6 @@ import java.util.Map;
 public class MonitorOverviewService {
 
     private static final String RESOURCE_NAME = "upgrade:check";
-    private static final int DEFAULT_AUTO_INTERVAL = 86400;
-    private static final int DEFAULT_MANUAL_INTERVAL = 3600;
 
     private final SystemLoadIndicator loadIndicator;
     private final PrometheusClient prometheusClient;
@@ -117,8 +115,8 @@ public class MonitorOverviewService {
     }
 
     private HotProductDTO toHotProduct(PrometheusClient.MetricSample sample, double reportQps, double totalCheckQps) {
-        String productCode = sample.metric().getOrDefault("product", "unknown");
-        ControlParameter controlParameter = productRepository.findByModel(productCode)
+        String productModel = sample.metric().getOrDefault("product", "unknown");
+        ControlParameter controlParameter = productRepository.findByModel(productModel)
                 .flatMap(product -> controlParameterRepository.getByProduct(product.getId()))
                 .orElse(ControlParameter.createProductDefault(null));
 
@@ -129,7 +127,7 @@ public class MonitorOverviewService {
                 : ProductPriority.NORMAL;
 
         return HotProductDTO.builder()
-                .product(productCode)
+                .product(productModel)
                 .checkQps(checkQps)
                 .reportQps(reportQps)
                 .trafficShare(trafficShare)
@@ -146,8 +144,6 @@ public class MonitorOverviewService {
                 .loadScore(loadScore)
                 .loadLevel(level.name())
                 .recommendedMultiplier(recommendedMultiplier(level))
-                .baseAutoInterval(DEFAULT_AUTO_INTERVAL)
-                .baseManualInterval(DEFAULT_MANUAL_INTERVAL)
                 .build();
     }
 

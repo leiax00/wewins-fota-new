@@ -36,8 +36,6 @@ export interface ControlState {
   loadScore: number
   loadLevel: string
   recommendedMultiplier: number
-  baseAutoInterval: number
-  baseManualInterval: number
 }
 
 export interface RealtimeMetrics {
@@ -69,7 +67,9 @@ export interface RealtimeMetrics {
 
 export interface ControlParameter {
   productId?: number
+  protectedCheckIntervalSeconds: number
   checkIntervalMultiplier: number
+  protectedIntervalMultiplier: number
   downloadDelayMultiplier: number
   intervalBias: number
   minCheckIntervalSeconds: number

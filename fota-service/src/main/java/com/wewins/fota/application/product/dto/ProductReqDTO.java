@@ -27,4 +27,9 @@ public class ProductReqDTO {
      * 产品备注
      */
     private String remark;
+
+    /**
+     * 产品默认检测周期，单位秒。
+     */
+    private Integer checkPeriodSeconds;
 }

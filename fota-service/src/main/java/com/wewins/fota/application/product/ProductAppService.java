@@ -1,6 +1,7 @@
 package com.wewins.fota.application.product;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.common.util.TimeConstants;
 import com.wewins.fota.application.product.dto.ProductPageReqDTO;
 import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
@@ -23,6 +24,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ProductAppService {
+
+    private static final int MIN_CHECK_PERIOD_SECONDS = TimeConstants.SECONDS_PER_MINUTE;
+    private static final int MAX_CHECK_PERIOD_SECONDS = 7 * TimeConstants.SECONDS_PER_DAY;
 
     private final ProductRepository productRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -80,6 +84,7 @@ public class ProductAppService {
 
         // 校验产品名称唯一性
         validateProductNameUnique(product.getName(), null);
+        validateCheckPeriod(product.getCheckPeriodSeconds());
 
         productRepository.create(product);
         eventPublisher.publishEvent(new ProductChangedEvent(
@@ -109,6 +114,7 @@ public class ProductAppService {
 
         // 校验产品名称唯一性
         validateProductNameUnique(product.getName(), product.getId());
+        validateCheckPeriod(product.getCheckPeriodSeconds());
 
         productRepository.updateById(product);
         eventPublisher.publishEvent(new ProductChangedEvent(
@@ -161,6 +167,18 @@ public class ProductAppService {
         long count = productRepository.countByNameExcludingId(name, excludeId);
         if (count > 0) {
             throw new BizException(ErrorCode.PRODUCT_NAME_EXISTS);
+        }
+    }
+
+    private void validateCheckPeriod(Integer checkPeriodSeconds) {
+        if (checkPeriodSeconds == null) {
+            return;
+        }
+        if (checkPeriodSeconds < MIN_CHECK_PERIOD_SECONDS || checkPeriodSeconds > MAX_CHECK_PERIOD_SECONDS) {
+            throw new BizException(
+                    ErrorCode.BAD_REQUEST.getCode(),
+                    "产品默认检测周期必须在 60 到 604800 秒之间"
+            );
         }
     }
 }

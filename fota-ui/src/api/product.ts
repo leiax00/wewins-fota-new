@@ -14,6 +14,7 @@ export interface ProductItem {
   manufacturer: string
   model: string
   remark: string
+  checkPeriodSeconds: number
   createdAt: string
   createdBy: number
   updatedAt: string
@@ -25,6 +26,7 @@ export interface ProductPayload {
   manufacturer: string
   model: string
   remark?: string
+  checkPeriodSeconds?: number
 }
 
 export const pageProducts = (params: Record<string, unknown>) => {

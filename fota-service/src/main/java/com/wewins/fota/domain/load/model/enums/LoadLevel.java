@@ -1,11 +1,14 @@
 package com.wewins.fota.domain.load.model.enums;
 
+import lombok.Getter;
+
 /**
  * 系统负载级别枚举
  * <p>
  * 用于表示系统当前负载状态，支持动态周期调整和智能退避算法
  * </p>
  */
+@Getter
 public enum LoadLevel {
     LOW(0, 24, "系统空闲"),
     NORMAL(25, 49, "正常负载"),
@@ -20,18 +23,6 @@ public enum LoadLevel {
         this.minScore = minScore;
         this.maxScore = maxScore;
         this.description = description;
-    }
-
-    public int getMinScore() {
-        return minScore;
-    }
-
-    public int getMaxScore() {
-        return maxScore;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     public static LoadLevel fromScore(int score) {

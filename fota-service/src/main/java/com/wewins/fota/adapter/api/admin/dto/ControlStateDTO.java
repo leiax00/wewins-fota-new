@@ -18,8 +18,4 @@ public class ControlStateDTO {
     private String loadLevel;
 
     private double recommendedMultiplier;
-
-    private int baseAutoInterval;
-
-    private int baseManualInterval;
 }

@@ -1,10 +1,13 @@
 package com.wewins.fota.application.load;
 
+import com.wewins.fota.common.util.TimeConstants;
 import com.wewins.fota.domain.load.model.entity.ControlParameter;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.enums.ProductPriority;
 import com.wewins.fota.domain.load.repository.ControlParameterRepository;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
+import com.wewins.fota.domain.product.model.entity.Product;
+import com.wewins.fota.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,27 +20,49 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class DynamicIntervalService {
 
+    public static final String REASON_NORMAL = "NORMAL";
+    public static final String REASON_SENTINEL_FLOW = "SENTINEL_FLOW";
+    public static final String REASON_SENTINEL_DEGRADE = "SENTINEL_DEGRADE";
+    public static final String REASON_SENTINEL_SYSTEM = "SENTINEL_SYSTEM";
+    public static final String REASON_SENTINEL_UNKNOWN = "SENTINEL_UNKNOWN";
+
     private final SystemLoadIndicator loadIndicator;
     private final ControlParameterRepository controlParameterRepository;
+    private final ProductRepository productRepository;
 
-    private static final int MIN_CHECK_INTERVAL = 1800;
-    private static final int MAX_CHECK_INTERVAL = 172800;
-    private static final int BASE_AUTO_INTERVAL = 86400;
-    private static final int BASE_MANUAL_INTERVAL = 3600;
-    private static final int BASE_DOWNLOAD_DELAY = 300;
+    private static final int MIN_CHECK_INTERVAL = 30 * TimeConstants.SECONDS_PER_MINUTE;
+    private static final int MAX_CHECK_INTERVAL = 2 * TimeConstants.SECONDS_PER_DAY;
+    private static final int BASE_CHECK_INTERVAL = 6 * TimeConstants.SECONDS_PER_HOUR;
+    private static final int PROTECTED_CHECK_INTERVAL = 12 * TimeConstants.SECONDS_PER_HOUR;
+    private static final int BASE_DOWNLOAD_DELAY = 5 * TimeConstants.SECONDS_PER_MINUTE;
 
-    public int calculateCheckInterval(Long productId, Boolean autoMode) {
+    public int calculateCheckInterval(Long productId) {
+        return resolveInterval(productId, false, null).intervalSeconds();
+    }
+
+    public int calculateProtectedCheckInterval(Long productId, String blockedReason) {
+        return resolveInterval(productId, true, blockedReason).intervalSeconds();
+    }
+
+    public IntervalDecision resolveInterval(Long productId, boolean protectedMode, String blockedReason) {
         LoadLevel level = loadIndicator.getLoadLevel();
         ControlParameter param = getEffectiveParameter(productId);
-        double loadMultiplier = getLoadMultiplier(level);
-        double controlMultiplier = getCheckIntervalMultiplier(param);
-        double biasMultiplier = getIntervalBias(param) * getPriorityBias(param);
+        int baseInterval = protectedMode ? getProtectedCheckInterval(param) : getBaseCheckInterval(param);
+        double effectiveMultiplier = getLoadMultiplier(level)
+                * getCheckIntervalMultiplier(param)
+                * getIntervalBias(param)
+                * getPriorityBias(param)
+                * getProtectedMultiplier(param, protectedMode, blockedReason);
 
-        int baseInterval = Boolean.TRUE.equals(autoMode) ? BASE_AUTO_INTERVAL : BASE_MANUAL_INTERVAL;
-        int interval = (int) Math.round(baseInterval * loadMultiplier * controlMultiplier * biasMultiplier);
-        interval = applyJitter(interval);
+        int rawInterval = (int) Math.round(baseInterval * effectiveMultiplier);
+        int interval = clamp(applyJitter(rawInterval), getMinCheckInterval(param), getMaxCheckInterval(param));
 
-        return clamp(interval, getMinCheckInterval(param), getMaxCheckInterval(param));
+        return new IntervalDecision(
+                interval,
+                baseInterval,
+                effectiveMultiplier,
+                protectedMode ? toProtectedReason(blockedReason) : REASON_NORMAL
+        );
     }
 
     public int calculateDownloadDelay(Long productId) {
@@ -69,6 +94,21 @@ public class DynamicIntervalService {
             return param.getCheckIntervalMultiplier();
         }
         return 1.0;
+    }
+
+    private double getProtectedMultiplier(ControlParameter param, boolean protectedMode, String blockedReason) {
+        if (!protectedMode) {
+            return 1.0;
+        }
+        if (param != null && param.getProtectedIntervalMultiplier() != null && param.getProtectedIntervalMultiplier() > 0) {
+            return param.getProtectedIntervalMultiplier();
+        }
+        return switch (normalizeBlockedReason(blockedReason)) {
+            case "FLOW_QPS", "FLOW_CONCURRENCY" -> 1.8;
+            case "DEGRADE" -> 2.2;
+            case "SYSTEM" -> 2.8;
+            default -> 2.0;
+        };
     }
 
     private double getDownloadDelayMultiplier(ControlParameter param) {
@@ -117,6 +157,25 @@ public class DynamicIntervalService {
         return global;
     }
 
+    private int getBaseCheckInterval(ControlParameter param) {
+        if (param != null && param.getProductId() != null) {
+            Integer productPeriod = productRepository.findById(param.getProductId())
+                    .map(Product::getCheckPeriodSeconds)
+                    .orElse(null);
+            if (productPeriod != null && productPeriod > 0) {
+                return productPeriod;
+            }
+        }
+        return BASE_CHECK_INTERVAL;
+    }
+
+    private int getProtectedCheckInterval(ControlParameter param) {
+        if (param != null && param.getProtectedCheckIntervalSeconds() != null && param.getProtectedCheckIntervalSeconds() > 0) {
+            return param.getProtectedCheckIntervalSeconds();
+        }
+        return PROTECTED_CHECK_INTERVAL;
+    }
+
     private ControlParameter merge(ControlParameter global, ControlParameter product) {
         if (global == null) {
             return product;
@@ -126,7 +185,9 @@ public class DynamicIntervalService {
         }
         return ControlParameter.builder()
                 .productId(product.getProductId())
+                .protectedCheckIntervalSeconds(firstNonNull(product.getProtectedCheckIntervalSeconds(), global.getProtectedCheckIntervalSeconds()))
                 .checkIntervalMultiplier(firstNonNull(product.getCheckIntervalMultiplier(), global.getCheckIntervalMultiplier()))
+                .protectedIntervalMultiplier(firstNonNull(product.getProtectedIntervalMultiplier(), global.getProtectedIntervalMultiplier()))
                 .downloadDelayMultiplier(firstNonNull(product.getDownloadDelayMultiplier(), global.getDownloadDelayMultiplier()))
                 .intervalBias(firstNonNull(product.getIntervalBias(), global.getIntervalBias()))
                 .minCheckIntervalSeconds(firstNonNull(product.getMinCheckIntervalSeconds(), global.getMinCheckIntervalSeconds()))
@@ -151,5 +212,26 @@ public class DynamicIntervalService {
 
     private int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private String toProtectedReason(String blockedReason) {
+        return switch (normalizeBlockedReason(blockedReason)) {
+            case "FLOW_QPS", "FLOW_CONCURRENCY" -> REASON_SENTINEL_FLOW;
+            case "DEGRADE" -> REASON_SENTINEL_DEGRADE;
+            case "SYSTEM" -> REASON_SENTINEL_SYSTEM;
+            default -> REASON_SENTINEL_UNKNOWN;
+        };
+    }
+
+    private String normalizeBlockedReason(String blockedReason) {
+        return blockedReason == null ? "" : blockedReason.trim().toUpperCase();
+    }
+
+    public record IntervalDecision(
+            int intervalSeconds,
+            int baseIntervalSeconds,
+            double effectiveMultiplier,
+            String reason
+    ) {
     }
 }

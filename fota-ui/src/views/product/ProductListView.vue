@@ -36,11 +36,22 @@ const submitting = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref()
 
+type PeriodUnit = 'minutes' | 'hours' | 'days'
+
+const DEFAULT_CHECK_PERIOD_SECONDS = 6 * 60 * 60
+const UNIT_SECONDS: Record<PeriodUnit, number> = {
+  minutes: 60,
+  hours: 60 * 60,
+  days: 24 * 60 * 60,
+}
+
 const form = reactive({
   name: '',
   manufacturer: 'wewins',
   model: '',
   remark: '',
+  checkPeriodValue: 6,
+  checkPeriodUnit: 'hours' as PeriodUnit,
 })
 
 const formRules = {
@@ -60,6 +71,27 @@ const fetchList = async () => {
   }
 }
 
+const setCheckPeriodForm = (seconds?: number) => {
+  const value = seconds || DEFAULT_CHECK_PERIOD_SECONDS
+  if (value % UNIT_SECONDS.days === 0) {
+    form.checkPeriodUnit = 'days'
+    form.checkPeriodValue = value / UNIT_SECONDS.days
+    return
+  }
+  if (value % UNIT_SECONDS.hours === 0) {
+    form.checkPeriodUnit = 'hours'
+    form.checkPeriodValue = value / UNIT_SECONDS.hours
+    return
+  }
+  form.checkPeriodUnit = 'minutes'
+  form.checkPeriodValue = Math.max(1, Math.round(value / UNIT_SECONDS.minutes))
+}
+
+const getCheckPeriodSeconds = () => {
+  const unitSeconds = UNIT_SECONDS[form.checkPeriodUnit]
+  return Math.max(60, Math.round(form.checkPeriodValue * unitSeconds))
+}
+
 const openCreateDialog = () => {
   dialogMode.value = 'create'
   editingId.value = null
@@ -67,6 +99,7 @@ const openCreateDialog = () => {
   form.manufacturer = 'wewins'
   form.model = ''
   form.remark = ''
+  setCheckPeriodForm(DEFAULT_CHECK_PERIOD_SECONDS)
   dialogVisible.value = true
 }
 
@@ -77,6 +110,7 @@ const openEditDialog = (row: ProductItem) => {
   form.manufacturer = row.manufacturer
   form.model = row.model
   form.remark = row.remark || ''
+  setCheckPeriodForm(row.checkPeriodSeconds)
   dialogVisible.value = true
 }
 
@@ -89,6 +123,7 @@ const submitForm = async () => {
       manufacturer: form.manufacturer,
       model: form.model,
       remark: form.remark,
+      checkPeriodSeconds: getCheckPeriodSeconds(),
     })
 
     if (dialogMode.value === 'create') {
@@ -117,6 +152,15 @@ const resetSearch = () => {
   query.page = 1
   query.keyword = ''
   void fetchList()
+}
+
+const formatPeriod = (seconds?: number) => {
+  const value = seconds ?? 0
+  if (value <= 0) return '-'
+  if (value % UNIT_SECONDS.days === 0) return `${value / UNIT_SECONDS.days}${t('product.periodUnitDaysShort')}`
+  if (value % UNIT_SECONDS.hours === 0) return `${value / UNIT_SECONDS.hours}${t('product.periodUnitHoursShort')}`
+  if (value % UNIT_SECONDS.minutes === 0) return `${value / UNIT_SECONDS.minutes}${t('product.periodUnitMinutesShort')}`
+  return `${value}${t('product.periodUnitSecondsShort')}`
 }
 
 onMounted(() => {
@@ -177,6 +221,14 @@ onMounted(() => {
         min-width="200"
         show-overflow-tooltip
       />
+      <el-table-column
+        :label="t('product.checkPeriodSeconds')"
+        width="160"
+      >
+        <template #default="{ row }">
+          {{ formatPeriod(row.checkPeriodSeconds) }}
+        </template>
+      </el-table-column>
       <el-table-column
         :label="t('common.createTime')"
         width="170"
@@ -261,6 +313,37 @@ onMounted(() => {
           type="textarea"
           :rows="3"
         />
+      </el-form-item>
+      <el-form-item :label="t('product.checkPeriodSeconds')">
+        <div class="flex w-full gap-3">
+          <el-input-number
+            v-model="form.checkPeriodValue"
+            :min="1"
+            :max="form.checkPeriodUnit === 'days' ? 7 : form.checkPeriodUnit === 'hours' ? 168 : 10080"
+            :step="1"
+            class="flex-1"
+          />
+          <el-select
+            v-model="form.checkPeriodUnit"
+            style="width: 140px"
+          >
+            <el-option
+              :label="t('product.periodUnitMinutes')"
+              value="minutes"
+            />
+            <el-option
+              :label="t('product.periodUnitHours')"
+              value="hours"
+            />
+            <el-option
+              :label="t('product.periodUnitDays')"
+              value="days"
+            />
+          </el-select>
+        </div>
+        <div class="mt-2 text-xs text-slate-500">
+          {{ t('product.checkPeriodHint', { value: formatPeriod(getCheckPeriodSeconds()) }) }}
+        </div>
       </el-form-item>
     </el-form>
 

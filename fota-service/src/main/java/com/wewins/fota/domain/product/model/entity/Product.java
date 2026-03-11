@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.product.model.entity;
 
+import com.wewins.fota.common.util.TimeConstants;
 import com.wewins.fota.domain.base.entity.DomainEntity;
 import lombok.*;
 
@@ -22,6 +23,8 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 public class Product extends DomainEntity {
 
+    private static final int DEFAULT_CHECK_PERIOD_SECONDS = 6 * TimeConstants.SECONDS_PER_HOUR;
+
     /**
      * 产品名称
      */
@@ -41,6 +44,16 @@ public class Product extends DomainEntity {
      * 产品备注
      */
     private String remark;
+
+    /**
+     * 产品默认检测周期，单位秒。
+     * <p>
+     * 作为该产品的基础检测周期，再叠加运行时负载调节与保护逻辑。
+     * 默认 6 小时。
+     * </p>
+     */
+    @Builder.Default
+    private Integer checkPeriodSeconds = DEFAULT_CHECK_PERIOD_SECONDS;
 
     /**
      * 软删除时间（逻辑删除）

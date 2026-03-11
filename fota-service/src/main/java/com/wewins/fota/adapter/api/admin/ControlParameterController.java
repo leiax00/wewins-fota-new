@@ -30,7 +30,9 @@ public class ControlParameterController {
             @RequestHeader(value = "X-Operator", required = false) String operator) {
         String operatorName = operator != null ? operator : "system";
         ControlParameter param = ControlParameter.builder()
+                .protectedCheckIntervalSeconds(dto.getProtectedCheckIntervalSeconds())
                 .checkIntervalMultiplier(dto.getCheckIntervalMultiplier())
+                .protectedIntervalMultiplier(dto.getProtectedIntervalMultiplier())
                 .downloadDelayMultiplier(dto.getDownloadDelayMultiplier())
                 .intervalBias(dto.getIntervalBias())
                 .minCheckIntervalSeconds(dto.getMinCheckIntervalSeconds())
@@ -62,7 +64,9 @@ public class ControlParameterController {
         String operatorName = operator != null ? operator : "system";
         ControlParameter param = ControlParameter.builder()
                 .productId(productId)
+                .protectedCheckIntervalSeconds(dto.getProtectedCheckIntervalSeconds())
                 .checkIntervalMultiplier(dto.getCheckIntervalMultiplier())
+                .protectedIntervalMultiplier(dto.getProtectedIntervalMultiplier())
                 .downloadDelayMultiplier(dto.getDownloadDelayMultiplier())
                 .intervalBias(dto.getIntervalBias())
                 .minCheckIntervalSeconds(dto.getMinCheckIntervalSeconds())
@@ -82,7 +86,9 @@ public class ControlParameterController {
     private ControlParameterDTO toDTO(ControlParameter param) {
         return ControlParameterDTO.builder()
                 .productId(param.getProductId())
+                .protectedCheckIntervalSeconds(param.getProtectedCheckIntervalSeconds())
                 .checkIntervalMultiplier(param.getCheckIntervalMultiplier())
+                .protectedIntervalMultiplier(param.getProtectedIntervalMultiplier())
                 .downloadDelayMultiplier(param.getDownloadDelayMultiplier())
                 .intervalBias(param.getIntervalBias())
                 .minCheckIntervalSeconds(param.getMinCheckIntervalSeconds())

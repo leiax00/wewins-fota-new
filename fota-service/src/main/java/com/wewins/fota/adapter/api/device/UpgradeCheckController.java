@@ -1,6 +1,7 @@
 package com.wewins.fota.adapter.api.device;
 
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.wewins.fota.adapter.api.device.dto.UpgradeCheckRespDTO;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.upgrade.UpgradeCheckService;
@@ -66,8 +67,8 @@ public class UpgradeCheckController {
     public ResponseEntity<UpgradeCheckRespDTO> handleBlock(
             UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest,
-            com.alibaba.csp.sentinel.slots.block.BlockException ex) {
-        return ResponseEntity.ok(blockHandler.handleBlock(request, ex));
+            BlockException ex) {
+        return ResponseEntity.ok(blockHandler.handleBlock(request, buildLogContext(httpRequest), ex));
     }
 
     /**

@@ -60,10 +60,9 @@ public class UpgradeResponseBuilder {
      * @param policy    匹配的升级策略
      * @param requestId 请求唯一标识（用于关联 check 和 report）
      * @param lang      语言代码（如 "en", "zh"），可选
-     * @param autoMode  是否自动检查模式
      * @return 检查结果
      */
-    public CheckResult buildResponse(Device device, UpgradePolicy policy, String requestId, String lang, Boolean autoMode) {
+    public CheckResult buildResponse(Device device, UpgradePolicy policy, String requestId, String lang) {
         // 1. 加载目标固件版本信息
         FirmwareVersion targetFirmware = loadTargetFirmware(policy.getTargetVersionId());
         if (targetFirmware == null) {
@@ -80,7 +79,7 @@ public class UpgradeResponseBuilder {
 
         // 3. 计算控制参数
         Long productId = device.getProductId();
-        int checkInterval = calculateCheckInterval(autoMode, productId);
+        int checkInterval = calculateCheckInterval(productId);
         int downloadDelay = calculateDownloadDelay(productId);
 
         // 4. 生成签名下载 URL
@@ -196,13 +195,12 @@ public class UpgradeResponseBuilder {
         }
     }
 
-    private int calculateCheckInterval(Boolean autoMode, Long productId) {
+    private int calculateCheckInterval(Long productId) {
         try {
-            return dynamicIntervalService.calculateCheckInterval(productId, autoMode);
+            return dynamicIntervalService.calculateCheckInterval(productId);
         } catch (Exception e) {
             log.warn("Failed to calculate dynamic check interval, using default", e);
-            boolean isAuto = Boolean.TRUE.equals(autoMode);
-            return isAuto ? 86400 : DEFAULT_CHECK_INTERVAL;
+            return DEFAULT_CHECK_INTERVAL;
         }
     }
 

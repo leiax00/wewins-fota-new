@@ -34,12 +34,12 @@ public class FotaMetrics {
     /**
      * 记录设备升级检查
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param decision    检查结果（HAS_UPGRADE, NO_UPGRADE, RATE_LIMITED, MAINTENANCE）
      */
-    public void recordDeviceCheck(String productCode, String decision) {
+    public void recordDeviceCheck(String productModel, String decision) {
         Counter.builder("fota.device.checks")
-                .tags(commonTags(productCode))
+                .tags(commonTags(productModel))
                 .tag("decision", safeValue(decision))
                 .description("Total device upgrade checks")
                 .register(registry)
@@ -49,12 +49,12 @@ public class FotaMetrics {
     /**
      * 记录升级事件上报
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param event       事件类型（DL_START, DL_OK, DL_FAIL, UP_OK）
      */
-    public void recordUpgradeEvent(String productCode, String event) {
+    public void recordUpgradeEvent(String productModel, String event) {
         Counter.builder("fota.upgrade.events")
-                .tags(commonTags(productCode))
+                .tags(commonTags(productModel))
                 .tag("event", safeValue(event))
                 .description("Total upgrade events reported by devices")
                 .register(registry)
@@ -64,12 +64,12 @@ public class FotaMetrics {
     /**
      * 记录升级完成耗时（从下载开始到升级完成）
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param durationMs  耗时（毫秒）
      */
-    public void recordUpgradeDuration(String productCode, long durationMs) {
+    public void recordUpgradeDuration(String productModel, long durationMs) {
         Timer.builder("fota.upgrade.duration")
-                .tags(commonTags(productCode))
+                .tags(commonTags(productModel))
                 .description("Time from download start to upgrade complete")
                 .publishPercentileHistogram()
                 .minimumExpectedValue(java.time.Duration.ofMillis(100))
@@ -81,25 +81,25 @@ public class FotaMetrics {
     /**
      * 更新活跃设备计数
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param count       活跃设备数
      */
-    public void updateActiveDevices(String productCode, long count) {
+    public void updateActiveDevices(String productModel, long count) {
         registry.gauge("fota.active.devices",
-                commonTags(productCode),
+                commonTags(productModel),
                 count);
     }
 
     /**
      * 记录固件下载请求
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param version     固件版本
      * @param success     是否成功
      */
-    public void recordFirmwareDownload(String productCode, String version, boolean success) {
+    public void recordFirmwareDownload(String productModel, String version, boolean success) {
         Counter.builder("fota.firmware.downloads")
-                .tags(commonTags(productCode))
+                .tags(commonTags(productModel))
                 .tag("version", safeValue(version))
                 .tag("success", String.valueOf(success))
                 .description("Total firmware download requests")
@@ -110,13 +110,13 @@ public class FotaMetrics {
     /**
      * 记录策略匹配结果
      *
-     * @param productCode 产品代码
+     * @param productModel 产品型号
      * @param matched     是否匹配到策略
      * @param grayHit     是否命中灰度
      */
-    public void recordPolicyMatch(String productCode, boolean matched, boolean grayHit) {
+    public void recordPolicyMatch(String productModel, boolean matched, boolean grayHit) {
         Counter.builder("fota.policy.matches")
-                .tags(commonTags(productCode))
+                .tags(commonTags(productModel))
                 .tag("matched", String.valueOf(matched))
                 .tag("gray_hit", String.valueOf(grayHit))
                 .description("Policy match results for device checks")
@@ -154,8 +154,8 @@ public class FotaMetrics {
                 .increment();
     }
 
-    private Tags commonTags(String productCode) {
-        return Tags.of("product", safeValue(productCode));
+    private Tags commonTags(String productModel) {
+        return Tags.of("product", safeValue(productModel));
     }
 
     private String safeValue(String value) {

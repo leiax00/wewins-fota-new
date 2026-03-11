@@ -199,6 +199,17 @@ databaseChangeLog:
             stripComments: true
 
   - changeSet:
+      id: 20260311_01_add_product_check_period_seconds
+      author: fota-team
+      comment: "products 表新增 check_period_seconds 字段，用于绑定产品默认检测周期"
+      changes:
+        - sqlFile:
+            path: changes/20260311_01_add_product_check_period_seconds.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
       id: 20260227_01_add_policy_test_flow_permissions
       author: fota-team
       comment: "添加策略测试流程权限：start_test、verify、release，并创建测试人员和项目经理角色"

@@ -135,7 +135,6 @@ class UpgradeCheckServiceIntegrationTest {
         testDevice = Device.builder()
                 .imei("354972069009027")
                 .productId(1L)
-                .currentVersionId(10L)
                 .status("ACTIVE")
                 .build();
         testDevice.setId(1000L);
@@ -204,7 +203,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .checkInterval(86400)
                     .build();
 
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
                     .thenReturn(expectedResult);
 
             // When
@@ -327,7 +326,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .checkInterval(86400)
                     .build();
 
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
                     .thenReturn(expectedResult);
 
             // When
@@ -368,10 +367,9 @@ class UpgradeCheckServiceIntegrationTest {
         @DisplayName("返回中文 release_note")
         void checkUpgrade_shouldReturnChineseReleaseNote_whenLangIsZh() {
             // Given - 设置多语言元数据
-            ObjectNode meta = objectMapper.createObjectNode();
-            ObjectNode i18n = meta.putObject("i18n");
-            ObjectNode zhNode = i18n.putObject("zh");
-            zhNode.put("changelog", "修复蓝牙断连问题\n优化功耗");
+            Map<String, Object> meta = Map.of(
+                    "i18n", Map.of("zh", "修复蓝牙断连问题\n优化功耗")
+            );
             targetFirmware.setMeta(meta);
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
@@ -402,7 +400,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .checkInterval(86400)
                     .build();
 
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), eq("zh"), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), eq("zh")))
                     .thenReturn(expectedResult);
 
             // When
@@ -418,8 +416,8 @@ class UpgradeCheckServiceIntegrationTest {
     class ControlParamsTests {
 
         @Test
-        @DisplayName("自动模式使用更长的检查间隔")
-        void checkUpgrade_shouldUseLongerInterval_forAutoMode() {
+        @DisplayName("服务端对自动和手动请求返回统一的周期控制结果")
+        void checkUpgrade_shouldUseSameIntervalForDifferentModes() {
             // Given
             long resetAt = System.currentTimeMillis() / 1000 + 60;
             when(deviceRateLimiter.allow(anyString(), any(), any()))
@@ -441,31 +439,23 @@ class UpgradeCheckServiceIntegrationTest {
 
             // When - 自动模式
             testRequest.setAuto(1);
-            CheckResult autoResult = CheckResult.builder()
+            CheckResult unifiedResult = CheckResult.builder()
                     .hasUpdate(true)
                     .decision(UpgradeDecision.UPDATE)
                     .requestId("test-request-id")
-                    .checkInterval(86400)  // 24 小时
+                    .checkInterval(21600)
                     .build();
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), eq(true)))
-                    .thenReturn(autoResult);
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
+                    .thenReturn(unifiedResult);
             CheckResult autoCheckResult = upgradeCheckService.checkUpgrade(testRequest);
 
             // When - 手动模式
             testRequest.setAuto(0);
-            CheckResult manualResult = CheckResult.builder()
-                    .hasUpdate(true)
-                    .decision(UpgradeDecision.UPDATE)
-                    .requestId("test-request-id")
-                    .checkInterval(3600)  // 1 小时
-                    .build();
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), eq(false)))
-                    .thenReturn(manualResult);
             CheckResult manualCheckResult = upgradeCheckService.checkUpgrade(testRequest);
 
             // Then
-            assertThat(autoCheckResult.getCheckInterval()).isEqualTo(86400);  // 24 小时
-            assertThat(manualCheckResult.getCheckInterval()).isEqualTo(3600);  // 1 小时
+            assertThat(autoCheckResult.getCheckInterval()).isEqualTo(21600);
+            assertThat(manualCheckResult.getCheckInterval()).isEqualTo(21600);
         }
     }
 }

@@ -1,8 +1,7 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
+import com.wewins.fota.application.load.DynamicIntervalService;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
@@ -18,13 +17,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,10 +43,11 @@ class UpgradeResponseBuilderTest {
     @Mock
     private FirmwareVersionRepository firmwareVersionRepository;
 
+    @Mock
+    private DynamicIntervalService dynamicIntervalService;
+
     @InjectMocks
     private UpgradeResponseBuilder upgradeResponseBuilder;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Device testDevice;
     private UpgradePolicy testPolicy;
@@ -63,7 +63,6 @@ class UpgradeResponseBuilderTest {
         testDevice = Device.builder()
                 .imei("354972069009027")
                 .productId(1L)
-                .currentVersionId(10L)
                 .build();
         testDevice.setId(1000L);
 
@@ -92,6 +91,9 @@ class UpgradeResponseBuilderTest {
                 .build();
         testFirmware.setId(20L);
         testFirmware.setCreatedAt(LocalDateTime.of(2026, 2, 1, 10, 0, 0));
+
+        when(dynamicIntervalService.calculateCheckInterval(1L)).thenReturn(6 * 60 * 60);
+        when(dynamicIntervalService.calculateDownloadDelay(1L)).thenReturn(5 * 60);
     }
 
     @Nested
@@ -109,7 +111,7 @@ class UpgradeResponseBuilderTest {
                     .thenReturn(expectedUrl);
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result).isNotNull();
@@ -128,7 +130,7 @@ class UpgradeResponseBuilderTest {
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result.getTargetVersion()).isEqualTo("v2.0.0");
@@ -145,7 +147,7 @@ class UpgradeResponseBuilderTest {
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.empty());
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result.getHasUpdate()).isFalse();
@@ -160,7 +162,7 @@ class UpgradeResponseBuilderTest {
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result.getHasUpdate()).isFalse();
@@ -176,7 +178,7 @@ class UpgradeResponseBuilderTest {
                     .thenThrow(new RuntimeException("签名服务异常"));
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result.getHasUpdate()).isTrue();
@@ -192,9 +194,9 @@ class UpgradeResponseBuilderTest {
         @DisplayName("返回中文 release_note")
         void buildResponse_shouldReturnChineseReleaseNote_whenLangIsZh() {
             // Given - 设置多语言元数据
-            ObjectNode meta = objectMapper.createObjectNode();
-            ObjectNode i18n = meta.putObject("i18n");
-            i18n.put("zh", "修复蓝牙断连问题\n优化功耗");
+            Map<String, Object> meta = Map.of(
+                    "i18n", Map.of("zh", "修复蓝牙断连问题\n优化功耗")
+            );
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
@@ -202,7 +204,7 @@ class UpgradeResponseBuilderTest {
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "zh", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "zh");
 
             // Then
             assertThat(result.getReleaseNote()).isEqualTo("修复蓝牙断连问题\n优化功耗");
@@ -212,9 +214,9 @@ class UpgradeResponseBuilderTest {
         @DisplayName("优先使用 changelog 而非 description")
         void buildResponse_shouldPreferChangelogOverDescription() {
             // Given
-            ObjectNode meta = objectMapper.createObjectNode();
-            ObjectNode i18n = meta.putObject("i18n");
-            i18n.put("en", "1. Fix bug A\n2. Fix bug B");
+            Map<String, Object> meta = Map.of(
+                    "i18n", Map.of("en", "1. Fix bug A\n2. Fix bug B")
+            );
             testFirmware.setMeta(meta);
 
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
@@ -222,7 +224,7 @@ class UpgradeResponseBuilderTest {
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             assertThat(result.getReleaseNote()).isEqualTo("1. Fix bug A\n2. Fix bug B");
@@ -234,33 +236,19 @@ class UpgradeResponseBuilderTest {
     class ControlParamsTests {
 
         @Test
-        @DisplayName("自动模式使用更长的检查间隔")
-        void buildResponse_shouldUseLongerInterval_forAutoMode() {
+        @DisplayName("检查周期和下载延迟来自动态周期服务")
+        void buildResponse_shouldUseDynamicIntervalService() {
             // Given
             when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
             when(signedUrlService.generateSignedUrl(anyString()))
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
-            // When - 自动模式
-            var autoResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", true);
+            // When
+            var result = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
-            assertThat(autoResult.getCheckInterval()).isEqualTo(86400);  // 24 小时
-        }
-
-        @Test
-        @DisplayName("手动模式使用默认检查间隔")
-        void buildResponse_shouldUseDefaultInterval_forManualMode() {
-            // Given
-            when(firmwareVersionRepository.findById(20L)).thenReturn(Optional.of(testFirmware));
-            when(signedUrlService.generateSignedUrl(anyString()))
-                    .thenReturn("https://cdn.example.com/firmware.zip");
-
-            // When - 手动模式
-            var manualResult = upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
-
-            // Then
-            assertThat(manualResult.getCheckInterval()).isEqualTo(3600);  // 1 小时
+            assertThat(result.getCheckInterval()).isEqualTo(6 * 60 * 60);
+            assertThat(result.getDownloadDelay()).isEqualTo(5 * 60);
         }
     }
 
@@ -277,11 +265,11 @@ class UpgradeResponseBuilderTest {
                     .thenReturn("https://cdn.example.com/firmware.zip");
 
             // When
-            upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en", false);
+            upgradeResponseBuilder.buildResponse(testDevice, testPolicy, testRequestId, "en");
 
             // Then
             verify(signedUrlService).generateSignedUrl(
-                    eq("fota/fw/1/test-firmware.zip")
+                    org.mockito.ArgumentMatchers.eq("fota/fw/1/test-firmware.zip")
             );
         }
     }

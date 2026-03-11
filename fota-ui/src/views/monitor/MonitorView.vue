@@ -58,7 +58,9 @@ const updateControlParam = async () => {
   loading.value = true
   try {
     await controlApi.updateGlobalConfig({
+      protectedCheckIntervalSeconds: controlParam.value.protectedCheckIntervalSeconds,
       checkIntervalMultiplier: controlParam.value.checkIntervalMultiplier,
+      protectedIntervalMultiplier: controlParam.value.protectedIntervalMultiplier,
       downloadDelayMultiplier: controlParam.value.downloadDelayMultiplier,
       intervalBias: controlParam.value.intervalBias,
       minCheckIntervalSeconds: controlParam.value.minCheckIntervalSeconds,
@@ -98,6 +100,14 @@ const formatBytes = (value?: number) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB/s`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB/s`
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB/s`
+}
+
+const formatSeconds = (value?: number) => {
+  const seconds = value ?? 0
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${(seconds / 60).toFixed(0)}m`
+  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`
+  return `${(seconds / 86400).toFixed(1)}d`
 }
 
 onMounted(async () => {
@@ -155,6 +165,7 @@ onUnmounted(() => {
           <span class="ui-card-title">{{ t('monitor.controlState') }}</span>
         </template>
         <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span>{{ t('monitor.protectedCheckIntervalSeconds') }}</span><strong>{{ formatSeconds(controlParam?.protectedCheckIntervalSeconds) }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.blockRate') }}</span><strong>{{ formatPercent((metrics?.blockRate ?? 0) * 100) }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.circuitState') }}</span><strong>{{ metrics?.circuitState ?? '-' }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.recommendedMultiplier') }}</span><strong>{{ metrics?.controlState?.recommendedMultiplier?.toFixed(2) ?? '-' }}</strong></div>
@@ -237,31 +248,47 @@ onUnmounted(() => {
           <span class="ui-card-title">{{ t('monitor.controlParams') }}</span>
         </template>
         <el-form v-if="controlParam" :model="controlParam" label-width="180px">
+          <el-form-item :label="t('monitor.protectedCheckIntervalSeconds')">
+            <el-input-number v-model="controlParam.protectedCheckIntervalSeconds" :min="60" :max="604800" :step="300" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.protectedCheckIntervalSecondsDesc') }}</div>
+          </el-form-item>
           <el-form-item :label="t('monitor.checkIntervalMultiplier')">
             <el-input-number v-model="controlParam.checkIntervalMultiplier" :min="0.1" :max="10" :step="0.1" :precision="2" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.checkIntervalMultiplierDesc') }}</div>
+          </el-form-item>
+          <el-form-item :label="t('monitor.protectedIntervalMultiplier')">
+            <el-input-number v-model="controlParam.protectedIntervalMultiplier" :min="1" :max="10" :step="0.1" :precision="2" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.protectedIntervalMultiplierDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.downloadDelayMultiplier')">
             <el-input-number v-model="controlParam.downloadDelayMultiplier" :min="0.1" :max="10" :step="0.1" :precision="2" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.downloadDelayMultiplierDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.intervalBias')">
             <el-input-number v-model="controlParam.intervalBias" :min="0.1" :max="5" :step="0.1" :precision="2" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.intervalBiasDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.minCheckIntervalSeconds')">
             <el-input-number v-model="controlParam.minCheckIntervalSeconds" :min="60" :max="172800" :step="60" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.minCheckIntervalSecondsDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.maxCheckIntervalSeconds')">
             <el-input-number v-model="controlParam.maxCheckIntervalSeconds" :min="60" :max="604800" :step="300" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.maxCheckIntervalSecondsDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('policy.priority')">
             <el-select v-model="controlParam.priority" class="w-full">
               <el-option v-for="option in priorityOptions" :key="option.value" :label="option.label" :value="option.value" />
             </el-select>
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.priorityDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.hotspotProtectionEnabled')">
             <el-switch v-model="controlParam.hotspotProtectionEnabled" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.hotspotProtectionEnabledDesc') }}</div>
           </el-form-item>
           <el-form-item :label="t('monitor.forceMaintenance')">
             <el-switch v-model="controlParam.forceMaintenance" />
+            <div class="text-xs text-gray-500 mt-1">{{ t('monitor.forceMaintenanceDesc') }}</div>
           </el-form-item>
           <el-form-item v-if="controlParam.forceMaintenance" :label="t('monitor.maintenanceMessage')">
             <el-input v-model="controlParam.maintenanceMessage" type="textarea" :rows="3" />

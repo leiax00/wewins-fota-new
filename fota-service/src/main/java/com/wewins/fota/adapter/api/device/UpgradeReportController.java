@@ -67,12 +67,12 @@ public class UpgradeReportController {
                 nodeIdentity.regionCode()
         );
         upgradeReportAppService.reportUpgrade(report);
-        fotaMetrics.recordUpgradeEvent(resolveProductCode(requestBody.getImei()), requestBody.getEvent().name());
+        fotaMetrics.recordUpgradeEvent(resolveProductModel(requestBody.getImei()), requestBody.getEvent().name());
 
         return ResponseEntity.ok().build();
     }
 
-    private String resolveProductCode(String imei) {
+    private String resolveProductModel(String imei) {
         return deviceRepository.findByImei(imei)
                 .flatMap(device -> productRepository.findById(device.getProductId()))
                 .map(product -> product.getModel())
