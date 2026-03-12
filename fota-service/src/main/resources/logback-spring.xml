@@ -25,6 +25,8 @@
         </rollingPolicy>
     </appender>
 
+    <appender name="SSE" class="com.wewins.fota.infra.logging.LogbackSseAppender" />
+
     <springProfile name="!dev">
         <logger name="com.wewins.fota" level="INFO"/>
         <logger name="org.springframework.security" level="INFO"/>
@@ -34,6 +36,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="SSE"/>
         </root>
     </springProfile>
 
@@ -45,6 +48,7 @@
         <logger name="com.baomidou.mybatisplus" level="INFO"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="SSE"/>
 <!--            <appender-ref ref="FILE"/>-->
         </root>
     </springProfile>

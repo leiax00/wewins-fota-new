@@ -1,4 +1,5 @@
 import { get, post, put } from './request'
+import { getToken } from '@/utils/auth'
 
 export interface HostMetrics {
   host: string
@@ -118,4 +119,159 @@ export const controlApi = {
 
 export const cacheMonitorApi = {
   evict: (data: CacheEvictRequest) => post<CacheEvictResult>('/admin/cache/evict', data),
+}
+
+/**
+ * 日志事件结构
+ */
+export interface LogEvent {
+  timestamp: number
+  level: string
+  logger: string
+  message: string
+  thread: string
+  formattedTime: string
+}
+
+/**
+ * SSE 事件类型
+ */
+interface SSEMessageEvent extends MessageEvent {
+  data: LogEvent | string
+}
+
+/**
+ * SSE 事件处理器
+ */
+interface SSEEventHandlers {
+  onmessage?: (event: SSEMessageEvent) => void
+  onerror?: (error: Error) => void
+  onopen?: () => void
+}
+
+/**
+ * 创建 SSE 日志流连接
+ * @returns 返回 SSE 连接和清理函数
+ */
+export function createLogStream(): {
+  connect: (handlers: SSEEventHandlers) => () => void
+  disconnect: () => void
+  isConnected: () => boolean
+} {
+  let abortController: AbortController | null = null
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+
+  const disconnect = () => {
+    if (reader) {
+      reader.cancel().catch(() => {})
+      reader = null
+    }
+    if (abortController) {
+      abortController.abort()
+      abortController = null
+    }
+  }
+
+  const isConnected = () => abortController !== null && !abortController.signal.aborted
+
+  const connect = (handlers: SSEEventHandlers) => {
+    disconnect()
+
+    const token = getToken()
+    const url = `${import.meta.env.VITE_API_BASE_URL}/admin/monitor/logs/stream`
+
+    abortController = new AbortController()
+
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: abortController.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`SSE 连接失败: ${response.status} ${response.statusText}`)
+        }
+
+        handlers.onopen?.()
+
+        reader = response.body?.getReader() || null
+        if (!reader) {
+          throw new Error('无法获取响应流')
+        }
+
+        const decoder = new TextDecoder()
+        let buffer = '' // 用于处理跨 chunk 的数据
+        let currentEventType = 'message' // 当前事件类型
+        let currentData = '' // 当前事件数据
+
+        const read = async () => {
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              // 解码并添加到缓冲区
+              buffer += decoder.decode(value, { stream: true })
+
+              // 按行处理
+              const lines = buffer.split('\n')
+              // 保留最后一个可能不完整的行
+              buffer = lines.pop() || ''
+
+              for (const line of lines) {
+                if (line === '') {
+                  // 空行表示事件结束
+                  if (currentData) {
+                    try {
+                      // 去掉 'data: ' 前缀
+                      const dataStr = currentData.replace(/^data:\s*/, '')
+                      if (dataStr && dataStr !== '[DONE]') {
+                        const event = JSON.parse(dataStr) as LogEvent
+                        handlers.onmessage?.({ data: event } as SSEMessageEvent)
+                      }
+                    } catch (e) {
+                      // 忽略 JSON 解析错误
+                    }
+                    currentData = ''
+                  }
+                } else if (line.startsWith('event:')) {
+                  currentEventType = line.slice(6).trim()
+                } else if (line.startsWith('data:')) {
+                  const data = line.slice(5).trim()
+                  if (currentData) {
+                    currentData += '\n' + data // 支持多行 data
+                  } else {
+                    currentData = data
+                  }
+                } else if (line.startsWith(':')) {
+                  // 注释行，忽略
+                  continue
+                }
+              }
+            }
+          } catch (e) {
+            if (!abortController?.signal.aborted) {
+              handlers.onerror?.(e as Error)
+            }
+          }
+        }
+
+        read()
+      })
+      .catch((error) => {
+        if (!abortController?.signal.aborted) {
+          handlers.onerror?.(error)
+        }
+      })
+
+    return disconnect
+  }
+
+  return {
+    connect,
+    disconnect,
+    isConnected,
+  }
 }
