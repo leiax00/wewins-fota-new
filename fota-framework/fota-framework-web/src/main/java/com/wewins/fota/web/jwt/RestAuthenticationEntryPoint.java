@@ -26,6 +26,11 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
 
+        if (response.isCommitted()) {
+            log.debug("响应已提交，跳过 401 写回: uri={}", request.getRequestURI());
+            return;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("认证失败: uri={}, message={}",
                     request.getRequestURI(), authException.getMessage());

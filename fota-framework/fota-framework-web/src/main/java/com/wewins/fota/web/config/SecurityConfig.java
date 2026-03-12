@@ -75,6 +75,7 @@ public class SecurityConfig {
                         // 公开接口：登录、健康检查、静态资源、API 文档、设备升级检查
                         .requestMatchers(
                                 "/api/sys/auth/**",
+                                "/error",
                                 "/actuator/health",
                                 "/actuator/info",
                                 "/actuator/prometheus",

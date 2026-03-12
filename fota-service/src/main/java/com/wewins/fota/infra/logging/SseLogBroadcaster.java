@@ -120,8 +120,11 @@ public class SseLogBroadcaster {
 
             log.debug("SSE 日志客户端已连接, clientId={}, 当前连接数={}", clientId, clients.size());
             return emitter;
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             removeClient(clientId);
+            if (isClientDisconnect(ex)) {
+                throw new IllegalStateException("SSE 客户端在建立连接时已断开", ex);
+            }
             throw new IllegalStateException("创建 SSE 日志流失败", ex);
         }
     }
@@ -181,7 +184,10 @@ public class SseLogBroadcaster {
             try {
                 // 发送注释行作为心跳
                 client.emitter.send(SseEmitter.event().comment("heartbeat"));
-            } catch (IOException ex) {
+            } catch (Exception ex) {
+                if (!isClientDisconnect(ex)) {
+                    log.debug("发送 SSE 心跳失败, clientId={}", clientId, ex);
+                }
                 toRemove.add(clientId);
             }
         });
@@ -204,8 +210,10 @@ public class SseLogBroadcaster {
             try {
                 sendEvent(client.emitter, event);
                 client.lastActivityTime = System.currentTimeMillis();
-            } catch (IOException ex) {
-                log.debug("推送 SSE 日志事件失败, 关闭连接 clientId={}", clientId, ex);
+            } catch (Exception ex) {
+                if (!isClientDisconnect(ex)) {
+                    log.debug("推送 SSE 日志事件失败, 关闭连接 clientId={}", clientId, ex);
+                }
                 removeClient(clientId);
             }
         });
@@ -301,6 +309,28 @@ public class SseLogBroadcaster {
                 .name("ready")
                 .data("{\"status\":\"connected\",\"message\":\"日志流已连接\"}")
                 .id("0"));
+    }
+
+    private boolean isClientDisconnect(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof IOException) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null) {
+                String normalized = message.toLowerCase();
+                if (normalized.contains("broken pipe")
+                        || normalized.contains("connection reset")
+                        || normalized.contains("response not usable after response errors")
+                        || normalized.contains("sse client")
+                        || normalized.contains("clientabortexception")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**
