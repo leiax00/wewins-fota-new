@@ -1,4 +1,4 @@
-import { get, post, put } from './request'
+import { del, get, post, put } from './request'
 import { getToken } from '@/utils/auth'
 
 export interface HostMetrics {
@@ -103,6 +103,14 @@ export interface CacheEvictResult {
   message: string
 }
 
+export interface CacheEvictPreview {
+  estimatedScopes: number
+  estimatedDeviceCount: number
+  affectedTargets: string[]
+  executable: boolean
+  message: string
+}
+
 export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
@@ -117,8 +125,68 @@ export const controlApi = {
     put<void>(`/admin/control/product/${productId}`, data),
 }
 
+export interface RedisInfo {
+  version: string
+  mode: string
+  connectedClients: number
+  usedMemory: number
+  usedMemoryPeak: number
+  totalSystemMemory: number
+  memoryUsagePercent: number
+  totalKeys: number
+  expiredKeys: number
+  evictedKeys: number
+  keyspaceHits: number
+  keyspaceMisses: number
+  hitRate: number
+  totalCommandsProcessed: number
+  instantaneousOpsPerSec: number
+  uptimeInSeconds: number
+  rdbLastSaveTime: number
+  rdbLastStatus: string
+  aofEnabled: boolean
+  dbSizes: Record<string, number>
+  rawInfo: Record<string, string>
+}
+
+export interface RedisKeyItem {
+  key: string
+  type: string
+  ttl: number
+  memoryUsage: number
+}
+
+export interface RedisKeyList {
+  keys: RedisKeyItem[]
+  total: number
+  page?: number
+  pageSize?: number
+  cursor?: string
+}
+
+export interface RedisKeyDetail {
+  key: string
+  type: string
+  ttl: number
+  memoryUsage: number
+  encoding: string
+  value: unknown
+  length: number
+  error?: string
+}
+
 export const cacheMonitorApi = {
   evict: (data: CacheEvictRequest) => post<CacheEvictResult>('/admin/cache/evict', data),
+  previewEvict: (data: CacheEvictRequest) => post<CacheEvictPreview>('/admin/cache/evict/preview', data),
+  getInfo: () => get<RedisInfo>('/admin/cache/info'),
+  listKeys: (params: { pattern?: string; cursor?: string; pageSize?: number }) =>
+    get<RedisKeyList>('/admin/cache/keys', { params }),
+  getKeyDetail: (key: string) => get<RedisKeyDetail>(`/admin/cache/keys/${encodeURIComponent(key)}`),
+  setKeyValue: (key: string, value: string, ttl?: number) =>
+    put<boolean>(`/admin/cache/keys/${encodeURIComponent(key)}`, { value, ttl }),
+  deleteKey: (key: string) => del<boolean>(`/admin/cache/keys/${encodeURIComponent(key)}`),
+  setKeyTtl: (key: string, ttl: number) =>
+    put<boolean>(`/admin/cache/keys/${encodeURIComponent(key)}/ttl`, null, { params: { ttl } }),
 }
 
 /**
