@@ -194,7 +194,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{uri=~\"^/v1/upgrade/(check|report)$\"}[5m])) by (le))",
           "refId": "A"
         }
       ],
@@ -255,7 +255,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count[5m])), 1)",
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"^/v1/upgrade/(check|report)$\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{uri=~\"^/v1/upgrade/(check|report)$\"}[5m])), 1)",
           "refId": "A"
         }
       ],
@@ -464,7 +464,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[5m])) by (le, instance))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{uri=~\"^/v1/upgrade/(check|report)$\"}[5m])) by (le, instance))",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }

@@ -105,7 +105,7 @@ export interface CacheEvictResult {
 export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
-  getTrends: (range = '1h') => get<MonitorTrends>('/admin/monitor/trends', { params: { range } }),
+  getTrends: (range = '15m') => get<MonitorTrends>('/admin/monitor/trends', { params: { range } }),
 }
 
 export const controlApi = {

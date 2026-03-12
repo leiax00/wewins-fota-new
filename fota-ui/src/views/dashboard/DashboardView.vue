@@ -13,7 +13,7 @@ const userStore = useUserStore()
 const metrics = ref<RealtimeMetrics | null>(null)
 const trends = ref<MonitorTrends | null>(null)
 const trendLoading = ref(false)
-const trendRange = ref<'15m' | '1h' | '6h' | '24h'>('1h')
+const trendRange = ref<'15m' | '1h' | '6h' | '24h'>('15m')
 const refreshTimer = ref<number | null>(null)
 const trendRefreshTimer = ref<number | null>(null)
 
@@ -72,7 +72,7 @@ const stopRefresh = () => {
   }
 }
 
-const formatQps = (value?: number) => `${(value ?? 0).toFixed(1)}`
+const formatQps = (value?: number) => `${(value ?? 0).toFixed(2)}`
 const formatPercent = (value?: number) => `${(value ?? 0).toFixed(2)}%`
 const formatLatency = (value?: number) => `${(value ?? 0).toFixed(0)} ms`
 
@@ -151,7 +151,10 @@ const renderTrendCharts = () => {
       name: 'P50',
       type: 'line',
       smooth: true,
-      showSymbol: false,
+      showSymbol: true,
+      connectNulls: true,
+      symbol: 'circle',
+      symbolSize: 6,
       lineStyle: { width: 2, color: '#f59e0b' },
       itemStyle: { color: '#f59e0b' },
       data: toChartData(trends.value.p50Latency),
@@ -160,7 +163,10 @@ const renderTrendCharts = () => {
       name: 'P99',
       type: 'line',
       smooth: true,
-      showSymbol: false,
+      showSymbol: true,
+      connectNulls: true,
+      symbol: 'circle',
+      symbolSize: 6,
       lineStyle: { width: 2, color: '#dc2626' },
       itemStyle: { color: '#dc2626' },
       data: toChartData(trends.value.p99Latency),

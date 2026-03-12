@@ -17,12 +17,12 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class ControlParameterController {
 
-    private final ControlParameterRepository repository;
+    private final ControlParameterRepository controlParameterRepository;
 
     @GetMapping("/global")
     @PreAuthorize("@rbac.has('monitor:load:read')")
     public ApiResponse<ControlParameterDTO> getGlobalConfig() {
-        ControlParameter param = repository.getGlobal().orElse(ControlParameter.createGlobalDefault());
+        ControlParameter param = controlParameterRepository.getGlobal().orElse(ControlParameter.createGlobalDefault());
         return ApiResponse.success(toDTO(param));
     }
 
@@ -40,8 +40,8 @@ public class ControlParameterController {
                 .updatedAt(Instant.now())
                 .updatedBy(operatorName)
                 .build();
-        repository.saveGlobal(param);
-        ControlParameter saved = repository.getGlobal()
+        controlParameterRepository.saveGlobal(param);
+        ControlParameter saved = controlParameterRepository.getGlobal()
                 .orElseThrow(() -> new IllegalStateException("Global control parameter was not persisted"));
         log.info("Global control parameter updated by {}", operatorName);
         log.debug("Saved global control parameter: {}", saved);
@@ -51,7 +51,7 @@ public class ControlParameterController {
     @GetMapping("/product/{productId}")
     @PreAuthorize("@rbac.has('monitor:load:read')")
     public ApiResponse<ControlParameterDTO> getProductConfig(@PathVariable Long productId) {
-        ControlParameter param = repository.getByProduct(productId)
+        ControlParameter param = controlParameterRepository.getByProduct(productId)
                 .orElse(ControlParameter.createProductDefault(productId));
         return ApiResponse.success(toDTO(param));
     }
@@ -72,8 +72,8 @@ public class ControlParameterController {
                 .updatedAt(Instant.now())
                 .updatedBy(operatorName)
                 .build();
-        repository.saveByProduct(productId, param);
-        ControlParameter saved = repository.getByProduct(productId)
+        controlParameterRepository.saveByProduct(productId, param);
+        ControlParameter saved = controlParameterRepository.getByProduct(productId)
                 .orElseThrow(() -> new IllegalStateException("Product control parameter was not persisted"));
         log.info("Product {} control parameter updated by {}", productId, operatorName);
         log.debug("Saved product control parameter: productId={}, value={}", productId, saved);

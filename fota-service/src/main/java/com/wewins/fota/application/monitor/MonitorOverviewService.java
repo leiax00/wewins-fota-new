@@ -8,6 +8,7 @@ import com.wewins.fota.adapter.api.admin.dto.*;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
+import com.wewins.fota.infra.metrics.DeviceApiMetricsSupport;
 import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.metrics.PrometheusClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,7 +25,6 @@ import java.util.Map;
 public class MonitorOverviewService {
 
     private static final String RESOURCE_NAME = "upgrade:check";
-
     private final SystemLoadIndicator loadIndicator;
     private final PrometheusClient prometheusClient;
     private final NodeIdentity nodeIdentity;
@@ -115,10 +115,10 @@ public class MonitorOverviewService {
                         String.format("sum(rate(fota_upgrade_events_total{region=\"%s\"}[5m]))", region),
                         start, end, window.prometheusStep()))
                 .p50Latency(queryTrend(
-                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000", region),
+                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000", region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX),
                         start, end, window.prometheusStep()))
                 .p99Latency(queryTrend(
-                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000", region),
+                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000", region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX),
                         start, end, window.prometheusStep()))
                 .blockRate(queryTrend(
                         String.format("sum(rate(fota_rate_limited_total{region=\"%s\",resource=\"%s\"}[5m])) / clamp_min(sum(rate(fota_device_checks_total{region=\"%s\"}[5m])), 1)", region, RESOURCE_NAME, region),

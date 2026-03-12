@@ -7,18 +7,14 @@ import com.wewins.fota.infra.config.properties.MonitoringProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Prometheus HTTP API 客户端
@@ -67,7 +63,7 @@ public class PrometheusClient {
 
         try {
             String url = String.format("%s/api/v1/query?query=%s", prometheusUrl, 
-                    java.net.URLEncoder.encode(query, "UTF-8"));
+                    java.net.URLEncoder.encode(query, StandardCharsets.UTF_8));
             
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -120,7 +116,7 @@ public class PrometheusClient {
         try {
             String url = String.format("%s/api/v1/query_range?query=%s&start=%d&end=%d&step=%s",
                     prometheusUrl,
-                    java.net.URLEncoder.encode(query, "UTF-8"),
+                    java.net.URLEncoder.encode(query, StandardCharsets.UTF_8),
                     start, end, step);
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -196,15 +192,15 @@ public class PrometheusClient {
 
     public double getDeviceApiP50Latency(String region) {
         String query = String.format(
-                "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000",
-                region);
+                "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000",
+                region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX);
         return query(query).orElse(-1.0);
     }
 
     public double getDeviceApiP99Latency(String region) {
         String query = String.format(
-                "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000",
-                region);
+                "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000",
+                region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX);
         return query(query).orElse(-1.0);
     }
 
