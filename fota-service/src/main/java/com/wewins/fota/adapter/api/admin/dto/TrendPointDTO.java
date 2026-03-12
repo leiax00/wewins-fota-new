@@ -9,13 +9,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class HotProductDTO {
+public class TrendPointDTO {
 
-    private String product;
+    private long timestamp;
 
-    private double checkQps;
-
-    private double reportQps;
-
-    private double trafficShare;
+    private double value;
 }

@@ -1,6 +1,10 @@
 export type ComponentKey =
   | 'dashboard/index'
   | 'monitor/index'
+  | 'monitor/load'
+  | 'monitor/cache'
+  | 'monitor/log'
+  | 'monitor/operation-log'
   | 'product/index'
   | 'firmware/index'
   | 'policy/index'
@@ -17,6 +21,10 @@ export type ComponentLoader = () => Promise<unknown>
 export const componentMap: Record<ComponentKey, ComponentLoader> = {
   'dashboard/index': () => import('@/views/dashboard/DashboardView.vue'),
   'monitor/index': () => import('@/views/monitor/MonitorView.vue'),
+  'monitor/load': () => import('@/views/monitor/LoadMonitorView.vue'),
+  'monitor/cache': () => import('@/views/monitor/CacheMonitorView.vue'),
+  'monitor/log': () => import('@/views/monitor/LogMonitorView.vue'),
+  'monitor/operation-log': () => import('@/views/monitor/OperationLogView.vue'),
   'product/index': () => import('@/views/product/ProductListView.vue'),
   'firmware/index': () => import('@/views/firmware/FirmwareListView.vue'),
   'policy/index': () => import('@/views/policy/PolicyListView.vue'),
@@ -36,4 +44,3 @@ export function isValidComponentKey(key: string): key is ComponentKey {
 export function isLayout(key: string): boolean {
   return  key.toLowerCase() === 'layout'
 }
-

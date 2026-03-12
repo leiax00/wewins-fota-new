@@ -11,6 +11,7 @@ public record LoadSnapshot(
         double cpuUsage,
         double memoryUsage,
         double qps,
+        double p50Latency,
         double p99Latency,
         double connectionPoolUsage,
         double hostCpuUsage,
@@ -51,6 +52,7 @@ public record LoadSnapshot(
         private double cpuUsage;
         private double memoryUsage;
         private double qps;
+        private double p50Latency;
         private double p99Latency;
         private double connectionPoolUsage;
         private double hostCpuUsage;
@@ -87,6 +89,11 @@ public record LoadSnapshot(
 
         public LoadSnapshotBuilder qps(double qps) {
             this.qps = qps;
+            return this;
+        }
+
+        public LoadSnapshotBuilder p50Latency(double p50Latency) {
+            this.p50Latency = p50Latency;
             return this;
         }
 
@@ -137,7 +144,7 @@ public record LoadSnapshot(
             if (timestamp == null) {
                 timestamp = Instant.now();
             }
-            return new LoadSnapshot(timestamp, totalScore, level, cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage, hostCpuUsage, hostMemoryUsage, networkInBytes, networkOutBytes, checkQps, reportQps);
+            return new LoadSnapshot(timestamp, totalScore, level, cpuUsage, memoryUsage, qps, p50Latency, p99Latency, connectionPoolUsage, hostCpuUsage, hostMemoryUsage, networkInBytes, networkOutBytes, checkQps, reportQps);
         }
     }
 }

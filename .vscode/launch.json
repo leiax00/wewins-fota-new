@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "FotaService (dev)",
+      "request": "launch",
+      "mainClass": "com.wewins.fota.FotaApplication",
+      "projectName": "fota-service",
+      "cwd": "${workspaceFolder}/fota-service",
+      "args": "--spring.profiles.active=dev",
+      "vmArgs": "-Dfile.encoding=UTF-8",
+      "env": {
+        "SPRING_PROFILES_ACTIVE": "dev",
+        "maven.test.skip": "true",
+        "skipTests": "true"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "name": "FotaUI (dev)",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/fota-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "java",
+      "name": "FotaService (debug)",
+      "request": "launch",
+      "mainClass": "com.wewins.fota.FotaApplication",
+      "projectName": "fota-service",
+      "cwd": "${workspaceFolder}/fota-service",
+      "args": "--spring.profiles.active=dev",
+      "vmArgs": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 -Dfile.encoding=UTF-8",
+      "env": {
+        "SPRING_PROFILES_ACTIVE": "dev",
+        "maven.test.skip": "true",
+        "skipTests": "true"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Fota All (dev)",
+      "configurations": ["FotaService (dev)", "FotaUI (dev)"],
+      "stopAll": true
+    }
+  ]
+}

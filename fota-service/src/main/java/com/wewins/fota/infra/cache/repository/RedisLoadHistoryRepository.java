@@ -90,6 +90,7 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
         map.cpuUsage = snapshot.cpuUsage();
         map.memoryUsage = snapshot.memoryUsage();
         map.qps = snapshot.qps();
+        map.p50Latency = snapshot.p50Latency();
         map.p99Latency = snapshot.p99Latency();
         map.connectionPoolUsage = snapshot.connectionPoolUsage();
         return map;
@@ -103,6 +104,7 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
                 .cpuUsage(map.cpuUsage)
                 .memoryUsage(map.memoryUsage)
                 .qps(map.qps)
+                .p50Latency(map.p50Latency)
                 .p99Latency(map.p99Latency)
                 .connectionPoolUsage(map.connectionPoolUsage)
                 .build();
@@ -115,6 +117,7 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
         public double cpuUsage;
         public double memoryUsage;
         public double qps;
+        public double p50Latency;
         public double p99Latency;
         public double connectionPoolUsage;
     }

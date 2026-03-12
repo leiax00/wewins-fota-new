@@ -18,7 +18,7 @@ INSERT INTO sys_permissions (id, code, name, type, parent_id, status,
                              route_path, route_name, component_key, menu_sort, icon,
                              created_at, updated_at)
 VALUES
-  (250, 'fota:monitor', '系统监控', 'MENU', 20, 'active', 
+  (30, 'fota:monitor', '系统监控', 'MENU', 20, 'active', 
    '/monitor', 'Monitor', 'monitor/index', 60, 'Monitor',
    now(), now())
 ON CONFLICT (id) DO UPDATE SET
@@ -35,8 +35,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO sys_permissions (id, code, name, type, parent_id, status, created_at, updated_at)
 VALUES
-  (1151, 'fota:monitor:read',   '系统监控-查看',    'API', 250, 'active', now(), now()),
-  (1152, 'fota:monitor:update', '系统监控-参数调整', 'API', 250, 'active', now(), now())
+  (1151, 'fota:monitor:read',   '系统监控-查看',    'API', 30, 'active', now(), now()),
+  (1152, 'fota:monitor:update', '系统监控-参数调整', 'API', 30, 'active', now(), now())
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
@@ -46,14 +46,14 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO sys_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM sys_roles r
-JOIN sys_permissions p ON p.id IN (250, 1151, 1152)
+JOIN sys_permissions p ON p.id IN (30, 1151, 1152)
 WHERE r.code = 'super_wewins'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO sys_role_permission (role_id, permission_id)
 SELECT r.id, p.id
 FROM sys_roles r
-JOIN sys_permissions p ON p.id IN (250, 1151)
+JOIN sys_permissions p ON p.id IN (30, 1151)
 WHERE r.code = 'wewins'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -78,21 +78,21 @@ WHERE code = 'fota:monitor' AND type = 'MENU';
 
 SELECT id, code, name, type, route_path, route_name, component_key, menu_sort, icon
 FROM sys_permissions
-WHERE id IN (250, 1151, 1152)
+WHERE id IN (30, 1151, 1152)
 ORDER BY id;
 
 SELECT r.code AS role_code, r.name AS role_name, p.code AS permission_code, p.name AS permission_name
 FROM sys_roles r
 JOIN sys_role_permission rp ON rp.role_id = r.id
 JOIN sys_permissions p ON p.id = rp.permission_id
-WHERE p.id IN (250, 1151, 1152)
+WHERE p.id IN (30, 1151, 1152)
 ORDER BY r.code, p.id;
 
 DO $$
 BEGIN
     RAISE NOTICE '系统监控权限添加完成';
     RAISE NOTICE '已新增 3 个权限节点：';
-    RAISE NOTICE '  - 250: fota:monitor (MENU) - /monitor';
+    RAISE NOTICE '  - 30: fota:monitor (MENU) - /monitor';
     RAISE NOTICE '  - 1151: fota:monitor:read (API)';
     RAISE NOTICE '  - 1152: fota:monitor:update (API)';
     RAISE NOTICE '权限已绑定到 super_wewins 和 wewins 角色';

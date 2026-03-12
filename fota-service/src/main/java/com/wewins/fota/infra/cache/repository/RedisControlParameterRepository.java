@@ -39,8 +39,9 @@ public class RedisControlParameterRepository implements ControlParameterReposito
         try {
             String json = objectMapper.writeValueAsString(param);
             redisTemplate.opsForValue().set(RedisKeyConstants.CTRL_GLOBAL_KEY, json);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize global control parameter", e);
+        } catch (Exception e) {
+            log.error("Failed to save global control parameter", e);
+            throw new IllegalStateException("Failed to save global control parameter", e);
         }
     }
 
@@ -65,8 +66,9 @@ public class RedisControlParameterRepository implements ControlParameterReposito
         try {
             String json = objectMapper.writeValueAsString(param);
             redisTemplate.opsForValue().set(key, json);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize product control parameter: productId={}", productId, e);
+        } catch (Exception e) {
+            log.error("Failed to save product control parameter: productId={}", productId, e);
+            throw new IllegalStateException("Failed to save product control parameter", e);
         }
     }
 }

@@ -1,4 +1,4 @@
-import { get, put } from './request'
+import { get, post, put } from './request'
 
 export interface HostMetrics {
   host: string
@@ -26,9 +26,6 @@ export interface HotProductMetrics {
   checkQps: number
   reportQps: number
   trafficShare: number
-  priority: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW'
-  intervalBias: number
-  hotspotProtectionEnabled: boolean
 }
 
 export interface ControlState {
@@ -46,6 +43,7 @@ export interface RealtimeMetrics {
   currentQps: number
   checkQps: number
   reportQps: number
+  p50Latency: number
   p99Latency: number
   activeRequests: number
   blockRate: number
@@ -65,26 +63,49 @@ export interface RealtimeMetrics {
   timestamp: string
 }
 
+export interface TrendPoint {
+  timestamp: number
+  value: number
+}
+
+export interface MonitorTrends {
+  range: string
+  stepSeconds: number
+  checkQps: TrendPoint[]
+  reportQps: TrendPoint[]
+  p50Latency: TrendPoint[]
+  p99Latency: TrendPoint[]
+  blockRate: TrendPoint[]
+}
+
 export interface ControlParameter {
   productId?: number
-  protectedCheckIntervalSeconds: number
-  checkIntervalMultiplier: number
   protectedIntervalMultiplier: number
   downloadDelayMultiplier: number
-  intervalBias: number
   minCheckIntervalSeconds: number
   maxCheckIntervalSeconds: number
-  priority: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW'
-  hotspotProtectionEnabled: boolean
-  forceMaintenance: boolean
-  maintenanceMessage: string
   updatedAt: string
   updatedBy: string
+}
+
+export interface CacheEvictRequest {
+  productId?: number
+  productModel?: string
+  imeis?: string[]
+  evictProductCache?: boolean
+  evictPolicyCache?: boolean
+}
+
+export interface CacheEvictResult {
+  evictedScopes: number
+  evictedDeviceCount: number
+  message: string
 }
 
 export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
+  getTrends: (range = '1h') => get<MonitorTrends>('/admin/monitor/trends', { params: { range } }),
 }
 
 export const controlApi = {
@@ -93,4 +114,8 @@ export const controlApi = {
   getProductConfig: (productId: number) => get<ControlParameter>(`/admin/control/product/${productId}`),
   updateProductConfig: (productId: number, data: Partial<ControlParameter>) => 
     put<void>(`/admin/control/product/${productId}`, data),
+}
+
+export const cacheMonitorApi = {
+  evict: (data: CacheEvictRequest) => post<CacheEvictResult>('/admin/cache/evict', data),
 }

@@ -2,7 +2,6 @@ package com.wewins.fota.application.load;
 
 import com.wewins.fota.domain.load.model.entity.ControlParameter;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
-import com.wewins.fota.domain.load.model.enums.ProductPriority;
 import com.wewins.fota.domain.load.repository.ControlParameterRepository;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
 import com.wewins.fota.domain.product.model.entity.Product;
@@ -38,18 +37,15 @@ class DynamicIntervalServiceTest {
     private DynamicIntervalService dynamicIntervalService;
 
     @Test
-    void shouldApplyPriorityBiasAndMergedBounds() {
+    void shouldApplyMergedBounds() {
         when(loadIndicator.getLoadLevel()).thenReturn(LoadLevel.HIGH);
         when(controlParameterRepository.getGlobal()).thenReturn(Optional.of(ControlParameter.builder()
-                .checkIntervalMultiplier(1.2)
                 .minCheckIntervalSeconds(2000)
                 .maxCheckIntervalSeconds(20000)
-                .priority(ProductPriority.NORMAL)
                 .build()));
         when(controlParameterRepository.getByProduct(100L)).thenReturn(Optional.of(ControlParameter.builder()
                 .productId(100L)
-                .intervalBias(0.8)
-                .priority(ProductPriority.CRITICAL)
+                .protectedIntervalMultiplier(2.0)
                 .build()));
         Product product = Product.builder()
                 .name("P100")
@@ -69,10 +65,8 @@ class DynamicIntervalServiceTest {
     void shouldFallBackToGlobalBoundsForUnknownProduct() {
         when(loadIndicator.getLoadLevel()).thenReturn(LoadLevel.CRITICAL);
         when(controlParameterRepository.getGlobal()).thenReturn(Optional.of(ControlParameter.builder()
-                .checkIntervalMultiplier(2.0)
                 .minCheckIntervalSeconds(30 * SECONDS_PER_MINUTE)
                 .maxCheckIntervalSeconds(2 * SECONDS_PER_HOUR)
-                .priority(ProductPriority.LOW)
                 .build()));
         when(controlParameterRepository.getByProduct(200L)).thenReturn(Optional.empty());
 
@@ -85,15 +79,38 @@ class DynamicIntervalServiceTest {
     void shouldUseProtectedIntervalForSentinelFlow() {
         when(loadIndicator.getLoadLevel()).thenReturn(LoadLevel.NORMAL);
         when(controlParameterRepository.getGlobal()).thenReturn(Optional.of(ControlParameter.builder()
-                .protectedCheckIntervalSeconds(4 * SECONDS_PER_HOUR)
                 .protectedIntervalMultiplier(2.0)
                 .minCheckIntervalSeconds(30 * SECONDS_PER_MINUTE)
                 .maxCheckIntervalSeconds(SECONDS_PER_DAY)
-                .priority(ProductPriority.NORMAL)
                 .build()));
 
         int interval = dynamicIntervalService.calculateProtectedCheckInterval(null, "FLOW_QPS");
 
-        assertThat(interval).isBetween(4 * SECONDS_PER_HOUR, SECONDS_PER_DAY);
+        assertThat(interval).isBetween((int) Math.round(6 * SECONDS_PER_HOUR * 0.95 * 2.0), SECONDS_PER_DAY);
+    }
+
+    @Test
+    void shouldApplyProtectedMultiplierOnTopOfNormalInterval() {
+        when(loadIndicator.getLoadLevel()).thenReturn(LoadLevel.HIGH);
+        when(controlParameterRepository.getGlobal()).thenReturn(Optional.of(ControlParameter.builder()
+                .protectedIntervalMultiplier(2.0)
+                .minCheckIntervalSeconds(30 * SECONDS_PER_MINUTE)
+                .maxCheckIntervalSeconds(2 * SECONDS_PER_DAY)
+                .build()));
+        Product product = Product.builder()
+                .name("P300")
+                .manufacturer("Wewins")
+                .model("P300")
+                .checkPeriodSeconds(6 * SECONDS_PER_HOUR)
+                .build();
+        product.setId(300L);
+        when(productRepository.findById(300L)).thenReturn(Optional.of(product));
+        when(controlParameterRepository.getByProduct(300L)).thenReturn(Optional.empty());
+
+        DynamicIntervalService.IntervalDecision decision = dynamicIntervalService.resolveInterval(300L, true, "FLOW_QPS");
+
+        assertThat(decision.baseIntervalSeconds()).isEqualTo(6 * SECONDS_PER_HOUR);
+        assertThat(decision.effectiveMultiplier()).isEqualTo(3.2);
+        assertThat(decision.intervalSeconds()).isBetween((int) Math.round(6 * SECONDS_PER_HOUR * 3.2 * 0.95), (int) Math.round(6 * SECONDS_PER_HOUR * 3.2 * 1.05));
     }
 }

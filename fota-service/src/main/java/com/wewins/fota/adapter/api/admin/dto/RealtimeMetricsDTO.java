@@ -28,6 +28,8 @@ public class RealtimeMetricsDTO {
 
     private double reportQps;
 
+    private double p50Latency;
+
     private double p99Latency;
 
     private int activeRequests;

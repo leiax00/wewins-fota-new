@@ -4,40 +4,40 @@ import com.alibaba.csp.sentinel.node.ClusterNode;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager;
 import com.alibaba.csp.sentinel.slots.clusterbuilder.ClusterBuilderSlot;
-import com.wewins.fota.adapter.api.admin.dto.ControlStateDTO;
-import com.wewins.fota.adapter.api.admin.dto.HostMetricsDTO;
-import com.wewins.fota.adapter.api.admin.dto.HotProductDTO;
-import com.wewins.fota.adapter.api.admin.dto.InstanceMetricsDTO;
-import com.wewins.fota.adapter.api.admin.dto.RealtimeMetricsDTO;
-import com.wewins.fota.domain.load.model.entity.ControlParameter;
+import com.wewins.fota.adapter.api.admin.dto.*;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
-import com.wewins.fota.domain.load.model.enums.ProductPriority;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
-import com.wewins.fota.domain.load.repository.ControlParameterRepository;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
-import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.metrics.PrometheusClient;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class MonitorOverviewService {
 
     private static final String RESOURCE_NAME = "upgrade:check";
 
     private final SystemLoadIndicator loadIndicator;
     private final PrometheusClient prometheusClient;
-    private final ProductRepository productRepository;
-    private final ControlParameterRepository controlParameterRepository;
     private final NodeIdentity nodeIdentity;
+
+    public MonitorOverviewService(
+            @Qualifier("systemLoadIndicatorImpl") SystemLoadIndicator loadIndicator,
+            PrometheusClient prometheusClient,
+            NodeIdentity nodeIdentity
+    ) {
+        this.loadIndicator = loadIndicator;
+        this.prometheusClient = prometheusClient;
+        this.nodeIdentity = nodeIdentity;
+    }
 
     public RealtimeMetricsDTO getRealtimeMetrics() {
         LoadSnapshot snapshot = loadIndicator.getSnapshot();
@@ -78,6 +78,7 @@ public class MonitorOverviewService {
                 .currentQps(snapshot.qps())
                 .checkQps(sanitize(snapshot.checkQps()))
                 .reportQps(sanitize(snapshot.reportQps()))
+                .p50Latency(snapshot.p50Latency())
                 .p99Latency(snapshot.p99Latency())
                 .activeRequests(activeRequests)
                 .blockRate(blockRate)
@@ -95,6 +96,33 @@ public class MonitorOverviewService {
                 .controlState(buildControlState(snapshot.level(), snapshot.totalScore()))
                 .hotProducts(getHotProducts())
                 .timestamp(Instant.now())
+                .build();
+    }
+
+    public MonitorTrendsDTO getTrends(String range) {
+        TrendWindow window = resolveWindow(range);
+        String region = nodeIdentity.regionCode();
+        long end = Instant.now().getEpochSecond();
+        long start = end - window.durationSeconds();
+
+        return MonitorTrendsDTO.builder()
+                .range(window.range())
+                .stepSeconds(window.stepSeconds())
+                .checkQps(queryTrend(
+                        String.format("sum(rate(fota_device_checks_total{region=\"%s\"}[5m]))", region),
+                        start, end, window.prometheusStep()))
+                .reportQps(queryTrend(
+                        String.format("sum(rate(fota_upgrade_events_total{region=\"%s\"}[5m]))", region),
+                        start, end, window.prometheusStep()))
+                .p50Latency(queryTrend(
+                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000", region),
+                        start, end, window.prometheusStep()))
+                .p99Latency(queryTrend(
+                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000", region),
+                        start, end, window.prometheusStep()))
+                .blockRate(queryTrend(
+                        String.format("sum(rate(fota_rate_limited_total{region=\"%s\",resource=\"%s\"}[5m])) / clamp_min(sum(rate(fota_device_checks_total{region=\"%s\"}[5m])), 1)", region, RESOURCE_NAME, region),
+                        start, end, window.prometheusStep()))
                 .build();
     }
 
@@ -116,24 +144,14 @@ public class MonitorOverviewService {
 
     private HotProductDTO toHotProduct(PrometheusClient.MetricSample sample, double reportQps, double totalCheckQps) {
         String productModel = sample.metric().getOrDefault("product", "unknown");
-        ControlParameter controlParameter = productRepository.findByModel(productModel)
-                .flatMap(product -> controlParameterRepository.getByProduct(product.getId()))
-                .orElse(ControlParameter.createProductDefault(null));
-
         double checkQps = sample.value();
         double trafficShare = totalCheckQps > 0 ? checkQps / totalCheckQps : 0.0;
-        ProductPriority priority = controlParameter.getPriority() != null
-                ? controlParameter.getPriority()
-                : ProductPriority.NORMAL;
 
         return HotProductDTO.builder()
                 .product(productModel)
                 .checkQps(checkQps)
                 .reportQps(reportQps)
                 .trafficShare(trafficShare)
-                .priority(priority)
-                .intervalBias(controlParameter.getIntervalBias() != null ? controlParameter.getIntervalBias() : priority.getIntervalBias())
-                .hotspotProtectionEnabled(Boolean.TRUE.equals(controlParameter.getHotspotProtectionEnabled()))
                 .build();
     }
 
@@ -145,6 +163,26 @@ public class MonitorOverviewService {
                 .loadLevel(level.name())
                 .recommendedMultiplier(recommendedMultiplier(level))
                 .build();
+    }
+
+    private List<TrendPointDTO> queryTrend(String query, long start, long end, String step) {
+        return prometheusClient.queryRange(query, start, end, step)
+                .orElse(List.of())
+                .stream()
+                .map(point -> TrendPointDTO.builder()
+                        .timestamp(point.timestamp())
+                        .value(sanitize(point.value()))
+                        .build())
+                .toList();
+    }
+
+    private TrendWindow resolveWindow(String range) {
+        return switch (range == null ? "" : range.trim().toLowerCase()) {
+            case "15m" -> new TrendWindow("15m", 15 * 60L, 30, "30s");
+            case "6h" -> new TrendWindow("6h", 6 * 60 * 60L, 300, "5m");
+            case "24h" -> new TrendWindow("24h", 24 * 60 * 60L, 900, "15m");
+            default -> new TrendWindow("1h", ChronoUnit.HOURS.getDuration().toSeconds(), 60, "1m");
+        };
     }
 
     private List<HostMetricsDTO> getHosts() {
@@ -203,7 +241,10 @@ public class MonitorOverviewService {
     }
 
     private double sanitize(double value) {
-        return value < 0 ? 0 : value;
+        if (!Double.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return value;
     }
 
     private void mergeHosts(
@@ -228,5 +269,8 @@ public class MonitorOverviewService {
                     key -> InstanceMetricsDTO.builder().instance(key));
             consumer.accept(builder, sample.value());
         }
+    }
+
+    private record TrendWindow(String range, long durationSeconds, int stepSeconds, String prometheusStep) {
     }
 }

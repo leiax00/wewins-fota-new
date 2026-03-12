@@ -151,7 +151,6 @@ public class SentinelRuleManager {
         }
 
         FlowRuleManager.loadRules(finalRules);
-        log.info("Loaded {} flow rules, source: {}", finalRules.size(), properties.getRuleSource());
     }
 
     /**
@@ -169,7 +168,6 @@ public class SentinelRuleManager {
         }
 
         DegradeRuleManager.loadRules(finalRules);
-        log.info("Loaded {} degrade rules, source: {}", finalRules.size(), properties.getRuleSource());
     }
 
     /**

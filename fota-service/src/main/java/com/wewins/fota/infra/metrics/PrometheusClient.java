@@ -133,8 +133,32 @@ public class PrometheusClient {
                     HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
-                // 解析范围数据...
-                log.debug("Range query successful: {}", query);
+                PrometheusResponse promResponse = objectMapper.readValue(
+                        response.body(), PrometheusResponse.class);
+
+                if ("success".equals(promResponse.status()) &&
+                        promResponse.data() != null &&
+                        promResponse.data().result() != null &&
+                        !promResponse.data().result().isEmpty()) {
+                    List<MetricDataPoint> points = new ArrayList<>();
+                    for (Map<String, Object> result : promResponse.data().result()) {
+                        Object values = result.get("values");
+                        if (!(values instanceof List<?> samples)) {
+                            continue;
+                        }
+                        for (Object sample : samples) {
+                            if (!(sample instanceof List<?> sampleValues) || sampleValues.size() < 2) {
+                                continue;
+                            }
+                            long timestamp = Long.parseLong(sampleValues.get(0).toString().split("\\.")[0]);
+                            double value = Double.parseDouble(sampleValues.get(1).toString());
+                            points.add(new MetricDataPoint(timestamp, value));
+                        }
+                        if (!points.isEmpty()) {
+                            return Optional.of(points);
+                        }
+                    }
+                }
             }
         } catch (Exception e) {
             log.debug("Failed to query range from Prometheus: {} - {}", query, e.getMessage());
@@ -170,16 +194,16 @@ public class PrometheusClient {
         return query(query).orElse(-1.0);
     }
 
-    public double getRegionHttpQps(String region) {
+    public double getDeviceApiP50Latency(String region) {
         String query = String.format(
-                "sum(rate(http_server_requests_seconds_count{region=\"%s\"}[5m]))",
+                "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000",
                 region);
         return query(query).orElse(-1.0);
     }
 
-    public double getRegionP99Latency(String region) {
+    public double getDeviceApiP99Latency(String region) {
         String query = String.format(
-                "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\"}[5m])) by (le)) * 1000",
+                "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"/v1/upgrade/check|/v1/upgrade/report\"}[5m])) by (le)) * 1000",
                 region);
         return query(query).orElse(-1.0);
     }

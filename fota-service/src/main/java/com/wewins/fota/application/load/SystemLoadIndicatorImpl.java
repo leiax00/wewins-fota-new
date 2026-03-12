@@ -75,6 +75,7 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
         double cpuUsage = getCpuUsage();
         double memoryUsage = getMemoryUsage();
         double qps = getCurrentQps();
+        double p50Latency = getP50Latency();
         double p99Latency = getP99Latency();
         double connectionPoolUsage = getConnectionPoolUsage();
 
@@ -98,6 +99,7 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
                 .cpuUsage(cpuUsage)
                 .memoryUsage(memoryUsage)
                 .qps(qps)
+                .p50Latency(p50Latency)
                 .p99Latency(p99Latency)
                 .connectionPoolUsage(connectionPoolUsage)
                 .hostCpuUsage(hostCpuUsage)
@@ -146,38 +148,28 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     }
 
     private double getCurrentQps() {
-        double regionQps = prometheusClient.getRegionHttpQps(region);
-        if (regionQps >= 0) {
-            return regionQps;
+        double checkQps = getCheckQps();
+        double reportQps = getReportQps();
+        if (checkQps >= 0 && reportQps >= 0) {
+            return checkQps + reportQps;
         }
-        try {
-            var timer = meterRegistry.find("http.server.requests").timer();
-            if (timer == null) {
-                return 0;
-            }
-            long count = timer.count();
-            return count / 60.0;
-        } catch (Exception e) {
-            log.debug("Failed to get QPS", e);
-            return 0;
+        return 0;
+    }
+
+    private double getP50Latency() {
+        double regionP50 = prometheusClient.getDeviceApiP50Latency(region);
+        if (regionP50 >= 0) {
+            return regionP50;
         }
+        return 0;
     }
 
     private double getP99Latency() {
-        double regionP99 = prometheusClient.getRegionP99Latency(region);
+        double regionP99 = prometheusClient.getDeviceApiP99Latency(region);
         if (regionP99 >= 0) {
             return regionP99;
         }
-        try {
-            var timer = meterRegistry.find("http.server.requests").timer();
-            if (timer == null) {
-                return 0;
-            }
-            return timer.percentile(0.99, java.util.concurrent.TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            log.debug("Failed to get P99 latency", e);
-            return 0;
-        }
+        return 0;
     }
 
     private double getConnectionPoolUsage() {
