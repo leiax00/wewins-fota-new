@@ -335,16 +335,16 @@ export function createLogStream(): {
         if (!reader) {
           throw new Error('无法获取响应流')
         }
+        const activeReader = reader
 
         const decoder = new TextDecoder()
         let buffer = '' // 用于处理跨 chunk 的数据
-        let currentEventType = 'message' // 当前事件类型
         let currentData = '' // 当前事件数据
 
         const read = async () => {
           try {
             while (true) {
-              const { done, value } = await reader.read()
+              const { done, value } = await activeReader.read()
               if (done) break
 
               // 解码并添加到缓冲区
@@ -372,7 +372,7 @@ export function createLogStream(): {
                     currentData = ''
                   }
                 } else if (line.startsWith('event:')) {
-                  currentEventType = line.slice(6).trim()
+                  continue
                 } else if (line.startsWith('data:')) {
                   const data = line.slice(5).trim()
                   if (currentData) {

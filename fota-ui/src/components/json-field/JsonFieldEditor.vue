@@ -242,6 +242,10 @@ const onCodeBlur = () => {
   formatCode(false)
 }
 
+const handleFormatCodeClick = () => {
+  formatCode()
+}
+
 /**
  * 格式化 JSON 代码
  */
@@ -425,7 +429,7 @@ onMounted(() => {
               class="code-format-btn"
               size="small"
               :disabled="disabled"
-              @click="formatCode"
+              @click="handleFormatCodeClick"
             >
               <el-icon><MagicStick /></el-icon>
               <span class="code-format-btn__text">{{ t('jsonField.formatJson') }}</span>

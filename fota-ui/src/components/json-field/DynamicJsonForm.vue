@@ -50,12 +50,13 @@ const fieldOrder = ref<string[]>([])
 
 // Primitive 字段类型集合
 const primitiveFieldTypes = new Set(['string', 'textarea', 'number', 'boolean', 'select'])
+type PrimitiveFieldValue = string | number | boolean
 
 // Primitive 编辑对话框状态
 const primitiveDialogVisible = ref(false)
 const editingPrimitiveKey = ref('')
 const editingPrimitiveField = ref<JsonFieldDefinition | null>(null)
-const editingPrimitiveValue = ref<string | number | boolean>()
+const editingPrimitiveValue = ref<PrimitiveFieldValue>()
 
 // i18n 编辑对话框相关状态
 const i18nDialogVisible = ref(false)
@@ -150,16 +151,18 @@ const onAvailableFieldClick = (fieldKey: string) => {
   // 其他字段（包括 textarea）打开 primitive 编辑对话框（新增模式）
   editingPrimitiveKey.value = ''
   editingPrimitiveField.value = field
-  editingPrimitiveValue.value = field.config.schema.defaultValue ?? getDefaultValueForField(field)
+  editingPrimitiveValue.value = toPrimitiveFieldValue(field.config.schema.defaultValue, getDefaultValueForField(field))
   primitiveDialogVisible.value = true
 }
 
 /**
  * 获取字段默认值
  */
-const getDefaultValueForField = (field: JsonFieldDefinition): string | number | boolean => {
+const getDefaultValueForField = (field: JsonFieldDefinition): PrimitiveFieldValue => {
   const { defaultValue } = field.config.schema
-  if (defaultValue !== undefined) return defaultValue
+  if (defaultValue !== undefined) {
+    return toPrimitiveFieldValue(defaultValue, '')
+  }
 
   switch (field.config.schema.type) {
     case 'string':
@@ -175,6 +178,13 @@ const getDefaultValueForField = (field: JsonFieldDefinition): string | number | 
     default:
       return ''
   }
+}
+
+const toPrimitiveFieldValue = (value: unknown, fallback: PrimitiveFieldValue): PrimitiveFieldValue => {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value
+  }
+  return fallback
 }
 
 /**

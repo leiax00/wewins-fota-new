@@ -28,16 +28,6 @@ const emit = defineEmits<{
 const { t, te } = useI18n()
 
 /**
- * 字段显示标签（支持国际化，回退到 label）
- */
-const label = computed(() => {
-  if (props.field.i18nKey && te(props.field.i18nKey)) {
-    return t(props.field.i18nKey)
-  }
-  return props.field.label
-})
-
-/**
  * 占位文本
  */
 const placeholder = computed(() => props.field.config.schema.placeholder || '')

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import type { JsonFieldDefinition } from '@/components/json-field/types/json-field'
 
 /**
@@ -24,18 +23,6 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'update:modelValue', value?: number): void
 }>()
-
-const { t, te } = useI18n()
-
-/**
- * 字段显示标签（支持国际化，回退到 label）
- */
-const label = computed(() => {
-  if (props.field.i18nKey && te(props.field.i18nKey)) {
-    return t(props.field.i18nKey)
-  }
-  return props.field.label
-})
 
 /**
  * 最小值

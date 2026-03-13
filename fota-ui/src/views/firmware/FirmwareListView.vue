@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadProps, UploadRequestOptions } from 'element-plus'
+import type { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
@@ -98,6 +99,15 @@ const retryFile = ref<File | null>(null)
  */
 const uploadTicket = ref(0)
 
+const createUploadAjaxError = (message: string): UploadAjaxError => {
+  const error = new Error(message) as UploadAjaxError
+  error.name = 'UploadAjaxError'
+  error.status = 400
+  error.method = 'POST'
+  error.url = '/admin/firmware/upload'
+  return error
+}
+
 /**
  * 表单校验规则
  */
@@ -174,7 +184,7 @@ const beforeUpload: UploadProps['beforeUpload'] = () => {
 const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOptions) => {
   const file = options.file as File
   if (!form.productId) {
-    const err = new Error('请先选择产品')
+    const err = createUploadAjaxError('请先选择产品')
     uploadState.status = 'FAILED'
     uploadState.error = err.message
     options.onError?.(err)
@@ -253,7 +263,7 @@ const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOp
     const message = e instanceof Error ? e.message : '上传失败'
     uploadState.status = 'FAILED'
     uploadState.error = message
-    options.onError?.(e as Error)
+    options.onError?.(createUploadAjaxError(message))
   } finally {
     if (uploadTicket.value === currentTicket) {
       uploadState.abortController = null
