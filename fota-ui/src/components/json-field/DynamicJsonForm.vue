@@ -677,8 +677,9 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
 }
 
 .primitive-field-tag:hover {
-  background-color: var(--el-color-primary-light-9);
-  border-color: var(--el-color-primary);
+  background-color: color-mix(in srgb, var(--el-color-primary) 14%, var(--el-bg-color-overlay));
+  border-color: color-mix(in srgb, var(--el-color-primary) 42%, var(--el-border-color));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--el-color-primary) 18%, transparent);
 }
 
 .primitive-field-tag.is-disabled {

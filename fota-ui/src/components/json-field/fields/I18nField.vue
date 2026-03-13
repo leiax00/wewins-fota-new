@@ -372,6 +372,7 @@ const onRemoveLocale = (localeCode: string) => {
 
           <div class="i18n-add-panel__actions">
             <el-button
+              class="i18n-add-panel__button"
               type="primary"
               plain
               :disabled="disabled"
@@ -520,6 +521,31 @@ const onRemoveLocale = (localeCode: string) => {
 .i18n-add-panel__actions {
   margin-left: auto;
   display: flex;
+}
+
+:deep(.i18n-add-panel__button.el-button--primary.is-plain) {
+  background-color: color-mix(in srgb, var(--el-color-primary) 14%, var(--el-bg-color-overlay));
+  border-color: color-mix(in srgb, var(--el-color-primary) 38%, var(--el-border-color));
+  color: var(--el-color-primary);
+}
+
+:deep(.i18n-add-panel__button.el-button--primary.is-plain:hover),
+:deep(.i18n-add-panel__button.el-button--primary.is-plain:focus-visible) {
+  background-color: color-mix(in srgb, var(--el-color-primary) 20%, var(--el-bg-color-overlay));
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
+:deep(.i18n-add-panel__button.el-button--primary.is-plain:active) {
+  background-color: color-mix(in srgb, var(--el-color-primary) 24%, var(--el-bg-color-overlay));
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
+:deep(.i18n-add-panel__button.el-button--primary.is-plain.is-disabled) {
+  background-color: var(--el-fill-color-light);
+  border-color: var(--el-border-color-lighter);
+  color: var(--el-text-color-placeholder);
 }
 
 .i18n-field__empty {

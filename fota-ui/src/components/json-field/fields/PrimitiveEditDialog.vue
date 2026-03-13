@@ -142,12 +142,12 @@ watch(visible, (val) => {
         :disabled="disabled"
       />
     </div>
-    <div
-      v-else
-      class="primitive-edit-dialog__empty"
-    >
-      <el-empty :description="t('jsonField.fieldNotFound')" />
-    </div>
+<!--    <div-->
+<!--      v-else-->
+<!--      class="primitive-edit-dialog__empty"-->
+<!--    >-->
+<!--      <el-empty :description="t('jsonField.fieldNotFound')" />-->
+<!--    </div>-->
 
     <template #footer>
       <el-button @click="cancel">
