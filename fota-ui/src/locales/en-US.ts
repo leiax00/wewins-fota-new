@@ -570,6 +570,8 @@ export default {
     codeMode: 'Code Mode',
     codeModeTitle: 'JSON',
     fallbackToCodeMode: 'Schema unavailable, switched to code mode',
+    noAvailableFields: 'No available fields',
+    availableFieldsHint: 'Available fields: {fields}',
     schemaLoadFailed: 'Failed to load field schema. Please check dictionary config or network.',
     schemaEmpty: 'No available schema fields. Switched to code mode.',
     codePlaceholder: 'Please input a JSON object',

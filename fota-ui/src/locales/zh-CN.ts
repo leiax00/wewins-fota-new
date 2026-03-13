@@ -590,6 +590,8 @@ export default {
     codeMode: '代码模式',
     codeModeTitle: 'JSON',
     fallbackToCodeMode: '配置加载失败，已降级为代码模式',
+    noAvailableFields: '无可用字段',
+    availableFieldsHint: '可用字段：{fields}',
     schemaLoadFailed: '字段配置加载失败，请检查字典配置或网络状态',
     schemaEmpty: '当前未配置可用字段，已自动切换为代码模式',
     codePlaceholder: '请输入 JSON 对象',
