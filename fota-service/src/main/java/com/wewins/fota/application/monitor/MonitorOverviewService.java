@@ -4,6 +4,7 @@ import com.alibaba.csp.sentinel.node.ClusterNode;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRule;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager;
 import com.alibaba.csp.sentinel.slots.clusterbuilder.ClusterBuilderSlot;
+import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.adapter.api.admin.dto.*;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,15 +30,18 @@ public class MonitorOverviewService {
     private final SystemLoadIndicator loadIndicator;
     private final PrometheusClient prometheusClient;
     private final NodeIdentity nodeIdentity;
+    private final DeviceActivityBitmapRepository deviceActivityBitmapRepository;
 
     public MonitorOverviewService(
             @Qualifier("systemLoadIndicatorImpl") SystemLoadIndicator loadIndicator,
             PrometheusClient prometheusClient,
-            NodeIdentity nodeIdentity
+            NodeIdentity nodeIdentity,
+            DeviceActivityBitmapRepository deviceActivityBitmapRepository
     ) {
         this.loadIndicator = loadIndicator;
         this.prometheusClient = prometheusClient;
         this.nodeIdentity = nodeIdentity;
+        this.deviceActivityBitmapRepository = deviceActivityBitmapRepository;
     }
 
     public RealtimeMetricsDTO getRealtimeMetrics() {
@@ -44,6 +49,7 @@ public class MonitorOverviewService {
 
         ClusterNode node = ClusterBuilderSlot.getClusterNode(RESOURCE_NAME);
         int activeRequests = node != null ? (int) node.curThreadNum() : 0;
+        long todayActiveDevices = deviceActivityBitmapRepository.countActive(LocalDate.now());
         double blockRate = getBlockRate(node);
         String circuitState = getCircuitState();
         String region = nodeIdentity.regionCode();
@@ -81,6 +87,7 @@ public class MonitorOverviewService {
                 .p50Latency(snapshot.p50Latency())
                 .p99Latency(snapshot.p99Latency())
                 .activeRequests(activeRequests)
+                .todayActiveDevices(todayActiveDevices)
                 .blockRate(blockRate)
                 .circuitState(circuitState)
                 .region(region)
@@ -122,6 +129,12 @@ public class MonitorOverviewService {
                         start, end, window.prometheusStep()))
                 .blockRate(queryTrend(
                         String.format("sum(rate(fota_rate_limited_total{region=\"%s\",resource=\"%s\"}[5m])) / clamp_min(sum(rate(fota_device_checks_total{region=\"%s\"}[5m])), 1)", region, RESOURCE_NAME, region),
+                        start, end, window.prometheusStep()))
+                .activeDevicesTotal(queryTrend(
+                        String.format("max without(instance) (fota_active_devices_today{region=\"%s\"})", region),
+                        start, end, window.prometheusStep()))
+                .activeDevicesIncrement(queryTrend(
+                        String.format("clamp_min(max without(instance) (fota_active_devices_today{region=\"%s\"} - fota_active_devices_today{region=\"%s\"} offset 5m), 0)", region, region),
                         start, end, window.prometheusStep()))
                 .build();
     }

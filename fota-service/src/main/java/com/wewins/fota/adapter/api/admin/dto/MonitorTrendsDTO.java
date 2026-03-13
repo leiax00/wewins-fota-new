@@ -26,4 +26,8 @@ public class MonitorTrendsDTO {
     private List<TrendPointDTO> p99Latency;
 
     private List<TrendPointDTO> blockRate;
+
+    private List<TrendPointDTO> activeDevicesTotal;
+
+    private List<TrendPointDTO> activeDevicesIncrement;
 }

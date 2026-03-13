@@ -47,6 +47,7 @@ export interface RealtimeMetrics {
   p50Latency: number
   p99Latency: number
   activeRequests: number
+  todayActiveDevices: number
   blockRate: number
   circuitState: string
   region: string
@@ -77,6 +78,8 @@ export interface MonitorTrends {
   p50Latency: TrendPoint[]
   p99Latency: TrendPoint[]
   blockRate: TrendPoint[]
+  activeDevicesTotal: TrendPoint[]
+  activeDevicesIncrement: TrendPoint[]
 }
 
 export interface ControlParameter {

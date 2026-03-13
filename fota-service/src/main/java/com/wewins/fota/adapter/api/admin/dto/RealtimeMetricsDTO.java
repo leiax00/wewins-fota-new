@@ -34,6 +34,8 @@ public class RealtimeMetricsDTO {
 
     private int activeRequests;
 
+    private long todayActiveDevices;
+
     private double blockRate;
 
     private String circuitState;

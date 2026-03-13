@@ -21,11 +21,15 @@ const checkTrendRef = ref<HTMLDivElement | null>(null)
 const reportTrendRef = ref<HTMLDivElement | null>(null)
 const latencyTrendRef = ref<HTMLDivElement | null>(null)
 const blockTrendRef = ref<HTMLDivElement | null>(null)
+const activeTotalTrendRef = ref<HTMLDivElement | null>(null)
+const activeIncrementTrendRef = ref<HTMLDivElement | null>(null)
 
 let checkTrendChart: echarts.ECharts | null = null
 let reportTrendChart: echarts.ECharts | null = null
 let latencyTrendChart: echarts.ECharts | null = null
 let blockTrendChart: echarts.ECharts | null = null
+let activeTotalTrendChart: echarts.ECharts | null = null
+let activeIncrementTrendChart: echarts.ECharts | null = null
 
 const trendRangeOptions = computed(() => [
   { label: t('monitor.range15m'), value: '15m' },
@@ -37,8 +41,9 @@ const trendRangeOptions = computed(() => [
 const stats = computed(() => [
   { titleKey: 'dashboard.deviceApiQps', value: formatQps(metrics.value?.currentQps), icon: 'TrendCharts', color: 'bg-ui-status-info' },
   { titleKey: 'dashboard.checkQps', value: formatQps(metrics.value?.checkQps), icon: 'Connection', color: 'bg-ui-status-success' },
+  { titleKey: 'dashboard.todayActiveDevices', value: formatCount(metrics.value?.todayActiveDevices), icon: 'UserFilled', color: 'bg-ui-brand' },
   { titleKey: 'dashboard.p99Latency', value: formatLatency(metrics.value?.p99Latency), icon: 'Timer', color: 'bg-ui-status-warning' },
-  { titleKey: 'dashboard.blockRate', value: formatPercent((metrics.value?.blockRate ?? 0) * 100), icon: 'Warning', color: 'bg-ui-brand' },
+  { titleKey: 'dashboard.blockRate', value: formatPercent((metrics.value?.blockRate ?? 0) * 100), icon: 'Warning', color: 'bg-ui-status-danger' },
 ])
 
 const fetchMetrics = async () => {
@@ -73,6 +78,7 @@ const stopRefresh = () => {
 }
 
 const formatQps = (value?: number) => `${(value ?? 0).toFixed(2)}`
+const formatCount = (value?: number) => `${Math.round(value ?? 0).toLocaleString()}`
 const formatPercent = (value?: number) => `${(value ?? 0).toFixed(2)}%`
 const formatLatency = (value?: number) => `${(value ?? 0).toFixed(0)} ms`
 
@@ -89,7 +95,11 @@ const getOrCreateChart = (current: echarts.ECharts | null, el: HTMLDivElement | 
   return echarts.init(el)
 }
 
-const baseLineOption = (series: echarts.SeriesOption[], yAxisFormatter?: (value: number) => string): echarts.EChartsOption => ({
+const baseLineOption = (
+  series: echarts.SeriesOption[],
+  yAxisFormatter?: (value: number) => string,
+  yAxisOverrides: echarts.YAXisComponentOption = {},
+): echarts.EChartsOption => ({
   animation: false,
   grid: { left: 48, right: 20, top: 24, bottom: 32 },
   tooltip: {
@@ -108,6 +118,7 @@ const baseLineOption = (series: echarts.SeriesOption[], yAxisFormatter?: (value:
     splitLine: {
       lineStyle: { color: '#e2e8f0' },
     },
+    ...yAxisOverrides,
   },
   series,
 })
@@ -119,6 +130,8 @@ const renderTrendCharts = () => {
   reportTrendChart = getOrCreateChart(reportTrendChart, reportTrendRef.value)
   latencyTrendChart = getOrCreateChart(latencyTrendChart, latencyTrendRef.value)
   blockTrendChart = getOrCreateChart(blockTrendChart, blockTrendRef.value)
+  activeTotalTrendChart = getOrCreateChart(activeTotalTrendChart, activeTotalTrendRef.value)
+  activeIncrementTrendChart = getOrCreateChart(activeIncrementTrendChart, activeIncrementTrendRef.value)
 
   checkTrendChart?.setOption(baseLineOption([
     {
@@ -185,6 +198,32 @@ const renderTrendCharts = () => {
       data: trends.value.blockRate.map(point => [point.timestamp * 1000, point.value * 100] as [number, number]),
     },
   ], value => `${value.toFixed(2)}%`))
+
+  activeTotalTrendChart?.setOption(baseLineOption([
+    {
+      name: 'Active Devices',
+      type: 'line',
+      smooth: true,
+      showSymbol: false,
+      areaStyle: { opacity: 0.08 },
+      lineStyle: { width: 2, color: '#0ea5e9' },
+      itemStyle: { color: '#0ea5e9' },
+      data: toChartData(trends.value.activeDevicesTotal),
+    },
+  ], value => value.toFixed(0), { min: 0, minInterval: 1 }))
+
+  activeIncrementTrendChart?.setOption(baseLineOption([
+    {
+      name: 'Active Increment(5m)',
+      type: 'line',
+      smooth: true,
+      showSymbol: false,
+      areaStyle: { opacity: 0.08 },
+      lineStyle: { width: 2, color: '#10b981' },
+      itemStyle: { color: '#10b981' },
+      data: toChartData(trends.value.activeDevicesIncrement),
+    },
+  ], value => value.toFixed(0), { min: 0, minInterval: 1 }))
 }
 
 const resizeCharts = () => {
@@ -192,6 +231,8 @@ const resizeCharts = () => {
   reportTrendChart?.resize()
   latencyTrendChart?.resize()
   blockTrendChart?.resize()
+  activeTotalTrendChart?.resize()
+  activeIncrementTrendChart?.resize()
 }
 
 watch(trendRange, () => {
@@ -211,6 +252,8 @@ onUnmounted(() => {
   reportTrendChart?.dispose()
   latencyTrendChart?.dispose()
   blockTrendChart?.dispose()
+  activeTotalTrendChart?.dispose()
+  activeIncrementTrendChart?.dispose()
 })
 </script>
 
@@ -220,7 +263,7 @@ onUnmounted(() => {
       {{ t('menu.dashboard') }}
     </h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
       <div
         v-for="stat in stats"
         :key="stat.titleKey"
@@ -308,6 +351,30 @@ onUnmounted(() => {
             </span>
           </template>
           <div ref="blockTrendRef" class="h-72" />
+        </el-card>
+
+        <el-card v-loading="trendLoading">
+          <template #header>
+            <span class="inline-flex items-center gap-1 ui-card-title">
+              {{ t('dashboard.activeTotalTrend') }}
+              <el-tooltip :content="t('dashboard.activeTotalTrendDesc')" placement="top">
+                <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
+              </el-tooltip>
+            </span>
+          </template>
+          <div ref="activeTotalTrendRef" class="h-72" />
+        </el-card>
+
+        <el-card v-loading="trendLoading">
+          <template #header>
+            <span class="inline-flex items-center gap-1 ui-card-title">
+              {{ t('dashboard.activeIncrementTrend') }}
+              <el-tooltip :content="t('dashboard.activeIncrementTrendDesc')" placement="top">
+                <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
+              </el-tooltip>
+            </span>
+          </template>
+          <div ref="activeIncrementTrendRef" class="h-72" />
         </el-card>
       </div>
     </div>

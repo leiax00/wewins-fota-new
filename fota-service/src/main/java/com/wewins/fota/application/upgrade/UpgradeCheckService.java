@@ -35,7 +35,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -228,7 +227,7 @@ public class UpgradeCheckService {
 
     private void markDeviceActive(CheckContext ctx) {
         try {
-            bitmapRepository.markActive(LocalDate.now(), ctx.deviceId());
+            bitmapRepository.markActive(LocalDateTime.now().toLocalDate(), ctx.deviceId());
             log.debug("标记设备活跃: imei={}, deviceId={}", ctx.imei(), ctx.deviceId());
         } catch (Exception e) {
             log.error("标记设备活跃失败: imei={}, deviceId={}", ctx.imei(), ctx.deviceId(), e);
