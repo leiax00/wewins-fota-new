@@ -4,6 +4,8 @@ services:
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: fota-prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "19090:9090"
     volumes:

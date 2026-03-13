@@ -10,16 +10,17 @@ public record LoadSnapshot(
         LoadLevel level,
         double cpuUsage,
         double memoryUsage,
-        double qps,
-        double p50Latency,
-        double p99Latency,
         double connectionPoolUsage,
         double hostCpuUsage,
         double hostMemoryUsage,
         double networkInBytes,
         double networkOutBytes,
         double checkQps,
-        double reportQps
+        double reportQps,
+        double checkP50Latency,
+        double checkP99Latency,
+        double reportP50Latency,
+        double reportP99Latency
 ) {
     public LoadSnapshot {
         if (timestamp == null) {
@@ -51,9 +52,6 @@ public record LoadSnapshot(
         private LoadLevel level;
         private double cpuUsage;
         private double memoryUsage;
-        private double qps;
-        private double p50Latency;
-        private double p99Latency;
         private double connectionPoolUsage;
         private double hostCpuUsage;
         private double hostMemoryUsage;
@@ -61,6 +59,10 @@ public record LoadSnapshot(
         private double networkOutBytes;
         private double checkQps;
         private double reportQps;
+        private double checkP50Latency;
+        private double checkP99Latency;
+        private double reportP50Latency;
+        private double reportP99Latency;
 
         public LoadSnapshotBuilder timestamp(Instant timestamp) {
             this.timestamp = timestamp;
@@ -84,21 +86,6 @@ public record LoadSnapshot(
 
         public LoadSnapshotBuilder memoryUsage(double memoryUsage) {
             this.memoryUsage = memoryUsage;
-            return this;
-        }
-
-        public LoadSnapshotBuilder qps(double qps) {
-            this.qps = qps;
-            return this;
-        }
-
-        public LoadSnapshotBuilder p50Latency(double p50Latency) {
-            this.p50Latency = p50Latency;
-            return this;
-        }
-
-        public LoadSnapshotBuilder p99Latency(double p99Latency) {
-            this.p99Latency = p99Latency;
             return this;
         }
 
@@ -137,6 +124,26 @@ public record LoadSnapshot(
             return this;
         }
 
+        public LoadSnapshotBuilder checkP50Latency(double checkP50Latency) {
+            this.checkP50Latency = checkP50Latency;
+            return this;
+        }
+
+        public LoadSnapshotBuilder checkP99Latency(double checkP99Latency) {
+            this.checkP99Latency = checkP99Latency;
+            return this;
+        }
+
+        public LoadSnapshotBuilder reportP50Latency(double reportP50Latency) {
+            this.reportP50Latency = reportP50Latency;
+            return this;
+        }
+
+        public LoadSnapshotBuilder reportP99Latency(double reportP99Latency) {
+            this.reportP99Latency = reportP99Latency;
+            return this;
+        }
+
         public LoadSnapshot build() {
             if (level == null) {
                 level = LoadLevel.fromScore(totalScore);
@@ -144,7 +151,24 @@ public record LoadSnapshot(
             if (timestamp == null) {
                 timestamp = Instant.now();
             }
-            return new LoadSnapshot(timestamp, totalScore, level, cpuUsage, memoryUsage, qps, p50Latency, p99Latency, connectionPoolUsage, hostCpuUsage, hostMemoryUsage, networkInBytes, networkOutBytes, checkQps, reportQps);
+            return new LoadSnapshot(
+                    timestamp,
+                    totalScore,
+                    level,
+                    cpuUsage,
+                    memoryUsage,
+                    connectionPoolUsage,
+                    hostCpuUsage,
+                    hostMemoryUsage,
+                    networkInBytes,
+                    networkOutBytes,
+                    checkQps,
+                    reportQps,
+                    checkP50Latency,
+                    checkP99Latency,
+                    reportP50Latency,
+                    reportP99Latency
+            );
         }
     }
 }

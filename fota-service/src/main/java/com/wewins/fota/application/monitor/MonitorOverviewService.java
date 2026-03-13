@@ -9,12 +9,12 @@ import com.wewins.fota.adapter.api.admin.dto.*;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
-import com.wewins.fota.infra.metrics.DeviceApiMetricsSupport;
 import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.metrics.PrometheusClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -22,15 +22,23 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class MonitorOverviewService {
 
     private static final String RESOURCE_NAME = "upgrade:check";
+    private static final Duration REALTIME_CACHE_TTL = Duration.ofSeconds(5);
+    private static final Duration TRENDS_CACHE_TTL = Duration.ofSeconds(15);
     private final SystemLoadIndicator loadIndicator;
     private final PrometheusClient prometheusClient;
     private final NodeIdentity nodeIdentity;
     private final DeviceActivityBitmapRepository deviceActivityBitmapRepository;
+    private final AtomicReference<CachedValue<RealtimeMetricsDTO>> realtimeCache = new AtomicReference<>();
+    private final AtomicReference<CachedValue<List<HotProductDTO>>> hotProductsCache = new AtomicReference<>();
+    private final ConcurrentMap<String, CachedValue<MonitorTrendsDTO>> trendsCache = new ConcurrentHashMap<>();
 
     public MonitorOverviewService(
             @Qualifier("systemLoadIndicatorImpl") SystemLoadIndicator loadIndicator,
@@ -45,6 +53,31 @@ public class MonitorOverviewService {
     }
 
     public RealtimeMetricsDTO getRealtimeMetrics() {
+        Instant now = Instant.now();
+        CachedValue<RealtimeMetricsDTO> cached = realtimeCache.get();
+        if (isFresh(cached, now, REALTIME_CACHE_TTL)) {
+            return cached.value();
+        }
+
+        RealtimeMetricsDTO metrics = buildRealtimeMetrics(now);
+        realtimeCache.set(new CachedValue<>(metrics, now));
+        return metrics;
+    }
+
+    public MonitorTrendsDTO getTrends(String range) {
+        TrendWindow window = resolveWindow(range);
+        Instant now = Instant.now();
+        CachedValue<MonitorTrendsDTO> cached = trendsCache.get(window.range());
+        if (isFresh(cached, now, TRENDS_CACHE_TTL)) {
+            return cached.value();
+        }
+
+        MonitorTrendsDTO trends = buildTrends(window, now);
+        trendsCache.put(window.range(), new CachedValue<>(trends, now));
+        return trends;
+    }
+
+    private RealtimeMetricsDTO buildRealtimeMetrics(Instant now) {
         LoadSnapshot snapshot = loadIndicator.getSnapshot();
 
         ClusterNode node = ClusterBuilderSlot.getClusterNode(RESOURCE_NAME);
@@ -67,10 +100,8 @@ public class MonitorOverviewService {
                 .instance(nodeIdentity.monitoringInstanceLabel())
                 .cpuUsage(snapshot.cpuUsage())
                 .memoryUsage(snapshot.memoryUsage())
-                .currentQps(snapshot.qps())
                 .checkQps(sanitize(snapshot.checkQps()))
                 .reportQps(sanitize(snapshot.reportQps()))
-                .p99Latency(snapshot.p99Latency())
                 .activeRequests(activeRequests)
                 .blockRate(blockRate)
                 .circuitState(circuitState)
@@ -81,11 +112,12 @@ public class MonitorOverviewService {
                 .loadLevel(snapshot.level().name())
                 .cpuUsage(snapshot.cpuUsage())
                 .memoryUsage(snapshot.memoryUsage())
-                .currentQps(snapshot.qps())
                 .checkQps(sanitize(snapshot.checkQps()))
                 .reportQps(sanitize(snapshot.reportQps()))
-                .p50Latency(snapshot.p50Latency())
-                .p99Latency(snapshot.p99Latency())
+                .checkP50Latency(sanitize(snapshot.checkP50Latency()))
+                .checkP99Latency(sanitize(snapshot.checkP99Latency()))
+                .reportP50Latency(sanitize(snapshot.reportP50Latency()))
+                .reportP99Latency(sanitize(snapshot.reportP99Latency()))
                 .activeRequests(activeRequests)
                 .todayActiveDevices(todayActiveDevices)
                 .blockRate(blockRate)
@@ -102,14 +134,13 @@ public class MonitorOverviewService {
                 .instances(getInstances(blockRate, circuitState))
                 .controlState(buildControlState(snapshot.level(), snapshot.totalScore()))
                 .hotProducts(getHotProducts())
-                .timestamp(Instant.now())
+                .timestamp(now)
                 .build();
     }
 
-    public MonitorTrendsDTO getTrends(String range) {
-        TrendWindow window = resolveWindow(range);
+    private MonitorTrendsDTO buildTrends(TrendWindow window, Instant now) {
         String region = nodeIdentity.regionCode();
-        long end = Instant.now().getEpochSecond();
+        long end = now.getEpochSecond();
         long start = end - window.durationSeconds();
 
         return MonitorTrendsDTO.builder()
@@ -121,11 +152,17 @@ public class MonitorOverviewService {
                 .reportQps(queryTrend(
                         String.format("sum(rate(fota_upgrade_events_total{region=\"%s\"}[5m]))", region),
                         start, end, window.prometheusStep()))
-                .p50Latency(queryTrend(
-                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000", region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX),
+                .checkP50Latency(queryTrend(
+                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000", region, "/v1/upgrade/check"),
                         start, end, window.prometheusStep()))
-                .p99Latency(queryTrend(
-                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000", region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX),
+                .checkP99Latency(queryTrend(
+                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000", region, "/v1/upgrade/check"),
+                        start, end, window.prometheusStep()))
+                .reportP50Latency(queryTrend(
+                        String.format("histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000", region, "/v1/upgrade/report"),
+                        start, end, window.prometheusStep()))
+                .reportP99Latency(queryTrend(
+                        String.format("histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000", region, "/v1/upgrade/report"),
                         start, end, window.prometheusStep()))
                 .blockRate(queryTrend(
                         String.format("sum(rate(fota_rate_limited_total{region=\"%s\",resource=\"%s\"}[5m])) / clamp_min(sum(rate(fota_device_checks_total{region=\"%s\"}[5m])), 1)", region, RESOURCE_NAME, region),
@@ -140,6 +177,18 @@ public class MonitorOverviewService {
     }
 
     public List<HotProductDTO> getHotProducts() {
+        Instant now = Instant.now();
+        CachedValue<List<HotProductDTO>> cached = hotProductsCache.get();
+        if (isFresh(cached, now, REALTIME_CACHE_TTL)) {
+            return cached.value();
+        }
+
+        List<HotProductDTO> hotProducts = buildHotProducts();
+        hotProductsCache.set(new CachedValue<>(hotProducts, now));
+        return hotProducts;
+    }
+
+    private List<HotProductDTO> buildHotProducts() {
         String region = nodeIdentity.regionCode();
         List<PrometheusClient.MetricSample> checks = prometheusClient.getTopProductsByCheckQps(region, 5);
         List<PrometheusClient.MetricSample> reports = prometheusClient.getTopProductsByReportQps(region, 5);
@@ -225,7 +274,6 @@ public class MonitorOverviewService {
                     .blockRate(blockRate)
                     .circuitState(circuitState)
                     .build();
-            dto.setCurrentQps(dto.getCheckQps() + dto.getReportQps());
             instances.add(dto);
         }
         return instances;
@@ -260,6 +308,10 @@ public class MonitorOverviewService {
         return value;
     }
 
+    private <T> boolean isFresh(CachedValue<T> cached, Instant now, Duration ttl) {
+        return cached != null && Duration.between(cached.cachedAt(), now).compareTo(ttl) < 0;
+    }
+
     private void mergeHosts(
             Map<String, HostMetricsDTO.HostMetricsDTOBuilder> builders,
             List<PrometheusClient.MetricSample> samples,
@@ -285,5 +337,8 @@ public class MonitorOverviewService {
     }
 
     private record TrendWindow(String range, long durationSeconds, int stepSeconds, String prometheusStep) {
+    }
+
+    private record CachedValue<T>(T value, Instant cachedAt) {
     }
 }

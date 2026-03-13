@@ -197,11 +197,12 @@ onUnmounted(() => {
           </span>
         </template>
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span>Device API QPS</span><strong>{{ formatQps(metrics?.currentQps) }}</strong></div>
           <div class="flex justify-between"><span>Check QPS</span><strong>{{ formatQps(metrics?.checkQps) }}</strong></div>
           <div class="flex justify-between"><span>Report QPS</span><strong>{{ formatQps(metrics?.reportQps) }}</strong></div>
-          <div class="flex justify-between"><span>P50</span><strong>{{ (metrics?.p50Latency ?? 0).toFixed(0) }} ms</strong></div>
-          <div class="flex justify-between"><span>P99</span><strong>{{ (metrics?.p99Latency ?? 0).toFixed(0) }} ms</strong></div>
+          <div class="flex justify-between"><span>Check P50</span><strong>{{ (metrics?.checkP50Latency ?? 0).toFixed(0) }} ms</strong></div>
+          <div class="flex justify-between"><span>Check P99</span><strong>{{ (metrics?.checkP99Latency ?? 0).toFixed(0) }} ms</strong></div>
+          <div class="flex justify-between"><span>Report P50</span><strong>{{ (metrics?.reportP50Latency ?? 0).toFixed(0) }} ms</strong></div>
+          <div class="flex justify-between"><span>Report P99</span><strong>{{ (metrics?.reportP99Latency ?? 0).toFixed(0) }} ms</strong></div>
         </div>
       </el-card>
 

@@ -1,6 +1,6 @@
-# 多实例部署监控改进方案
+# 多实例负载评估与动态周期优化方案
 
-> **版本**: v1.1  
+> **版本**: v2.0  
 > **创建日期**: 2026-03-13  
 > **最后更新**: 2026-03-13  
 > **状态**: 待实施  
@@ -8,737 +8,448 @@
 
 ---
 
-## 1. 背景
+## 1. 背景与当前实现
 
-### 1.1 部署架构
+本文档聚焦多实例部署下的两类问题：
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         负载均衡器                               │
-│                         (Nginx/ALB)                             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 轮询分发
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-         ▼                   ▼                   ▼
-    ┌─────────┐         ┌─────────┐         ┌─────────┐
-    │ Host 1  │         │ Host 2  │         │ Host 3  │
-    ├─────────┤         ├─────────┤         ├─────────┤
-    │fota-svc │         │fota-svc │         │fota-svc │
-    │instance │         │instance │         │instance │
-    │   1     │         │   2     │         │   3     │
-    └────┬────┘         └────┬────┘         └────┬────┘
-         │                   │                   │
-         └───────────────────┼───────────────────┘
-                             │
-                    ┌────────┴────────┐
-                    │  Redis Cluster  │
-                    │  (区域共享)      │
-                    └─────────────────┘
-```
+- 负载评估是否能真实反映当前实例的承压情况
+- 动态 `checkInterval` 是否会因为指标作用域不合理而被错误放大或缩小
 
-**关键特征**：
-- 同一区域多台主机
-- 每台主机可部署多个实例
-- 所有实例共享同一 Redis 集群
-- 每个实例独立运行 Sentinel 限流
+本次不展开监控平台重构，不新增全局/区域/主机/实例分层 API，也不讨论 UI 下钻设计。
 
-### 1.2 现有能力
+### 1.1 部署假设
 
-| 能力 | 实现位置 | 说明 |
-|------|---------|------|
-| 节点注册 | `NodeRegistryService` | `fota:registry:node:{code}` 存储节点信息 |
-| 节点列表 | `listOnlineNodes()` | 从 `fota:registry:nodes` 获取所有在线节点 |
-| 字典系统 | `DictType` / `DictItem` | 支持动态配置，extra 字段为 JSON 类型 |
+- 单区域可部署多台主机、多实例
+- 所有实例共享同一区域 Redis 集群
+- 每个实例独立运行 Sentinel 规则与动态周期逻辑
+- `app.node.code` 采用 `region-host-instance` 约定
+- 节点注册按“一实例一节点”处理，节点数可代表在线实例数
 
-Node code 格式：`{region}-{host}-{domain}`，可解析出区域信息进行过滤
+### 1.2 当前实现事实
 
-### 1.2 当前实现分析
+当前负载快照由 `SystemLoadIndicatorImpl.getSnapshot()` 生成，`DynamicIntervalService` 只消费最终的 `LoadLevel`。
 
-**负载计算流程**：
+| 指标 | 当前来源 | 当前作用域 | 用途 |
+|------|----------|------------|------|
+| JVM CPU | Micrometer / OS Bean | 当前实例 | 负载评分 |
+| JVM 堆内存 | `MemoryMXBean` | 当前实例 | 负载评分 |
+| 连接池使用率 | Micrometer `hikaricp.connections.*` | 当前实例 | 负载评分 |
+| Check QPS | Prometheus | 区域聚合 | 负载评分 |
+| Report QPS | Prometheus | 区域聚合 | 负载评分 |
+| 设备 API P50 延迟 | Prometheus | 区域聚合 | 负载评分 |
+| 设备 API P99 延迟 | Prometheus | 区域聚合 | 负载评分 |
+| Host CPU / 内存 | Prometheus | 当前主机 | 负载评分 |
+| LoadSnapshot 缓存 | 内存原子引用 | 当前实例 | 指标采集降频 |
 
-```
-请求到达实例 A
-    │
-    ▼
-SystemLoadIndicatorImpl.getSnapshot()
-    │
-    ├── JVM CPU (本实例) ──────────────┐
-    ├── JVM 内存 (本实例) ─────────────┤
-    ├── 连接池 (本实例) ───────────────┤
-    │                                  ├──> 加权求和 ──> 本实例负载评分
-    ├── 区域 QPS (Prometheus 聚合) ────┤
-    ├── 区域 P99 (Prometheus 聚合) ────┤
-    └── 主机 CPU/内存 (本主机) ────────┘
-    │
-    ▼
-DynamicIntervalService.calculateCheckInterval()
-    │
-    ▼
-返回动态 checkInterval 给设备
+### 1.3 当前调用链
+
+```text
+设备请求到达实例 A
+    -> SystemLoadIndicatorImpl.getSnapshot()
+        -> 采集本实例 JVM / 连接池
+        -> 查询区域聚合 QPS / 延迟
+        -> 查询本主机 CPU / 内存
+        -> 计算 totalScore / LoadLevel
+    -> DynamicIntervalService.resolveInterval()
+        -> 根据 LoadLevel 计算 loadMultiplier
+        -> 结合保护态倍率、min/max、jitter
+        -> 返回 checkInterval
 ```
 
-**监控数据流程**：
+### 1.4 当前实现的直接结论
 
-```
-Admin API 请求 ──> MonitorOverviewService
-                        │
-                        ├── 本实例 LoadSnapshot
-                        ├── 区域主机列表 (Prometheus)
-                        └── 区域实例列表 (Prometheus)
-```
+- `loadScore` 本质上是“当前实例生成的评分”，但其中混入了区域级 QPS 和区域级延迟指标
+- 当单个实例热点偏斜时，区域聚合指标可能掩盖实例局部过载
+- 当前 `cachedSnapshot` TTL 为 `1s`，对 Prometheus 查询降频效果有限
+- 阈值和权重硬编码在服务内部，运行期不可调
+- 当前代码里的延迟查询仍按设备 API 合并口径处理，尚未拆分为 `check` / `report`
 
 ---
 
-## 2. 问题分析
+## 2. 已确认问题
 
-### 2.1 负载计算作用域混乱
+### 2.1 指标作用域混杂，实例过载不敏感
 
-**问题描述**：
+当前最核心的问题不是“缺少更多监控视图”，而是动态周期控制所依赖的评分语义不稳定。
 
-| 指标 | 当前作用域 | 问题 |
-|------|-----------|------|
-| JVM CPU/内存/连接池 | 实例 | ✅ 正确 |
-| QPS | 区域聚合 | ❌ 无法感知本实例压力 |
-| P99 延迟 | 区域聚合 | ❌ 无法感知本实例性能 |
-| 主机 CPU/内存 | 本主机 | ✅ 正确 |
+示例：
 
-**场景示例**：
+```text
+区域总 Check QPS = 8000
+在线实例数 = 4
 
-```
-区域总 QPS = 8000
-实例数量 = 4
-
-理想情况：每实例 2000 QPS
-实际情况：实例 A=4000, 实例 B=2000, 实例 C=1500, 实例 D=500
-
-当前算法：所有实例看到相同的区域 QPS (8000)
-问题：实例 A 已经过载，但负载评分无法反映
+理想分布: 2000 / 2000 / 2000 / 2000
+实际分布: 4000 / 2000 / 1500 / 500
 ```
 
-### 2.2 P99 阈值过于苛刻
+在现有实现中，4 个实例看到的区域 QPS 接近相同，实例 A 的热点压力无法被充分放大，导致：
 
-**当前阈值**：
-- 警告：30ms
-- 严重：50ms
+- 实例 A 的动态周期放大不足
+- Sentinel 可能已开始保护，但负载评分仍偏“正常”
+- 管控逻辑更像“区域平均状态”，而不是“当前实例状态”
 
-**实际延迟构成**：
+### 2.2 延迟指标口径过粗，且 P99 阈值偏紧
 
-| 延迟来源 | 典型耗时 | 说明 |
-|---------|---------|------|
-| 网络往返（LB → 实例） | 1-3ms | 负载均衡器转发 |
-| Redis 读（热路径） | 1-5ms | 本地 Redis |
-| 策略匹配（内存计算） | <1ms | 纯 CPU |
-| 序列化/反序列化 | 1-2ms | JSON 处理 |
-| GC 暂停（偶发） | 10-50ms | Young GC / Mixed GC |
-| **理论最优** | **5-15ms** | 无干扰情况 |
-| **现实 P99** | **20-80ms** | 含长尾影响 |
+当前问题有两层：
 
-**结论**：50ms 作为严重阈值过于严格，容易频繁触发高负载判定。
+- 延迟指标没有区分 `check` 和 `report`
+- 现有 P99 阈值偏紧
 
-### 2.3 缓存 TTL 过短
+当前 P99 阈值为：
 
-**当前值**：`cachedSnapshot` TTL = 1 秒
+- warning = `30ms`
+- critical = `50ms`
 
-**问题**：
-- Prometheus 采集周期为 15 秒，1 秒 TTL 可能导致频繁的指标采集开销
-- 短 TTL 无法有效减少 Prometheus 查询频率
+对设备检查接口而言，这一组阈值过于乐观。在经过负载均衡、Redis 访问、序列化、JVM 抖动后，`20ms` 到 `80ms` 的 P99 更接近现实分布。与此同时，`check` 与 `report` 的处理路径、负载特征和控制目标也不同，不应继续共享一组延迟评分指标。现有做法会导致：
 
-**建议**：TTL 调整为 10 秒，与 Prometheus 采集周期匹配
+- `check` 长尾与 `report` 长尾互相污染
+- 普通长尾波动被过早识别为高负载
+- 负载等级在 `NORMAL` / `HIGH` 间频繁切换
+- `checkInterval` 出现不必要放大
 
-### 2.4 阈值硬编码
+### 2.3 `cachedSnapshot` TTL 过短
 
-**当前实现**：阈值固化在 `SystemLoadIndicatorImpl.calculateTotalScore()` 中
+当前 TTL 为 `1s`，而 Prometheus 采集周期为 `15s`。这意味着：
 
-```java
-int cpuScore = calculateMetricScore(cpu, 70, 90, 20);
-int memoryScore = calculateMetricScore(memory, 75, 90, 15);
-int p99Score = calculateMetricScore(p99, 30, 50, 10);
-// ...
-```
+- 单实例在高并发下仍可能频繁查询 Prometheus
+- 相邻秒内拿到的指标几乎没有统计学差异
+- 查询成本高于控制收益
 
-**问题**：无法动态调整，修改需要重新部署
+### 2.4 阈值与权重硬编码，不利于后续调优
 
-### 2.5 监控维度不清晰
+现阶段硬编码是可以接受的，但必须在文档中明确：
 
-**当前问题**：
+- 本次先给出默认值并落到代码常量
+- 配置化是后续演进，不纳入本次改造闭环
 
-1. `loadScore` 是**本实例**的评分，但 UI 没有明确标注
-2. 用户可能误以为是区域或全局评分
-3. Admin API 部署在哪个区域，就只能看到哪个区域的监控
-4. 无法对比不同区域的健康状态
+否则文档会把“立即要改的负载逻辑”和“未来可配置能力”混为一体。
 
-### 2.4 缺少分层次监控
+### 2.5 QPS 评分存在重复计分
 
-**当前能力**：
-- ✅ 本实例详细指标
-- ⚠️ 区域主机/实例列表（只读，无聚合）
-- ❌ 无区域级汇总评分
-- ❌ 无全局视图（跨区域）
-- ❌ 无实例级下钻
+当前实现中：
+
+- `qps = checkQps + reportQps` 会参与一次总 QPS 评分
+- `checkQps` 与 `reportQps` 又分别参与单独评分
+
+这会导致 API 流量类指标在总分中被重复放大，而且三项指标目前都来自区域聚合数据，重复计分的问题会进一步放大“区域平均值掩盖实例热点”的偏差。
 
 ---
 
-## 3. 改进方案
+## 3. 优化目标与设计原则
 
-### 3.1 负载计算改进
+### 3.1 目标
 
-#### 3.1.1 混合指标计算
+将动态周期控制调整为“实例优先”的负载评估模型：
 
-**原则**：
-- JVM 指标：保持实例级（反映本实例状态）
-- QPS/延迟：混合实例级 + 区域级（反映局部压力 + 整体压力）
+- 优先反映当前实例是否承压
+- 区域指标只作为背景修正，不主导最终评分
+- 在 Prometheus 短暂失败时，仍能依靠本地指标完成退化计算
 
-**改进公式**：
+### 3.2 设计原则
 
+1. 实例优先：动态 `checkInterval` 首先服务于当前实例自保护，而不是区域平均控制。
+2. 区域修正：区域总量与区域长尾延迟用于感知“整体背景压力”，但权重低于实例指标。
+3. 主机辅助：Host CPU / 内存保留为辅助项，用于发现同机竞争。
+4. 退化可用：Prometheus 查询失败时，允许缺失部分远端指标，不能阻断周期计算。
+5. 默认值先行：本次文档给出默认阈值与权重，先按代码常量实现。
+6. 容量归一：QPS 类指标按容量利用率评判，而不是固定绝对值。
+
+### 3.3 本次明确不做
+
+以下内容只记录为后续演进，不纳入本次方案主体：
+
+- 全局/区域/主机/实例分层监控 API
+- 监控 UI 重构与下钻页面
+- 区域级或全局级独立 `LoadScope` 模型
+- Sentinel 规则字典化
+- 负载阈值、权重的运行期配置化
+
+---
+
+## 4. 指标模型与评分方案
+
+### 4.1 指标分层
+
+本次评分拆为三层：实例主指标、主机辅助指标、区域修正指标。
+
+| 分类 | 指标 | 目标作用域 | 推荐来源 |
+|------|------|------------|----------|
+| 实例主指标 | JVM CPU | 当前实例 | Micrometer / OS Bean |
+| 实例主指标 | JVM 堆内存 | 当前实例 | `MemoryMXBean` |
+| 实例主指标 | 连接池使用率 | 当前实例 | Micrometer |
+| 实例主指标 | Check QPS | 当前实例 | Prometheus `instance` 维度 |
+| 实例主指标 | Report QPS | 当前实例 | Prometheus `instance` 维度 |
+| 实例主指标 | Check P50 延迟 | 当前实例 | Prometheus `instance` 维度 |
+| 实例主指标 | Check P99 延迟 | 当前实例 | Prometheus `instance` 维度 |
+| 实例主指标 | Report P50 延迟 | 当前实例 | Prometheus `instance` 维度 |
+| 实例主指标 | Report P99 延迟 | 当前实例 | Prometheus `instance` 维度 |
+| 主机辅助指标 | Host CPU | 当前主机 | Prometheus `host` 维度 |
+| 主机辅助指标 | Host 内存 | 当前主机 | Prometheus `host` 维度 |
+| 区域修正指标 | 区域 Check 总 QPS | 当前区域 | Prometheus `region` 聚合 |
+| 区域修正指标 | 区域 Report 总 QPS | 当前区域 | Prometheus `region` 聚合 |
+| 区域修正指标 | 区域 Check P50 延迟 | 当前区域 | Prometheus `region` 聚合 |
+| 区域修正指标 | 区域 Check P99 延迟 | 当前区域 | Prometheus `region` 聚合 |
+| 区域修正指标 | 区域 Report P50 延迟 | 当前区域 | Prometheus `region` 聚合 |
+| 区域修正指标 | 区域 Report P99 延迟 | 当前区域 | Prometheus `region` 聚合 |
+
+### 4.2 采集方式约束
+
+#### 4.2.1 实例 QPS / 延迟
+
+实例级 API 指标推荐继续由 Prometheus 提供，而不是在业务代码中直接从本地 `MeterRegistry` 计算 rate 或 percentile。
+
+原因：
+
+- 当前系统已经为所有指标注入了 `region` / `host` / `instance` 标签
+- Prometheus 已具备按 `instance` 聚合查询的能力
+- 在业务代码中自行计算 counter rate / timer percentile，需要额外维护滑动窗口和聚合状态，复杂度高且语义不一致
+
+推荐查询维度：
+
+- `sum(rate(fota_device_checks_total{region="...",instance="..."}[5m]))`
+- `sum(rate(fota_upgrade_events_total{region="...",instance="..."}[5m]))`
+- `histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region="...",instance="...",uri="/v1/upgrade/check"}[5m])) by (le))`
+- `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region="...",instance="...",uri="/v1/upgrade/check"}[5m])) by (le))`
+- `histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region="...",instance="...",uri="/v1/upgrade/report"}[5m])) by (le))`
+- `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region="...",instance="...",uri="/v1/upgrade/report"}[5m])) by (le))`
+
+区域修正指标也应保持同样的拆分口径：
+
+- `sum(rate(fota_device_checks_total{region="..."}[5m]))`
+- `sum(rate(fota_upgrade_events_total{region="..."}[5m]))`
+- `histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region="...",uri="/v1/upgrade/check"}[5m])) by (le))`
+- `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region="...",uri="/v1/upgrade/check"}[5m])) by (le))`
+- `histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region="...",uri="/v1/upgrade/report"}[5m])) by (le))`
+- `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region="...",uri="/v1/upgrade/report"}[5m])) by (le))`
+
+#### 4.2.2 区域在线实例数
+
+区域在线实例数可由两种方式得到：
+
+- 首选：Prometheus `instance` 标签去重后的实例数
+- 备选：`NodeRegistryService.listOnlineNodes()` 过滤当前 `region`
+
+文档中按“一实例一节点”约定描述，但实现上不要求依赖节点注册才能完成实例级评分。
+
+#### 4.2.3 QPS 容量基线
+
+QPS 类指标不应直接使用固定绝对阈值评分，而应先换算为容量利用率：
+
+```text
+capacityUsage = currentQps / effectiveCapacity
 ```
-实例负载评分 = Σ (指标值 × 权重 × 作用域系数)
 
 其中：
-- JVM CPU/内存/连接池：作用域系数 = 1.0（纯实例级）
-- QPS：作用域系数 = 0.4 × 实例QPS + 0.6 × (区域QPS / 实例数)
-- P99：作用域系数 = 0.5 × 实例P99 + 0.5 × 区域P99
+
+- 实例 Check 容量 = 当前实例 `check` 路由的有效限流阈值
+- 实例 Report 容量 = 当前实例 `report` 路由的有效限流阈值
+- 区域 Check 容量 = 当前区域所有在线实例的 `check` 有效限流阈值之和
+- 区域 Report 容量 = 当前区域所有在线实例的 `report` 有效限流阈值之和
+
+在所有实例配置一致时，可近似为：
+
+```text
+区域 Check 容量 = 在线实例数 × 单实例 Check 容量
+区域 Report 容量 = 在线实例数 × 单实例 Report 容量
 ```
 
-**代码改进**：
+如果后续支持按实例差异化配置，则区域容量应按各实例有效阈值逐个求和，不能再退化为“实例数 × 默认值”。
 
-```java
-// SystemLoadIndicatorImpl.java 改进
+本次文档建议的评分口径：
 
-private double getEffectiveQps() {
-    double instanceQps = getInstanceQpsFromMicrometer();  // 本实例 QPS
-    double regionQps = getRegionQps();                    // 区域 QPS
-    int instanceCount = getInstanceCount();               // 区域实例数
-    
-    if (instanceCount <= 0) {
-        return regionQps;
-    }
-    
-    // 混合计算：40% 实例自身 + 60% 区域平均
-    double regionAvgQps = regionQps / instanceCount;
-    return instanceQps * 0.4 + regionAvgQps * 0.6;
-}
+- warning = `60%`
+- critical = `80%`
 
-private double getEffectiveP99Latency() {
-    double instanceP99 = getInstanceP99FromMicrometer();  // 本实例 P99
-    double regionP99 = getRegionP99();                    // 区域 P99
-    
-    if (regionP99 < 0) {
-        return instanceP99;
-    }
-    
-    // 混合计算：50% 实例 + 50% 区域
-    return instanceP99 * 0.5 + regionP99 * 0.5;
-}
+这组阈值适用于实例 QPS 和区域 QPS 两层，只是容量基线不同。
 
-private double getInstanceQpsFromMicrometer() {
-    // 从 Micrometer 获取本实例 QPS
-    double checkQps = getCounterRate("fota_device_checks_total");
-    double reportQps = getCounterRate("fota_upgrade_events_total");
-    return checkQps + reportQps;
-}
+### 4.3 评分结构
 
-private double getInstanceP99FromMicrometer() {
-    // 从 Micrometer Timer 获取本实例 P99
-    Timer timer = meterRegistry.find("http.server.requests").timer();
-    if (timer != null) {
-        return timer.takeSnapshot().percentile(0.99) * 1000; // 转换为 ms
-    }
-    return -1;
-}
+总分仍保持 `0-100`，但改为实例优先分配：
+
+| 分类 | 指标 | warning | critical | 权重 |
+|------|------|---------|----------|------|
+| 实例资源 | JVM CPU | 70% | 90% | 16 |
+| 实例资源 | JVM 堆内存 | 75% | 90% | 10 |
+| 实例资源 | 连接池使用率 | 80% | 95% | 8 |
+| 实例 API | 实例 Check QPS 利用率 | 60% | 80% | 11 |
+| 实例 API | 实例 Report QPS 利用率 | 60% | 80% | 4 |
+| 实例 API | 实例 Check P50 延迟 | 30ms | 60ms | 5 |
+| 实例 API | 实例 Check P99 延迟 | 50ms | 100ms | 11 |
+| 实例 API | 实例 Report P50 延迟 | 20ms | 40ms | 2 |
+| 实例 API | 实例 Report P99 延迟 | 40ms | 80ms | 6 |
+| 主机辅助 | Host CPU | 70% | 90% | 7 |
+| 主机辅助 | Host 内存 | 75% | 90% | 4 |
+| 区域修正 | 区域 Check 总 QPS 利用率 | 60% | 80% | 5 |
+| 区域修正 | 区域 Report 总 QPS 利用率 | 60% | 80% | 2 |
+| 区域修正 | 区域 Check P50 延迟 | 35ms | 70ms | 2 |
+| 区域修正 | 区域 Check P99 延迟 | 60ms | 120ms | 4 |
+| 区域修正 | 区域 Report P50 延迟 | 25ms | 50ms | 1 |
+| 区域修正 | 区域 Report P99 延迟 | 50ms | 100ms | 2 |
+
+权重合计：`100`
+
+### 4.4 评分解释
+
+- 实例主指标共 `73` 分，是决定动态周期的主要依据
+- 其中延迟指标按 `check` / `report`、`P50` / `P99` 分开独立计分，避免不同接口相互污染
+- 其中实例 API 指标共 `39` 分，`check QPS` 与 `check P99` 基本持平，兼顾前馈预警与结果反馈
+- 主机辅助指标共 `11` 分，用于识别同机资源争用
+- 区域修正指标共 `16` 分，同样按 `check` / `report` 分开，用于提供区域背景压力，但不单独主导评分
+- `report` 路径权重整体低于 `check` 路径，避免上报链路波动过度主导设备检查周期
+
+推荐按以下方式理解结果：
+
+```text
+totalScore = instanceScore + hostScore + regionScore
 ```
 
-#### 3.1.2 P99 阈值调整
+其中：
 
-| 指标 | 警告阈值 | 严重阈值 | 说明 |
-|------|---------|---------|------|
-| P50 延迟 | 40ms | 60ms | 新增 |
-| P99 延迟 | 50ms | 100ms | 放宽 |
-| 其他指标 | 保持不变 | 保持不变 | - |
+- `instanceScore` 决定主趋势
+- `hostScore` 用于补充实例未直接覆盖的竞争资源
+- `regionScore` 用于在区域整体吃紧时提前保守一些，但不替代实例局部事实
+- QPS 项进入评分前，应先转换为容量利用率，再套用 `60% / 80%` 阈值
 
-#### 3.1.3 实例数获取
+### 4.5 单项评分函数
 
-从 `NodeRegistryService.listOnlineNodes()` 获取当前区域在线实例列表。
+单项评分仍沿用现有分段线性函数，不修改基本算法：
 
-Node code 格式：`{region}-{host}-{domain}`，可解析出区域信息进行过滤。
-
-#### 3.1.4 缓存 TTL 调整
-
-| 缓存 | 当前值 | 建议值 | 说明 |
-|------|-------|-------|------|
-| cachedSnapshot | 1s | 10s | 与 Prometheus 15s 采集周期匹配 |
-
-#### 3.1.5 阈值配置化
-
-**字典类型定义**：`system.load.metrics`
-
-**字典项结构**（存储在 `DictItem.extra` JSON 字段）：
-
-```json
-{
-  "warning": 70,
-  "critical": 90,
-  "maxScore": 20
-}
+```text
+if value < 0:
+    score = 0
+else if value >= critical:
+    score = maxScore
+else if value >= warning:
+    score = maxScore * 0.3 + maxScore * 0.7 * (value - warning) / (critical - warning)
+else:
+    score = maxScore * 0.3 * value / warning
 ```
 
-**指标配置项**（总分 100）：
+这意味着本次主要改的是：
 
-| 字典项 value | 说明 | 阈值 | 权重 | 作用域 |
-|--------------|------|------|------|--------|
-| jvm_cpu | JVM CPU 使用率 | w=70%, c=90% | 15 | 实例 |
-| jvm_memory | JVM 堆内存使用率 | w=75%, c=90% | 10 | 实例 |
-| connection_pool | 连接池使用率 | w=80%, c=95% | 6 | 实例 |
-| host_cpu | 主机 CPU 使用率 | w=70%, c=90% | 7 | 主机 |
-| host_memory | 主机内存使用率 | w=75%, c=90% | 4 | 主机 |
-| check_qps | Check API QPS（实例） | w=60%, c=80% | 8 | 实例 |
-| report_qps | Report API QPS（实例） | w=60%, c=80% | 4 | 实例 |
-| check_p50_latency | Check P50 延迟（实例） | w=40ms, c=60ms | 4 | 实例 |
-| report_p50_latency | Report P50 延迟（实例） | w=40ms, c=60ms | 2 | 实例 |
-| check_p99_latency | Check P99 延迟（实例） | w=50ms, c=100ms | 12 | 实例 |
-| report_p99_latency | Report P99 延迟（实例） | w=50ms, c=100ms | 6 | 实例 |
-| region_check_qps | Check API QPS（区域） | w=60%, c=80% | 10 | 区域 |
-| region_report_qps | Report API QPS（区域） | w=60%, c=80% | 5 | 区域 |
-| region_check_p99_latency | Check P99 延迟（区域） | w=50ms, c=100ms | 5 | 区域 |
-| region_report_p99_latency | Report P99 延迟（区域） | w=50ms, c=100ms | 2 | 区域 |
+- 指标来源
+- 指标作用域
+- 阈值默认值
+- 权重分布
+- 缓存策略
 
-**权重分布汇总**：
-
-| 分类 | 指标 | 权重 | 小计 |
-|------|------|------|------|
-| 实例资源 | jvm_cpu + jvm_memory + connection_pool + host_cpu + host_memory | 15+10+6+7+4 | **42** |
-| 实例 API | check_qps + report_qps + check_p50 + report_p50 + check_p99 + report_p99 | 8+4+4+2+12+6 | **36** |
-| 区域 API | region_check_qps + region_report_qps + region_check_p99 + region_report_p99 | 10+5+5+2 | **22** |
-| **总计** | | | **100** |
-
-**关键设计决策**：
-
-1. **实例资源占主导(42%)**：反映实例自身状态，是主要判断依据
-2. **实例 API 次之(36%)**：反映本实例实时负载
-3. **区域 API 辅助(22%)**：反映整体背景压力
-4. **Check > Report**：Check API 总权重（实例8+12 + 区域10+5 = 35）远高于 Report API（实例4+6 + 区域5+2 = 17）
-5. **P99 > P50**：P99 权重是 P50 的 2-3 倍，更关注长尾延迟
-6. **阈值基于利用率**：QPS 类指标使用集群容量利用率（60%/80%），而非绝对值
-
-#### 3.1.6 Sentinel 限流配置
-
-**字典类型定义**：`system.sentinel.rules`
-
-**字典项结构**（存储在 `DictItem.extra` JSON 字段）：
-
-```json
-{
-  "grade": "QPS",
-  "count": 1000,
-  "controlBehavior": "RATE_LIMITER",
-  "maxQueueingTimeMs": 50,
-  "enabled": true
-}
-```
-
-**配置项**：
-
-| 字典项 value | 说明 | 默认值 |
-|--------------|------|-------|
-| upgrade_check | 升级检查 API | QPS=1000, 排队等待 |
-| upgrade_report | 升级上报 API | QPS=2500, 快速失败 |
-
-**默认值计算依据**：
-
-基于单实例 10Mbps 出带宽限制计算：
-
-```
-1. 带宽换算
-   10 Mbps = 10 × 1024 × 1024 bits/s = 10,485,760 bits/s
-   换算成 KB/s = 10,485,760 / 8 / 1024 = 1,280 KB/s
-
-2. Check API 响应大小（实测）
-   - HTTP Header + Body ≈ 800 bytes
-   - 预留冗余 ≈ 224 bytes
-   - 估算响应大小 = 1 KB
-
-3. Report API 响应大小（估算）
-   - HTTP Header + Body ≈ 200 bytes
-
-4. 纯 Check API 理论 QPS
-   1,280 KB/s / 1 KB = 1,280 QPS
-
-5. 混合场景（Check : Report ≈ 1 : 3）
-   设 Check QPS = x, Report QPS = 3x
-   总带宽 = x × 1 + 3x × 0.2 = 1.6x
-   1.6x ≤ 1,280
-   x ≤ 800
-
-6. 限流阈值（预留 20% 余量）
-   Check QPS = 800 × 0.8 ≈ 640 → 取整 1000
-   Report QPS = 2400 × 0.8 ≈ 1920 → 取整 2500
-```
-
-**多实例共享带宽**：
-
-如果一台主机部署多个实例，它们共享 10Mbps 带宽，需按比例调整：
-
-| 主机实例数 | 单实例 Check QPS | 单实例 Report QPS |
-|-----------|-----------------|------------------|
-| 1 | 1000 | 2500 |
-| 2 | 500 | 1250 |
-| 3 | 330 | 830 |
-
-**与 QPS 评分的关系**：
-
-```
-集群容量 = Σ (各实例 upgrade_check 限流值) + Σ (各实例 upgrade_report 限流值)
-
-示例：4 实例 × (1000 + 2500) = 14,000 QPS 集群容量
-```
-
-**QPS 评分基准**：使用集群容量作为 100% 利用率基准，阈值 60%/80%
-
-**缓存策略**：
-
-| 操作 | 行为 |
-|------|------|
-| 首次加载 | 从数据库查询，缓存到 Redis（无 TTL） |
-| 配置修改 | 清除 Redis 缓存，触发重新加载 |
-| 服务启动 | 尝试从 Redis 读取，不存在则查数据库 |
-| 配置缺失 | 使用代码中的默认值兜底 |
-
-**Redis Key**：`fota:config:sentinel:{rule_value}`
-
-### 3.2 区域级负载评分
-
-#### 3.2.1 定义
-
-**区域负载评分** = 反映整个区域的健康状态，用于监控大盘展示
-
-**计算方式**：
-
-```
-区域负载评分 = 加权平均(
-    JVM 指标: avg(各实例 JVM 指标),
-    QPS: sum(各实例 QPS) / 集群容量,
-    P99: max(各实例 P99),  // 关注最差情况
-    主机指标: avg(各主机指标)
-)
-```
-
-**简化计算**：
-
-```java
-public LoadSnapshot getRegionLoadSnapshot() {
-    // 从 Prometheus 获取区域级聚合指标
-    double regionCpu = getRegionAvgCpuUsage();
-    double regionMemory = getRegionAvgMemoryUsage();
-    double regionQps = getRegionTotalQps();
-    double regionP99 = getRegionMaxP99();  // 取最大值，关注最差情况
-    double regionPoolUsage = getRegionAvgPoolUsage();
-    
-    int totalScore = calculateTotalScore(
-        regionCpu, regionMemory, regionQps, regionP99, regionPoolUsage
-    );
-    
-    return LoadSnapshot.builder()
-        .scope("region")
-        .region(region)
-        .totalScore(totalScore)
-        .level(LoadLevel.fromScore(totalScore))
-        .build();
-}
-```
-
-#### 3.2.2 作用域区分
-
-```java
-public enum LoadScope {
-    INSTANCE,   // 单个实例
-    HOST,       // 单台主机
-    REGION,     // 单个区域
-    GLOBAL      // 全局（所有区域）
-}
-
-public record LoadSnapshot(
-    LoadScope scope,          // 作用域
-    String scopeId,           // 作用域标识（实例ID/主机名/区域名）
-    int totalScore,
-    LoadLevel level
-    // ... 其他指标
-) {}
-```
-
-### 3.3 监控 API 改进
-
-#### 3.3.1 分层 API 设计
-
-| API 端点 | 作用域 | 说明 |
-|---------|-------|------|
-| `GET /api/admin/monitor/global` | 全局 | 所有区域汇总（仅 Main 可用） |
-| `GET /api/admin/monitor/regions` | 区域列表 | 各区域健康状态 |
-| `GET /api/admin/monitor/region/{region}` | 单区域 | 区域详细指标 |
-| `GET /api/admin/monitor/hosts` | 主机列表 | 区域内所有主机 |
-| `GET /api/admin/monitor/host/{host}` | 单主机 | 主机详细指标 |
-| `GET /api/admin/monitor/instances` | 实例列表 | 区域内所有实例 |
-| `GET /api/admin/monitor/instance/{instance}` | 单实例 | 实例详细指标 |
-
-#### 3.3.2 数据结构改进
-
-**全局视图**：
-
-```java
-public record GlobalMetricsDTO(
-    List<RegionSummaryDTO> regions,
-    int totalActiveDevices,
-    double totalQps,
-    Instant timestamp
-) {}
-
-public record RegionSummaryDTO(
-    String region,
-    int loadScore,
-    LoadLevel loadLevel,
-    double qps,
-    double avgP99Latency,
-    int healthyInstances,
-    int totalInstances,
-    long activeDevices
-) {}
-```
-
-**区域视图**：
-
-```java
-public record RegionMetricsDTO(
-    // 区域汇总
-    RegionSummaryDTO summary,
-    
-    // 下钻数据
-    List<HostSummaryDTO> hosts,
-    List<InstanceSummaryDTO> instances,
-    
-    // 趋势数据
-    MonitorTrendsDTO trends,
-    
-    // 热点产品
-    List<HotProductDTO> hotProducts,
-    
-    Instant timestamp
-) {}
-```
-
-**实例视图**：
-
-```java
-public record InstanceMetricsDTO(
-    String instance,
-    String host,
-    String region,
-    
-    // JVM 指标
-    double cpuUsage,
-    double heapUsage,
-    double heapUsedMB,
-    double heapMaxMB,
-    int gcCount,
-    double gcTimeMs,
-    
-    // API 指标
-    double checkQps,
-    double reportQps,
-    double totalQps,
-    double p50Latency,
-    double p99Latency,
-    
-    // 连接池
-    int activeConnections,
-    int maxConnections,
-    double connectionPoolUsage,
-    
-    // Sentinel
-    double blockRate,
-    String circuitState,
-    int activeRequests,
-    
-    // 负载评分
-    int loadScore,
-    LoadLevel loadLevel,
-    
-    Instant timestamp
-) {}
-```
-
-### 3.4 UI 改进
-
-#### 3.4.1 分层导航
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│  系统监控                                                       │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  [全局]  [区域 ▼]  [主机 ▼]  [实例 ▼]                          │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │  当前视图: 区域 - main                                    │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  区域负载评分                                    45/100  │  │
-│  │  [████████████████░░░░░░░░░░░░░░░░░░░░]  NORMAL         │  │
-│  │                                                         │  │
-│  │  健康实例: 5/6    总 QPS: 8,234    P99: 42ms            │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  实例状态                                                │  │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │  │
-│  │  │ instance-1  │ │ instance-2  │ │ instance-3  │        │  │
-│  │  │ ● NORMAL    │ │ ● NORMAL    │ │ ⚠ HIGH      │        │  │
-│  │  │ QPS: 1,823  │ │ QPS: 1,756  │ │ QPS: 2,455  │        │  │
-│  │  │ P99: 38ms   │ │ P99: 41ms   │ │ P99: 67ms   │        │  │
-│  │  │ [详情]      │ │ [详情]      │ │ [详情]      │        │  │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘        │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
-
-#### 3.4.2 实例详情页
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│  实例详情 - main-host1-instance1                               │
-│  区域: main    主机: host1    状态: ● NORMAL                   │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │ 负载评分      │  │ CPU 使用率    │  │ 堆内存        │         │
-│  │    42        │  │    58%       │  │   1.2/2.0 GB │         │
-│  │   NORMAL     │  │              │  │      60%     │         │
-│  └──────────────┘  └──────────────┘  └──────────────┘         │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  API 指标                                                │  │
-│  │  Check QPS: 1,823    Report QPS: 412    P99: 38ms       │  │
-│  │                                                         │  │
-│  │  [最近 1 小时 QPS 趋势图]                                │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  Sentinel 状态                                           │  │
-│  │  熔断器: ● 关闭    限流率: 1.2%    活跃请求: 23          │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │  JVM 详情                                                │  │
-│  │  Young GC: 156 次 / 1.2s    Old GC: 2 次 / 0.3s         │  │
-│  │  连接池: 45/100 (45%)      线程数: 89                    │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+不是推翻现有评分函数。
 
 ---
 
-## 4. 实施计划
+## 5. 动态周期的预期行为
 
-### 4.1 阶段 1：阈值配置化（优先级：高）
+评分模型调整后，`DynamicIntervalService` 的行为不变，仍然是：
 
-| 任务 | 说明 | 预计工时 |
-|------|------|---------|
-| 新增字典类型 | `system.load.metrics` 及字典项 | 1h |
-| 阈值加载服务 | 从字典/Redis 加载阈值配置 | 2h |
-| 阈值缓存实现 | Redis 永久缓存 + 清除机制 | 1h |
+```text
+baseInterval * loadMultiplier * protectedMultiplier * jitter
+```
 
-### 4.2 阶段 2：负载计算改进（优先级：高）
+变化只体现在 `LoadLevel` 更贴近实例实际承压。
 
-| 任务 | 说明 | 预计工时 |
-|------|------|---------|
-| 混合 QPS 计算 | 实例 QPS + 区域 QPS 加权 | 2h |
-| 混合 P99 计算 | 实例 P99 + 区域 P99 加权 | 2h |
-| 实例数获取 | NodeRegistryService 集成 | 1h |
-| 缓存 TTL 调整 | 1s → 10s | 0.5h |
-| 阈值更新 | P50/P99 阈值调整 | 0.5h |
-| 单元测试 | 负载计算测试 | 2h |
+### 5.1 预期效果
 
-### 4.3 阶段 3：区域级监控（优先级：高）
+- 单实例热点偏斜时，该实例会更早进入 `HIGH` 或 `CRITICAL`
+- 区域 Check 总 QPS 或区域 Check 延迟升高时，只进行有限放大，不会被区域平均值强行拉高
+- `check` 延迟恶化时，应明显强于 `report` 延迟对 `checkInterval` 的影响
+- 区域 Prometheus 短暂异常时，仍可依靠 JVM / 连接池 / 主机指标得到退化结果
 
-| 任务 | 说明 | 预计工时 |
-|------|------|---------|
-| 区域负载评分 | 实现 getRegionLoadSnapshot | 3h |
-| API 改进 | 新增区域级端点 | 2h |
-| 数据结构改进 | LoadSnapshot 增加作用域 | 1h |
-| 单元测试 | 区域监控测试 | 2h |
+### 5.2 典型场景
 
-### 4.3 阶段 3：UI 分层展示（优先级：中）
+#### 场景 A：单实例热点
 
-| 任务 | 说明 | 预计工时 |
-|------|------|---------|
-| 区域选择器 | 前端区域切换组件 | 2h |
-| 实例列表展示 | 区域内实例状态卡片 | 3h |
-| 实例详情页 | 实例下钻详情 | 4h |
-| 联调测试 | 前后端联调 | 2h |
+```text
+实例 A Check QPS = 2300, Check P99 = 88ms
+其他实例均正常
+区域总 QPS 正常
+```
 
-### 4.4 阶段 4：全局视图（优先级：低）
+预期：若实例 A 的 `Check QPS` 已接近其单实例容量上限，则其 `loadScore` 明显升高，`checkInterval` 被主动拉长。
 
-| 任务 | 说明 | 预计工时 |
-|------|------|---------|
-| 区域数据上报 | Region 定期上报状态到 Main | 4h |
-| 全局聚合 API | Main 汇总各区域数据 | 3h |
-| 全局监控页 | 前端全局视图 | 4h |
+#### 场景 B：区域整体升压但实例正常
 
----
+```text
+当前实例 Check QPS = 900, Check P99 = 42ms, Report P99 = 28ms
+区域 Check 总 QPS 接近 warning
+区域 Check P99 = 70ms
+区域 Report P99 = 45ms
+```
 
-## 5. 改进前后对比
+预期：当前实例评分小幅上升，但不应直接进入 `CRITICAL`。
 
-### 5.1 负载计算
+#### 场景 C：Prometheus 查询失败
 
-| 维度 | 改进前 | 改进后 |
-|------|-------|-------|
-| JVM 指标 | 实例级 ✅ | 实例级（不变） |
-| QPS | 区域聚合 | 40% 实例 + 60% 区域 |
-| P99 | 区域聚合 | 50% 实例 + 50% 区域 |
-| 作用域 | 混乱 | 明确（实例级 / 区域级） |
+```text
+区域 Check/Report QPS、区域 Check/Report 延迟、实例 QPS、实例延迟查询失败
+JVM、连接池、主机指标仍可读取
+```
 
-### 5.2 监控展示
-
-| 维度 | 改进前 | 改进后 |
-|------|-------|-------|
-| 负载评分 | 本实例（未标注） | 支持实例/区域/全局切换 |
-| 实例列表 | 只读列表 | 带状态卡片，可下钻 |
-| 区域对比 | 不支持 | 全局视图支持 |
-| 作用域标注 | 无 | 明确显示当前查看范围 |
-| 实例数获取 | 无 | NodeRegistryService |
-| 缓存 TTL | 1s | 10s |
-| 阈值配置 | 硬编码 | 字典类型 + Redis 缓存 |
-
-### 5.3 阈值配置
-
-| 指标 | 改进前 | 改进后 |
-|------|-------|-------|
-| P50 警告 | 无 | 40ms |
-| P50 严重 | 无 | 60ms |
-| P99 警告 | 30ms | 50ms |
-| P99 严重 | 50ms | 100ms |
-| 配置方式 | 硬编码 | 字典类型（可动态调整） |
+预期：缺失的远端指标记为 0 分，不影响动态周期正常计算。
 
 ---
 
-## 6. 风险与缓解
+## 6. 与当前实现的差异
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| Prometheus 查询增加 | 性能 | 增加缓存（10s TTL），异步查询 |
-| 混合计算复杂度 | 可维护性 | 充分注释，单元测试覆盖 |
-| UI 改动较大 | 用户体验 | 分阶段发布，保留原入口 |
-| 实例数获取延迟 | 计算误差 | 本地缓存实例列表，定期刷新 |
-| 字典配置缺失 | 运行异常 | 使用代码中的默认值兜底 |
-| Redis 缓存失效 | 性能 | 降级到数据库查询 |
+### 6.1 需要调整的实现点
+
+1. `PrometheusClient` 补充实例维度查询方法：
+   - 实例 Check QPS
+   - 实例 Report QPS
+   - 实例 Check P50 / P99 延迟
+   - 实例 Report P50 / P99 延迟
+2. `SystemLoadIndicatorImpl` 用实例维度 API 指标替换当前区域聚合指标作为主评分来源。
+3. `SystemLoadIndicatorImpl` 保留区域 Check/Report QPS 与区域 Check/Report 延迟，但仅作为修正项参与评分。
+4. `cachedSnapshot` TTL 从 `1s` 调整为 `10s`。
+5. 监控页面需明确 `loadScore` 的语义为“当前实例评分”，避免被理解为区域评分。
+
+### 6.2 暂不纳入本次的实现点
+
+- 区域级负载评分对象
+- 全局监控汇总接口
+- Host / Instance 详情接口
+- 字典化阈值与权重
+- Sentinel 规则配置中心化
 
 ---
 
-## 7. 变更记录
+## 7. 验证与验收
+
+### 7.1 验收场景
+
+- 单实例 CPU、连接池升高时，即使区域总 QPS 平稳，评分也应升高。
+- 单实例 Check QPS / Check P99 升高时，应比现有实现更快进入 `HIGH`。
+- 单实例只有 Report 延迟升高、Check 延迟正常时，评分应上升但弱于 Check 延迟恶化场景。
+- 只有区域 Check/Report 总 QPS 或区域延迟升高、当前实例平稳时，评分只能温和上升。
+- Prometheus 查询失败时，服务仍可返回合法的 `LoadSnapshot`。
+- 10 秒缓存窗口内重复调用 `getSnapshot()` 应复用相同快照。
+- 保护态倍率仍在 `loadMultiplier` 之后生效，且继续受到 `min/max interval` 限制。
+
+### 7.2 观察指标
+
+上线后重点观察：
+
+- `HIGH` / `CRITICAL` 比例是否明显高于现状
+- Sentinel block rate 与 `loadScore` 的相关性是否增强
+- 实例热点场景下，过载实例的 `checkInterval` 是否明显大于平稳实例
+- Prometheus 查询量是否因 `10s` TTL 明显下降
+
+---
+
+## 8. 后续演进
+
+以下事项保留到后续专题，不在本次文档中展开：
+
+- 阈值、权重运行期配置化
+- 区域级与全局级健康分模型
+- 监控 API 分层与跨区域汇总
+- 监控 UI 分层导航与实例下钻
+- Sentinel 规则与负载评分的统一配置管理
+
+---
+
+## 9. 变更记录
 
 | 日期 | 版本 | 变更 |
 |------|------|------|
-| 2026-03-13 | v1.0 | 初版，基于问题分析提出改进方案 |
-| 2026-03-13 | v1.1 | 增加：阈值配置化（字典类型）、缓存 TTL 调整（10s）、实例数获取方案、P50 阈值定义 |
-| 2026-03-13 | v1.2 | 增加：Sentinel 限流配置字典化、集群容量定义、Check API 权重提升（5>2） |
+| 2026-03-13 | v1.0 | 初版，多实例监控改进思路整理 |
+| 2026-03-13 | v2.0 | 收敛为实例优先的负载评估与动态周期优化方案，移除超出本次范围的监控平台重构内容 |

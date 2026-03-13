@@ -89,10 +89,13 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
         map.level = snapshot.level().name();
         map.cpuUsage = snapshot.cpuUsage();
         map.memoryUsage = snapshot.memoryUsage();
-        map.qps = snapshot.qps();
-        map.p50Latency = snapshot.p50Latency();
-        map.p99Latency = snapshot.p99Latency();
         map.connectionPoolUsage = snapshot.connectionPoolUsage();
+        map.checkQps = snapshot.checkQps();
+        map.reportQps = snapshot.reportQps();
+        map.checkP50Latency = snapshot.checkP50Latency();
+        map.checkP99Latency = snapshot.checkP99Latency();
+        map.reportP50Latency = snapshot.reportP50Latency();
+        map.reportP99Latency = snapshot.reportP99Latency();
         return map;
     }
 
@@ -103,11 +106,18 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
                 .level(com.wewins.fota.domain.load.model.enums.LoadLevel.valueOf(map.level))
                 .cpuUsage(map.cpuUsage)
                 .memoryUsage(map.memoryUsage)
-                .qps(map.qps)
-                .p50Latency(map.p50Latency)
-                .p99Latency(map.p99Latency)
                 .connectionPoolUsage(map.connectionPoolUsage)
+                .checkQps(map.checkQps)
+                .reportQps(map.reportQps)
+                .checkP50Latency(firstNonZero(map.checkP50Latency, map.p50Latency))
+                .checkP99Latency(firstNonZero(map.checkP99Latency, map.p99Latency))
+                .reportP50Latency(firstNonZero(map.reportP50Latency, map.p50Latency))
+                .reportP99Latency(firstNonZero(map.reportP99Latency, map.p99Latency))
                 .build();
+    }
+
+    private double firstNonZero(double primary, double fallback) {
+        return primary > 0 ? primary : fallback;
     }
 
     private static class SnapshotMap {
@@ -116,9 +126,14 @@ public class RedisLoadHistoryRepository implements LoadHistoryRepository {
         public String level;
         public double cpuUsage;
         public double memoryUsage;
-        public double qps;
         public double p50Latency;
         public double p99Latency;
         public double connectionPoolUsage;
+        public double checkQps;
+        public double reportQps;
+        public double checkP50Latency;
+        public double checkP99Latency;
+        public double reportP50Latency;
+        public double reportP99Latency;
     }
 }

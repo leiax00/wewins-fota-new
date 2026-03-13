@@ -1,5 +1,10 @@
 package com.wewins.fota.adapter.api.device;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
+import com.alibaba.csp.sentinel.slots.block.flow.FlowException;
+import com.alibaba.csp.sentinel.slots.system.SystemBlockException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wewins.fota.adapter.api.device.dto.UpgradeReportDTO;
@@ -55,6 +60,7 @@ public class UpgradeReportController {
      * @return 200 OK
      */
     @PostMapping("/report")
+    @SentinelResource(value = "upgrade:report", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<Void> reportUpgrade(
             @Valid @RequestBody UpgradeReportDTO requestBody,
             HttpServletRequest httpRequest) {
@@ -69,6 +75,38 @@ public class UpgradeReportController {
         upgradeReportAppService.reportUpgrade(report);
         fotaMetrics.recordUpgradeEvent(resolveProductModel(requestBody.getImei()), requestBody.getEvent().name());
 
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Sentinel BlockHandler
+     * <p>
+     * 上报接口保持发后即忘语义，即使被限流也返回 200，避免设备端放大重试风暴。
+     * </p>
+     */
+    public ResponseEntity<Void> handleBlock(
+            UpgradeReportDTO requestBody,
+            HttpServletRequest httpRequest,
+            BlockException ex) {
+        String reason = getBlockedReason(ex);
+        fotaMetrics.recordRateLimited("upgrade:report", reason);
+        log.warn("Upgrade report blocked by Sentinel: imei={}, requestId={}, reason={}",
+                requestBody.getImei(), requestBody.getRequestId(), reason);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Sentinel fallback
+     * <p>
+     * 上报接口发生异常时仍返回 200，避免设备端短时间重试堆积。
+     * </p>
+     */
+    public ResponseEntity<Void> handleFallback(
+            UpgradeReportDTO requestBody,
+            HttpServletRequest httpRequest,
+            Throwable t) {
+        log.error("Fallback triggered for upgrade report: imei={}, requestId={}",
+                requestBody.getImei(), requestBody.getRequestId(), t);
         return ResponseEntity.ok().build();
     }
 
@@ -95,5 +133,18 @@ public class UpgradeReportController {
             log.warn("序列化 details 失败: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String getBlockedReason(BlockException ex) {
+        if (ex instanceof FlowException) {
+            return "FLOW_QPS";
+        }
+        if (ex instanceof DegradeException) {
+            return "DEGRADE";
+        }
+        if (ex instanceof SystemBlockException) {
+            return "SYSTEM";
+        }
+        return "UNKNOWN";
     }
 }

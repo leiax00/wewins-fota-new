@@ -13,10 +13,8 @@ export interface InstanceMetrics {
   instance: string
   cpuUsage: number
   memoryUsage: number
-  currentQps: number
   checkQps: number
   reportQps: number
-  p99Latency: number
   activeRequests: number
   blockRate: number
   circuitState: string
@@ -41,11 +39,12 @@ export interface RealtimeMetrics {
   loadLevel: string
   cpuUsage: number
   memoryUsage: number
-  currentQps: number
   checkQps: number
   reportQps: number
-  p50Latency: number
-  p99Latency: number
+  checkP50Latency: number
+  checkP99Latency: number
+  reportP50Latency: number
+  reportP99Latency: number
   activeRequests: number
   todayActiveDevices: number
   blockRate: number
@@ -75,8 +74,10 @@ export interface MonitorTrends {
   stepSeconds: number
   checkQps: TrendPoint[]
   reportQps: TrendPoint[]
-  p50Latency: TrendPoint[]
-  p99Latency: TrendPoint[]
+  checkP50Latency: TrendPoint[]
+  checkP99Latency: TrendPoint[]
+  reportP50Latency: TrendPoint[]
+  reportP99Latency: TrendPoint[]
   blockRate: TrendPoint[]
   activeDevicesTotal: TrendPoint[]
   activeDevicesIncrement: TrendPoint[]

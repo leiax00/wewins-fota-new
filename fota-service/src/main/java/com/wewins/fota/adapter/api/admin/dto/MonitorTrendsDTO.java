@@ -21,9 +21,13 @@ public class MonitorTrendsDTO {
 
     private List<TrendPointDTO> reportQps;
 
-    private List<TrendPointDTO> p50Latency;
+    private List<TrendPointDTO> checkP50Latency;
 
-    private List<TrendPointDTO> p99Latency;
+    private List<TrendPointDTO> checkP99Latency;
+
+    private List<TrendPointDTO> reportP50Latency;
+
+    private List<TrendPointDTO> reportP99Latency;
 
     private List<TrendPointDTO> blockRate;
 

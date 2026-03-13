@@ -17,13 +17,9 @@ public class InstanceMetricsDTO {
 
     private double memoryUsage;
 
-    private double currentQps;
-
     private double checkQps;
 
     private double reportQps;
-
-    private double p99Latency;
 
     private int activeRequests;
 

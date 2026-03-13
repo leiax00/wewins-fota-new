@@ -22,15 +22,17 @@ public class RealtimeMetricsDTO {
 
     private double memoryUsage;
 
-    private double currentQps;
-
     private double checkQps;
 
     private double reportQps;
 
-    private double p50Latency;
+    private double checkP50Latency;
 
-    private double p99Latency;
+    private double checkP99Latency;
+
+    private double reportP50Latency;
+
+    private double reportP99Latency;
 
     private int activeRequests;
 

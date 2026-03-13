@@ -3,24 +3,52 @@ package com.wewins.fota.application.load;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
+import com.wewins.fota.infra.metrics.NodeIdentity;
+import com.wewins.fota.infra.metrics.PrometheusClient;
+import com.wewins.fota.infra.sentinel.config.SentinelRuleManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class SystemLoadIndicatorImplTest {
 
     private SystemLoadIndicator loadIndicator;
     private MeterRegistry meterRegistry;
 
+    @Mock
+    private PrometheusClient prometheusClient;
+
+    @Mock
+    private SentinelRuleManager sentinelRuleManager;
+
+    @Mock
+    private NodeIdentity nodeIdentity;
+
     @BeforeEach
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
-        loadIndicator = new SystemLoadIndicatorImpl(meterRegistry);
+        when(nodeIdentity.hostCode()).thenReturn("test-host");
+        when(nodeIdentity.regionCode()).thenReturn("test-region");
+        when(nodeIdentity.monitoringInstanceLabel()).thenReturn("test-region-test-host-test-instance");
+        when(prometheusClient.getInstanceCheckQps(anyString(), anyString())).thenReturn(-1.0);
+        when(prometheusClient.getInstanceReportQps(anyString(), anyString())).thenReturn(-1.0);
+        when(prometheusClient.getRegionCheckQps(anyString())).thenReturn(-1.0);
+        when(prometheusClient.getRegionReportQps(anyString())).thenReturn(-1.0);
+        when(prometheusClient.getRegionInstanceCount(anyString())).thenReturn(1);
+        when(sentinelRuleManager.getFlowThreshold(anyString(), anyDouble())).thenAnswer(invocation -> invocation.getArgument(1));
+        loadIndicator = new SystemLoadIndicatorImpl(meterRegistry, prometheusClient, sentinelRuleManager, nodeIdentity);
     }
 
     @Nested

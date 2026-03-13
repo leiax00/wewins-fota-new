@@ -5,6 +5,7 @@ import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
 import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.metrics.PrometheusClient;
+import com.wewins.fota.infra.sentinel.config.SentinelRuleManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,25 +21,35 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
 
+    private static final String CHECK_RESOURCE = "upgrade:check";
+    private static final String REPORT_RESOURCE = "upgrade:report";
+    private static final Duration CACHE_TTL = Duration.ofSeconds(10);
+    private static final double QPS_WARNING_UTILIZATION = 60.0;
+    private static final double QPS_CRITICAL_UTILIZATION = 80.0;
+
     private final OperatingSystemMXBean osBean;
     private final MemoryMXBean memoryBean;
     private final MeterRegistry meterRegistry;
     private final PrometheusClient prometheusClient;
+    private final SentinelRuleManager sentinelRuleManager;
     private final String hostLabel;
     private final String region;
+    private final String instance;
 
     private final AtomicReference<LoadSnapshot> cachedSnapshot = new AtomicReference<>();
     private final AtomicReference<Instant> lastUpdateTime = new AtomicReference<>(Instant.EPOCH);
-    private static final Duration CACHE_TTL = Duration.ofSeconds(1);
 
     public SystemLoadIndicatorImpl(
             MeterRegistry meterRegistry,
             PrometheusClient prometheusClient,
+            SentinelRuleManager sentinelRuleManager,
             NodeIdentity nodeIdentity) {
         this.meterRegistry = meterRegistry;
         this.prometheusClient = prometheusClient;
+        this.sentinelRuleManager = sentinelRuleManager;
         this.hostLabel = nodeIdentity.hostCode();
         this.region = nodeIdentity.regionCode();
+        this.instance = nodeIdentity.monitoringInstanceLabel();
         this.osBean = ManagementFactory.getOperatingSystemMXBean();
         this.memoryBean = ManagementFactory.getMemoryMXBean();
     }
@@ -74,21 +85,47 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     private LoadSnapshot collectSnapshot() {
         double cpuUsage = getCpuUsage();
         double memoryUsage = getMemoryUsage();
-        double qps = getCurrentQps();
-        double p50Latency = getP50Latency();
-        double p99Latency = getP99Latency();
         double connectionPoolUsage = getConnectionPoolUsage();
 
         double hostCpuUsage = getHostCpuUsage();
         double hostMemoryUsage = getHostMemoryUsage();
         double networkInBytes = getNetworkInBytes();
         double networkOutBytes = getNetworkOutBytes();
-        double checkQps = getCheckQps();
-        double reportQps = getReportQps();
+
+        double instanceCheckQps = prometheusClient.getInstanceCheckQps(region, instance);
+        double instanceReportQps = prometheusClient.getInstanceReportQps(region, instance);
+        double instanceCheckP50Latency = getInstanceCheckP50Latency();
+        double instanceCheckP99Latency = getInstanceCheckP99Latency();
+        double instanceReportP50Latency = getInstanceReportP50Latency();
+        double instanceReportP99Latency = getInstanceReportP99Latency();
+
+        double regionCheckQps = prometheusClient.getRegionCheckQps(region);
+        double regionReportQps = prometheusClient.getRegionReportQps(region);
+        double regionCheckP50Latency = getRegionCheckP50Latency();
+        double regionCheckP99Latency = getRegionCheckP99Latency();
+        double regionReportP50Latency = getRegionReportP50Latency();
+        double regionReportP99Latency = getRegionReportP99Latency();
+        int regionInstanceCount = Math.max(prometheusClient.getRegionInstanceCount(region), 1);
 
         int totalScore = calculateTotalScore(
-                cpuUsage, memoryUsage, qps, p99Latency, connectionPoolUsage,
-                hostCpuUsage, hostMemoryUsage, checkQps, reportQps
+                cpuUsage,
+                memoryUsage,
+                connectionPoolUsage,
+                hostCpuUsage,
+                hostMemoryUsage,
+                instanceCheckQps,
+                instanceReportQps,
+                instanceCheckP50Latency,
+                instanceCheckP99Latency,
+                instanceReportP50Latency,
+                instanceReportP99Latency,
+                regionCheckQps,
+                regionReportQps,
+                regionCheckP50Latency,
+                regionCheckP99Latency,
+                regionReportP50Latency,
+                regionReportP99Latency,
+                regionInstanceCount
         );
         LoadLevel level = LoadLevel.fromScore(totalScore);
 
@@ -98,16 +135,17 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
                 .level(level)
                 .cpuUsage(cpuUsage)
                 .memoryUsage(memoryUsage)
-                .qps(qps)
-                .p50Latency(p50Latency)
-                .p99Latency(p99Latency)
                 .connectionPoolUsage(connectionPoolUsage)
                 .hostCpuUsage(hostCpuUsage)
                 .hostMemoryUsage(hostMemoryUsage)
                 .networkInBytes(networkInBytes)
                 .networkOutBytes(networkOutBytes)
-                .checkQps(checkQps)
-                .reportQps(reportQps)
+                .checkQps(nonNegative(instanceCheckQps))
+                .reportQps(nonNegative(instanceReportQps))
+                .checkP50Latency(nonNegative(instanceCheckP50Latency))
+                .checkP99Latency(nonNegative(instanceCheckP99Latency))
+                .reportP50Latency(nonNegative(instanceReportP50Latency))
+                .reportP99Latency(nonNegative(instanceReportP99Latency))
                 .build();
     }
 
@@ -145,31 +183,6 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
             log.debug("Failed to get memory usage", e);
             return 0;
         }
-    }
-
-    private double getCurrentQps() {
-        double checkQps = getCheckQps();
-        double reportQps = getReportQps();
-        if (checkQps >= 0 && reportQps >= 0) {
-            return checkQps + reportQps;
-        }
-        return 0;
-    }
-
-    private double getP50Latency() {
-        double regionP50 = prometheusClient.getDeviceApiP50Latency(region);
-        if (regionP50 >= 0) {
-            return regionP50;
-        }
-        return 0;
-    }
-
-    private double getP99Latency() {
-        double regionP99 = prometheusClient.getDeviceApiP99Latency(region);
-        if (regionP99 >= 0) {
-            return regionP99;
-        }
-        return 0;
     }
 
     private double getConnectionPoolUsage() {
@@ -219,31 +232,91 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
         return prometheusClient.getHostNetworkOutBytes(hostLabel);
     }
 
-    private double getCheckQps() {
-        return prometheusClient.getRegionCheckQps(region);
+    private double getInstanceCheckP50Latency() {
+        return prometheusClient.getInstanceCheckP50Latency(region, instance);
     }
 
-    private double getReportQps() {
-        return prometheusClient.getRegionReportQps(region);
+    private double getInstanceCheckP99Latency() {
+        return prometheusClient.getInstanceCheckP99Latency(region, instance);
+    }
+
+    private double getInstanceReportP50Latency() {
+        return prometheusClient.getInstanceReportP50Latency(region, instance);
+    }
+
+    private double getInstanceReportP99Latency() {
+        return prometheusClient.getInstanceReportP99Latency(region, instance);
+    }
+
+    private double getRegionCheckP50Latency() {
+        return prometheusClient.getRegionCheckP50Latency(region);
+    }
+
+    private double getRegionCheckP99Latency() {
+        return prometheusClient.getRegionCheckP99Latency(region);
+    }
+
+    private double getRegionReportP50Latency() {
+        return prometheusClient.getRegionReportP50Latency(region);
+    }
+
+    private double getRegionReportP99Latency() {
+        return prometheusClient.getRegionReportP99Latency(region);
     }
 
     private int calculateTotalScore(
-            double cpu, double memory, double qps, double p99, double pool,
-            double hostCpu, double hostMemory, double checkQps, double reportQps) {
-        
-        int cpuScore = calculateMetricScore(cpu, 70, 90, 20);
-        int memoryScore = calculateMetricScore(memory, 75, 90, 15);
-        int qpsScore = calculateMetricScore(qps, 8000, 12000, 15);
-        int p99Score = calculateMetricScore(p99, 30, 50, 10);
-        int poolScore = calculateMetricScore(pool, 80, 95, 10);
+            double cpu,
+            double memory,
+            double pool,
+            double hostCpu,
+            double hostMemory,
+            double instanceCheckQps,
+            double instanceReportQps,
+            double instanceCheckP50,
+            double instanceCheckP99,
+            double instanceReportP50,
+            double instanceReportP99,
+            double regionCheckQps,
+            double regionReportQps,
+            double regionCheckP50,
+            double regionCheckP99,
+            double regionReportP50,
+            double regionReportP99,
+            int regionInstanceCount) {
 
-        int hostCpuScore = hostCpu >= 0 ? calculateMetricScore(hostCpu, 70, 90, 15) : 0;
-        int hostMemoryScore = hostMemory >= 0 ? calculateMetricScore(hostMemory, 75, 90, 10) : 0;
-        int checkQpsScore = checkQps >= 0 ? calculateMetricScore(checkQps, 2000, 3000, 3) : 0;
-        int reportQpsScore = reportQps >= 0 ? calculateMetricScore(reportQps, 4000, 6000, 2) : 0;
+        int cpuScore = calculateMetricScore(cpu, 70, 90, 16);
+        int memoryScore = calculateMetricScore(memory, 75, 90, 10);
+        int poolScore = calculateMetricScore(pool, 80, 95, 8);
 
-        return cpuScore + memoryScore + qpsScore + p99Score + poolScore
-                + hostCpuScore + hostMemoryScore + checkQpsScore + reportQpsScore;
+        int instanceCheckQpsScore = calculateUtilizationScore(toUtilizationPercent(instanceCheckQps, getCheckCapacity()), 11);
+        int instanceReportQpsScore = calculateUtilizationScore(toUtilizationPercent(instanceReportQps, getReportCapacity()), 4);
+        int instanceCheckP50Score = calculateMetricScore(instanceCheckP50, 30, 60, 5);
+        int instanceCheckP99Score = calculateMetricScore(instanceCheckP99, 50, 100, 11);
+        int instanceReportP50Score = calculateMetricScore(instanceReportP50, 20, 40, 2);
+        int instanceReportP99Score = calculateMetricScore(instanceReportP99, 40, 80, 6);
+
+        int hostCpuScore = calculateMetricScore(hostCpu, 70, 90, 7);
+        int hostMemoryScore = calculateMetricScore(hostMemory, 75, 90, 4);
+
+        int regionCheckQpsScore = calculateUtilizationScore(toUtilizationPercent(regionCheckQps, getRegionCheckCapacity(regionInstanceCount)), 5);
+        int regionReportQpsScore = calculateUtilizationScore(toUtilizationPercent(regionReportQps, getRegionReportCapacity(regionInstanceCount)), 2);
+        int regionCheckP50Score = calculateMetricScore(regionCheckP50, 35, 70, 2);
+        int regionCheckP99Score = calculateMetricScore(regionCheckP99, 60, 120, 4);
+        int regionReportP50Score = calculateMetricScore(regionReportP50, 25, 50, 1);
+        int regionReportP99Score = calculateMetricScore(regionReportP99, 50, 100, 2);
+
+        return cpuScore + memoryScore + poolScore
+                + instanceCheckQpsScore + instanceReportQpsScore
+                + instanceCheckP50Score + instanceCheckP99Score
+                + instanceReportP50Score + instanceReportP99Score
+                + hostCpuScore + hostMemoryScore
+                + regionCheckQpsScore + regionReportQpsScore
+                + regionCheckP50Score + regionCheckP99Score
+                + regionReportP50Score + regionReportP99Score;
+    }
+
+    private int calculateUtilizationScore(double utilizationPercent, int maxScore) {
+        return calculateMetricScore(utilizationPercent, QPS_WARNING_UTILIZATION, QPS_CRITICAL_UTILIZATION, maxScore);
     }
 
     private int calculateMetricScore(double value, double warning, double critical, int maxScore) {
@@ -259,5 +332,35 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
             return partial + (int) (range * (value - warning) / (critical - warning));
         }
         return (int) (maxScore * 0.3 * value / warning);
+    }
+
+    private double getCheckCapacity() {
+        return sentinelRuleManager.getFlowThreshold(CHECK_RESOURCE, 1000);
+    }
+
+    private double getReportCapacity() {
+        return sentinelRuleManager.getFlowThreshold(REPORT_RESOURCE, 2500);
+    }
+
+    private double getRegionCheckCapacity(int instanceCount) {
+        return getCheckCapacity() * instanceCount;
+    }
+
+    private double getRegionReportCapacity(int instanceCount) {
+        return getReportCapacity() * instanceCount;
+    }
+
+    private double toUtilizationPercent(double currentQps, double capacity) {
+        if (currentQps < 0 || capacity <= 0) {
+            return -1;
+        }
+        return currentQps * 100.0 / capacity;
+    }
+
+    private double nonNegative(double value) {
+        if (!Double.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return value;
     }
 }

@@ -25,7 +25,6 @@ import java.util.*;
 @Slf4j
 @Component
 public class PrometheusClient {
-
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String prometheusUrl;
@@ -177,31 +176,58 @@ public class PrometheusClient {
     }
 
     public double getRegionCheckQps(String region) {
-        String query = String.format(
-                "sum(rate(fota_device_checks_total{region=\"%s\"}[5m]))",
-                region);
-        return query(query).orElse(-1.0);
+        return query(buildRegionQpsQuery("fota_device_checks_total", region)).orElse(-1.0);
     }
 
     public double getRegionReportQps(String region) {
+        return query(buildRegionQpsQuery("fota_upgrade_events_total", region)).orElse(-1.0);
+    }
+
+    public double getInstanceCheckQps(String region, String instance) {
+        return query(buildInstanceQpsQuery("fota_device_checks_total", region, instance)).orElse(-1.0);
+    }
+
+    public double getInstanceReportQps(String region, String instance) {
+        return query(buildInstanceQpsQuery("fota_upgrade_events_total", region, instance)).orElse(-1.0);
+    }
+
+    public double getRegionCheckP50Latency(String region) {
+        return query(buildRegionLatencyQuery(region, DeviceApiMetricsSupport.DEVICE_CHECK_URI, 0.50)).orElse(-1.0);
+    }
+
+    public double getRegionCheckP99Latency(String region) {
+        return query(buildRegionLatencyQuery(region, DeviceApiMetricsSupport.DEVICE_CHECK_URI, 0.99)).orElse(-1.0);
+    }
+
+    public double getRegionReportP50Latency(String region) {
+        return query(buildRegionLatencyQuery(region, DeviceApiMetricsSupport.DEVICE_REPORT_URI, 0.50)).orElse(-1.0);
+    }
+
+    public double getRegionReportP99Latency(String region) {
+        return query(buildRegionLatencyQuery(region, DeviceApiMetricsSupport.DEVICE_REPORT_URI, 0.99)).orElse(-1.0);
+    }
+
+    public double getInstanceCheckP50Latency(String region, String instance) {
+        return query(buildInstanceLatencyQuery(region, instance, DeviceApiMetricsSupport.DEVICE_CHECK_URI, 0.50)).orElse(-1.0);
+    }
+
+    public double getInstanceCheckP99Latency(String region, String instance) {
+        return query(buildInstanceLatencyQuery(region, instance, DeviceApiMetricsSupport.DEVICE_CHECK_URI, 0.99)).orElse(-1.0);
+    }
+
+    public double getInstanceReportP50Latency(String region, String instance) {
+        return query(buildInstanceLatencyQuery(region, instance, DeviceApiMetricsSupport.DEVICE_REPORT_URI, 0.50)).orElse(-1.0);
+    }
+
+    public double getInstanceReportP99Latency(String region, String instance) {
+        return query(buildInstanceLatencyQuery(region, instance, DeviceApiMetricsSupport.DEVICE_REPORT_URI, 0.99)).orElse(-1.0);
+    }
+
+    public int getRegionInstanceCount(String region) {
         String query = String.format(
-                "sum(rate(fota_upgrade_events_total{region=\"%s\"}[5m]))",
+                "count(count by (instance) (system_cpu_usage{region=\"%s\"}))",
                 region);
-        return query(query).orElse(-1.0);
-    }
-
-    public double getDeviceApiP50Latency(String region) {
-        String query = String.format(
-                "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000",
-                region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX);
-        return query(query).orElse(-1.0);
-    }
-
-    public double getDeviceApiP99Latency(String region) {
-        String query = String.format(
-                "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=~\"%s\"}[5m])) by (le)) * 1000",
-                region, DeviceApiMetricsSupport.DEVICE_API_URI_REGEX);
-        return query(query).orElse(-1.0);
+        return query(query).map(Double::intValue).orElse(0);
     }
 
     public double getBlockRate(String region, String resource) {
@@ -314,6 +340,35 @@ public class PrometheusClient {
         return query(query).orElse(-1.0);
     }
 
+    private String buildRegionQpsQuery(String metricName, String region) {
+        return String.format("sum(rate(%s{region=\"%s\"}[5m]))", metricName, region);
+    }
+
+    private String buildInstanceQpsQuery(String metricName, String region, String instance) {
+        return String.format("sum(rate(%s{region=\"%s\",instance=\"%s\"}[5m]))", metricName, region, instance);
+    }
+
+    private String buildRegionLatencyQuery(String region, String uri, double quantile) {
+        return String.format(
+                Locale.ROOT,
+                "histogram_quantile(%.2f, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000",
+                quantile,
+                region,
+                uri
+        );
+    }
+
+    private String buildInstanceLatencyQuery(String region, String instance, String uri, double quantile) {
+        return String.format(
+                Locale.ROOT,
+                "histogram_quantile(%.2f, sum(rate(http_server_requests_seconds_bucket{region=\"%s\",instance=\"%s\",uri=\"%s\"}[5m])) by (le)) * 1000",
+                quantile,
+                region,
+                instance,
+                uri
+        );
+    }
+
     private Map<String, String> castMetricMap(Map<?, ?> metricMap) {
         return metricMap.entrySet().stream()
                 .filter(entry -> entry.getKey() != null && entry.getValue() != null)
@@ -338,4 +393,5 @@ public class PrometheusClient {
     public record MetricDataPoint(long timestamp, double value) {}
 
     public record MetricSample(Map<String, String> metric, double value, Instant timestamp) {}
+
 }

@@ -39,10 +39,10 @@ const trendRangeOptions = computed(() => [
 ])
 
 const stats = computed(() => [
-  { titleKey: 'dashboard.deviceApiQps', value: formatQps(metrics.value?.currentQps), icon: 'TrendCharts', color: 'bg-ui-status-info' },
+  { titleKey: 'dashboard.reportQps', value: formatQps(metrics.value?.reportQps), icon: 'TrendCharts', color: 'bg-ui-status-info' },
   { titleKey: 'dashboard.checkQps', value: formatQps(metrics.value?.checkQps), icon: 'Connection', color: 'bg-ui-status-success' },
   { titleKey: 'dashboard.todayActiveDevices', value: formatCount(metrics.value?.todayActiveDevices), icon: 'UserFilled', color: 'bg-ui-brand' },
-  { titleKey: 'dashboard.p99Latency', value: formatLatency(metrics.value?.p99Latency), icon: 'Timer', color: 'bg-ui-status-warning' },
+  { titleKey: 'dashboard.checkP99Latency', value: formatLatency(metrics.value?.checkP99Latency), icon: 'Timer', color: 'bg-ui-status-warning' },
   { titleKey: 'dashboard.blockRate', value: formatPercent((metrics.value?.blockRate ?? 0) * 100), icon: 'Warning', color: 'bg-ui-status-danger' },
 ])
 
@@ -99,29 +99,33 @@ const baseLineOption = (
   series: echarts.SeriesOption[],
   yAxisFormatter?: (value: number) => string,
   yAxisOverrides: echarts.YAXisComponentOption = {},
-): echarts.EChartsOption => ({
-  animation: false,
-  grid: { left: 48, right: 20, top: 24, bottom: 32 },
-  tooltip: {
-    trigger: 'axis',
-    valueFormatter: value => typeof value === 'number' ? value.toFixed(2) : String(value),
-  },
-  xAxis: {
-    type: 'time',
-    axisLabel: {
-      formatter: (value: number) => formatTrendTime(Math.round(value / 1000)),
-    },
-  },
-  yAxis: {
+) => {
+  const yAxis = {
     type: 'value',
     axisLabel: yAxisFormatter ? { formatter: yAxisFormatter } : undefined,
     splitLine: {
       lineStyle: { color: '#e2e8f0' },
     },
     ...yAxisOverrides,
-  },
-  series,
-})
+  } as echarts.YAXisComponentOption
+
+  return {
+    animation: false,
+    grid: { left: 48, right: 20, top: 24, bottom: 32 },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (value: number | string) => typeof value === 'number' ? value.toFixed(2) : String(value),
+    },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        formatter: (value: number) => formatTrendTime(Math.round(value / 1000)),
+      },
+    },
+    yAxis,
+    series,
+  }
+}
 
 const renderTrendCharts = () => {
   if (!trends.value) return
@@ -161,7 +165,7 @@ const renderTrendCharts = () => {
 
   latencyTrendChart?.setOption(baseLineOption([
     {
-      name: 'P50',
+      name: 'Check P50',
       type: 'line',
       smooth: true,
       showSymbol: true,
@@ -170,10 +174,10 @@ const renderTrendCharts = () => {
       symbolSize: 6,
       lineStyle: { width: 2, color: '#f59e0b' },
       itemStyle: { color: '#f59e0b' },
-      data: toChartData(trends.value.p50Latency),
+      data: toChartData(trends.value.checkP50Latency),
     },
     {
-      name: 'P99',
+      name: 'Check P99',
       type: 'line',
       smooth: true,
       showSymbol: true,
@@ -182,7 +186,31 @@ const renderTrendCharts = () => {
       symbolSize: 6,
       lineStyle: { width: 2, color: '#dc2626' },
       itemStyle: { color: '#dc2626' },
-      data: toChartData(trends.value.p99Latency),
+      data: toChartData(trends.value.checkP99Latency),
+    },
+    {
+      name: 'Report P50',
+      type: 'line',
+      smooth: true,
+      showSymbol: true,
+      connectNulls: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { width: 2, color: '#2563eb' },
+      itemStyle: { color: '#2563eb' },
+      data: toChartData(trends.value.reportP50Latency),
+    },
+    {
+      name: 'Report P99',
+      type: 'line',
+      smooth: true,
+      showSymbol: true,
+      connectNulls: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { width: 2, color: '#7c3aed' },
+      itemStyle: { color: '#7c3aed' },
+      data: toChartData(trends.value.reportP99Latency),
     },
   ], value => `${value} ms`))
 

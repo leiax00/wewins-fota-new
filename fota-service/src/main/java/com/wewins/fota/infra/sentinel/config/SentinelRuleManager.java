@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -90,6 +91,18 @@ public class SentinelRuleManager {
     public void loadRules() {
         loadFlowRules();
         loadDegradeRules();
+    }
+
+    public Optional<FlowRule> getFlowRule(String resource) {
+        return FlowRuleManager.getRules().stream()
+                .filter(rule -> resource.equals(rule.getResource()))
+                .findFirst();
+    }
+
+    public double getFlowThreshold(String resource, double fallback) {
+        return getFlowRule(resource)
+                .map(FlowRule::getCount)
+                .orElse(fallback);
     }
 
     /**
