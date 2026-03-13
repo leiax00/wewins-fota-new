@@ -16,3 +16,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260313_01_operation_logs
+      author: fota-team
+      comment: "新增后台操作日志表，用于审计查询"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260313_01__create_sys_operation_logs.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

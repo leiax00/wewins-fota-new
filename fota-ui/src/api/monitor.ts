@@ -111,6 +111,40 @@ export interface CacheEvictPreview {
   message: string
 }
 
+export interface OperationLogItem {
+  id: number
+  moduleCode: string
+  resourceCode: string
+  actionCode: string
+  operationType: string
+  targetId?: string
+  targetName?: string
+  operatorId?: number
+  operatorUsername?: string
+  operatorDisplayName?: string
+  clientIp?: string
+  occurredAt: string
+}
+
+export interface OperationLogDetail extends OperationLogItem {
+  requestMethod: string
+  requestPath: string
+  requestQuery?: Record<string, unknown> | null
+  requestBody?: Record<string, unknown> | unknown[] | null
+  userAgent?: string
+}
+
+export interface OperationLogPageQuery {
+  page: number
+  size: number
+  operatorKeyword?: string
+  moduleCode?: string
+  resourceCode?: string
+  operationType?: string
+  targetId?: string
+  timeRange?: string[]
+}
+
 export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
@@ -187,6 +221,39 @@ export const cacheMonitorApi = {
   deleteKey: (key: string) => del<boolean>(`/admin/cache/keys/${encodeURIComponent(key)}`),
   setKeyTtl: (key: string, ttl: number) =>
     put<boolean>(`/admin/cache/keys/${encodeURIComponent(key)}/ttl`, null, { params: { ttl } }),
+}
+
+export const operationLogApi = {
+  pageLogs: (params: OperationLogPageQuery) => get<{
+    records: OperationLogItem[]
+    page: number
+    size: number
+    total: number
+    pages: number
+  }>('/admin/monitor/operation-logs', {
+    params,
+    paramsSerializer: {
+      serialize: (input) => {
+        const search = new URLSearchParams()
+        Object.entries(input).forEach(([key, value]) => {
+          if (value === undefined || value === null || value === '') {
+            return
+          }
+          if (Array.isArray(value)) {
+            value.forEach((item) => {
+              if (item !== undefined && item !== null && item !== '') {
+                search.append(key, String(item))
+              }
+            })
+            return
+          }
+          search.append(key, String(value))
+        })
+        return search.toString()
+      },
+    },
+  }),
+  getLogDetail: (id: number) => get<OperationLogDetail>(`/admin/monitor/operation-logs/${id}`),
 }
 
 /**
