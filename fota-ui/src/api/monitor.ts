@@ -83,16 +83,6 @@ export interface MonitorTrends {
   activeDevicesIncrement: TrendPoint[]
 }
 
-export interface ControlParameter {
-  productId?: number
-  protectedIntervalMultiplier: number
-  downloadDelayMultiplier: number
-  minCheckIntervalSeconds: number
-  maxCheckIntervalSeconds: number
-  updatedAt: string
-  updatedBy: string
-}
-
 export interface CacheEvictRequest {
   productId?: number
   productModel?: string
@@ -153,14 +143,6 @@ export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
   getTrends: (range = '15m') => get<MonitorTrends>('/admin/monitor/trends', { params: { range } }),
-}
-
-export const controlApi = {
-  getGlobalConfig: () => get<ControlParameter>('/admin/control/global'),
-  updateGlobalConfig: (data: Partial<ControlParameter>) => put<void>('/admin/control/global', data),
-  getProductConfig: (productId: number) => get<ControlParameter>(`/admin/control/product/${productId}`),
-  updateProductConfig: (productId: number, data: Partial<ControlParameter>) => 
-    put<void>(`/admin/control/product/${productId}`, data),
 }
 
 export interface RedisInfo {

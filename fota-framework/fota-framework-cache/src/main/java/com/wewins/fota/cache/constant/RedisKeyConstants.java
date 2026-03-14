@@ -533,37 +533,27 @@ public final class RedisKeyConstants {
     // ========== Sprint 4: 控制参数常量 ==========
 
     /**
-     * 全局控制参数 Key
-     * <p>
-     * 示例：fota:ctrl:global
-     * </p>
-     * <p>
-     * 说明：存储全局控制参数，如 checkIntervalMultiplier、downloadDelayMultiplier、forceMaintenance 等
-     * </p>
-     */
-    public static final String CTRL_GLOBAL_KEY = "fota:ctrl:global";
-
-    /**
-     * 产品级控制参数 Key 模板
-     * <p>
-     * 使用方式：String.format(RedisKeyConstants.CTRL_PRODUCT_KEY_TEMPLATE, productId)
-     * </p>
-     * <p>
-     * 示例：fota:ctrl:product:1001
-     * </p>
-     * <p>
-     * 说明：存储产品级控制参数，可覆盖全局参数
-     * </p>
-     */
-    public static final String CTRL_PRODUCT_KEY_TEMPLATE = "fota:ctrl:product:%s";
-
-    /**
      * 控制参数 TTL（7 天）
      * <p>
      * 控制参数变更频率较低，可长期缓存
      * </p>
      */
     public static final long CTRL_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+    /**
+     * 当前生效的负载控制快照 Key。
+     */
+    public static final String LOAD_CONTROL_ACTIVE_CONFIG_KEY = "fota:load-control:config:active";
+
+    /**
+     * 负载控制快照版本号 Key。
+     */
+    public static final String LOAD_CONTROL_CONFIG_VERSION_KEY = "fota:load-control:config:version";
+
+    /**
+     * 最近一次发布时间 Key。
+     */
+    public static final String LOAD_CONTROL_LAST_PUBLISH_AT_KEY = "fota:load-control:config:last-publish-at";
 
     // ========== Sprint 4: 负载历史常量 ==========
 
@@ -623,4 +613,5 @@ public final class RedisKeyConstants {
      * </p>
      */
     public static final long SENTINEL_RULE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
 }

@@ -1,12 +1,15 @@
 package com.wewins.fota.module.system.application;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.wewins.fota.module.system.application.event.DictItemChangedEvent;
 import com.wewins.fota.module.system.domain.entity.dict.DictItem;
 import com.wewins.fota.module.system.domain.entity.dict.DictType;
 import com.wewins.fota.module.system.domain.repository.dict.DictItemRepository;
 import com.wewins.fota.module.system.domain.repository.dict.DictTypeRepository;
 import com.wewins.fota.module.system.dto.DictItemPageReqDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +22,14 @@ public class DictItemAppService  {
 
     private final DictItemRepository dictItemRepository;
     private final DictTypeRepository dictTypeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public DictItemAppService(DictItemRepository dictItemRepository,
-                               DictTypeRepository dictTypeRepository) {
+                               DictTypeRepository dictTypeRepository,
+                               ApplicationEventPublisher eventPublisher) {
         this.dictItemRepository = dictItemRepository;
         this.dictTypeRepository = dictTypeRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -32,10 +38,11 @@ public class DictItemAppService  {
             log.debug("创建字典项: dictTypeId={}, label={}, value={}", dictItem.getDictTypeId(), dictItem.getLabel(), dictItem.getValue());
         }
 
-        validateDictTypeExists(dictItem.getDictTypeId());
+        DictType dictType = validateDictTypeExists(dictItem.getDictTypeId());
         validateDictItemUnique(dictItem.getDictTypeId(), dictItem.getLabel(), dictItem.getValue(), null);
 
         dictItemRepository.create(dictItem);
+        publishChangedEvent(DictItemChangedEvent.Action.CREATED, dictType.getCode(), null, dictItem);
         log.info("字典项创建成功: dictItemId={}, value={}", dictItem.getId(), dictItem.getValue());
         return dictItem;
     }
@@ -51,10 +58,16 @@ public class DictItemAppService  {
                     dictItem.getId(), dictItem.getDictTypeId(), dictItem.getLabel(), dictItem.getValue());
         }
 
-        validateDictTypeExists(dictItem.getDictTypeId());
+        DictItem existingItem = dictItemRepository.findById(dictItem.getId());
+        if (existingItem == null) {
+            throw new IllegalArgumentException("字典项不存在");
+        }
+
+        DictType dictType = validateDictTypeExists(dictItem.getDictTypeId());
         validateDictItemUnique(dictItem.getDictTypeId(), dictItem.getLabel(), dictItem.getValue(), dictItem.getId());
 
         dictItemRepository.updateById(dictItem);
+        publishChangedEvent(DictItemChangedEvent.Action.UPDATED, dictType.getCode(), existingItem, dictItem);
         log.info("字典项更新成功: dictItemId={}", dictItem.getId());
         return dictItem;
     }
@@ -69,7 +82,16 @@ public class DictItemAppService  {
             log.debug("删除字典项: dictItemId={}", dictItemId);
         }
 
+        DictItem existingItem = dictItemRepository.findById(dictItemId);
+        if (existingItem == null) {
+            throw new IllegalArgumentException("字典项不存在");
+        }
+        DictType dictType = validateDictTypeExists(existingItem.getDictTypeId());
+
         boolean result = dictItemRepository.deleteById(dictItemId);
+        if (result) {
+            publishChangedEvent(DictItemChangedEvent.Action.DELETED, dictType.getCode(), existingItem, null);
+        }
         log.info("字典项删除成功: dictItemId={}, result={}", dictItemId, result);
         return result;
     }
@@ -112,7 +134,7 @@ public class DictItemAppService  {
         return dictItemRepository.page(reqDTO);
     }
 
-    private void validateDictTypeExists(Long dictTypeId) {
+    private DictType validateDictTypeExists(Long dictTypeId) {
         if (dictTypeId == null) {
             throw new IllegalArgumentException("字典类型ID不能为空");
         }
@@ -121,6 +143,7 @@ public class DictItemAppService  {
         if (dictType == null) {
             throw new IllegalArgumentException("字典类型不存在");
         }
+        return dictType;
     }
 
     private void validateDictItemUnique(Long dictTypeId, String label, String value, Long excludeId) {
@@ -138,5 +161,23 @@ public class DictItemAppService  {
         if (dictItemRepository.countByDictTypeIdAndLabelExcludingId(dictTypeId, label, excludeId) > 0) {
             throw new IllegalArgumentException("字典项标签已存在: " + label);
         }
+    }
+
+    private void publishChangedEvent(DictItemChangedEvent.Action action, String dictTypeCode, DictItem before, DictItem after) {
+        eventPublisher.publishEvent(DictItemChangedEvent.builder()
+                .action(action)
+                .itemId(after != null ? after.getId() : before != null ? before.getId() : null)
+                .dictTypeCode(dictTypeCode)
+                .beforeValue(before != null ? before.getValue() : null)
+                .beforeExtra(copyJson(before != null ? before.getExtra() : null))
+                .beforeUpdatedBy(before != null ? before.getUpdatedBy() : null)
+                .afterValue(after != null ? after.getValue() : null)
+                .afterExtra(copyJson(after != null ? after.getExtra() : null))
+                .afterUpdatedBy(after != null ? after.getUpdatedBy() : null)
+                .build());
+    }
+
+    private JsonNode copyJson(JsonNode source) {
+        return source == null ? null : source.deepCopy();
     }
 }

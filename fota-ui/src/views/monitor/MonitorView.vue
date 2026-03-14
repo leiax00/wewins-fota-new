@@ -1,32 +1,13 @@
 <script setup lang="ts">
 import { InfoFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { controlApi, monitorApi, type ControlParameter, type RealtimeMetrics } from '@/api/monitor'
-import { useUserStore } from '@/stores/user'
+import { monitorApi, type RealtimeMetrics } from '@/api/monitor'
 
 const { t } = useI18n()
-const userStore = useUserStore()
 
 const metrics = ref<RealtimeMetrics | null>(null)
-const controlParam = ref<ControlParameter | null>(null)
-const loading = ref(false)
 const refreshTimer = ref<number | null>(null)
-
-type DurationUnit = 'minutes' | 'hours' | 'days'
-type DurationFieldKey = 'minCheckIntervalSeconds' | 'maxCheckIntervalSeconds'
-
-const DURATION_UNIT_SECONDS: Record<DurationUnit, number> = {
-  minutes: 60,
-  hours: 60 * 60,
-  days: 24 * 60 * 60,
-}
-
-const durationFields = reactive<Record<DurationFieldKey, { value: number; unit: DurationUnit }>>({
-  minCheckIntervalSeconds: { value: 30, unit: 'minutes' },
-  maxCheckIntervalSeconds: { value: 2, unit: 'days' },
-})
 
 const loadLevelColor = computed(() => {
   switch (metrics.value?.loadLevel) {
@@ -55,68 +36,8 @@ const loadLevelText = computed(() => {
   return mapping[value] ?? value
 })
 
-const canUpdateLoadControl = computed(() => userStore.hasPermission('monitor:load:update'))
-
 const fetchMetrics = async () => {
   metrics.value = await monitorApi.getRealtimeMetrics()
-}
-
-const setDurationField = (field: DurationFieldKey, seconds?: number) => {
-  const value = seconds ?? 0
-  if (value > 0 && value % DURATION_UNIT_SECONDS.days === 0) {
-    durationFields[field].unit = 'days'
-    durationFields[field].value = value / DURATION_UNIT_SECONDS.days
-    return
-  }
-  if (value > 0 && value % DURATION_UNIT_SECONDS.hours === 0) {
-    durationFields[field].unit = 'hours'
-    durationFields[field].value = value / DURATION_UNIT_SECONDS.hours
-    return
-  }
-  durationFields[field].unit = 'minutes'
-  durationFields[field].value = Math.max(1, Math.round(value / DURATION_UNIT_SECONDS.minutes))
-}
-
-const getDurationSeconds = (field: DurationFieldKey) => {
-  const { value, unit } = durationFields[field]
-  return Math.max(60, Math.round(value * DURATION_UNIT_SECONDS[unit]))
-}
-
-const syncDurationFieldsFromControl = () => {
-  if (!controlParam.value) return
-  setDurationField('minCheckIntervalSeconds', controlParam.value.minCheckIntervalSeconds)
-  setDurationField('maxCheckIntervalSeconds', controlParam.value.maxCheckIntervalSeconds)
-}
-
-const syncControlFromDurationFields = () => {
-  if (!controlParam.value) return
-  controlParam.value.minCheckIntervalSeconds = getDurationSeconds('minCheckIntervalSeconds')
-  controlParam.value.maxCheckIntervalSeconds = getDurationSeconds('maxCheckIntervalSeconds')
-}
-
-const fetchControlParam = async () => {
-  controlParam.value = await controlApi.getGlobalConfig()
-  syncDurationFieldsFromControl()
-}
-
-const updateControlParam = async () => {
-  if (!controlParam.value) return
-  syncControlFromDurationFields()
-  loading.value = true
-  try {
-    await controlApi.updateGlobalConfig({
-      protectedIntervalMultiplier: controlParam.value.protectedIntervalMultiplier,
-      downloadDelayMultiplier: controlParam.value.downloadDelayMultiplier,
-      minCheckIntervalSeconds: controlParam.value.minCheckIntervalSeconds,
-      maxCheckIntervalSeconds: controlParam.value.maxCheckIntervalSeconds,
-    })
-    ElMessage.success(t('common.updateSuccess'))
-    await fetchControlParam()
-  } catch {
-    ElMessage.error(t('common.failed'))
-  } finally {
-    loading.value = false
-  }
 }
 
 const startRefresh = () => {
@@ -141,23 +62,8 @@ const formatBytes = (value?: number) => {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB/s`
 }
 
-const formatSeconds = (value?: number) => {
-  const seconds = value ?? 0
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${(seconds / 60).toFixed(0)}m`
-  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`
-  return `${(seconds / 86400).toFixed(1)}d`
-}
-
-const getDurationMax = (field: DurationFieldKey) => {
-  const unit = durationFields[field].unit
-  if (unit === 'days') return 7
-  if (unit === 'hours') return 24 * 7
-  return 60 * 24 * 7
-}
-
 onMounted(async () => {
-  await Promise.all([fetchMetrics(), fetchControlParam()])
+  await fetchMetrics()
   startRefresh()
 })
 
@@ -233,7 +139,6 @@ onUnmounted(() => {
           </span>
         </template>
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span>{{ t('monitor.protectedIntervalMultiplier') }}</span><strong>{{ controlParam?.protectedIntervalMultiplier?.toFixed(2) ?? '-' }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.blockRate') }}</span><strong>{{ formatPercent((metrics?.blockRate ?? 0) * 100) }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.circuitState') }}</span><strong>{{ metrics?.circuitState ?? '-' }}</strong></div>
           <div class="flex justify-between"><span>{{ t('monitor.recommendedMultiplier') }}</span><strong>{{ metrics?.controlState?.recommendedMultiplier?.toFixed(2) ?? '-' }}</strong></div>
@@ -296,7 +201,7 @@ onUnmounted(() => {
       </el-card>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4">
       <el-card>
         <template #header>
           <span class="inline-flex items-center gap-1 ui-card-title">
@@ -318,108 +223,6 @@ onUnmounted(() => {
             <template #default="{ row }">{{ formatPercent(row.trafficShare * 100) }}</template>
           </el-table-column>
         </el-table>
-      </el-card>
-
-      <el-card>
-        <template #header>
-          <span class="inline-flex items-center gap-1 ui-card-title">
-            {{ t('monitor.controlParams') }}
-            <el-tooltip :content="t('monitor.controlParamsDesc')" placement="top">
-              <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-            </el-tooltip>
-          </span>
-        </template>
-        <el-form v-if="controlParam" :model="controlParam" label-width="180px">
-          <el-form-item>
-            <template #label>
-              <span class="inline-flex items-center gap-1">
-                {{ t('monitor.protectedIntervalMultiplier') }}
-                <el-tooltip :content="t('monitor.protectedIntervalMultiplierDesc')" placement="top">
-                  <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-                </el-tooltip>
-              </span>
-            </template>
-            <el-input-number v-model="controlParam.protectedIntervalMultiplier" :min="1" :max="10" :step="0.1" :precision="2" />
-          </el-form-item>
-
-          <el-form-item>
-            <template #label>
-              <span class="inline-flex items-center gap-1">
-                {{ t('monitor.downloadDelayMultiplier') }}
-                <el-tooltip :content="t('monitor.downloadDelayMultiplierDesc')" placement="top">
-                  <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-                </el-tooltip>
-              </span>
-            </template>
-            <el-input-number v-model="controlParam.downloadDelayMultiplier" :min="0.1" :max="10" :step="0.1" :precision="2" />
-          </el-form-item>
-
-          <el-form-item>
-            <template #label>
-              <span class="inline-flex items-center gap-1">
-                {{ t('monitor.minCheckIntervalSeconds') }}
-                <el-tooltip :content="t('monitor.minCheckIntervalSecondsDesc')" placement="top">
-                  <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-                </el-tooltip>
-              </span>
-            </template>
-            <div class="w-full">
-              <div class="flex w-full gap-3">
-                <el-input-number
-                  v-model="durationFields.minCheckIntervalSeconds.value"
-                  :min="1"
-                  :max="getDurationMax('minCheckIntervalSeconds')"
-                  :step="1"
-                  class="flex-1"
-                />
-                <el-select v-model="durationFields.minCheckIntervalSeconds.unit" style="width: 140px">
-                  <el-option :label="t('product.periodUnitMinutes')" value="minutes" />
-                  <el-option :label="t('product.periodUnitHours')" value="hours" />
-                  <el-option :label="t('product.periodUnitDays')" value="days" />
-                </el-select>
-              </div>
-              <div class="mt-2 text-xs text-slate-500">
-                {{ t('monitor.durationValueHint', { value: formatSeconds(getDurationSeconds('minCheckIntervalSeconds')) }) }}
-              </div>
-            </div>
-          </el-form-item>
-
-          <el-form-item>
-            <template #label>
-              <span class="inline-flex items-center gap-1">
-                {{ t('monitor.maxCheckIntervalSeconds') }}
-                <el-tooltip :content="t('monitor.maxCheckIntervalSecondsDesc')" placement="top">
-                  <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-                </el-tooltip>
-              </span>
-            </template>
-            <div class="w-full">
-              <div class="flex w-full gap-3">
-                <el-input-number
-                  v-model="durationFields.maxCheckIntervalSeconds.value"
-                  :min="1"
-                  :max="getDurationMax('maxCheckIntervalSeconds')"
-                  :step="1"
-                  class="flex-1"
-                />
-                <el-select v-model="durationFields.maxCheckIntervalSeconds.unit" style="width: 140px">
-                  <el-option :label="t('product.periodUnitMinutes')" value="minutes" />
-                  <el-option :label="t('product.periodUnitHours')" value="hours" />
-                  <el-option :label="t('product.periodUnitDays')" value="days" />
-                </el-select>
-              </div>
-              <div class="mt-2 text-xs text-slate-500">
-                {{ t('monitor.durationValueHint', { value: formatSeconds(getDurationSeconds('maxCheckIntervalSeconds')) }) }}
-              </div>
-            </div>
-          </el-form-item>
-
-          <el-form-item v-if="canUpdateLoadControl">
-            <el-button type="primary" :loading="loading" @click="updateControlParam">
-              {{ t('common.save') }}
-            </el-button>
-          </el-form-item>
-        </el-form>
       </el-card>
     </div>
   </div>

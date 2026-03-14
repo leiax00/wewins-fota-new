@@ -1,9 +1,9 @@
 package com.wewins.fota.application.load;
 
 import com.wewins.fota.common.util.TimeConstants;
+import com.wewins.fota.application.load.config.LoadControlRuntimeConfigService;
 import com.wewins.fota.domain.load.model.entity.ControlParameter;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
-import com.wewins.fota.domain.load.repository.ControlParameterRepository;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
 import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -26,7 +25,7 @@ public class DynamicIntervalService {
     public static final String REASON_SENTINEL_UNKNOWN = "SENTINEL_UNKNOWN";
 
     private final SystemLoadIndicator loadIndicator;
-    private final ControlParameterRepository controlParameterRepository;
+    private final LoadControlRuntimeConfigService runtimeConfigService;
     private final ProductRepository productRepository;
 
     private static final int MIN_CHECK_INTERVAL = 30 * TimeConstants.SECONDS_PER_MINUTE;
@@ -115,14 +114,7 @@ public class DynamicIntervalService {
     }
 
     private ControlParameter getEffectiveParameter(Long productId) {
-        ControlParameter global = controlParameterRepository.getGlobal().orElse(ControlParameter.createGlobalDefault());
-        if (productId != null) {
-            Optional<ControlParameter> productParam = controlParameterRepository.getByProduct(productId);
-            if (productParam.isPresent()) {
-                return merge(global, productParam.get());
-            }
-        }
-        return global;
+        return runtimeConfigService.getEffectiveGlobalControlParameter();
     }
 
     private int getBaseCheckInterval(Long productId) {
@@ -135,24 +127,6 @@ public class DynamicIntervalService {
             }
         }
         return BASE_CHECK_INTERVAL;
-    }
-
-    private ControlParameter merge(ControlParameter global, ControlParameter product) {
-        if (global == null) {
-            return product;
-        }
-        if (product == null) {
-            return global;
-        }
-        return ControlParameter.builder()
-                .productId(product.getProductId())
-                .protectedIntervalMultiplier(firstNonNull(product.getProtectedIntervalMultiplier(), global.getProtectedIntervalMultiplier()))
-                .downloadDelayMultiplier(firstNonNull(product.getDownloadDelayMultiplier(), global.getDownloadDelayMultiplier()))
-                .minCheckIntervalSeconds(firstNonNull(product.getMinCheckIntervalSeconds(), global.getMinCheckIntervalSeconds()))
-                .maxCheckIntervalSeconds(firstNonNull(product.getMaxCheckIntervalSeconds(), global.getMaxCheckIntervalSeconds()))
-                .updatedAt(firstNonNull(product.getUpdatedAt(), global.getUpdatedAt()))
-                .updatedBy(firstNonNull(product.getUpdatedBy(), global.getUpdatedBy()))
-                .build();
     }
 
     private int applyJitter(int interval) {

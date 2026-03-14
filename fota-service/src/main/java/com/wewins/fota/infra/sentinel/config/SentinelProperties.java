@@ -1,31 +1,10 @@
 package com.wewins.fota.infra.sentinel.config;
 
 import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+public final class SentinelProperties {
 
-@Data
-@Component
-@ConfigurationProperties(prefix = "app.sentinel")
-public class SentinelProperties {
-
-    private boolean enabled = true;
-
-    private RuleSource ruleSource = RuleSource.HYBRID;
-
-    private List<FlowRuleConfig> flowRules = new ArrayList<>();
-
-    private List<DegradeRuleConfig> degradeRules = new ArrayList<>();
-
-    private RedisConfig redis = new RedisConfig();
-
-    public enum RuleSource {
-        CONFIG,
-        REDIS,
-        HYBRID
+    private SentinelProperties() {
     }
 
     @Data
@@ -49,9 +28,4 @@ public class SentinelProperties {
         private boolean enabled = true;
     }
 
-    @Data
-    public static class RedisConfig {
-        private String flowRulesKey = "fota:sentinel:flow:rules";
-        private String degradeRulesKey = "fota:sentinel:degrade:rules";
-    }
 }

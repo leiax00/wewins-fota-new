@@ -2,13 +2,15 @@
 
 > **版本**: v1.0  
 > **创建日期**: 2026-03-13  
-> **状态**: 已实现
+> **状态**: 已实现（默认模型） / 待扩展（运行期统一配置）
 
 ---
 
 ## 概述
 
 本文档描述 FOTA 系统中**动态周期调整**与**系统负载控制**的设计方案。核心目标是根据系统实时负载状态，动态调整设备检查更新的间隔时间，实现系统资源的最优利用。
+
+> 说明：本文档聚焦“动态周期机制本身”和默认负载模型。运行期统一配置、实例级/区域级评分配置、Sentinel 规则统一管理，见 [负载控制运行期配置设计](./load-control-runtime-configuration.md)。
 
 ---
 
@@ -95,21 +97,17 @@ finalInterval = clamp(
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 指标采集来源
+### 2.2 指标采集来源（当前默认实现）
 
 | 指标类别 | 指标名称 | 采集方式 | 权重 |
 |---------|---------|---------|------|
-| **JVM** | CPU 使用率 | `OperatingSystemMXBean` | 20 |
-| **JVM** | 堆内存使用率 | `MemoryMXBean` | 15 |
-| **JVM** | 连接池使用率 | Micrometer `hikaricp.connections` | 10 |
-| **API** | 总 QPS | Prometheus `fota_device_checks_total` | 15 |
-| **API** | P99 延迟 | Prometheus `http_server_requests_seconds` | 10 |
-| **API** | Check QPS | Prometheus (按区域) | 3 |
-| **API** | Report QPS | Prometheus (按区域) | 2 |
-| **主机** | 主机 CPU | Prometheus `node_cpu_seconds_total` | 15 |
-| **主机** | 主机内存 | Prometheus `node_memory_*` | 10 |
+| **JVM** | CPU 使用率 | `OperatingSystemMXBean` | 默认值，运行期可配置 |
+| **JVM** | 堆内存使用率 | `MemoryMXBean` | 默认值，运行期可配置 |
+| **JVM** | 连接池使用率 | Micrometer `hikaricp.connections` | 默认值，运行期可配置 |
+| **API** | QPS / 延迟 | Prometheus | 默认值，运行期可配置 |
+| **主机** | 主机 CPU / 内存 | Prometheus | 默认值，运行期可配置 |
 
-**总分**: 100 分
+默认总分固定为 `100`，运行期配置也必须保持启用项权重总和为 `100`。
 
 ### 2.3 单项评分算法
 
@@ -128,7 +126,7 @@ function calculateMetricScore(value, warning, critical, maxScore):
     return maxScore × 0.3 × value / warning  # 正常区
 ```
 
-**阈值配置**：
+**阈值配置（旧默认模型）**：
 
 | 指标 | 警告阈值 | 严重阈值 | 满分 |
 |------|---------|---------|------|
@@ -154,6 +152,8 @@ function calculateMetricScore(value, warning, critical, maxScore):
 - **缓存 TTL**: 1 秒
 - **目的**: 避免高频请求时重复采集指标
 - **实现**: `AtomicReference<LoadSnapshot>` + `AtomicReference<Instant>`
+
+> 当前多实例优化建议已将 TTL 调整为更长的秒级缓存，并建议将评分模型拆为实例级、主机级、区域级三层。详见 [多实例负载评估与动态周期优化方案](./multi-instance-monitoring-improvement.md)。
 
 ---
 
@@ -209,6 +209,16 @@ function calculateMetricScore(value, warning, critical, maxScore):
 ```
 
 合并规则：产品级字段非空时覆盖全局值，否则使用全局值。
+
+### 3.4 与统一负载控制配置的关系
+
+当前 `ControlParameter` 仍然只负责设备侧周期和下载延迟控制，不直接承载：
+
+- 评分阈值
+- 评分权重
+- Sentinel Flow / Degrade 规则
+
+这些能力在下一阶段统一收敛到 [负载控制运行期配置设计](./load-control-runtime-configuration.md) 中定义的 `LoadControlConfig`。
 
 ---
 

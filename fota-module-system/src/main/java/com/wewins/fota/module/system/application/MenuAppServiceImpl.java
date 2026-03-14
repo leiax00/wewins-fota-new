@@ -31,7 +31,7 @@ public class MenuAppServiceImpl implements MenuAppService {
     private static final String TYPE_MENU = "MENU";
 
     // 缓存相关常量
-    private static final String CACHE_KEY_PREFIX = "user:menu:";
+    private static final String CACHE_KEY_PREFIX = "fota:user:menu:";
     private static final Duration CACHE_TTL = Duration.ofMinutes(5); // 5分钟缓存
 
     private final PermissionRepository permissionRepository;

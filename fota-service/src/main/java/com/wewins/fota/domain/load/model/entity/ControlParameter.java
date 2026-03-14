@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.load.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.wewins.fota.common.util.TimeConstants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ControlParameter {
 
     private static final int DEFAULT_MIN_CHECK_INTERVAL_SECONDS = 30 * TimeConstants.SECONDS_PER_MINUTE;
@@ -27,14 +29,6 @@ public class ControlParameter {
      * 配置主键。
      */
     private Long id;
-
-    /**
-     * 关联产品 ID。
-     * <p>
-     * 为空表示全局配置；非空表示产品级覆盖配置。
-     * </p>
-     */
-    private Long productId;
 
     /**
      * 保护态倍率。
@@ -91,14 +85,4 @@ public class ControlParameter {
                 .build();
     }
 
-    public static ControlParameter createProductDefault(Long productId) {
-        return ControlParameter.builder()
-                .productId(productId)
-                .protectedIntervalMultiplier(2.0)
-                .downloadDelayMultiplier(1.0)
-                .minCheckIntervalSeconds(DEFAULT_MIN_CHECK_INTERVAL_SECONDS)
-                .maxCheckIntervalSeconds(DEFAULT_MAX_CHECK_INTERVAL_SECONDS)
-                .updatedAt(Instant.now())
-                .build();
-    }
 }

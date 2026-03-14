@@ -1,5 +1,8 @@
 package com.wewins.fota.application.load;
 
+import com.wewins.fota.application.load.config.LoadControlDefaults;
+import com.wewins.fota.application.load.config.LoadControlRuntimeConfigService;
+import com.wewins.fota.application.load.config.LoadScoringMetricConfig;
 import com.wewins.fota.domain.load.model.enums.LoadLevel;
 import com.wewins.fota.domain.load.model.vo.LoadSnapshot;
 import com.wewins.fota.domain.load.service.SystemLoadIndicator;
@@ -15,6 +18,7 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
@@ -24,14 +28,13 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
     private static final String CHECK_RESOURCE = "upgrade:check";
     private static final String REPORT_RESOURCE = "upgrade:report";
     private static final Duration CACHE_TTL = Duration.ofSeconds(10);
-    private static final double QPS_WARNING_UTILIZATION = 60.0;
-    private static final double QPS_CRITICAL_UTILIZATION = 80.0;
 
     private final OperatingSystemMXBean osBean;
     private final MemoryMXBean memoryBean;
     private final MeterRegistry meterRegistry;
     private final PrometheusClient prometheusClient;
     private final SentinelRuleManager sentinelRuleManager;
+    private final LoadControlRuntimeConfigService runtimeConfigService;
     private final String hostLabel;
     private final String region;
     private final String instance;
@@ -43,10 +46,12 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
             MeterRegistry meterRegistry,
             PrometheusClient prometheusClient,
             SentinelRuleManager sentinelRuleManager,
+            LoadControlRuntimeConfigService runtimeConfigService,
             NodeIdentity nodeIdentity) {
         this.meterRegistry = meterRegistry;
         this.prometheusClient = prometheusClient;
         this.sentinelRuleManager = sentinelRuleManager;
+        this.runtimeConfigService = runtimeConfigService;
         this.hostLabel = nodeIdentity.hostCode();
         this.region = nodeIdentity.regionCode();
         this.instance = nodeIdentity.monitoringInstanceLabel();
@@ -283,29 +288,38 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
             double regionReportP50,
             double regionReportP99,
             int regionInstanceCount) {
+        Map<String, LoadScoringMetricConfig> metrics = runtimeConfigService.getEffectiveScoringMetricMap();
 
-        int cpuScore = calculateMetricScore(cpu, 70, 90, 16);
-        int memoryScore = calculateMetricScore(memory, 75, 90, 10);
-        int poolScore = calculateMetricScore(pool, 80, 95, 8);
+        int cpuScore = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_JVM_CPU), cpu);
+        int memoryScore = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_JVM_HEAP), memory);
+        int poolScore = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_DB_POOL_USAGE), pool);
 
-        int instanceCheckQpsScore = calculateUtilizationScore(toUtilizationPercent(instanceCheckQps, getCheckCapacity()), 11);
-        int instanceReportQpsScore = calculateUtilizationScore(toUtilizationPercent(instanceReportQps, getReportCapacity()), 4);
-        int instanceCheckP50Score = calculateMetricScore(instanceCheckP50, 30, 60, 5);
-        int instanceCheckP99Score = calculateMetricScore(instanceCheckP99, 50, 100, 11);
-        int instanceReportP50Score = calculateMetricScore(instanceReportP50, 20, 40, 2);
-        int instanceReportP99Score = calculateMetricScore(instanceReportP99, 40, 80, 6);
+        int instanceCheckQpsScore = calculateMetricScore(
+                metrics.get(LoadControlDefaults.INSTANCE_CHECK_QPS_UTILIZATION),
+                toUtilizationPercent(instanceCheckQps, getCheckCapacity()));
+        int instanceReportQpsScore = calculateMetricScore(
+                metrics.get(LoadControlDefaults.INSTANCE_REPORT_QPS_UTILIZATION),
+                toUtilizationPercent(instanceReportQps, getReportCapacity()));
+        int instanceCheckP50Score = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_CHECK_P50), instanceCheckP50);
+        int instanceCheckP99Score = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_CHECK_P99), instanceCheckP99);
+        int instanceReportP50Score = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_REPORT_P50), instanceReportP50);
+        int instanceReportP99Score = calculateMetricScore(metrics.get(LoadControlDefaults.INSTANCE_REPORT_P99), instanceReportP99);
 
-        int hostCpuScore = calculateMetricScore(hostCpu, 70, 90, 7);
-        int hostMemoryScore = calculateMetricScore(hostMemory, 75, 90, 4);
+        int hostCpuScore = calculateMetricScore(metrics.get(LoadControlDefaults.HOST_CPU), hostCpu);
+        int hostMemoryScore = calculateMetricScore(metrics.get(LoadControlDefaults.HOST_MEMORY), hostMemory);
 
-        int regionCheckQpsScore = calculateUtilizationScore(toUtilizationPercent(regionCheckQps, getRegionCheckCapacity(regionInstanceCount)), 5);
-        int regionReportQpsScore = calculateUtilizationScore(toUtilizationPercent(regionReportQps, getRegionReportCapacity(regionInstanceCount)), 2);
-        int regionCheckP50Score = calculateMetricScore(regionCheckP50, 35, 70, 2);
-        int regionCheckP99Score = calculateMetricScore(regionCheckP99, 60, 120, 4);
-        int regionReportP50Score = calculateMetricScore(regionReportP50, 25, 50, 1);
-        int regionReportP99Score = calculateMetricScore(regionReportP99, 50, 100, 2);
+        int regionCheckQpsScore = calculateMetricScore(
+                metrics.get(LoadControlDefaults.REGION_CHECK_QPS_UTILIZATION),
+                toUtilizationPercent(regionCheckQps, getRegionCheckCapacity(regionInstanceCount)));
+        int regionReportQpsScore = calculateMetricScore(
+                metrics.get(LoadControlDefaults.REGION_REPORT_QPS_UTILIZATION),
+                toUtilizationPercent(regionReportQps, getRegionReportCapacity(regionInstanceCount)));
+        int regionCheckP50Score = calculateMetricScore(metrics.get(LoadControlDefaults.REGION_CHECK_P50), regionCheckP50);
+        int regionCheckP99Score = calculateMetricScore(metrics.get(LoadControlDefaults.REGION_CHECK_P99), regionCheckP99);
+        int regionReportP50Score = calculateMetricScore(metrics.get(LoadControlDefaults.REGION_REPORT_P50), regionReportP50);
+        int regionReportP99Score = calculateMetricScore(metrics.get(LoadControlDefaults.REGION_REPORT_P99), regionReportP99);
 
-        return cpuScore + memoryScore + poolScore
+        int total = cpuScore + memoryScore + poolScore
                 + instanceCheckQpsScore + instanceReportQpsScore
                 + instanceCheckP50Score + instanceCheckP99Score
                 + instanceReportP50Score + instanceReportP99Score
@@ -313,13 +327,19 @@ public class SystemLoadIndicatorImpl implements SystemLoadIndicator {
                 + regionCheckQpsScore + regionReportQpsScore
                 + regionCheckP50Score + regionCheckP99Score
                 + regionReportP50Score + regionReportP99Score;
+        return Math.max(0, Math.min(100, total));
     }
 
-    private int calculateUtilizationScore(double utilizationPercent, int maxScore) {
-        return calculateMetricScore(utilizationPercent, QPS_WARNING_UTILIZATION, QPS_CRITICAL_UTILIZATION, maxScore);
-    }
-
-    private int calculateMetricScore(double value, double warning, double critical, int maxScore) {
+    private int calculateMetricScore(LoadScoringMetricConfig config, double value) {
+        if (config == null || !Boolean.TRUE.equals(config.getEnabled())) {
+            return 0;
+        }
+        Integer maxScore = config.getWeight();
+        Double warning = config.getWarning();
+        Double critical = config.getCritical();
+        if (maxScore == null || maxScore <= 0 || warning == null || critical == null || warning <= 0 || critical <= warning) {
+            return 0;
+        }
         if (value < 0) {
             return 0;
         }

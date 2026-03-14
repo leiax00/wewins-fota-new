@@ -238,34 +238,3 @@ app:
         temp-dir: ${APP_FIRMWARE_UPLOAD_TEMP_DIR:data/storage/tmp}
         max-file-age: ${APP_FIRMWARE_UPLOAD_MAX_FILE_AGE:2h}
         cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}
-
-  # Sentinel 限流熔断配置
-  sentinel:
-    enabled: ${SENTINEL_ENABLED:true}
-    # 规则来源: config(仅配置文件), redis(仅Redis), hybrid(配置文件+Redis合并)
-    rule-source: ${SENTINEL_RULE_SOURCE:hybrid}
-    # 流控规则（默认值，可被 Redis 覆盖）
-    flow-rules:
-      - resource: upgrade:check
-        grade: QPS
-        count: ${SENTINEL_FLOW_CHECK_QPS:2500}
-        control-behavior: RATE_LIMITER
-        max-queueing-time-ms: ${SENTINEL_FLOW_CHECK_QUEUE_MS:50}
-        enabled: true
-      - resource: upgrade:report
-        grade: QPS
-        count: ${SENTINEL_FLOW_REPORT_QPS:5000}
-        enabled: true
-    # 熔断规则（默认值，可被 Redis 覆盖）
-    degrade-rules:
-      - resource: UpgradeCheckService
-        grade: RT
-        count: ${SENTINEL_DEGRADE_RT_MS:50}
-        time-window: ${SENTINEL_DEGRADE_TIME_WINDOW_S:30}
-        min-request-amount: ${SENTINEL_DEGRADE_MIN_REQUEST:100}
-        slow-ratio-threshold: ${SENTINEL_DEGRADE_SLOW_RATIO:0.5}
-        enabled: true
-    # Redis 规则键（用于动态覆盖）
-    redis:
-      flow-rules-key: fota:sentinel:flow:rules
-      degrade-rules-key: fota:sentinel:degrade:rules

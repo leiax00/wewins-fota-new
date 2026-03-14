@@ -40,7 +40,19 @@
 
 ---
 
-### 4️⃣ 指南与知识 (`04-guides/`)
+### 4️⃣ 技术专题 (`04-technical/`)
+负载控制、设备 API、专题技术设计
+
+- [动态周期与负载控制设计说明](04-technical/dynamic-interval-and-load-control.md)
+- [多实例负载评估与动态周期优化方案](04-technical/multi-instance-monitoring-improvement.md) 🆕
+- [负载控制运行期配置设计](04-technical/load-control-runtime-configuration.md) 🆕
+- [升级检查 API 设计](04-technical/upgrade-check-api.md)
+- [升级上报 API 设计](04-technical/upgrade-report-api.md)
+- [固件下载签名设计](04-technical/signed-url-spec.md)
+
+---
+
+### 5️⃣ 指南与知识 (`04-guides/`)
 技术指南、知识沉淀、最佳实践
 
 - [策略权限控制指南](04-guides/policy-permissions.md) 🆕
@@ -48,7 +60,7 @@
 
 ---
 
-### 5️⃣ 计划与里程碑 (`05-plans/`)
+### 6️⃣ 计划与里程碑 (`05-plans/`)
 Sprint 计划、里程碑、风险评估
 
 - [Sprint 1 计划 - 后端基础平台](05-plans/sprint-1.md)
@@ -59,7 +71,7 @@ Sprint 计划、里程碑、风险评估
 
 ---
 
-### 6️⃣ 任务执行 (`tasks/`)
+### 7️⃣ 任务执行 (`tasks/`)
 任务文档、进度跟踪、验收清单
 
 #### Sprint 1 (2026-02)
@@ -135,6 +147,12 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 ---
 
 ## 📝 文档更新日志
+
+### 2026-03-14
+- ✅ 新增负载控制运行期配置设计文档
+- ✅ 补充实例级 / 区域级评分配置与 Sentinel 统一管理方案
+- ✅ 更新 Sprint 4 文档与技术专题导航
+- ✅ 明确采用字典作为配置源，当前阶段不新增独立配置页
 
 ### 2026-03-08
 - ✅ 新增 Sprint 4 计划：动态周期调整与系统可观测性

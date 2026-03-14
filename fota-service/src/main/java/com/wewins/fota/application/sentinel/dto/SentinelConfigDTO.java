@@ -20,31 +20,26 @@ public class SentinelConfigDTO {
     private boolean enabled;
 
     /**
-     * 规则来源：CONFIG、REDIS、HYBRID
+     * 规则来源
      */
     private String ruleSource;
 
     /**
-     * Redis 配置
+     * 运行态配置
      */
-    private RedisConfig redis;
+    private RuntimeConfig runtime;
 
     /**
-     * Redis 配置
+     * 运行态配置
      */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class RedisConfig {
+    public static class RuntimeConfig {
         /**
-         * 流控规则 Redis Key
+         * 当前生效的负载控制总快照 Key
          */
-        private String flowRulesKey;
-
-        /**
-         * 降级规则 Redis Key
-         */
-        private String degradeRulesKey;
+        private String activeConfigKey;
     }
 }

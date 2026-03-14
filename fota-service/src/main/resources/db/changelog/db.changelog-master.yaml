@@ -27,3 +27,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260314_01_seed_load_control_dicts
+      author: fota-team
+      comment: "初始化负载控制字典类型与默认配置项"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260314_01__seed_load_control_dicts.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
