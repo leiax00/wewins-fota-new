@@ -346,7 +346,7 @@ onMounted(() => {
             active-value="active"
             inactive-value="disabled"
             :loading="isStatusSwitchLoading(row.id)"
-            @change="(value) => handleStatusToggle(row, String(value))"
+            @change="(value: string | boolean) => handleStatusToggle(row, String(value))"
           />
           <el-tag
             v-else

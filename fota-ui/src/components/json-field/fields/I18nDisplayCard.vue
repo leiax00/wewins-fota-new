@@ -150,7 +150,7 @@ const onRemove = (event: MouseEvent) => {
               size="small"
               class="ui-action-danger i18n-display-item__delete"
               :disabled="disabled"
-              @click="(e) => removeLocale(locale, e)"
+              @click="(e: MouseEvent) => removeLocale(locale, e)"
             >
               <el-icon><Close /></el-icon>
             </el-button>

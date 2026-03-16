@@ -172,9 +172,10 @@ const getDefaultValueForField = (field: JsonFieldDefinition): PrimitiveFieldValu
       return 0
     case 'boolean':
       return false
-    case 'select':
+    case 'select': {
       const options = field.config.schema.options || []
       return options.length > 0 ? options[0].value : ''
+    }
     default:
       return ''
   }
@@ -610,7 +611,7 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
             :autosize="{ minRows: 1, maxRows: 3 }"
             :model-value="unknownDraft[key]"
             :disabled="disabled"
-            @update:model-value="(value) => updateUnknownField(key, value)"
+            @update:model-value="(value: string) => updateUnknownField(key, value)"
           />
           <el-button
             link
@@ -802,58 +803,8 @@ const unknownKeys = computed(() => Object.keys(localUnknown))
   min-width: 0;
 }
 
-/* 过渡动画 */
-.field-list-enter-active,
-.field-list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.field-list-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.field-list-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
-.field-list-move {
-  transition: transform 0.3s ease;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-down-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.slide-down-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
 /* 响应式布局（可选，移动端单列） */
 @media (max-width: 480px) {
-  .i18n-field-card {
-    min-width: 0;
-    width: 100%;
-  }
-
   .primitive-field-tag {
     font-size: 12px;
   }

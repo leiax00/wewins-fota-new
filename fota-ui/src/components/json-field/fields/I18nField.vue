@@ -333,7 +333,7 @@ const onRemoveLocale = (localeCode: string) => {
             :placeholder="placeholder"
             :model-value="text"
             :disabled="disabled"
-            @update:model-value="(value) => onUpdateText(localeCode, value)"
+            @update:model-value="(value: string) => onUpdateText(localeCode, value)"
           />
         </div>
       </div>
