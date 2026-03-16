@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RefreshRight } from '@element-plus/icons-vue'
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 export interface RefreshControlProps {
@@ -49,11 +49,6 @@ const handleIntervalChange = (value: number) => {
 const handleRefresh = () => {
   emit('refresh')
 }
-
-const intervalLabel = computed(() => {
-  const option = intervalOptions.find(o => o.value === localInterval.value)
-  return option?.label ?? `${localInterval.value / 1000}s`
-})
 </script>
 
 <template>
@@ -63,7 +58,7 @@ const intervalLabel = computed(() => {
       <span class="text-sm text-slate-600">{{ t('monitor.autoRefresh') }}</span>
       <el-switch
         :model-value="modelValue"
-        @update:model-value="emit('update:modelValue', $event)"
+        @update:model-value="(val: boolean | string | number) => emit('update:modelValue', val as boolean)"
         inline-prompt
         :active-text="t('common.on')"
         :inactive-text="t('common.off')"

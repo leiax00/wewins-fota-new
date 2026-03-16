@@ -13,6 +13,7 @@ target/
 # Logs
 logs/
 *.log
+fota-service/data
 
 # Documentation
 *.md
@@ -26,3 +27,5 @@ Thumbs.db
 Dockerfile
 .dockerignore
 docker-compose*.yml
+
+fota-ui

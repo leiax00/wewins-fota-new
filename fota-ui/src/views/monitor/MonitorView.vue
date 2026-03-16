@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
 import { monitorApi, type GlobalMonitorMetrics, type RegionMetrics, type InstanceMetricsEnhanced, type RegionDetail, type InstanceDetail } from '@/api/monitor'
 import SystemSummaryCard from './components/SystemSummaryCard.vue'
 import RegionOverviewTable from './components/RegionOverviewTable.vue'
@@ -167,7 +166,7 @@ const stopInstanceRefresh = () => {
 }
 
 // 监听自动刷新开关变化
-watch(autoRefresh, (enabled) => {
+watch(autoRefresh, () => {
   startRefresh()
 })
 
