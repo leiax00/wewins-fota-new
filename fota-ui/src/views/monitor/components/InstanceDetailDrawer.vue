@@ -3,18 +3,31 @@ import { Loading } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { InstanceDetail, InstanceMetricsEnhanced } from '@/api/monitor'
-import { formatPercent, formatQps, formatLatency } from '../utils/formatters'
+import RefreshControl from './RefreshControl.vue'
+import { formatPercent, formatPercentDirect, formatQps, formatLatency } from '../utils/formatters'
 import { useLoadLevel, useCircuitState } from '../composables/useLoadLevel'
 
-const props = defineProps<{
-  visible: boolean
-  instance: InstanceMetricsEnhanced | null
-  detail: InstanceDetail | null
-  loading?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    visible: boolean
+    instance: InstanceMetricsEnhanced | null
+    detail: InstanceDetail | null
+    loading?: boolean
+    autoRefresh?: boolean
+    refreshInterval?: number
+  }>(),
+  {
+    loading: false,
+    autoRefresh: true,
+    refreshInterval: 15000
+  }
+)
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
+  'update:autoRefresh': [value: boolean]
+  'update:refreshInterval': [value: number]
+  'refresh': []
 }>()
 
 const { t } = useI18n()
@@ -35,10 +48,23 @@ const handleClose = () => {
 <template>
   <el-drawer
     v-model="drawerVisible"
-    :title="`${t('monitor.instanceDetail')} - ${instance?.instance ?? '-'}`"
     size="60%"
     @close="handleClose"
+    class="monitor-drawer"
   >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <span>{{ t('monitor.instanceDetail') }} - {{ instance?.instance ?? '-' }}</span>
+        <RefreshControl
+          :model-value="autoRefresh"
+          @update:model-value="emit('update:autoRefresh', $event)"
+          :interval="refreshInterval"
+          @update:interval="emit('update:refreshInterval', $event)"
+          :loading="loading"
+          @refresh="emit('refresh')"
+        />
+      </div>
+    </template>
     <div v-if="loading" class="flex items-center justify-center py-8">
       <el-icon class="is-loading"><Loading /></el-icon>
     </div>
@@ -95,16 +121,16 @@ const handleClose = () => {
           <div class="summary-item">
             <div class="summary-label">JVM CPU / {{ t('monitor.memory') }}</div>
             <div class="summary-value">
-              <div>{{ formatPercent(instance.cpuUsage) }}</div>
-              <div class="text-sm text-gray-500">{{ formatPercent(instance.memoryUsage) }}</div>
+              <div>{{ formatPercentDirect(instance.cpuUsage) }}</div>
+              <div class="text-sm text-gray-500">{{ formatPercentDirect(instance.memoryUsage) }}</div>
             </div>
           </div>
 
           <div class="summary-item">
             <div class="summary-label">Host CPU / {{ t('monitor.memory') }}</div>
             <div class="summary-value">
-              <div>{{ formatPercent(detail?.hostCpuUsage ?? 0) }}</div>
-              <div class="text-sm text-gray-500">{{ formatPercent(detail?.hostMemoryUsage ?? 0) }}</div>
+              <div>{{ formatPercentDirect(detail?.hostCpuUsage ?? 0) }}</div>
+              <div class="text-sm text-gray-500">{{ formatPercentDirect(detail?.hostMemoryUsage ?? 0) }}</div>
             </div>
           </div>
         </div>
@@ -171,5 +197,16 @@ const handleClose = () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+</style>
+
+<style>
+.monitor-drawer .el-drawer__header {
+  padding: 12px 16px 8px 16px !important;
+  margin-bottom: 0 !important;
+}
+
+.monitor-drawer .el-drawer__body {
+  padding: 8px 16px 16px 16px !important;
 }
 </style>

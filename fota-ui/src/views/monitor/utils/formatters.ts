@@ -27,7 +27,7 @@ export function formatPercentDirect(value: number | undefined, decimals = 1): st
  */
 export function formatQps(value: number | undefined): string {
   if (value === undefined) return '-'
-  return value.toFixed(1)
+  return value.toFixed(3)
 }
 
 /**

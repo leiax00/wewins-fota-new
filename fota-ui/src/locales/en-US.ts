@@ -31,6 +31,8 @@ export default {
     prev: 'Prev',
     next: 'Next',
     operation: 'Operation',
+    on: 'ON',
+    off: 'OFF',
   },
   login: {
     title: 'FOTA Admin',
@@ -297,6 +299,7 @@ export default {
     totalRegions: 'Total Regions',
     totalInstances: 'Total Instances',
     hostInstanceCount: 'Instances',
+    autoRefresh: 'Auto Refresh',
   },
   product: {
     title: 'Product List',

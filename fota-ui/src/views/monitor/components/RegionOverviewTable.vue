@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { RegionMetrics } from '@/api/monitor'
 import { formatPercent, formatQps, formatLatency, formatNumber } from '../utils/formatters'
@@ -35,13 +34,9 @@ const handleRowClick = (row: RegionMetrics) => {
 <template>
   <el-card>
     <template #header>
-      <div class="flex items-center justify-between">
-        <span class="inline-flex items-center gap-1 ui-card-title">
-          {{ t('monitor.regionOverview') }}
-          <el-tooltip :content="t('monitor.regionOverviewDesc')" placement="top">
-            <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+      <div class="flex items-center justify-between gap-2">
+        <span class="ui-card-title">{{ t('monitor.regionOverview') }}</span>
+        <span class="text-xs text-slate-400">{{ t('monitor.regionOverviewDesc') }}</span>
       </div>
     </template>
 

@@ -31,6 +31,8 @@ export default {
     prev: '上一页',
     next: '下一页',
     operation: '操作',
+    on: '开',
+    off: '关',
   },
   login: {
     title: 'FOTA 管理后台',
@@ -317,6 +319,7 @@ export default {
     totalRegions: '总区域数',
     totalInstances: '总实例数',
     hostInstanceCount: '实例数',
+    autoRefresh: '自动刷新',
   },
   product: {
     title: '产品列表',

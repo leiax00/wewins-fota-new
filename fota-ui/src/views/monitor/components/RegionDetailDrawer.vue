@@ -4,18 +4,31 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RegionDetail, RegionMetrics } from '@/api/monitor'
 import HotProductsTable from './HotProductsTable.vue'
+import RefreshControl from './RefreshControl.vue'
 import { formatPercent, formatPercentDirect, formatQps, formatNumber, formatBytes } from '../utils/formatters'
 import { useLoadLevel } from '../composables/useLoadLevel'
 
-const props = defineProps<{
-  visible: boolean
-  region: RegionMetrics | null
-  detail: RegionDetail | null
-  loading?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    visible: boolean
+    region: RegionMetrics | null
+    detail: RegionDetail | null
+    loading?: boolean
+    autoRefresh?: boolean
+    refreshInterval?: number
+  }>(),
+  {
+    loading: false,
+    autoRefresh: true,
+    refreshInterval: 15000
+  }
+)
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
+  'update:autoRefresh': [value: boolean]
+  'update:refreshInterval': [value: number]
+  'refresh': []
 }>()
 
 const { t } = useI18n()
@@ -35,10 +48,23 @@ const handleClose = () => {
 <template>
   <el-drawer
     v-model="drawerVisible"
-    :title="`${t('monitor.regionDetail')} - ${region?.region ?? '-'}`"
     size="70%"
     @close="handleClose"
+    class="monitor-drawer"
   >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <span>{{ t('monitor.regionDetail') }} - {{ region?.region ?? '-' }}</span>
+        <RefreshControl
+          :model-value="autoRefresh"
+          @update:model-value="emit('update:autoRefresh', $event)"
+          :interval="refreshInterval"
+          @update:interval="emit('update:refreshInterval', $event)"
+          :loading="loading"
+          @refresh="emit('refresh')"
+        />
+      </div>
+    </template>
     <div v-if="loading" class="flex items-center justify-center py-8">
       <el-icon class="is-loading"><Loading /></el-icon>
     </div>
@@ -160,5 +186,16 @@ const handleClose = () => {
   font-size: 16px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+}
+</style>
+
+<style>
+.monitor-drawer .el-drawer__header {
+  padding: 12px 16px 8px 16px !important;
+  margin-bottom: 0 !important;
+}
+
+.monitor-drawer .el-drawer__body {
+  padding: 8px 16px 16px 16px !important;
 }
 </style>

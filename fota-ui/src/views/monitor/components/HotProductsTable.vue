@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { InfoFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { HotProductMetrics, HotProductMetricsEnhanced } from '@/api/monitor'
 import { formatPercent, formatQps } from '../utils/formatters'
@@ -30,13 +29,9 @@ const hasActiveRegionCount = (row: HotProductData): row is HotProductMetricsEnha
 <template>
   <el-card>
     <template #header>
-      <div class="flex items-center justify-between">
-        <span class="inline-flex items-center gap-1 ui-card-title">
-          {{ t('monitor.hotProducts') }}
-          <el-tooltip :content="t('monitor.hotProductsDesc')" placement="top">
-            <el-icon class="text-slate-400 cursor-help"><InfoFilled /></el-icon>
-          </el-tooltip>
-        </span>
+      <div class="flex items-center justify-between gap-2">
+        <span class="ui-card-title">{{ t('monitor.hotProducts') }}</span>
+        <span class="text-xs text-slate-400">{{ t('monitor.hotProductsDesc') }}</span>
       </div>
     </template>
 
