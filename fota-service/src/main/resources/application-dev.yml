@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:lax4832.}
+    password: ${DB_PASSWORD:wewins@123}
     clickhouse:
       url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/ww-fota}
       username: ${CLICKHOUSE_USER:wewins}
