@@ -1,9 +1,11 @@
-name: fota-db
+name: fota-infra
 
 services:
+  # ================================
+  # Redis
+  # ================================
   redis-stack:
     image: redis/redis-stack
-    container_name: redis
     restart: unless-stopped
     environment: { }
     #      - REDIS_ARGS="--requirepass wewins@123"
@@ -11,46 +13,50 @@ services:
       - "6379:6379"
       - "28001:8001"
     volumes:
-      - ${DEV_DIR}/redis-stack/data:/data
-    #      - ./redis-stack.conf:/redis-stack.conf
+      - ${DEV_DIR:-/workspace/devData}/redis-stack/data:/data
     networks:
-      - ww-net
+      - self
 
-
+  # ================================
+  # PostgreSQL
+  # ================================
   pgsql:
     profiles:
       - pgsql
     image: postgres:18-bookworm
-    container_name: pgsql
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${WW_PASSWORD:-wewins@123}
     ports:
       - '5432:5432'
     volumes:
-      - ${DEV_DIR}/pgsql:/var/lib/postgresql  # 18+
+      - ${DEV_DIR:-/workspace/devData}/pgsql:/var/lib/postgresql  # 18+
     #      - ${DEV_NB_DIR}/pgsql/data:/var/lib/postgresql/data
     networks:
-      - ww-net
+      - self
 
+  # ================================
+  # MySQL（备用）
+  # ================================
   mysql:
     profiles:
       - mysql
     image: mysql:9.4.0
-    container_name: mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${WW_PASSWORD:-wewins@123}
     ports:
       - '3306:3306'
     volumes:
-      - ${DEV_DIR}/mysql/data:/var/lib/mysql
+      - ${DEV_DIR:-/workspace/devData}/mysql/data:/var/lib/mysql
     networks:
-      - ww-net
+      - self
 
+  # ================================
+  # ClickHouse
+  # ================================
   clickhouse:
     image: clickhouse/clickhouse-server:25.12
-    container_name: clickhouse
     restart: unless-stopped
     ports:
       - "18123:8123"
@@ -59,8 +65,8 @@ services:
       - CLICKHOUSE_USER=${WW_USERNAME:-wewins}
       - CLICKHOUSE_PASSWORD=${WW_PASSWORD:-wewins@123}
     volumes:
-      - ${DEV_DIR}/clickhouse/data:/var/lib/clickhouse
-      - ${DEV_DIR}/clickhouse/logs:/var/log/clickhouse-server
+      - ${DEV_DIR:-/workspace/devData}/clickhouse/data:/var/lib/clickhouse
+      - ${DEV_DIR:-/workspace/devData}/clickhouse/logs:/var/log/clickhouse-server
       - ${PWD}/clickhouse/config.xml:/etc/clickhouse-server/config.d/self-config.xml
     ulimits:
       nofile:
@@ -68,18 +74,14 @@ services:
         hard: 262144
     mem_limit: 4g
     cpus: 2.0
-    # swarm 生效
-    #    deploy:
-    #      resources:
-    #        limits:
-    #          cpus: "2.0"
-    #          memory: 4g
     networks:
-      - ww-net
+      - self
 
+  # ================================
+  # RustFS (S3兼容存储)
+  # ================================
   rustfs:
     image: rustfs/rustfs:latest
-    container_name: rustfs-server
     privileged: true
     user: root
     ports:
@@ -100,12 +102,11 @@ services:
       # Object Cache
       - RUSTFS_OBJECT_CACHE_ENABLE=true
       - RUSTFS_OBJECT_CACHE_TTL_SECS=300
-
     volumes:
-      - ${DEV_DIR}/rustfs/data:/data
-      - ${DEV_DIR}/rustfs/logs:/logs
+      - ${DEV_DIR:-/workspace/devData}/rustfs/data:/data
+      - ${DEV_DIR:-/workspace/devData}/rustfs/logs:/logs
     networks:
-      - ww-net
+      - self
     restart: unless-stopped
     healthcheck:
       test:
@@ -119,6 +120,49 @@ services:
       retries: 3
       start_period: 40s
 
+  # ================================
+  # RabbitMQ 消息队列
+  # ================================
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${WW_USERNAME:-wewins}
+      RABBITMQ_DEFAULT_PASS: ${WW_PASSWORD:-wewins@123}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ${DEV_DIR:-/workspace/devData}/rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - self
+
+  # ================================
+  # Nginx Proxy Manager（反向代理）
+  # ================================
+  npm:
+    profiles:
+      - npm
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    ports:
+      - '${NPM_HTTP_PORT:-80}:80'     # HTTP
+      - '${NPM_HTTPS_PORT:-443}:443'   # HTTPS
+      - '${NPM_CONSOLE_PORT:-81}:81'   # 管理界面
+    environment:
+      # 使用 SQLite 数据库
+      DISABLE_IPV6: 'true'
+    volumes:
+      - ${DEV_DIR:-/workspace/devData}/fota/npm/data:/data
+      - ${DEV_DIR:-/workspace/devData}/fota/npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - self
 networks:
-  ww-net:
+  self:
     external: true

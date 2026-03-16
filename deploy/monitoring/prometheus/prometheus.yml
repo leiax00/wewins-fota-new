@@ -31,7 +31,7 @@ scrape_configs:
     static_configs:
       # 生产环境实例列表（根据实际部署修改）
       - targets:
-          - 'host.docker.internal:8080'
+          - 'backend:8080'
         labels:
           cluster: 'fota-prod'
           env: 'production'

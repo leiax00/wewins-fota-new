@@ -3,7 +3,6 @@ name: fota-monitor
 services:
   prometheus:
     image: prom/prometheus:v2.48.0
-    container_name: fota-prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -30,7 +29,6 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
-    container_name: fota-node-exporter
     ports:
       - "19100:9100"
     command:
@@ -45,7 +43,6 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    container_name: fota-cadvisor
     ports:
       - "18081:8080"
     privileged: true
@@ -63,7 +60,6 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.26.0
-    container_name: fota-alertmanager
     ports:
       - "19093:9093"
     volumes:
@@ -83,7 +79,6 @@ services:
 
   grafana:
     image: grafana/grafana:10.2.0
-    container_name: fota-grafana
     ports:
       - "13000:3000"
     environment:
