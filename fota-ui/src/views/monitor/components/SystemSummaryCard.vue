@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { InfoFilled } from '@element-plus/icons-vue'
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { GlobalSummary } from '@/api/monitor'
+import { formatPercent, formatQps } from '../utils/formatters'
+import { useLoadLevel } from '../composables/useLoadLevel'
 
 const props = defineProps<{
   summary: GlobalSummary | null
@@ -10,35 +11,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 
-const loadLevelColor = computed(() => {
-  switch (props.summary?.loadLevel) {
-    case 'LOW':
-      return 'success'
-    case 'NORMAL':
-      return 'info'
-    case 'HIGH':
-      return 'warning'
-    case 'CRITICAL':
-      return 'danger'
-    default:
-      return 'info'
-  }
-})
-
-const loadLevelText = computed(() => {
-  const value = props.summary?.loadLevel
-  if (!value) return '-'
-  const mapping: Record<string, string> = {
-    LOW: t('monitor.levelLow'),
-    NORMAL: t('monitor.levelNormal'),
-    HIGH: t('monitor.levelHigh'),
-    CRITICAL: t('monitor.levelCritical'),
-  }
-  return mapping[value] ?? value
-})
-
-const formatPercent = (value?: number) => `${((value ?? 0) * 100).toFixed(1)}%`
-const formatQps = (value?: number) => `${(value ?? 0).toFixed(1)}`
+const { loadLevelColor, loadLevelText } = useLoadLevel(() => props.summary?.loadLevel)
 </script>
 
 <template>
@@ -75,8 +48,8 @@ const formatQps = (value?: number) => `${(value ?? 0).toFixed(1)}`
       <div class="summary-item">
         <div class="summary-label">Check P50 / P99</div>
         <div class="summary-value text-lg">
-          <div class="font-semibold">{{ (summary?.checkP50Latency ?? 0).toFixed(0) }} ms</div>
-          <div class="text-sm text-gray-500">{{ (summary?.checkP99Latency ?? 0).toFixed(0) }} ms</div>
+          <div class="font-semibold">{{ summary?.checkP50Latency?.toFixed(0) ?? '-' }} ms</div>
+          <div class="text-sm text-gray-500">{{ summary?.checkP99Latency?.toFixed(0) ?? '-' }} ms</div>
         </div>
       </div>
 

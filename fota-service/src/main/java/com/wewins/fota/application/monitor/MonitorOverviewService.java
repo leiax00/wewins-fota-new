@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -340,5 +341,300 @@ public class MonitorOverviewService {
     }
 
     private record CachedValue<T>(T value, Instant cachedAt) {
+    }
+
+    // ==================== 全局监控 API 方法 ====================
+
+    /**
+     * 获取全局监控指标
+     * <p>
+     * 当前实现：单区域模式下返回当前区域的包装数据
+     * 多区域模式下需要从配置中心或其他服务获取其他区域数据
+     *
+     * @return 全系统监控指标
+     */
+    public GlobalMonitorMetricsDTO getGlobalMetrics() {
+        Instant now = Instant.now();
+        RealtimeMetricsDTO realtimeMetrics = getRealtimeMetrics();
+        String region = nodeIdentity.regionCode();
+
+        // 构建全局摘要（单区域模式）
+        GlobalSummaryDTO globalSummary = GlobalSummaryDTO.builder()
+                .loadScore(realtimeMetrics.getLoadScore())
+                .loadLevel(realtimeMetrics.getLoadLevel())
+                .checkQps(realtimeMetrics.getCheckQps())
+                .reportQps(realtimeMetrics.getReportQps())
+                .checkP50Latency(realtimeMetrics.getCheckP50Latency())
+                .checkP99Latency(realtimeMetrics.getCheckP99Latency())
+                .todayActiveDevices(realtimeMetrics.getTodayActiveDevices())
+                .blockRate(realtimeMetrics.getBlockRate())
+                .regionCount(1) // 单区域模式
+                .totalInstances(realtimeMetrics.getInstances() != null ? realtimeMetrics.getInstances().size() : 1)
+                .build();
+
+        // 构建区域指标列表
+        RegionMetricsDTO regionMetrics = buildRegionMetrics(realtimeMetrics, region);
+        List<RegionMetricsDTO> regions = List.of(regionMetrics);
+
+        // 构建增强的主机指标
+        List<HostMetricsEnhancedDTO> enhancedHosts = buildEnhancedHosts(realtimeMetrics, region);
+
+        // 构建增强的实例指标
+        List<InstanceMetricsEnhancedDTO> enhancedInstances = buildEnhancedInstances(realtimeMetrics, region);
+
+        // 构建增强的热点产品指标
+        List<HotProductMetricsEnhancedDTO> enhancedHotProducts = buildEnhancedHotProducts(region);
+
+        return GlobalMonitorMetricsDTO.builder()
+                .global(globalSummary)
+                .regions(regions)
+                .hosts(enhancedHosts)
+                .instances(enhancedInstances)
+                .hotProducts(enhancedHotProducts)
+                .timestamp(now)
+                .build();
+    }
+
+    /**
+     * 获取区域详情
+     *
+     * @param region 区域代码
+     * @return 区域详情
+     */
+    public RegionDetailDTO getRegionDetail(String region) {
+        Instant now = Instant.now();
+        RealtimeMetricsDTO realtimeMetrics = getRealtimeMetrics();
+
+        // 如果请求的区域不是当前区域，返回空数据
+        if (!region.equals(nodeIdentity.regionCode())) {
+            return RegionDetailDTO.builder()
+                    .summary(RegionMetricsDTO.builder()
+                            .region(region)
+                            .loadScore(0)
+                            .loadLevel("UNKNOWN")
+                            .instanceCount(0)
+                            .hotProductCount(0)
+                            .build())
+                    .hosts(List.of())
+                    .instances(List.of())
+                    .hotProducts(List.of())
+                    .build();
+        }
+
+        RegionMetricsDTO summary = buildRegionMetrics(realtimeMetrics, region);
+
+        return RegionDetailDTO.builder()
+                .summary(summary)
+                .hosts(realtimeMetrics.getHosts() != null ? realtimeMetrics.getHosts() : List.of())
+                .instances(realtimeMetrics.getInstances() != null ? realtimeMetrics.getInstances() : List.of())
+                .hotProducts(realtimeMetrics.getHotProducts() != null ? realtimeMetrics.getHotProducts() : List.of())
+                .build();
+    }
+
+    /**
+     * 获取实例详情
+     *
+     * @param instance 实例标识
+     * @return 实例详情
+     */
+    public InstanceDetailDTO getInstanceDetail(String instance) {
+        Instant now = Instant.now();
+        RealtimeMetricsDTO realtimeMetrics = getRealtimeMetrics();
+        String region = nodeIdentity.regionCode();
+        String host = nodeIdentity.hostCode();
+
+        // 查找请求的实例
+        InstanceMetricsDTO targetInstance = null;
+        if (realtimeMetrics.getInstances() != null) {
+            for (InstanceMetricsDTO inst : realtimeMetrics.getInstances()) {
+                if (instance.equals(inst.getInstance())) {
+                    targetInstance = inst;
+                    break;
+                }
+            }
+        }
+
+        // 如果未找到，返回当前实例
+        if (targetInstance == null) {
+            targetInstance = realtimeMetrics.getInstanceSummary();
+        }
+
+        // 构建增强的实例摘要
+        InstanceMetricsEnhancedDTO summary = InstanceMetricsEnhancedDTO.builder()
+                .instance(targetInstance.getInstance())
+                .region(region)
+                .host(host)
+                .loadScore(realtimeMetrics.getLoadScore())
+                .loadLevel(realtimeMetrics.getLoadLevel())
+                .cpuUsage(targetInstance.getCpuUsage())
+                .memoryUsage(targetInstance.getMemoryUsage())
+                .checkQps(targetInstance.getCheckQps())
+                .reportQps(targetInstance.getReportQps())
+                .checkP50Latency(realtimeMetrics.getCheckP50Latency())
+                .checkP99Latency(realtimeMetrics.getCheckP99Latency())
+                .reportP50Latency(realtimeMetrics.getReportP50Latency())
+                .reportP99Latency(realtimeMetrics.getReportP99Latency())
+                .activeRequests(targetInstance.getActiveRequests())
+                .blockRate(targetInstance.getBlockRate())
+                .circuitState(targetInstance.getCircuitState())
+                .build();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                .withZone(java.time.ZoneId.systemDefault());
+
+        return InstanceDetailDTO.builder()
+                .summary(summary)
+                .hostCpuUsage(realtimeMetrics.getHostCpuUsage())
+                .hostMemoryUsage(realtimeMetrics.getHostMemoryUsage())
+                .hotProducts(realtimeMetrics.getHotProducts() != null ? realtimeMetrics.getHotProducts() : List.of())
+                .region(region)
+                .host(host)
+                .instance(targetInstance.getInstance())
+                .lastRefreshTime(formatter.format(now))
+                .build();
+    }
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 构建区域指标
+     */
+    private RegionMetricsDTO buildRegionMetrics(RealtimeMetricsDTO realtimeMetrics, String region) {
+        return RegionMetricsDTO.builder()
+                .region(region)
+                .loadScore(realtimeMetrics.getLoadScore())
+                .loadLevel(realtimeMetrics.getLoadLevel())
+                .checkQps(realtimeMetrics.getCheckQps())
+                .reportQps(realtimeMetrics.getReportQps())
+                .checkP50Latency(realtimeMetrics.getCheckP50Latency())
+                .checkP99Latency(realtimeMetrics.getCheckP99Latency())
+                .reportP50Latency(realtimeMetrics.getReportP50Latency())
+                .reportP99Latency(realtimeMetrics.getReportP99Latency())
+                .todayActiveDevices(realtimeMetrics.getTodayActiveDevices())
+                .blockRate(realtimeMetrics.getBlockRate())
+                .instanceCount(realtimeMetrics.getInstances() != null ? realtimeMetrics.getInstances().size() : 1)
+                .hotProductCount(realtimeMetrics.getHotProducts() != null ? realtimeMetrics.getHotProducts().size() : 0)
+                .build();
+    }
+
+    /**
+     * 构建增强的主机指标列表
+     */
+    private List<HostMetricsEnhancedDTO> buildEnhancedHosts(RealtimeMetricsDTO realtimeMetrics, String region) {
+        List<HostMetricsDTO> hosts = realtimeMetrics.getHosts();
+        if (hosts == null || hosts.isEmpty()) {
+            return List.of();
+        }
+
+        // 统计每个主机的实例数量
+        Map<String, Integer> instanceCountByHost = new HashMap<>();
+        List<InstanceMetricsDTO> instances = realtimeMetrics.getInstances();
+        if (instances != null) {
+            for (InstanceMetricsDTO instance : instances) {
+                String instanceName = instance.getInstance();
+                // 从实例名提取主机名（格式通常是 "host:port" 或类似格式）
+                String host = extractHostFromInstance(instanceName);
+                instanceCountByHost.merge(host, 1, Integer::sum);
+            }
+        }
+
+        String currentHost = nodeIdentity.hostCode();
+        return hosts.stream()
+                .map(host -> HostMetricsEnhancedDTO.builder()
+                        .host(host.getHost())
+                        .region(region)
+                        .cpuUsage(host.getCpuUsage())
+                        .memoryUsage(host.getMemoryUsage())
+                        .networkInBytes(host.getNetworkInBytes())
+                        .networkOutBytes(host.getNetworkOutBytes())
+                        .instanceCount(instanceCountByHost.getOrDefault(host.getHost(), 1))
+                        .build())
+                .toList();
+    }
+
+    /**
+     * 构建增强的实例指标列表
+     */
+    private List<InstanceMetricsEnhancedDTO> buildEnhancedInstances(RealtimeMetricsDTO realtimeMetrics, String region) {
+        List<InstanceMetricsDTO> instances = realtimeMetrics.getInstances();
+        if (instances == null || instances.isEmpty()) {
+            // 返回当前实例
+            InstanceMetricsDTO current = realtimeMetrics.getInstanceSummary();
+            return List.of(InstanceMetricsEnhancedDTO.builder()
+                    .instance(current.getInstance())
+                    .region(region)
+                    .host(nodeIdentity.hostCode())
+                    .loadScore(realtimeMetrics.getLoadScore())
+                    .loadLevel(realtimeMetrics.getLoadLevel())
+                    .cpuUsage(current.getCpuUsage())
+                    .memoryUsage(current.getMemoryUsage())
+                    .checkQps(current.getCheckQps())
+                    .reportQps(current.getReportQps())
+                    .checkP50Latency(realtimeMetrics.getCheckP50Latency())
+                    .checkP99Latency(realtimeMetrics.getCheckP99Latency())
+                    .reportP50Latency(realtimeMetrics.getReportP50Latency())
+                    .reportP99Latency(realtimeMetrics.getReportP99Latency())
+                    .activeRequests(current.getActiveRequests())
+                    .blockRate(current.getBlockRate())
+                    .circuitState(current.getCircuitState())
+                    .build());
+        }
+
+        String host = nodeIdentity.hostCode();
+        return instances.stream()
+                .map(instance -> InstanceMetricsEnhancedDTO.builder()
+                        .instance(instance.getInstance())
+                        .region(region)
+                        .host(host)
+                        .loadScore(realtimeMetrics.getLoadScore())
+                        .loadLevel(realtimeMetrics.getLoadLevel())
+                        .cpuUsage(instance.getCpuUsage())
+                        .memoryUsage(instance.getMemoryUsage())
+                        .checkQps(instance.getCheckQps())
+                        .reportQps(instance.getReportQps())
+                        .checkP50Latency(realtimeMetrics.getCheckP50Latency())
+                        .checkP99Latency(realtimeMetrics.getCheckP99Latency())
+                        .reportP50Latency(realtimeMetrics.getReportP50Latency())
+                        .reportP99Latency(realtimeMetrics.getReportP99Latency())
+                        .activeRequests(instance.getActiveRequests())
+                        .blockRate(instance.getBlockRate())
+                        .circuitState(instance.getCircuitState())
+                        .build())
+                .toList();
+    }
+
+    /**
+     * 构建增强的热点产品指标列表
+     */
+    private List<HotProductMetricsEnhancedDTO> buildEnhancedHotProducts(String region) {
+        List<HotProductDTO> hotProducts = getHotProducts();
+        if (hotProducts == null || hotProducts.isEmpty()) {
+            return List.of();
+        }
+
+        return hotProducts.stream()
+                .map(product -> HotProductMetricsEnhancedDTO.builder()
+                        .product(product.getProduct())
+                        .checkQps(product.getCheckQps())
+                        .reportQps(product.getReportQps())
+                        .trafficShare(product.getTrafficShare())
+                        .activeRegionCount(1) // 单区域模式
+                        .build())
+                .toList();
+    }
+
+    /**
+     * 从实例标识中提取主机名
+     */
+    private String extractHostFromInstance(String instance) {
+        if (instance == null) {
+            return "unknown";
+        }
+        // 实例名格式通常是 "host:port" 或 "host"
+        int colonIndex = instance.indexOf(':');
+        if (colonIndex > 0) {
+            return instance.substring(0, colonIndex);
+        }
+        return instance;
     }
 }

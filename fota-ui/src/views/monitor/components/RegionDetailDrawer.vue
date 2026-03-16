@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RegionDetail, RegionMetrics } from '@/api/monitor'
 import HotProductsTable from './HotProductsTable.vue'
-import { formatPercent, formatQps, formatLatency, formatNumber, formatBytes } from '../utils/formatters'
+import { formatPercent, formatPercentDirect, formatQps, formatNumber, formatBytes } from '../utils/formatters'
 import { useLoadLevel } from '../composables/useLoadLevel'
 
 const props = defineProps<{
@@ -137,7 +137,7 @@ const handleClose = () => {
       </el-card>
 
       <!-- 热点产品 -->
-      <HotProductsTable :data="detail?.hotProducts ?? []" />
+      <HotProductsTable :data="detail?.hotProducts ?? []" :show-active-region-count="false" />
     </div>
   </el-drawer>
 </template>

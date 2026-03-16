@@ -3,7 +3,7 @@ import { Loading } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { InstanceDetail, InstanceMetricsEnhanced } from '@/api/monitor'
-import { formatPercent, formatQps, formatLatency, formatBytes } from '../utils/formatters'
+import { formatPercent, formatQps, formatLatency } from '../utils/formatters'
 import { useLoadLevel, useCircuitState } from '../composables/useLoadLevel'
 
 const props = defineProps<{

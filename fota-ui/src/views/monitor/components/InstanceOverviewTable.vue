@@ -3,6 +3,7 @@ import { InfoFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { InstanceMetricsEnhanced } from '@/api/monitor'
 import { formatPercentDirect, formatQps, formatLatency } from '../utils/formatters'
+import { useLoadLevel, useCircuitState } from '../composables/useLoadLevel'
 
 const props = withDefaults(
   defineProps<{
@@ -20,42 +21,20 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+// 使用 composables 获取负载等级和熔断状态映射
 const getLoadLevelType = (level: string) => {
-  switch (level) {
-    case 'LOW':
-      return 'success'
-    case 'NORMAL':
-      return 'info'
-    case 'HIGH':
-      return 'warning'
-    case 'CRITICAL':
-      return 'danger'
-    default:
-      return 'info'
-  }
+  const { loadLevelColor } = useLoadLevel(() => level)
+  return loadLevelColor.value
 }
 
 const getLoadLevelText = (level: string) => {
-  const mapping: Record<string, string> = {
-    LOW: t('monitor.levelLow'),
-    NORMAL: t('monitor.levelNormal'),
-    HIGH: t('monitor.levelHigh'),
-    CRITICAL: t('monitor.levelCritical'),
-  }
-  return mapping[level] ?? level
+  const { loadLevelText } = useLoadLevel(() => level)
+  return loadLevelText.value
 }
 
 const getCircuitStateType = (state: string) => {
-  switch (state) {
-    case 'CLOSED':
-      return 'success'
-    case 'OPEN':
-      return 'danger'
-    case 'HALF_OPEN':
-      return 'warning'
-    default:
-      return 'info'
-  }
+  const { circuitStateColor } = useCircuitState(() => state)
+  return circuitStateColor.value
 }
 
 const handleRowClick = (row: InstanceMetricsEnhanced) => {

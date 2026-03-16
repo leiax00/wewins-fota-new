@@ -5,6 +5,9 @@ import com.wewins.fota.adapter.api.admin.dto.HotProductDTO;
 import com.wewins.fota.adapter.api.admin.dto.MonitorTrendsDTO;
 import com.wewins.fota.adapter.api.admin.dto.OperationLogDetailDTO;
 import com.wewins.fota.adapter.api.admin.dto.OperationLogRespDTO;
+import com.wewins.fota.adapter.api.admin.dto.GlobalMonitorMetricsDTO;
+import com.wewins.fota.adapter.api.admin.dto.RegionDetailDTO;
+import com.wewins.fota.adapter.api.admin.dto.InstanceDetailDTO;
 import com.wewins.fota.application.audit.OperationLogAppService;
 import com.wewins.fota.application.audit.dto.OperationLogPageReqDTO;
 import com.wewins.fota.application.monitor.MonitorOverviewService;
@@ -122,5 +125,44 @@ public class MonitorApiController {
         } catch (BizException e) {
             return ApiResponse.error(e.getCode(), e.getMessage());
         }
+    }
+
+    // ==================== 全局监控 API 端点 ====================
+
+    /**
+     * 获取全局监控指标
+     * <p>
+     * 返回全系统聚合指标，包括全局摘要、各区域指标、主机指标、实例指标和热点产品指标
+     */
+    @GetMapping("/global")
+    @PreAuthorize("@rbac.has('monitor:load:read')")
+    public ApiResponse<GlobalMonitorMetricsDTO> getGlobalMetrics() {
+        return ApiResponse.success(monitorOverviewService.getGlobalMetrics());
+    }
+
+    /**
+     * 获取区域详情
+     * <p>
+     * 返回指定区域的完整监控信息，包括摘要指标、主机列表、实例列表和热点产品
+     *
+     * @param region 区域代码
+     */
+    @GetMapping("/regions/{region}")
+    @PreAuthorize("@rbac.has('monitor:load:read')")
+    public ApiResponse<RegionDetailDTO> getRegionDetail(@PathVariable String region) {
+        return ApiResponse.success(monitorOverviewService.getRegionDetail(region));
+    }
+
+    /**
+     * 获取实例详情
+     * <p>
+     * 返回指定实例的完整监控信息，包括摘要指标、主机信息和热点产品
+     *
+     * @param instance 实例标识
+     */
+    @GetMapping("/instances/{instance}")
+    @PreAuthorize("@rbac.has('monitor:load:read')")
+    public ApiResponse<InstanceDetailDTO> getInstanceDetail(@PathVariable String instance) {
+        return ApiResponse.success(monitorOverviewService.getInstanceDetail(instance));
     }
 }

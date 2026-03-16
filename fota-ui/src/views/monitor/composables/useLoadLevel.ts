@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type MaybeRefOrGetter, toValue } from 'vue'
+import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 export type LoadLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'
@@ -8,7 +8,7 @@ export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN'
  * 负载等级 Composable
  * @param loadLevel - 负载等级的响应式引用或 getter 函数
  */
-export function useLoadLevel(loadLevel: MaybeRefOrGetter<LoadLevel | undefined>) {
+export function useLoadLevel(loadLevel: MaybeRefOrGetter<LoadLevel | string | undefined>) {
   const { t } = useI18n()
 
   const loadLevelColor = computed(() => {
@@ -49,7 +49,7 @@ export function useLoadLevel(loadLevel: MaybeRefOrGetter<LoadLevel | undefined>)
  * 熔断状态 Composable
  * @param circuitState - 熔断状态的响应式引用或 getter 函数
  */
-export function useCircuitState(circuitState: MaybeRefOrGetter<CircuitState | undefined>) {
+export function useCircuitState(circuitState: MaybeRefOrGetter<CircuitState | string | undefined>) {
   const circuitStateColor = computed(() => {
     const state = toValue(circuitState)
     switch (state) {

@@ -1,20 +1,30 @@
 <script setup lang="ts">
 import { InfoFilled } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
-import type { HotProductMetricsEnhanced } from '@/api/monitor'
+import type { HotProductMetrics, HotProductMetricsEnhanced } from '@/api/monitor'
 import { formatPercent, formatQps } from '../utils/formatters'
+
+// 使用联合类型支持两种数据结构
+type HotProductData = HotProductMetrics | HotProductMetricsEnhanced
 
 const props = withDefaults(
   defineProps<{
-    data: HotProductMetricsEnhanced[]
+    data: HotProductData[]
     loading?: boolean
+    showActiveRegionCount?: boolean // 是否显示活跃区域数列
   }>(),
   {
-    loading: false
+    loading: false,
+    showActiveRegionCount: true
   }
 )
 
 const { t } = useI18n()
+
+// 检查数据是否有 activeRegionCount 属性
+const hasActiveRegionCount = (row: HotProductData): row is HotProductMetricsEnhanced => {
+  return 'activeRegionCount' in row
+}
 </script>
 
 <template>
@@ -45,8 +55,8 @@ const { t } = useI18n()
         <template #default="{ row }">{{ formatPercent(row.trafficShare) }}</template>
       </el-table-column>
 
-      <el-table-column :label="t('monitor.activeRegionCount')" min-width="100" align="right">
-        <template #default="{ row }">{{ row.activeRegionCount }}</template>
+      <el-table-column v-if="showActiveRegionCount" :label="t('monitor.activeRegionCount')" min-width="100" align="right">
+        <template #default="{ row }">{{ hasActiveRegionCount(row) ? row.activeRegionCount : '-' }}</template>
       </el-table-column>
     </el-table>
 

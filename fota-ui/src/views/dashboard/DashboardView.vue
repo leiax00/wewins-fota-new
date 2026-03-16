@@ -77,6 +77,19 @@ const stopRefresh = () => {
   }
 }
 
+// 页面可见性变化处理
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    // 页面隐藏时停止刷新
+    stopRefresh()
+  } else {
+    // 页面可见时刷新一次数据，然后重新启动定时器
+    fetchMetrics()
+    fetchTrends()
+    startRefresh()
+  }
+}
+
 const formatQps = (value?: number) => `${(value ?? 0).toFixed(2)}`
 const formatCount = (value?: number) => `${Math.round(value ?? 0).toLocaleString()}`
 const formatPercent = (value?: number) => `${(value ?? 0).toFixed(2)}%`
@@ -271,11 +284,13 @@ onMounted(async () => {
   await Promise.all([fetchMetrics(), fetchTrends()])
   startRefresh()
   window.addEventListener('resize', resizeCharts)
+  window.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   stopRefresh()
   window.removeEventListener('resize', resizeCharts)
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
   checkTrendChart?.dispose()
   reportTrendChart?.dispose()
   latencyTrendChart?.dispose()

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { InfoFilled } from '@element-plus/icons-vue'
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RegionMetrics } from '@/api/monitor'
 import { formatPercent, formatQps, formatLatency, formatNumber } from '../utils/formatters'
+import { useLoadLevel } from '../composables/useLoadLevel'
 
 const props = defineProps<{
   data: RegionMetrics[]
@@ -16,31 +16,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// 负载等级颜色映射
+// 使用 composable 获取负载等级映射
 const getLoadLevelType = (level: string) => {
-  switch (level) {
-    case 'LOW':
-      return 'success'
-    case 'NORMAL':
-      return 'info'
-    case 'HIGH':
-      return 'warning'
-    case 'CRITICAL':
-      return 'danger'
-    default:
-      return 'info'
-  }
+  const { loadLevelColor } = useLoadLevel(() => level)
+  return loadLevelColor.value
 }
 
-// 负载等级文本映射
 const getLoadLevelText = (level: string) => {
-  const mapping: Record<string, string> = {
-    LOW: t('monitor.levelLow'),
-    NORMAL: t('monitor.levelNormal'),
-    HIGH: t('monitor.levelHigh'),
-    CRITICAL: t('monitor.levelCritical'),
-  }
-  return mapping[level] ?? level
+  const { loadLevelText } = useLoadLevel(() => level)
+  return loadLevelText.value
 }
 
 const handleRowClick = (row: RegionMetrics) => {
