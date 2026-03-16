@@ -27,6 +27,123 @@ export interface HotProductMetrics {
   trafficShare: number
 }
 
+/**
+ * 区域指标
+ */
+export interface RegionMetrics {
+  region: string
+  loadScore: number
+  loadLevel: string
+  checkQps: number
+  reportQps: number
+  checkP50Latency: number
+  checkP99Latency: number
+  reportP50Latency: number
+  reportP99Latency: number
+  todayActiveDevices: number
+  blockRate: number
+  instanceCount: number
+  hotProductCount: number
+}
+
+/**
+ * 增强的主机指标（包含区域信息）
+ */
+export interface HostMetricsEnhanced {
+  host: string
+  region: string
+  cpuUsage: number
+  memoryUsage: number
+  networkInBytes: number
+  networkOutBytes: number
+  instanceCount: number
+}
+
+/**
+ * 增强的实例指标（包含区域和主机信息）
+ */
+export interface InstanceMetricsEnhanced {
+  instance: string
+  region: string
+  host: string
+  loadScore: number
+  loadLevel: string
+  cpuUsage: number
+  memoryUsage: number
+  checkQps: number
+  reportQps: number
+  checkP50Latency: number
+  checkP99Latency: number
+  reportP50Latency: number
+  reportP99Latency: number
+  activeRequests: number
+  blockRate: number
+  circuitState: string
+}
+
+/**
+ * 增强的热点产品指标
+ */
+export interface HotProductMetricsEnhanced {
+  product: string
+  checkQps: number
+  reportQps: number
+  trafficShare: number
+  activeRegionCount: number
+}
+
+/**
+ * 全局聚合指标
+ */
+export interface GlobalSummary {
+  loadScore: number
+  loadLevel: string
+  checkQps: number
+  reportQps: number
+  checkP50Latency: number
+  checkP99Latency: number
+  todayActiveDevices: number
+  blockRate: number
+  regionCount: number
+  totalInstances: number
+}
+
+/**
+ * 全系统监控指标（新 API 返回类型）
+ */
+export interface GlobalMonitorMetrics {
+  global: GlobalSummary
+  regions: RegionMetrics[]
+  hosts: HostMetricsEnhanced[]
+  instances: InstanceMetricsEnhanced[]
+  hotProducts: HotProductMetricsEnhanced[]
+  timestamp: string
+}
+
+/**
+ * 区域详情（用于抽屉）
+ */
+export interface RegionDetail {
+  summary: RegionMetrics
+  hosts: HostMetrics[]
+  instances: InstanceMetrics[]
+  hotProducts: HotProductMetrics[]
+}
+
+/**
+ * 实例详情（用于抽屉）
+ */
+export interface InstanceDetail {
+  summary: InstanceMetricsEnhanced
+  hostCpuUsage: number
+  hostMemoryUsage: number
+  hotProducts: HotProductMetrics[]
+  region: string
+  host: string
+  instance: string
+  lastRefreshTime: string
+}
+
 export interface ControlState {
   region: string
   loadScore: number
@@ -143,6 +260,9 @@ export const monitorApi = {
   getRealtimeMetrics: () => get<RealtimeMetrics>('/admin/monitor/realtime'),
   getHotProducts: () => get<HotProductMetrics[]>('/admin/monitor/products/hotspots'),
   getTrends: (range = '15m') => get<MonitorTrends>('/admin/monitor/trends', { params: { range } }),
+  getGlobalMetrics: () => get<GlobalMonitorMetrics>('/admin/monitor/global'),
+  getRegionDetail: (region: string) => get<RegionDetail>(`/admin/monitor/regions/${encodeURIComponent(region)}`),
+  getInstanceDetail: (instance: string) => get<InstanceDetail>(`/admin/monitor/instances/${encodeURIComponent(instance)}`),
 }
 
 export interface RedisInfo {
