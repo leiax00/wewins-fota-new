@@ -82,6 +82,7 @@ export const uploadFirmwarePackage = (
   return post<UploadFirmwareResponse>('/admin/firmware-uploads', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     signal,  // 传递AbortSignal以支持取消上传
+    timeout: 3600000,  // 固件上传接口超时时间设置为1小时（60 * 60 * 1000毫秒）
     onUploadProgress: (progressEvent) => {
       if (onProgress && progressEvent.total) {
         const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)

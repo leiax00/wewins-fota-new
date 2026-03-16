@@ -118,6 +118,7 @@ export const importDevices = (params: DeviceImportParams) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 3600000,  // 设备批量导入文件上传超时时间设置为1小时（60 * 60 * 1000毫秒）
   })
 }
 
