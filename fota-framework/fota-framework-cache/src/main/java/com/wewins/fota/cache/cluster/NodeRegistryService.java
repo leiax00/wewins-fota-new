@@ -123,7 +123,8 @@ public class NodeRegistryService {
         instance.setBaseUrl(node.getBaseUrl());
         instance.setTimeZone(node.getTimeZone());
         instance.setMode(clusterProperties.getMode());
-        instance.setInstanceId(clusterProperties.getRegistry().getInstanceId());
+        // Keep the field for compatibility, but use node code as the only stable identity.
+        instance.setInstanceId(node.getCode());
         instance.setStatus(status);
         instance.setRegisteredAt(existing != null ? existing.getRegisteredAt() : now);
         instance.setLastHeartbeatAt(now);

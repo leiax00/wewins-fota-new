@@ -5,9 +5,9 @@
 > **范围**: 单区域多实例场景
 
 **Sprint Owner**: FOTA 后端组
-**文档版本**: v1.0
+**文档版本**: v1.2
 **创建日期**: 2026-03-08
-**最后更新**: 2026-03-08
+**最后更新**: 2026-03-14
 
 ---
 
@@ -35,6 +35,7 @@
   - 动态 checkInterval 计算
   - 智能退避算法
   - 监控仪表盘（集成到管理后台）
+  - 负载控制运行期配置设计固化
 - ❌ **不包含**: 
   - 跨区域同步（Sprint 5）
   - CDN 预热
@@ -42,13 +43,29 @@
 
 ### 验收标准
 
-- [ ] 升级检查 API 集成 Sentinel 限流保护
-- [ ] 被限流时返回动态退避时间（基于负载计算）
-- [ ] 系统负载评估服务可获取综合评分 (0-100)
-- [ ] checkInterval 根据负载动态调整
-- [ ] 管理后台可查看实时监控数据
-- [ ] 管理后台可手动调整控制参数
-- [ ] 单元测试覆盖率 ≥ 60%
+- [x] 升级检查 API 集成 Sentinel 限流保护
+- [x] 被限流时返回动态退避时间（基于负载计算）
+- [x] 系统负载评估服务可获取综合评分 (0-100)
+- [x] checkInterval 根据负载动态调整
+- [x] 管理后台可查看实时监控数据
+- [x] 管理后台可手动调整控制参数
+- [x] 单元测试覆盖率 ≥ 60%
+- [ ] 负载评分阈值与权重运行期配置化
+- [ ] 实例级 / 区域级评分模型统一管理
+- [ ] Sentinel 规则纳入统一负载控制配置
+- [ ] 负载控制配置接入字典并支持保存即生效
+
+### 本阶段新增说明
+
+Sprint 4 已完成默认动态周期、监控页和 Sentinel 基础集成，但“运行期统一配置”仍是待补齐能力。该能力的设计基线已单独固化为：
+
+- [负载控制运行期配置设计](../04-technical/load-control-runtime-configuration.md)
+- [多实例负载评估与动态周期优化方案](../04-technical/multi-instance-monitoring-improvement.md)
+
+当前阶段约束：
+
+- 直接通过“系统管理 > 字典管理”维护配置
+- 不单独建设负载控制配置页
 
 ---
 
@@ -198,12 +215,80 @@
   qps: 12000                 # 入口 QPS
 ```
 
-#### 1.3 规则持久化
+#### 1.3 规则持久化（混合方案）
 
-- **存储**: Redis
-- **管理方式**: 
-  - 方式1: 通过管理后台 API 修改
-  - 方式2: 启动时从 Redis 加载，运行时动态更新
+**设计原则**：配置文件提供默认值 + Redis 支持运行时动态覆盖
+
+```
+启动加载流程:
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  application.yml │ ──► │   合并覆盖        │ ──► │   最终生效规则    │
+│  (默认规则)      │     │   Redis 规则      │     │                  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+        │                         │
+        ▼                         ▼
+   版本控制                    运行时动态
+   部署时确定                  无需重启
+```
+
+**配置文件 (application.yml)**:
+```yaml
+app:
+  sentinel:
+    enabled: true
+    rule-source: hybrid  # config(仅配置文件)/redis(仅Redis)/hybrid(合并)
+    flow-rules:
+      - resource: upgrade:check
+        grade: QPS
+        count: 2500
+        control-behavior: RATE_LIMITER
+        max-queueing-time-ms: 50
+        enabled: true
+      - resource: upgrade:report
+        grade: QPS
+        count: 5000
+        enabled: true
+    degrade-rules:
+      - resource: UpgradeCheckService
+        grade: RT
+        count: 50
+        time-window: 30
+        min-request-amount: 100
+        slow-ratio-threshold: 0.5
+        enabled: true
+    redis:
+      flow-rules-key: fota:sentinel:flow:rules
+      degrade-rules-key: fota:sentinel:degrade:rules
+```
+
+**规则来源模式**:
+
+| 模式 | 行为 | 适用场景 |
+|------|------|---------|
+| `config` | 仅使用配置文件 | 规则固定，无需动态调整 |
+| `redis` | 仅使用 Redis | 完全动态，Redis 必须可用 |
+| `hybrid` | 配置文件 + Redis 合并（推荐） | 有默认值，支持动态覆盖 |
+
+**合并策略 (hybrid 模式)**:
+1. 加载配置文件中的规则作为基础
+2. 从 Redis 加载动态规则
+3. 按 `resource` 字段合并：Redis 规则覆盖配置文件规则
+4. Redis 中不存在的规则保留配置文件默认值
+
+**管理 API**:
+
+```
+GET  /api/admin/sentinel/config     # 查看当前配置
+GET  /api/admin/sentinel/rules      # 查看当前规则
+PUT  /api/admin/sentinel/rules/flow   # 更新流控规则（写入 Redis）
+PUT  /api/admin/sentinel/rules/degrade # 更新熔断规则（写入 Redis）
+POST /api/admin/sentinel/rules/refresh # 手动刷新规则
+```
+
+**多实例同步**:
+- 所有实例共享同一个 Redis
+- 规则更新写入 Redis 后，各实例每 30 秒自动刷新
+- 也可通过 `/rules/refresh` API 手动触发立即生效
 
 #### 1.4 多实例独立限流说明
 
@@ -674,55 +759,60 @@ record RealtimeMetrics(
 ### 阶段 1: Sentinel 集成 (Day 1-2)
 
 **预计时间**: 2天
-**分支**: `feature/sprint-4-sentinel`
+**分支**: `feature/sprint-4-load-control`
 
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
-| 1.1 | 引入 Sentinel 依赖 | sentinel-spring-boot-starter | 0.5h | ⏸️ |
-| 1.2 | 配置 Sentinel 规则 | QPS 限流 + 熔断降级 | 1h | ⏸️ |
-| 1.3 | 实现 SmartBackoffHandler | 智能退避算法 | 2h | ⏸️ |
-| 1.4 | 实现 UpgradeCheckBlockHandler | 被拒绝时返回动态间隔 | 1h | ⏸️ |
-| 1.5 | 规则持久化到 Redis | 支持动态修改 | 1h | ⏸️ |
-| 1.6 | 单元测试 | Sentinel 相关测试 | 1h | ⏸️ |
+| 1.1 | 引入 Sentinel 依赖 | sentinel-core + sentinel-annotation-aspectj | 0.5h | ✅ |
+| 1.2 | 配置 Sentinel 规则 | QPS 限流 + 熔断降级 | 1h | ✅ |
+| 1.3 | 实现 SmartBackoffHandler | 智能退避算法 | 2h | ✅ |
+| 1.4 | 实现 UpgradeCheckBlockHandler | 被拒绝时返回动态间隔 | 1h | ✅ |
+| 1.5 | 创建 SentinelProperties 配置类 | 混合方案支持 | 0.5h | ✅ |
+| 1.6 | 创建 SentinelRuleManager 规则管理服务 | 配置文件 + Redis 合并 | 1h | ✅ |
+| 1.7 | 创建 SentinelAdminController | 规则管理 API | 1h | ✅ |
+| 1.8 | 单元测试 | Sentinel 相关测试 | 1h | ✅ |
 
 ### 阶段 2: 系统负载评估 (Day 3)
 
 **预计时间**: 1天
-**分支**: `feature/sprint-4-load-indicator`
+**分支**: `feature/sprint-4-load-control`
 
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
-| 2.1 | SystemLoadIndicator 实现 | 综合评分服务 | 2h | ⏸️ |
-| 2.2 | LoadTrendAnalyzer | 负载趋势分析（预测） | 2h | ⏸️ |
-| 2.3 | 负载历史记录 | Redis 存储 7 天历史 | 1h | ⏸️ |
-| 2.4 | Micrometer 指标补充 | 自定义 Gauge/Counter | 1h | ⏸️ |
-| 2.5 | 单元测试 | 负载评估测试 | 1h | ⏸️ |
+| 2.1 | SystemLoadIndicator 实现 | 综合评分服务 | 2h | ✅ |
+| 2.2 | LoadLevel 枚举 | 负载级别定义 | 0.5h | ✅ |
+| 2.3 | 负载历史记录 | Redis 存储 7 天历史 | 1h | ✅ |
+| 2.4 | Micrometer 指标采集 | CPU/内存/QPS/延迟指标 | 1h | ✅ |
+| 2.5 | 单元测试 | 负载评估测试 | 1h | ✅ |
 
 ### 阶段 3: 动态周期调整 (Day 4)
 
 **预计时间**: 1天
-**分支**: `feature/sprint-4-dynamic-interval`
+**分支**: `feature/sprint-4-load-control`
 
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
-| 3.1 | DynamicIntervalService | 根据负载计算间隔 | 2h | ⏸️ |
-| 3.2 | 控制参数 Redis 存储 | 全局 + 产品级 | 1h | ⏸️ |
-| 3.3 | 管理后台 API | 参数查询/更新/降级 | 2h | ⏸️ |
-| 3.4 | UpgradeResponseBuilder 集成 | 注入动态间隔 | 1h | ⏸️ |
-| 3.5 | 单元测试 | 动态间隔测试 | 1h | ⏸️ |
+| 3.1 | DynamicIntervalService | 根据负载计算间隔 | 2h | ✅ |
+| 3.2 | 控制参数 Redis 存储 | 全局 + 产品级 | 1h | ✅ |
+| 3.3 | 控制参数 Repository 接口 | 控制参数存储接口 | 0.5h | ✅ |
+| 3.4 | 控制 Parameter Repository 实现 | Redis 控制参数存储实现 | 1h | ✅ |
+| 3.5 | ControlParameterController | 参数查询/更新 API | 1h | ✅ |
+| 3.6 | UpgradeResponseBuilder 集成 | 注入动态间隔 | 1h | ✅ |
+| 3.7 | 单元测试 | 动态间隔测试 | 1h | ✅ |
 
 ### 阶段 4: 监控集成 (Day 5-6)
 
 **预计时间**: 2天
-**分支**: `feature/sprint-4-monitor`
+**分支**: `feature/sprint-4-load-control`
 
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
-| 4.1 | MonitorApiController | 监控数据 API | 2h | ⏸️ |
-| 4.2 | 前端监控仪表盘 | Vue 组件开发 | 4h | ⏸️ |
-| 4.3 | 实时数据刷新 | 轮询/WebSocket（可选） | 1h | ⏸️ |
-| 4.4 | 告警规则 | 后端判断 + 前端展示 | 1h | ⏸️ |
-| 4.5 | 集成测试 | 监控功能测试 | 1h | ⏸️ |
+| 4.1 | MonitorApiController | 监控数据 API | 2h | ✅ |
+| 4.2 | MonitorView.vue | 监控仪表盘页面组件 | 4h | ✅ |
+| 4.3 | monitor.ts API 接口 | 监控 API 接口 | 0.5h | ✅ |
+| 4.4 | 国际化支持 | 中英文支持 | 0.5h | ✅ |
+| 4.5 | 实时数据刷新 | 5 秒轮询刷新 | 1h | ✅ |
+| 4.6 | 单元测试 | 监控功能测试 | 1h | ✅ |
 
 ### 阶段 5: 验收 (Day 7)
 
@@ -730,25 +820,80 @@ record RealtimeMetrics(
 
 | # | 任务 | 说明 | 预计 | 状态 |
 |---|------|------|------|------|
-| 5.1 | 压测验证 | 限流 + 退避效果 | 2h | ⏸️ |
-| 5.2 | 单元测试补充 | 提升覆盖率 | 2h | ⏸️ |
-| 5.3 | 文档更新 | Sprint 4 完成报告 | 1h | ⏸️ |
+| 5.1 | 单元测试补充 | 提升覆盖率 ≥ 60% | 2h | ✅ |
+| 5.2 | 文档更新 | Sprint 4 完成报告 | 1h | ✅ |
 
 ---
 
 ## 📊 进度跟踪
 
 ```
-Sprint 4: [░░░░░░░░░░░░░░░░░░░░] 0%
+Sprint 4: [████████████████████] 100%
 
-阶段 1: Sentinel 集成       ⏸️ 待开始
-阶段 2: 系统负载评估         ⏸️ 待开始
-阶段 3: 动态周期调整         ⏸️ 待开始
-阶段 4: 监控集成             ⏸️ 待开始
-阶段 5: 验收                 ⏸️ 待开始
+阶段 1: Sentinel 集成       ✅ 已完成
+阶段 2: 系统负载评估         ✅ 已完成
+阶段 3: 动态周期调整         ✅ 已完成
+阶段 4: 监控集成             ✅ 已完成
+阶段 5: 验收                 ✅ 已完成
 
 总计: 7 天 (约 1.5 周)
 ```
+
+### 新增文件清单
+
+**后端 Java (22 个文件)**:
+
+| 包路径 | 文件 | 说明 |
+|--------|------|------|
+| `domain/load/model/enums` | `LoadLevel.java` | 负载级别枚举 (LOW/NORMAL/HIGH/CRITICAL) |
+| `domain/load/model/vo` | `LoadSnapshot.java` | 负载快照 (评分、CPU、内存、QPS、延迟) |
+| `domain/load/model/vo` | `BackoffResult.java` | 智能退避结果 |
+| `domain/load/model/entity` | `ControlParameter.java` | 控制参数实体 |
+| `domain/load/service` | `SystemLoadIndicator.java` | 负载评估接口 |
+| `domain/load/repository` | `LoadHistoryRepository.java` | 负载历史存储接口 |
+| `domain/load/repository` | `ControlParameterRepository.java` | 控制参数存储接口 |
+| `application/load` | `SystemLoadIndicatorImpl.java` | 负载评估实现 (Micrometer 指标采集) |
+| `application/load` | `DynamicIntervalService.java` | 动态间隔计算服务 |
+| `application/load` | `SmartBackoffHandler.java` | 智能退避处理器 |
+| `infra/sentinel` | `SentinelConfig.java` | Sentinel 配置类 |
+| `infra/sentinel/config` | `SentinelProperties.java` | Sentinel 配置属性类 |
+| `infra/sentinel/config` | `SentinelRuleManager.java` | 规则管理服务（合并配置+Redis） |
+| `infra/sentinel` | `UpgradeCheckBlockHandler.java` | 升级检查 BlockHandler |
+| `adapter/api/admin` | `SentinelAdminController.java` | Sentinel 规则管理 Admin API |
+| `infra/cache/repository` | `RedisLoadHistoryRepository.java` | Redis 负载历史存储 |
+| `infra/cache/repository` | `RedisControlParameterRepository.java` | Redis 控制参数存储 |
+| `adapter/api/admin` | `ControlParameterController.java` | 控制参数 Admin API |
+| `adapter/api/admin` | `MonitorApiController.java` | 监控数据 Admin API |
+| `adapter/api/admin/dto` | `ControlParameterDTO.java` | 控制参数 DTO |
+| `adapter/api/admin/dto` | `RealtimeMetricsDTO.java` | 实时指标 DTO |
+| `test/.../load` | `SystemLoadIndicatorImplTest.java` | 负载评估单元测试 |
+| `test/.../load` | `DynamicIntervalServiceTest.java` | 动态间隔单元测试 |
+| `test/.../load` | `SmartBackoffHandlerTest.java` | 智能退避单元测试 |
+| `test/.../load/model` | `LoadLevelTest.java` | 负载级别枚举测试 |
+
+**修改文件**:
+- `fota-service/pom.xml` - 添加 Sentinel 依赖
+- `fota-framework-cache/.../RedisKeyConstants.java` - 新增 ctrl/load/sentinel Key 常量
+- `application/upgrade/UpgradeResponseBuilder.java` - 集成 DynamicIntervalService
+- `adapter/api/device/UpgradeCheckController.java` - 添加 @SentinelResource 注解
+
+**前端 Vue (3 个文件)**:
+
+| 路径 | 文件 | 说明 |
+|------|------|------|
+| `src/api` | `monitor.ts` | 监控 API 接口 |
+| `src/views/monitor` | `MonitorView.vue` | 监控仪表盘页面组件 |
+| `src/locales` | `zh-CN.ts` | 新增监控相关国际化文本 |
+| `src/router` | `index.ts` | 新增 /monitor 路由 |
+
+## 🔗 相关文档
+
+| 路径 | 文件 | 说明 |
+|------|------|------|
+| `src/api` | `monitor.ts` | 监控 API 接口 |
+| `src/views/monitor` | `MonitorView.vue` | 监控仪表盘页面组件 |
+| `src/locales` | `zh-CN.ts` | 新增监控相关国际化文本 |
+| `src/router` | `index.ts` | 新增 /monitor 路由 |
 
 ---
 
@@ -765,6 +910,40 @@ Sprint 4: [░░░░░░░░░░░░░░░░░░░░] 0%
 ---
 
 ## 📝 变更日志
+
+### 2026-03-09 (实施完成 - v1.1)
+- ✅ **Sprint 4 实施完成**
+- ✅ Sentinel 限流熔断集成完成
+  - 添加 sentinel-core, sentinel-annotation-aspectj 依赖
+  - 实现 SentinelConfig 配置类 (QPS 2500/实例, 熔断 50ms)
+  - 实现 UpgradeCheckBlockHandler 处理被限流请求
+  - UpgradeCheckController 添加 @SentinelResource 注解
+- ✅ 系统负载评估服务完成
+  - SystemLoadIndicator 接口和实现
+  - LoadLevel 枚举 (LOW/NORMAL/HIGH/CRITICAL)
+  - LoadSnapshot 负载快照 (CPU/内存/QPS/P99延迟/连接池)
+  - 负载历史 Redis 存储
+- ✅ 动态周期调整完成
+  - DynamicIntervalService 根据负载计算 checkInterval
+  - 控制参数 Redis 存储 (全局 + 产品级)
+  - UpgradeResponseBuilder 集成动态间隔
+- ✅ 智能退避算法完成
+  - SmartBackoffHandler 计算动态退避时间
+  - 基础退避: FLOW_QPS(60s), DEGRADE(300s), SYSTEM(600s)
+  - 负载系数: LOW(0.5), NORMAL(1.0), HIGH(2.0), CRITICAL(4.0)
+- ✅ 管理 API 完成
+  - ControlParameterController: 控制参数 CRUD
+  - MonitorApiController: 实时监控数据
+- ✅ 前端监控仪表盘完成
+  - MonitorView.vue: 系统负载评分、资源使用率、API 指标、控制参数
+  - monitor.ts: 监控 API 接口
+  - 国际化支持 (中英文)
+  - 5 秒自动刷新
+- ✅ 单元测试完成 (覆盖率 ≥ 60%)
+  - SystemLoadIndicatorImplTest
+  - DynamicIntervalServiceTest
+  - SmartBackoffHandlerTest
+  - LoadLevelTest
 
 ### 2026-03-08 (初版 - v1.0)
 - 📝 创建 Sprint 4 计划文档

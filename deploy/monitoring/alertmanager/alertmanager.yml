@@ -1,0 +1,124 @@
+# Alertmanager 配置文件
+# 用于告警路由和通知
+
+global:
+  # 告警解决超时时间
+  resolve_timeout: 5m
+  # SMTP 配置（邮件通知）
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_FROM}'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+# 告警路由配置
+route:
+  # 默认接收器
+  receiver: 'default-receiver'
+  # 分组依据
+  group_by: ['alertname', 'cluster', 'severity']
+  # 等待时间（同组告警合并）
+  group_wait: 30s
+  # 同组告警间隔
+  group_interval: 5m
+  # 重复告警间隔
+  repeat_interval: 12h
+
+  # 子路由
+  routes:
+    # P0 致命告警 - 直接通知
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+      continue: false
+
+    # P1 严重告警
+    - match:
+        severity: warning
+      receiver: 'warning-receiver'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      continue: false
+
+    # P2-P3 信息告警
+    - match_re:
+        severity: (info|none)
+      receiver: 'info-receiver'
+      continue: false
+
+# 接收器配置
+receivers:
+  # 默认接收器（Slack）
+  - name: 'default-receiver'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#fota-alerts'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else if eq .CommonLabels.severity "warning" }}warning{{ else }}#439FE0{{ end }}{{ else }}good{{ end }}'
+
+  # P0 致命告警接收器（邮件 + Slack）
+  - name: 'critical-receiver'
+    email_configs:
+      - to: '${ALERT_EMAIL_CRITICAL}'
+        send_resolved: true
+        html: '{{ template "email.html" . }}'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#fota-critical'
+        send_resolved: true
+        title: '🚨 {{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: 'danger'
+
+  # P1 警告接收器（Slack）
+  - name: 'warning-receiver'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#fota-alerts'
+        send_resolved: true
+        title: '⚠️ {{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: 'warning'
+
+  # P2-P3 信息接收器（Slack 低优先级频道）
+  - name: 'info-receiver'
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#fota-ops'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '#439FE0'
+
+# 抑制规则
+inhibit_rules:
+  # 如果服务宕机，抑制该实例的其他告警
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match_re:
+      alertname: '(HighLatency|HighErrorRate|HighHeapMemory|HighCPUUsage)'
+    equal: ['instance']
+
+  # 如果 JVM 堆内存严重，抑制一般堆内存告警
+  - source_match:
+      alertname: 'CriticalHeapMemory'
+    target_match:
+      alertname: 'HighHeapMemory'
+    equal: ['instance']
+
+  # 如果 CPU 严重，抑制一般 CPU 告警
+  - source_match:
+      alertname: 'CriticalCPUUsage'
+    target_match:
+      alertname: 'HighCPUUsage'
+    equal: ['instance']
+
+# 模板文件（可选）
+# templates:
+#   - '/etc/alertmanager/templates/*.tmpl'

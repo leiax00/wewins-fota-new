@@ -1,5 +1,7 @@
 package com.wewins.fota.adapter.api.device;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.wewins.fota.adapter.api.device.dto.UpgradeCheckRespDTO;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.upgrade.UpgradeCheckService;
@@ -8,10 +10,11 @@ import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
 import com.wewins.fota.common.util.HttpUtils;
+import com.wewins.fota.infra.metrics.NodeIdentity;
+import com.wewins.fota.infra.sentinel.UpgradeCheckBlockHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,14 +43,14 @@ import org.springframework.web.bind.annotation.*;
 public class UpgradeCheckController {
 
     private final UpgradeCheckService upgradeCheckService;
-
-    @Value("${app.node.code:main}")
-    private String region;
+    private final UpgradeCheckBlockHandler blockHandler;
+    private final NodeIdentity nodeIdentity;
 
     /**
      * 检查设备升级（GET 方法）
      */
     @GetMapping("/v1/upgrade/check")
+    @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgrade(
             @ModelAttribute UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
@@ -59,28 +62,64 @@ public class UpgradeCheckController {
     }
 
     /**
+     * Sentinel BlockHandler - 方法签名必须与原方法一致（最后追加 BlockException）
+     */
+    public ResponseEntity<UpgradeCheckRespDTO> handleBlock(
+            UpgradeCheckReqDTO request,
+            HttpServletRequest httpRequest,
+            BlockException ex) {
+        return ResponseEntity.ok(blockHandler.handleBlock(request, buildLogContext(httpRequest), ex));
+    }
+
+    /**
+     * Sentinel Fallback - 方法签名必须与原方法一致（最后追加 Throwable）
+     */
+    public ResponseEntity<UpgradeCheckRespDTO> handleFallback(
+            UpgradeCheckReqDTO request,
+            HttpServletRequest httpRequest,
+            Throwable t) {
+        log.error("Fallback triggered for upgrade check: imei={}", request.getImei(), t);
+        return ResponseEntity.ok(UpgradeCheckRespDTO.builder()
+                .code(UpgradeDecision.ERROR.getCode())
+                .requestId(java.util.UUID.randomUUID().toString())
+                .control(UpgradeCheckRespDTO.Control.builder()
+                        .checkInterval(3600)
+                        .downloadDelay(0)
+                        .build())
+                .build());
+    }
+
+    /**
      * 兼容老系统的版本检测
      * <p>
      * 老接口参数: imei, version, language, tags
      * </p>
      */
     @GetMapping("/fota/version/query")
+    @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgradeOld(
             @ModelAttribute UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
         log.debug("[Legacy API] 收到设备检查 GET 请求: {}", request);
-        return checkUpgrade(request, httpRequest);
+        CheckLogContext logContext = buildLogContext(httpRequest);
+        CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);
+        UpgradeCheckRespDTO response = convertToRespDTO(result);
+        return ResponseEntity.ok(response);
     }
 
     /**
      * 检查设备升级（POST 方法）
      */
     @PostMapping("/v1/upgrade/check")
+    @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgradePost(
             @RequestBody UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
         log.debug("收到设备检查 POST 请求: {}", request);
-        return checkUpgrade(request, httpRequest);
+        CheckLogContext logContext = buildLogContext(httpRequest);
+        CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);
+        UpgradeCheckRespDTO response = convertToRespDTO(result);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -93,7 +132,7 @@ public class UpgradeCheckController {
         return CheckLogContext.builder()
                 .clientIp(HttpUtils.extractClientIp(httpRequest))
                 .userAgent(httpRequest.getHeader("User-Agent"))
-                .region(region)
+                .region(nodeIdentity.regionCode())
                 .build();
     }
 

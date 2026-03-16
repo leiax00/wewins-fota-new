@@ -2,6 +2,8 @@ package com.wewins.fota;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.TimeZone;
 
@@ -26,6 +28,8 @@ import java.util.TimeZone;
  * @since 0.1.0
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
+@EnableScheduling
 public class FotaApplication {
 
     /**
@@ -35,6 +39,11 @@ public class FotaApplication {
      */
     public static void main(String[] args) {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+
+        // 设置 Sentinel 日志目录与 fota-service 一致
+        System.setProperty("csp.sentinel.log.dir", "logs");
+        System.setProperty("project.name", "fota-service");
+
         SpringApplication app = new SpringApplication(FotaApplication.class);
         app.run(args);
     }

@@ -70,13 +70,17 @@ public class RedisDeviceActivityBitmapRepository implements DeviceActivityBitmap
     @Override
     public long countActive(LocalDate day) {
         String key = buildBitmapKey(day);
+        return bitCount(key, "day=" + day);
+    }
+
+    private long bitCount(String key, String context) {
         try {
             return redisTemplate.execute((RedisCallback<Long>) connection -> {
                 byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
                 return connection.bitCount(keyBytes);
             });
         } catch (Exception e) {
-            log.error("统计活跃设备数失败: day={}, key={}", day, key, e);
+            log.error("统计活跃设备数失败: {}, key={}", context, key, e);
             return 0L;
         }
     }

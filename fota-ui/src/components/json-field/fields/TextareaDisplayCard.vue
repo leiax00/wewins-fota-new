@@ -109,19 +109,19 @@ const onEdit = () => {
 
 <style scoped>
 .textarea-display-card {
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
   padding: 10px;
   transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--el-box-shadow-lighter);
   cursor: pointer;
   width: 100%;
 }
 
 .textarea-display-card:hover {
   border-color: var(--el-color-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .textarea-display-card__header {

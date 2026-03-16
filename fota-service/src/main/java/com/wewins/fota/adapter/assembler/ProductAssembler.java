@@ -1,5 +1,6 @@
 package com.wewins.fota.adapter.assembler;
 
+import com.wewins.fota.common.util.TimeConstants;
 import com.wewins.fota.application.product.dto.ProductReqDTO;
 import com.wewins.fota.application.product.dto.ProductRespDTO;
 import com.wewins.fota.domain.product.model.entity.Product;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductAssembler {
 
+    private static final int DEFAULT_CHECK_PERIOD_SECONDS = 6 * TimeConstants.SECONDS_PER_HOUR;
+
     /**
      * 将 ProductReqDTO 转换为 Product 实体
      */
@@ -18,12 +21,15 @@ public class ProductAssembler {
         if (req == null) {
             return null;
         }
-        return Product.builder()
+        Product.ProductBuilder builder = Product.builder()
                 .name(req.getName())
                 .manufacturer(req.getManufacturer())
                 .model(req.getModel())
                 .remark(req.getRemark())
-                .build();
+                .checkPeriodSeconds(req.getCheckPeriodSeconds() != null
+                        ? req.getCheckPeriodSeconds()
+                        : DEFAULT_CHECK_PERIOD_SECONDS);
+        return builder.build();
     }
 
     /**
@@ -39,6 +45,7 @@ public class ProductAssembler {
                 .manufacturer(product.getManufacturer())
                 .model(product.getModel())
                 .remark(product.getRemark())
+                .checkPeriodSeconds(product.getCheckPeriodSeconds())
                 .createdAt(product.getCreatedAt())
                 .createdBy(product.getCreatedBy())
                 .updatedAt(product.getUpdatedAt())

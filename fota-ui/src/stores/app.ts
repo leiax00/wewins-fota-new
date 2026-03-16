@@ -3,6 +3,7 @@ import { safeStorage } from '@/utils/storage'
 
 const TAB_STORAGE_KEY = 'app_tabs_v1'
 const ACTIVE_TAB_STORAGE_KEY = 'app_active_tab_v1'
+const MAX_TABS = 4
 
 const parseBoolean = (value: string | undefined, fallback: boolean) => {
   if (value == null) return fallback
@@ -20,6 +21,23 @@ export interface AppTabItem {
   closable?: boolean
 }
 
+const trimTabs = (tabs: AppTabItem[], activeTab = ''): AppTabItem[] => {
+  const nextTabs = [...tabs]
+
+  while (nextTabs.length > MAX_TABS) {
+    let removableIndex = nextTabs.findIndex((item) => !item.affix && item.key !== activeTab)
+    if (removableIndex < 0) {
+      removableIndex = nextTabs.findIndex((item) => !item.affix)
+    }
+    if (removableIndex < 0) {
+      break
+    }
+    nextTabs.splice(removableIndex, 1)
+  }
+
+  return nextTabs
+}
+
 const readStoredTabs = (): AppTabItem[] => {
   const raw = safeStorage.getItem(TAB_STORAGE_KEY)
   if (!raw) return []
@@ -27,7 +45,8 @@ const readStoredTabs = (): AppTabItem[] => {
   try {
     const parsed = JSON.parse(raw) as AppTabItem[]
     if (!Array.isArray(parsed)) return []
-    return parsed
+    return trimTabs(
+      parsed
       .filter((item) => item && item.key && item.path && item.title)
       .map((item) => ({
         key: item.key,
@@ -36,6 +55,7 @@ const readStoredTabs = (): AppTabItem[] => {
         affix: Boolean(item.affix),
         closable: item.closable !== false,
       }))
+    )
   } catch {
     return []
   }
@@ -72,6 +92,7 @@ export const useAppStore = defineStore('app', {
         }
       }
       this.activeTab = tab.key
+      this.tabsList = trimTabs(this.tabsList, this.activeTab)
       this.persistTabs()
     },
 
@@ -81,6 +102,7 @@ export const useAppStore = defineStore('app', {
           this.tabsList.unshift(tab)
         }
       }
+      this.tabsList = trimTabs(this.tabsList, this.activeTab)
       this.persistTabs()
     },
 

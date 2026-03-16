@@ -1,0 +1,103 @@
+# Prometheus 配置文件
+# 用于采集 FOTA 服务实例的监控指标
+
+global:
+  # 抓取间隔（默认 15 秒）
+  scrape_interval: 15s
+  # 告警规则评估间隔
+  evaluation_interval: 15s
+  # 全局标签
+  external_labels:
+    cluster: 'fota-prod'
+
+# 告警管理器配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# 告警规则文件
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+# 抓取配置
+scrape_configs:
+  # FOTA 服务实例
+  - job_name: 'fota-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    honor_labels: true
+    static_configs:
+      # 生产环境实例列表（根据实际部署修改）
+      - targets:
+          - 'backend:8080'
+        labels:
+          cluster: 'fota-prod'
+          env: 'production'
+    # 开发环境（可选）
+    # - targets:
+    #     - 'localhost:8080'
+    #   labels:
+    #     cluster: 'fota-dev'
+    #     env: 'development'
+
+  # 宿主机指标采集 (node_exporter)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      # 宿主机列表（根据实际部署修改）
+      - targets:
+          - 'node-exporter:9100'
+        labels:
+          cluster: 'fota-prod'
+          env: 'production'
+          region: 'main'
+          host: 'lax'
+          node: 'main-lax-node-exporter'
+    relabel_configs:
+      - source_labels: [node]
+        target_label: instance
+      # 多主机示例：
+      # - targets:
+      #     - '10.0.1.1:9100'
+      #   labels:
+      #     region: 'main'
+      #     host: 'host-1'
+      #     node: 'main-host-1-node-exporter'
+      # - targets:
+      #     - '10.0.1.2:9100'
+      #   labels:
+      #     region: 'main'
+      #     host: 'host-2'
+      #     node: 'main-host-2-node-exporter'
+
+  # Docker 容器指标采集 (cAdvisor)
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+        labels:
+          cluster: 'fota-prod'
+          env: 'production'
+          region: 'main'
+          host: 'lax'
+          node: 'main-lax-cadvisor'
+      # 多主机示例：
+      # - targets:
+      #     - '10.0.1.1:8080'
+      #   labels:
+      #     region: 'main'
+      #     host: 'host-1'
+      #     node: 'main-host-1-cadvisor'
+    relabel_configs:
+      - source_labels: [node]
+        target_label: instance
+
+  # Prometheus 自监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          cluster: 'fota-prod'

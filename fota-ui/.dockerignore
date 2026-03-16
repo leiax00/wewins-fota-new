@@ -1,0 +1,33 @@
+# 依赖
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# 构建产物（会在容器内重新构建）
+dist
+
+# 开发文件
+.vscode
+.idea
+*.local
+.env.development
+.env.test
+
+# 缓存
+*.log
+.DS_Store
+Thumbs.db
+
+# 测试覆盖
+coverage
+.nyc_output
+
+# 其他
+.git
+.gitignore
+README.md
+*.md
+
+yarn.lock
+package-lock.json

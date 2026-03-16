@@ -70,6 +70,11 @@ const syncCodeFromModel = () => {
 const canUseFormMode = computed(
   () => !loading.value && !loadError.value && definitions.value.length > 0
 )
+const hasAvailableFields = computed(() => definitions.value.length > 0)
+const availableFieldEntries = computed(() =>
+  definitions.value.map((item) => `${item.key}: ${item.label}`)
+)
+const canSwitchToFormMode = computed(() => !loading.value && !loadError.value)
 
 /**
  * 格式化校验错误信息
@@ -160,9 +165,6 @@ const loadSchema = async () => {
     definitions.value = await loadJsonFieldSchema(props.dictTypeCode)
 
     if (definitions.value.length === 0) {
-      // 没有配置字段，降级到代码模式
-      loadError.value = t('jsonField.schemaEmpty')
-      currentMode.value = 'code'
       emitValidation([])
       return
     }
@@ -240,6 +242,10 @@ const onCodeInput = (value: string) => {
  */
 const onCodeBlur = () => {
   formatCode(false)
+}
+
+const handleFormatCodeClick = () => {
+  formatCode()
 }
 
 /**
@@ -348,7 +354,7 @@ onMounted(() => {
       >
         <el-button
           :type="currentMode === 'form' ? 'primary' : ''"
-          :disabled="!canUseFormMode"
+          :disabled="!canSwitchToFormMode"
           size="small"
           @click="currentMode = 'form'"
         >
@@ -410,13 +416,44 @@ onMounted(() => {
         @validation-change="emitValidation"
       />
 
+      <div
+        v-else-if="currentMode === 'form' && !loadError"
+        class="json-field-editor__empty-hint"
+      >
+        {{ t('jsonField.noAvailableFields') }}
+      </div>
+
       <!-- 代码模式 -->
       <div
         v-else
         class="code-mode-wrapper"
       >
         <div class="code-mode-wrapper__toolbar">
-          <span class="code-mode-wrapper__title">{{ t('jsonField.codeModeTitle') }}</span>
+          <div class="code-mode-wrapper__heading">
+            <span class="code-mode-wrapper__title">{{ t('jsonField.codeModeTitle') }}</span>
+            <el-tooltip
+              v-if="!loading && !loadError && hasAvailableFields"
+              placement="top"
+            >
+              <template #content>
+                <div class="json-field-editor__tooltip">
+                  <div class="json-field-editor__tooltip-title">
+                    {{ t('jsonField.availableFields') }}
+                  </div>
+                  <div
+                    v-for="entry in availableFieldEntries"
+                    :key="entry"
+                    class="json-field-editor__tooltip-line"
+                  >
+                    {{ entry }}
+                  </div>
+                </div>
+              </template>
+              <el-icon class="json-field-editor__info-icon">
+                <InfoFilled />
+              </el-icon>
+            </el-tooltip>
+          </div>
           <el-tooltip
             :content="t('jsonField.formatJson')"
             placement="top"
@@ -425,7 +462,7 @@ onMounted(() => {
               class="code-format-btn"
               size="small"
               :disabled="disabled"
-              @click="formatCode"
+              @click="handleFormatCodeClick"
             >
               <el-icon><MagicStick /></el-icon>
               <span class="code-format-btn__text">{{ t('jsonField.formatJson') }}</span>
@@ -456,6 +493,41 @@ onMounted(() => {
   max-height: 300px;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.json-field-editor__empty-hint {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.code-mode-wrapper__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.json-field-editor__info-icon {
+  color: var(--el-color-info);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.json-field-editor__tooltip {
+  max-width: 320px;
+}
+
+.json-field-editor__tooltip-title {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.json-field-editor__tooltip-line {
+  line-height: 1.6;
+  word-break: break-all;
 }
 
 /* 自定义滚动条样式 */

@@ -1,5 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.application.load.DynamicIntervalService;
 import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckContext;
 import com.wewins.fota.application.upgrade.dto.CheckLogContext;
@@ -28,12 +29,12 @@ import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.model.aggregate.DeviceCheckLog;
 import com.wewins.fota.domain.reporting.service.CheckLogGateway;
+import com.wewins.fota.infra.metrics.FotaMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +78,8 @@ public class UpgradeCheckService {
     private final DeviceCheckLogBuilder checkLogBuilder;
     private final DeviceInfoUpdateGateway deviceInfoUpdateGateway;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final DynamicIntervalService dynamicIntervalService;
+    private final FotaMetrics fotaMetrics;
 
     public UpgradeCheckService(
             DeviceRepository deviceRepository,
@@ -93,7 +96,9 @@ public class UpgradeCheckService {
             CheckLogGateway checkLogGateway,
             DeviceCheckLogBuilder checkLogBuilder,
             DeviceInfoUpdateGateway deviceInfoUpdateGateway,
-            FirmwareVersionRepository firmwareVersionRepository) {
+            FirmwareVersionRepository firmwareVersionRepository,
+            DynamicIntervalService dynamicIntervalService,
+            FotaMetrics fotaMetrics) {
         this.deviceRepository = deviceRepository;
         this.deviceCacheService = deviceCacheService;
         this.upgradePolicyRepository = upgradePolicyRepository;
@@ -109,6 +114,8 @@ public class UpgradeCheckService {
         this.checkLogBuilder = checkLogBuilder;
         this.deviceInfoUpdateGateway = deviceInfoUpdateGateway;
         this.firmwareVersionRepository = firmwareVersionRepository;
+        this.dynamicIntervalService = dynamicIntervalService;
+        this.fotaMetrics = fotaMetrics;
     }
 
     /**
@@ -172,6 +179,7 @@ public class UpgradeCheckService {
             return ctx.getResult();
         } finally {
             recordCheckLog(ctx);
+            recordBusinessMetrics(ctx);
             checkAndSendDeviceInfoUpdate(ctx);
         }
     }
@@ -219,7 +227,7 @@ public class UpgradeCheckService {
 
     private void markDeviceActive(CheckContext ctx) {
         try {
-            bitmapRepository.markActive(LocalDate.now(), ctx.deviceId());
+            bitmapRepository.markActive(LocalDateTime.now().toLocalDate(), ctx.deviceId());
             log.debug("标记设备活跃: imei={}, deviceId={}", ctx.imei(), ctx.deviceId());
         } catch (Exception e) {
             log.error("标记设备活跃失败: imei={}, deviceId={}", ctx.imei(), ctx.deviceId(), e);
@@ -247,7 +255,9 @@ public class UpgradeCheckService {
         
         if (policies.isEmpty()) {
             log.debug("未找到适用的升级策略: deviceId={}, versionId={}", ctx.deviceId(), ctx.getVersionId());
-            ctx.setResult(CheckResult.noUpdate(ctx.getRequestId()));
+            CheckResult result = CheckResult.noUpdate(ctx.getRequestId());
+            result.setCheckInterval(dynamicIntervalService.calculateCheckInterval(ctx.productId()));
+            ctx.setResult(result);
             return;
         }
 
@@ -259,8 +269,7 @@ public class UpgradeCheckService {
                 ctx.getDevice(),
                 ctx.getMatchedPolicy(),
                 ctx.getRequestId(),
-                ctx.getRequest().getLang(),
-                ctx.getRequest().getCheckMode() == CheckMode.AUTO
+                ctx.getRequest().getLang()
         );
         ctx.setResult(result);
     }
@@ -348,6 +357,9 @@ public class UpgradeCheckService {
     }
 
     private void recordCheckLog(CheckContext ctx) {
+        if (!ctx.hasResult()) {
+            return;
+        }
         try {
             DeviceCheckLog checkLog = checkLogBuilder.build(
                     ctx.getRequest(), 
@@ -361,6 +373,30 @@ public class UpgradeCheckService {
             log.error("检查日志记录失败: imei={}, requestId={}",
                     ctx.imei(),
                     ctx.getRequestId(), e);
+        }
+    }
+
+    private void recordBusinessMetrics(CheckContext ctx) {
+        if (!ctx.hasResult()) {
+            return;
+        }
+        String imei = ctx.imei();
+        String productModel = ctx.getProduct() != null ? ctx.getProduct().getModel() : ctx.productModel();
+        String decision = ctx.getResult().getDecision() != null ? ctx.getResult().getDecision().name() : "UNKNOWN";
+        fotaMetrics.recordDeviceCheck(productModel, decision);
+
+        UpgradePolicy policy = ctx.getMatchedPolicy();
+        if (policy != null) {
+            // 判断是否命中灰度
+            int grayRate = policy.getGrayRate();
+            boolean grayHit = grayRate > 0 && grayReleaseService.hitsGrayBucket(imei, grayRate);
+            fotaMetrics.recordPolicyMatch(productModel, true, grayHit);
+        } else {
+            fotaMetrics.recordPolicyMatch(productModel, false, false);
+        }
+
+        if (ctx.getRateLimitDecision() != null && !ctx.getRateLimitDecision().isAllowed()) {
+            fotaMetrics.recordRateLimited("device-rate-limit", ctx.getRateLimitDecision().getReason());
         }
     }
 

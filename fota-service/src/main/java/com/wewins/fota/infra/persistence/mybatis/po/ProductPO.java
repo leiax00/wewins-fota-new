@@ -24,6 +24,8 @@ public class ProductPO extends BaseEntity implements Serializable {
 
     private String remark;
 
+    private Integer checkPeriodSeconds;
+
     @TableLogic(value = "NULL", delval = "now()")
     private LocalDateTime deletedAt;
 }

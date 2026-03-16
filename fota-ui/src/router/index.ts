@@ -37,7 +37,7 @@ declare module 'vue-router' {
   }
 }
 
-// 基础路由（登录、403、404）
+// 基础路由（登录、403、404、隐藏的表单页）
 const baseRoutes: RouteRecordRaw[] = [
   {
     path: '/login',

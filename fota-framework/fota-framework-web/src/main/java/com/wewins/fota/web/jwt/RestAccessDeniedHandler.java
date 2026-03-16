@@ -26,6 +26,11 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
 
+        if (response.isCommitted()) {
+            log.debug("响应已提交，跳过 403 写回: uri={}", request.getRequestURI());
+            return;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("权限不足: uri={}, message={}",
                     request.getRequestURI(), accessDeniedException.getMessage());

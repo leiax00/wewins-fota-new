@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadProps, UploadRequestOptions } from 'element-plus'
+import type { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
@@ -98,6 +99,15 @@ const retryFile = ref<File | null>(null)
  */
 const uploadTicket = ref(0)
 
+const createUploadAjaxError = (message: string): UploadAjaxError => {
+  const error = new Error(message) as UploadAjaxError
+  error.name = 'UploadAjaxError'
+  error.status = 400
+  error.method = 'POST'
+  error.url = '/admin/firmware/upload'
+  return error
+}
+
 /**
  * 表单校验规则
  */
@@ -174,7 +184,7 @@ const beforeUpload: UploadProps['beforeUpload'] = () => {
 const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOptions) => {
   const file = options.file as File
   if (!form.productId) {
-    const err = new Error('请先选择产品')
+    const err = createUploadAjaxError('请先选择产品')
     uploadState.status = 'FAILED'
     uploadState.error = err.message
     options.onError?.(err)
@@ -253,7 +263,7 @@ const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOp
     const message = e instanceof Error ? e.message : '上传失败'
     uploadState.status = 'FAILED'
     uploadState.error = message
-    options.onError?.(e as Error)
+    options.onError?.(createUploadAjaxError(message))
   } finally {
     if (uploadTicket.value === currentTicket) {
       uploadState.abortController = null
@@ -705,7 +715,7 @@ onMounted(() => {
         prop="uploadSessionId"
         label="固件包上传"
       >
-        <div class="w-full rounded border border-[var(--el-border-color)] p-4">
+        <div class="firmware-upload-panel">
           <!-- 上传按钮 -->
           <el-upload
             ref="uploadRef"
@@ -719,6 +729,7 @@ onMounted(() => {
             :disabled="submitting || uploadState.status === 'UPLOADING'"
           >
             <el-button
+              class="firmware-upload-panel__button"
               type="primary"
               plain
               :loading="uploadState.status === 'UPLOADING'"
@@ -736,16 +747,16 @@ onMounted(() => {
           <!-- 文件信息显示 -->
           <div
             v-if="uploadState.fileName"
-            class="mt-3 text-sm"
+            class="firmware-upload-panel__meta"
           >
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <span class="text-gray-500">文件名：</span>
-                <span class="ml-1 font-medium">{{ uploadState.fileName }}</span>
+                <span class="firmware-upload-panel__meta-label">文件名：</span>
+                <span class="firmware-upload-panel__meta-value">{{ uploadState.fileName }}</span>
               </div>
               <div>
-                <span class="text-gray-500">文件大小：</span>
-                <span class="ml-1 font-medium">{{ formatFileSize(uploadState.fileSize) }}</span>
+                <span class="firmware-upload-panel__meta-label">文件大小：</span>
+                <span class="firmware-upload-panel__meta-value">{{ formatFileSize(uploadState.fileSize) }}</span>
               </div>
             </div>
           </div>
@@ -839,3 +850,45 @@ onMounted(() => {
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.firmware-upload-panel {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-bg-color-overlay);
+}
+
+.firmware-upload-panel__meta {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+
+.firmware-upload-panel__meta-label {
+  color: var(--el-text-color-secondary);
+}
+
+.firmware-upload-panel__meta-value {
+  margin-left: 4px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.firmware-upload-panel__button {
+  --el-button-bg-color: color-mix(in srgb, var(--el-color-primary) 14%, var(--el-bg-color-overlay));
+  --el-button-border-color: color-mix(in srgb, var(--el-color-primary) 38%, var(--el-border-color));
+  --el-button-text-color: var(--el-color-primary);
+  --el-button-hover-bg-color: color-mix(in srgb, var(--el-color-primary) 20%, var(--el-bg-color-overlay));
+  --el-button-hover-border-color: var(--el-color-primary);
+  --el-button-hover-text-color: var(--el-color-primary);
+  --el-button-active-bg-color: color-mix(in srgb, var(--el-color-primary) 24%, var(--el-bg-color-overlay));
+  --el-button-active-border-color: var(--el-color-primary);
+  --el-button-active-text-color: var(--el-color-primary);
+  --el-button-disabled-bg-color: var(--el-fill-color-light);
+  --el-button-disabled-border-color: var(--el-border-color-lighter);
+  --el-button-disabled-text-color: var(--el-text-color-placeholder);
+}
+</style>

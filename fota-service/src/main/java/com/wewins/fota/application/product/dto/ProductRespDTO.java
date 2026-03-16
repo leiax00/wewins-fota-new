@@ -38,6 +38,11 @@ public class ProductRespDTO {
     private String remark;
 
     /**
+     * 产品默认检测周期，单位秒。
+     */
+    private Integer checkPeriodSeconds;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

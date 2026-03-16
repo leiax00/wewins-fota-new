@@ -11,6 +11,7 @@ import {
 } from '@/api/deviceImportBatch'
 import { searchProducts, type ProductItem } from '@/api/product'
 import { trimFormValues } from '@/utils/form'
+import type { TagProps, ProgressProps } from 'element-plus'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -49,7 +50,9 @@ const fetchProducts = async () => {
 }
 
 // 批次状态选项
-const statusOptions: Array<{ value: string; label: string; type: string }> = [
+type BatchStatusTagType = NonNullable<TagProps['type']>
+
+const statusOptions: Array<{ value: string; label: string; type: BatchStatusTagType }> = [
   { value: 'IMPORTING', label: t('device.importing'), type: 'info' },
   { value: 'SUCCESS', label: t('device.importSuccess'), type: 'success' },
   { value: 'FAILED', label: t('device.importFailed'), type: 'danger' },
@@ -59,8 +62,14 @@ const statusOptions: Array<{ value: string; label: string; type: string }> = [
 /**
  * 批次状态类型
  */
-const getStatusType = (status: string) => {
+const getStatusType = (status: string): BatchStatusTagType => {
   return statusOptions.find(s => s.value === status)?.type || 'info'
+}
+
+const getProgressStatus = (status: string): ProgressProps['status'] => {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'exception'
+  return undefined
 }
 
 /**
@@ -262,11 +271,7 @@ onMounted(() => {
           <div class="flex items-center gap-2">
             <el-progress
               :percentage="getProgressPercent(row)"
-              :status="
-                row.status === 'SUCCESS' ? 'success' :
-                row.status === 'FAILED' ? 'exception' :
-                undefined
-              "
+              :status="getProgressStatus(row.status)"
               :stroke-width="8"
               style="flex: 1"
             />

@@ -2,6 +2,7 @@ package com.wewins.fota.application.upgrade;
 
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
+import com.wewins.fota.application.load.DynamicIntervalService;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
@@ -41,14 +42,12 @@ public class UpgradeResponseBuilder {
 
     private final SignedUrlService signedUrlService;
     private final FirmwareVersionRepository firmwareVersionRepository;
+    private final DynamicIntervalService dynamicIntervalService;
 
     private static final DateTimeFormatter ISO_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-    /** 默认检查间隔：1 小时（秒） */
     private static final int DEFAULT_CHECK_INTERVAL = 3600;
-
-    /** 默认下载延迟：5 分钟（秒） */
     private static final int DEFAULT_DOWNLOAD_DELAY = 300;
 
     /**
@@ -61,10 +60,9 @@ public class UpgradeResponseBuilder {
      * @param policy    匹配的升级策略
      * @param requestId 请求唯一标识（用于关联 check 和 report）
      * @param lang      语言代码（如 "en", "zh"），可选
-     * @param autoMode  是否自动检查模式
      * @return 检查结果
      */
-    public CheckResult buildResponse(Device device, UpgradePolicy policy, String requestId, String lang, Boolean autoMode) {
+    public CheckResult buildResponse(Device device, UpgradePolicy policy, String requestId, String lang) {
         // 1. 加载目标固件版本信息
         FirmwareVersion targetFirmware = loadTargetFirmware(policy.getTargetVersionId());
         if (targetFirmware == null) {
@@ -80,8 +78,9 @@ public class UpgradeResponseBuilder {
         }
 
         // 3. 计算控制参数
-        int checkInterval = calculateCheckInterval(autoMode);
-        int downloadDelay = calculateDownloadDelay();
+        Long productId = device.getProductId();
+        int checkInterval = calculateCheckInterval(productId);
+        int downloadDelay = calculateDownloadDelay(productId);
 
         // 4. 生成签名下载 URL
         String downloadUrl = generateDownloadUrl(targetFirmware, policy, requestId);
@@ -196,13 +195,22 @@ public class UpgradeResponseBuilder {
         }
     }
 
-    private int calculateCheckInterval(Boolean autoMode) {
-        boolean isAuto = Boolean.TRUE.equals(autoMode);
-        return isAuto ? 86400 : DEFAULT_CHECK_INTERVAL;
+    private int calculateCheckInterval(Long productId) {
+        try {
+            return dynamicIntervalService.calculateCheckInterval(productId);
+        } catch (Exception e) {
+            log.warn("Failed to calculate dynamic check interval, using default", e);
+            return DEFAULT_CHECK_INTERVAL;
+        }
     }
 
-    private int calculateDownloadDelay() {
-        return DEFAULT_DOWNLOAD_DELAY;
+    private int calculateDownloadDelay(Long productId) {
+        try {
+            return dynamicIntervalService.calculateDownloadDelay(productId);
+        } catch (Exception e) {
+            log.warn("Failed to calculate dynamic download delay, using default", e);
+            return DEFAULT_DOWNLOAD_DELAY;
+        }
     }
 
     private String formatReleaseDate(FirmwareVersion firmware) {

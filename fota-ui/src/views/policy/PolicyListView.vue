@@ -11,7 +11,6 @@ import {
   pagePolicies,
   updatePolicyStatus,
   type PolicyStatus,
-  type TimeWindowDTO,
   type UpgradePolicyItem,
 } from '@/api/policy'
 import { searchProducts, type ProductItem } from '@/api/product'

@@ -199,19 +199,19 @@ const onRemove = (event: MouseEvent) => {
 
 <style scoped>
 .i18n-display-card {
-  background: #fff;
+  background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color);
   border-radius: 8px;
   padding: 10px;
   transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--el-box-shadow-lighter);
   cursor: pointer;
   width: 100%;
 }
 
 .i18n-display-card:hover {
   border-color: var(--el-color-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .i18n-display-card__header {
@@ -288,6 +288,7 @@ const onRemove = (event: MouseEvent) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  color: var(--el-text-color-primary);
 }
 
 .i18n-display-card__empty-text {

@@ -15,6 +15,7 @@ export interface DeviceImportBatchItem {
   batchName: string
   productId?: number
   productName?: string
+  sourceFile?: string
   status: BatchStatus
   totalCount: number
   successCount: number
