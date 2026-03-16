@@ -2,6 +2,7 @@ package com.wewins.fota.application.device;
 
 import com.wewins.fota.domain.device.model.aggregate.DeviceInfoUpdateMessage;
 import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.vo.DeviceCache;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
@@ -14,7 +15,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,7 +46,6 @@ public class DeviceInfoUpdateAppService {
                 .collect(Collectors.toMap(Device::getImei, Function.identity()));
 
         List<Device> toUpdate = new ArrayList<>();
-        List<String> imeis = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
         for (DeviceInfoUpdateMessage message : messageMap.values()) {
@@ -58,18 +57,17 @@ public class DeviceInfoUpdateAppService {
 
             updateDevice(device, message, now);
             toUpdate.add(device);
-            imeis.add(device.getImei());
         }
 
         if (!toUpdate.isEmpty()) {
             deviceRepository.updateBatch(toUpdate);
 
             try {
-                deviceCacheRepository.evictBatch(imeis);
+                updateDeviceCacheBatch(toUpdate);
             } catch (Exception e) {
-                log.error("刷新设备缓存失败: imei count={}", imeis.size(), e);
+                log.error("更新设备缓存失败: device count={}", toUpdate.size(), e);
             }
-            
+
             log.info("设备信息批量更新完成: count={}", toUpdate.size());
         }
     }
@@ -128,5 +126,36 @@ public class DeviceInfoUpdateAppService {
 
         String partName = message.getPartName() != null ? message.getPartName() : "main";
         return parts.matchesPartVersionId(partName, message.getNewVersionId());
+    }
+
+    /**
+     * 批量更新设备缓存
+     * <p>
+     * 将更新后的设备信息直接写入缓存，而不是删除缓存。
+     * 这样下次 check 时可以直接从缓存读取，避免数据库查询。
+     * </p>
+     *
+     * @param devices 已更新的设备列表
+     */
+    private void updateDeviceCacheBatch(List<Device> devices) {
+        int successCount = 0;
+        for (Device device : devices) {
+            try {
+                DeviceCache cache = DeviceCache.builder()
+                        .deviceId(device.getId())
+                        .productId(device.getProductId())
+                        .versionParts(device.getVersionParts())
+                        .tags(device.getTags())
+                        .importBatchId(device.getImportBatchId())
+                        .firstSeenAt(device.getFirstSeenAt())
+                        .build();
+                deviceCacheRepository.put(device.getImei(), cache);
+                successCount++;
+                log.debug("设备缓存已更新: imei={}, deviceId={}", device.getImei(), device.getId());
+            } catch (Exception e) {
+                log.warn("更新单个设备缓存失败: imei={}", device.getImei(), e);
+            }
+        }
+        log.info("设备缓存批量更新完成: total={}, success={}", devices.size(), successCount);
     }
 }
