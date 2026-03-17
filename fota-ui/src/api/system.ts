@@ -25,7 +25,7 @@ export interface UserPayload {
   email: string
   phone: string
   status: string
-  passwordHash?: string
+  password?: string
 }
 
 export interface RoleItem {

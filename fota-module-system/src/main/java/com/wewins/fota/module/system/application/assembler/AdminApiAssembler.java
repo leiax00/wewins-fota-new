@@ -17,6 +17,8 @@ import com.wewins.fota.module.system.dto.RoleReqDTO;
 import com.wewins.fota.module.system.dto.RoleRespDTO;
 import com.wewins.fota.module.system.dto.UserReqDTO;
 import com.wewins.fota.module.system.dto.UserRespDTO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -26,21 +28,57 @@ import java.util.function.Function;
  * Admin API DTO assembler.
  */
 @Component
+@RequiredArgsConstructor
 public class AdminApiAssembler {
 
+    private final PasswordEncoder passwordEncoder;
+
+    /**
+     * 将 DTO 转换为 User 实体（用于创建用户）
+     * <p>
+     * 注意：此方法会对明文密码进行加密处理
+     * </p>
+     */
     public User toUserEntity(UserReqDTO req) {
         if (req == null) {
             return null;
         }
         return User.builder()
                 .username(req.getUsername())
-                .passwordHash(req.getPasswordHash())
                 .displayName(req.getDisplayName())
                 .email(req.getEmail())
                 .phone(req.getPhone())
                 .status(req.getStatus())
                 .tenantId(req.getTenantId())
                 .build();
+    }
+
+    /**
+     * 将 DTO 转换为 User 实体，并加密密码
+     * <p>
+     * 用于创建用户时，将明文密码加密后存储
+     * </p>
+     */
+    public User toUserEntityWithPassword(UserReqDTO req) {
+        User user = toUserEntity(req);
+        if (user != null && req.getPassword() != null && !req.getPassword().isBlank()) {
+            String encodedPassword = passwordEncoder.encode(req.getPassword());
+            user.setPasswordHash(encodedPassword);
+        }
+        return user;
+    }
+
+    /**
+     * 加密明文密码
+     *
+     * @param rawPassword 明文密码
+     * @return 加密后的密码哈希
+     */
+    public String encodePassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("密码不能为空");
+        }
+        return passwordEncoder.encode(rawPassword);
     }
 
     public UserRespDTO toUserResp(User user) {

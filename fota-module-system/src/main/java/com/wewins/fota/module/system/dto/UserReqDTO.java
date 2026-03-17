@@ -11,9 +11,9 @@ public class UserReqDTO {
     private String username;
 
     /**
-     * 管理端兼容字段，服务端不会回传该字段
+     * 明文密码（创建用户时必填）
      */
-    private String passwordHash;
+    private String password;
 
     private String displayName;
 

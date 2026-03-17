@@ -49,7 +49,7 @@ const form = reactive({
   email: '',
   phone: '',
   status: 'active',
-  passwordHash: '',
+  password: '',
 })
 
 const formRules = {
@@ -86,7 +86,7 @@ const openCreateDialog = () => {
   form.email = ''
   form.phone = ''
   form.status = 'active'
-  form.passwordHash = ''
+  form.password = ''
   dialogVisible.value = true
 }
 
@@ -98,7 +98,7 @@ const openEditDialog = (row: UserItem) => {
   form.email = row.email
   form.phone = row.phone
   form.status = row.status || 'active'
-  form.passwordHash = ''
+  form.password = ''
   dialogVisible.value = true
 }
 
@@ -112,7 +112,7 @@ const submitForm = async () => {
       email: form.email,
       phone: form.phone,
       status: form.status,
-      passwordHash: form.passwordHash || undefined,
+      password: form.password || undefined,
     })
 
     if (dialogMode.value === 'create') {
@@ -347,7 +347,7 @@ onMounted(() => {
       </el-form-item>
       <el-form-item :label="t('system.user.password')">
         <el-input
-          v-model="form.passwordHash"
+          v-model="form.password"
           type="password"
           show-password
         />

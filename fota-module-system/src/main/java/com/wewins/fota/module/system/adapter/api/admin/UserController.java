@@ -105,7 +105,12 @@ public class UserController {
         }
 
         try {
-            var user = adminApiAssembler.toUserEntity(reqDTO);
+            // 验证密码
+            if (reqDTO.getPassword() == null || reqDTO.getPassword().isBlank()) {
+                return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), "密码不能为空");
+            }
+
+            var user = adminApiAssembler.toUserEntityWithPassword(reqDTO);
             user.setId(null);
             var createdUser = userService.createUser(user, null);
 
@@ -139,7 +144,15 @@ public class UserController {
 
             var user = adminApiAssembler.toUserEntity(reqDTO);
             user.setId(id);
-            user.setPasswordHash(existingUser.getPasswordHash());
+
+            // 如果请求中有新密码，则加密后更新；否则保持原密码
+            String dtoPassword = reqDTO.getPassword();
+            if (dtoPassword != null && !dtoPassword.isBlank()) {
+                String encodedPassword = adminApiAssembler.encodePassword(dtoPassword);
+                user.setPasswordHash(encodedPassword);
+            } else {
+                user.setPasswordHash(existingUser.getPasswordHash());
+            }
 
             var updatedUser = userService.updateUser(user, null);
             log.info("用户更新成功: userId={}", updatedUser.getId());
