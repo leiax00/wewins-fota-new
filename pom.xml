@@ -30,33 +30,33 @@
         <module>fota-service</module>
     </modules>
 
-    <repositories>
-        <repository>
-            <id>aliyunmaven</id>
-            <name>Aliyun Maven</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
+<!--    <repositories>-->
+<!--        <repository>-->
+<!--            <id>aliyunmaven</id>-->
+<!--            <name>Aliyun Maven</name>-->
+<!--            <url>https://maven.aliyun.com/repository/public</url>-->
+<!--            <releases>-->
+<!--                <enabled>true</enabled>-->
+<!--            </releases>-->
+<!--            <snapshots>-->
+<!--                <enabled>true</enabled>-->
+<!--            </snapshots>-->
+<!--        </repository>-->
+<!--    </repositories>-->
 
-    <pluginRepositories>
-        <pluginRepository>
-            <id>aliyunmaven-plugin</id>
-            <name>Aliyun Maven Plugin</name>
-            <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
+<!--    <pluginRepositories>-->
+<!--        <pluginRepository>-->
+<!--            <id>aliyunmaven-plugin</id>-->
+<!--            <name>Aliyun Maven Plugin</name>-->
+<!--            <url>https://maven.aliyun.com/repository/public</url>-->
+<!--            <releases>-->
+<!--                <enabled>true</enabled>-->
+<!--            </releases>-->
+<!--            <snapshots>-->
+<!--                <enabled>true</enabled>-->
+<!--            </snapshots>-->
+<!--        </pluginRepository>-->
+<!--    </pluginRepositories>-->
 
     <build>
         <pluginManagement>
