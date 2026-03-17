@@ -1,0 +1,307 @@
+.dark .el-main {
+  background-color: var(--bg-page);
+}
+
+.dark .el-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+.dark .el-card__header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .el-menu {
+  border-right: none;
+}
+
+.dark .el-table {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  --el-table-border-color: var(--border-color);
+}
+
+.dark .el-table::before,
+.dark .el-table::after {
+  background-color: var(--border-color);
+}
+
+.dark .el-table--border {
+  border: 1px solid var(--border-color);
+}
+
+.dark .el-table--border::after {
+  background-color: var(--border-color);
+}
+
+.dark .el-table--border .el-table__cell {
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .el-table--border th.el-table__cell {
+  border-right: 1px solid var(--border-color);
+}
+
+.dark .el-table .el-table__cell {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .el-table th.el-table__cell {
+  background-color: var(--table-header-bg);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .el-table td.el-table__cell {
+  color: var(--text-regular);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dark .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: var(--table-striped-bg);
+  color: var(--text-regular);
+}
+
+.dark .el-table__body tr.hover-row > td.el-table__cell,
+.dark .el-table__body tr:hover > td.el-table__cell {
+  background-color: var(--bg-hover);
+}
+
+.dark .el-table__empty-text {
+  color: var(--text-secondary);
+}
+
+.dark .el-table__empty-block {
+  background-color: var(--bg-card);
+}
+
+.dark .el-table__inner-wrapper::before {
+  background-color: var(--border-color);
+}
+
+.dark .el-table colgroup col.name {
+  background-color: transparent;
+}
+
+.dark .el-table__header-wrapper th {
+  background-color: var(--table-header-bg);
+}
+
+.dark .el-table__body-wrapper {
+  background-color: var(--bg-card);
+}
+
+.dark .el-input__wrapper {
+  background-color: var(--bg-card);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.dark .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--border-light) inset;
+}
+
+.dark .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+
+.dark .el-select__wrapper {
+  background-color: var(--bg-card);
+}
+
+.dark .el-dialog {
+  background-color: var(--bg-card);
+}
+
+.dark .el-dropdown-menu {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+.dark .el-dropdown-menu__item:hover {
+  background-color: var(--bg-hover);
+}
+
+.dark .el-breadcrumb__inner {
+  color: var(--text-regular);
+}
+
+.dark .el-breadcrumb__inner a,
+.dark .el-breadcrumb__inner.is-link {
+  color: var(--text-secondary);
+}
+
+.dark .el-breadcrumb__inner a:hover,
+.dark .el-breadcrumb__inner.is-link:hover {
+  color: var(--el-color-primary);
+}
+
+.dark .el-breadcrumb__separator {
+  color: var(--text-placeholder);
+}
+
+.dark .el-checkbox__label,
+.dark .el-link {
+  color: var(--text-regular);
+}
+
+.dark .el-descriptions {
+  color: var(--text-primary);
+}
+
+.dark .el-descriptions__label {
+  color: var(--text-secondary);
+}
+
+.dark .el-descriptions__cell {
+  border-color: var(--border-color);
+}
+
+.dark .el-page-header__back {
+  color: var(--text-regular);
+}
+
+.dark .el-page-header__title {
+  color: var(--text-primary);
+}
+
+.dark .el-empty__description {
+  color: var(--text-secondary);
+}
+
+.dark .el-tag {
+  background-color: var(--bg-hover);
+  border-color: var(--border-color);
+  color: var(--text-regular);
+}
+
+.dark .el-button--default {
+  background-color: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.dark .el-button--default:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.dark .el-avatar {
+  background-color: var(--bg-hover);
+}
+
+.dark .el-divider {
+  border-color: var(--border-color);
+}
+
+.dark .el-form-item__label {
+  color: var(--text-regular);
+}
+
+.dark .el-pagination {
+  color: var(--text-regular);
+}
+
+.dark .el-pagination .el-select .el-input__wrapper,
+.dark .el-pagination button,
+.dark .el-pagination .el-pager li {
+  background-color: var(--bg-card);
+}
+
+.dark .el-pagination button,
+.dark .el-pagination .el-pager li {
+  color: var(--text-regular);
+}
+
+.dark .el-pagination button:hover,
+.dark .el-pagination .el-pager li:hover {
+  color: var(--el-color-primary);
+}
+
+.dark .el-pagination .el-pager li.is-active {
+  background-color: var(--el-color-primary);
+  color: #ffffff;
+}
+
+/* Alert 组件暗色主题 */
+.dark .el-alert {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark .el-alert--success {
+  background-color: rgba(103, 194, 58, 0.1) !important;
+  border-color: rgba(103, 194, 58, 0.3) !important;
+}
+
+.dark .el-alert--warning {
+  background-color: rgba(230, 162, 60, 0.1) !important;
+  border-color: rgba(230, 162, 60, 0.3) !important;
+}
+
+.dark .el-alert--info {
+  background-color: rgba(144, 147, 153, 0.1) !important;
+  border-color: rgba(144, 147, 153, 0.3) !important;
+}
+
+.dark .el-alert--error {
+  background-color: rgba(245, 108, 108, 0.1) !important;
+  border-color: rgba(245, 108, 108, 0.3) !important;
+}
+
+.dark .el-alert__title {
+  color: var(--text-primary) !important;
+}
+
+.dark .el-alert__description {
+  color: var(--text-regular) !important;
+}
+
+.dark .el-alert__content {
+  color: var(--text-primary) !important;
+}
+
+.dark .el-alert--success .el-alert__title {
+  color: #67c23a !important;
+}
+
+.dark .el-alert--warning .el-alert__title {
+  color: #e6a23c !important;
+}
+
+.dark .el-alert--info .el-alert__title {
+  color: #909399 !important;
+}
+
+.dark .el-alert--error .el-alert__title {
+  color: #f56c6c !important;
+}
+
+.dark .el-alert__icon {
+  color: inherit !important;
+}
+
+.dark .el-alert--success .el-alert__icon {
+  color: #67c23a !important;
+}
+
+.dark .el-alert--warning .el-alert__icon {
+  color: #e6a23c !important;
+}
+
+.dark .el-alert--info .el-alert__icon {
+  color: #909399 !important;
+}
+
+.dark .el-alert--error .el-alert__icon {
+  color: #f56c6c !important;
+}
+
+.dark .el-alert__close-btn {
+  color: var(--text-secondary) !important;
+}
+
+.dark .el-alert__close-btn:hover {
+  color: var(--text-primary) !important;
+}

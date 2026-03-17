@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="LOG_FILE" source="logging.file.name" defaultValue="logs/fota-service.log"/>
+
+    <property name="CONSOLE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] %logger{36} - %msg%n"/>
+    <property name="FILE_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] %logger{36} - %msg%n"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="SSE" class="com.wewins.fota.infra.logging.LogbackSseAppender" />
+
+    <springProfile name="!dev">
+        <logger name="com.wewins.fota" level="INFO"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.apache.ibatis" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
+        <logger name="com.baomidou.mybatisplus" level="INFO"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="SSE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="dev">
+        <logger name="com.wewins.fota" level="DEBUG"/>
+        <logger name="org.springframework.security" level="INFO"/>
+        <logger name="org.apache.ibatis" level="WARN"/>
+        <logger name="org.mybatis" level="WARN"/>
+        <logger name="com.baomidou.mybatisplus" level="INFO"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="SSE"/>
+<!--            <appender-ref ref="FILE"/>-->
+        </root>
+    </springProfile>
+</configuration>

@@ -1,0 +1,54 @@
+<clickhouse>
+
+    <!-- 关闭 trace_log（生产必须关） -->
+    <trace_log remove="1"/>
+
+    <!-- text_log 保留 1 天 -->
+    <text_log>
+        <database>system</database>
+        <table>text_log</table>
+        <ttl>event_date + INTERVAL 1 DAY</ttl>
+    </text_log>
+
+    <!-- query_log 保留 7 天 -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <ttl>event_date + INTERVAL 7 DAY</ttl>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </query_log>
+
+    <!-- metric_log 保留 3 天 -->
+    <metric_log>
+        <database>system</database>
+        <table>metric_log</table>
+        <ttl>event_date + INTERVAL 3 DAY</ttl>
+    </metric_log>
+
+    <!-- part_log 保留 3 天 -->
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <ttl>event_date + INTERVAL 3 DAY</ttl>
+    </part_log>
+
+    <!-- 异步 metric -->
+    <asynchronous_metric_log>
+        <database>system</database>
+        <table>asynchronous_metric_log</table>
+        <ttl>event_date + INTERVAL 3 DAY</ttl>
+    </asynchronous_metric_log>
+
+    <merge_tree>
+        <!-- 减少小 part 问题 -->
+        <min_bytes_for_wide_part>10485760</min_bytes_for_wide_part>
+
+        <!-- 控制合并频率 -->
+        <parts_to_throw_insert>300</parts_to_throw_insert>
+        <parts_to_delay_insert>150</parts_to_delay_insert>
+
+        <!-- 提高写入并发 -->
+        <max_parts_in_total>50000</max_parts_in_total>
+    </merge_tree>
+
+</clickhouse>

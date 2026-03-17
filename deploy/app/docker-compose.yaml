@@ -1,0 +1,61 @@
+name: fota-app
+
+# FOTA 应用容器编排配置
+# 使用前请先启动 deploy/infrastructure/ 中的基础服务
+#
+# 启动顺序：
+#   1. cd deploy/infrastructure && docker-compose up -d
+#   2. cd deploy/app && docker-compose up -d
+
+services:
+  # ================================
+  # 后端服务
+  # ================================
+  backend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: fota-backend:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # JVM 参数
+      JAVA_OPTS: >-
+        -Xms512m
+        -Xmx1024m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+    volumes:
+      - ${DEV_DIR:-/workspace/devData}/fota/backend/logs:/app/logs
+      - ${DEV_DIR:-/workspace/devData}/fota/backend/data:/app/data
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - self
+
+  # ================================
+  # 前端 UI（独立容器）
+  # ================================
+  ui:
+    build:
+      context: ../../fota-ui
+      dockerfile: Dockerfile
+    image: fota-ui:latest
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${UI_PORT:-10080}:80"
+    networks:
+      - self
+
+networks:
+  self:
+    external: true

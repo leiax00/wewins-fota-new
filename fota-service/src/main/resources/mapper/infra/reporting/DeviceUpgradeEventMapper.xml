@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wewins.fota.infra.persistence.clickhouse.reporting.mapper.DeviceUpgradeEventMapper">
+
+    <insert id="insert" parameterType="com.wewins.fota.domain.reporting.model.aggregate.DeviceUpgradeEvent">
+        INSERT INTO device_upgrade_events (
+            event_id, imei, request_id,
+            event_type, details,
+            event_time,
+            client_ip, region
+        ) VALUES (
+            #{eventId}, #{imei}, #{requestId},
+            #{eventType.code}, #{details},
+            #{eventTime},
+            toIPv4OrNull(#{clientIp}), #{region}
+        )
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO device_upgrade_events (
+            event_id, imei, request_id,
+            event_type, details,
+            event_time,
+            client_ip, region
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.eventId}, #{item.imei}, #{item.requestId},
+             #{item.eventType.code}, #{item.details},
+             #{item.eventTime},
+             toIPv4OrNull(#{item.clientIp}), #{item.region})
+        </foreach>
+    </insert>
+
+</mapper>

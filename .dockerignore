@@ -1,0 +1,31 @@
+# Git
+.git/
+.gitignore
+
+# Maven
+target/
+!target/*.jar
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+fota-service/data
+
+# Documentation
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+fota-ui

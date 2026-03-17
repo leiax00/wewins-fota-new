@@ -1,0 +1,24 @@
+{
+  "java.jdt.ls.java.home": "~/.jdks/temurin-21.0.10",
+  "java.configuration.runtimes": [
+    {
+        "name": "JavaSE-21",
+        "path": "~/.jdks/temurin-21.0.10",
+        "default": true
+    }
+  ],
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.import.maven.enabled": true,
+  "maven.executable.options": "-DskipTests",
+  "maven.executable.path": "/workspace/dev/tools/apache-maven-3.9.12/bin/mvn",
+  "java.maven.downloadSources": true,
+  "maven.view": "hierarchical",
+  "maven.terminal.customEnv": [
+    {
+      "environmentVariable": "JAVA_HOME",
+      "value": "~/.jdks/temurin-21.0.10"
+    }
+  ],
+  "maven.terminal.useJavaHome": true
+}
