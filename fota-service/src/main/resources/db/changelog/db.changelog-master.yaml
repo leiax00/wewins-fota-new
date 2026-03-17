@@ -38,3 +38,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260317_01_reset_sequences
+      author: fota-team
+      comment: "基线数据插入后重置序列位置，预留 ID 空间便于后续手动新增"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260317_01__reset_sequences_after_baseline.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
