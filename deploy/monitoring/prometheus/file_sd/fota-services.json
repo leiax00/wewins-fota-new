@@ -1,0 +1,20 @@
+[
+  {
+    "targets": ["fota-query:18080"],
+    "labels": {
+      "env": "production",
+      "cluster": "fota-prod",
+      "region": "main",
+      "host": "idquery"
+    }
+  },
+  {
+    "targets": ["fota-dl:18080"],
+    "labels": {
+      "env": "production",
+      "cluster": "fota-prod",
+      "region": "main",
+      "host": "iddl"
+    }
+  }
+]

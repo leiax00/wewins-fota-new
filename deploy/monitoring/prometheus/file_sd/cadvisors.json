@@ -1,0 +1,22 @@
+[
+  {
+    "targets": ["fota-query:18081"],
+    "labels": {
+      "region": "main",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "idquery",
+      "node": "main-idquery-cadvisor"
+    }
+  },
+  {
+    "targets": ["fota-dl:18081"],
+    "labels": {
+      "region": "main",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "iddl",
+      "node": "main-iddl-cadvisor"
+    }
+  }
+]

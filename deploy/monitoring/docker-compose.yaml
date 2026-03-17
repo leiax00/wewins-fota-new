@@ -10,6 +10,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts:/etc/prometheus/alerts:ro
+      - ${FILE_SD_DIR:-./prometheus/file_sd}:/etc/prometheus/file_sd:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -29,6 +30,8 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "19100:9100"
     command:
@@ -43,6 +46,8 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "18081:8080"
     privileged: true

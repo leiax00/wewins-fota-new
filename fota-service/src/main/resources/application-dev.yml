@@ -4,13 +4,14 @@
 # 1. 生产环境不要依赖这里的默认值
 # 2. 支持使用环境变量覆盖全部敏感参数
 
+
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:wewins@123}
     clickhouse:
-      url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/ww-fota}
+      url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/fota}
       username: ${CLICKHOUSE_USER:wewins}
       password: ${CLICKHOUSE_PASSWORD:wewins@123}
 
@@ -33,7 +34,7 @@ app:
 
   # 节点配置（main 和 region 共用）
   node:
-    code: main-lax-svc
+    code: main-local-svc-1
     name: 主区域
     baseUrl: https://main.api.xxx.com
     timeZone: Asia/Shanghai
@@ -52,3 +53,4 @@ app:
   firmware:
     download:
       sign-mode: none
+debug: true
