@@ -67,3 +67,5 @@ fota-ui/tsconfig.tsbuildinfo
 fota-ui/.eslintrc-auto-import.json
 
 *.local.*
+
+.claude/plans
