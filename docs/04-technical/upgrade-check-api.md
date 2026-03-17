@@ -52,23 +52,24 @@ GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=M
 
 ### 响应字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `code` | Integer | 决策码（见下表） |
+| 字段 | 类型 | 说明                           |
+|------|------|------------------------------|
+| `code` | Integer | 决策码（见下表）                     |
 | `request_id` | String | **链路追踪 ID**（设备需在后续上报中携带此 ID） |
-| `release_start_date` | String | 发布开始日期（ISO 8601） |
-| `release_note` | String | 发布说明 |
-| `new_firmware` | String | 新固件版本号 |
-| `download_url` | String | 签名下载 URL |
-| `file_size` | Long | 文件大小（字节） |
-| `file_size_text` | String | 文件大小文本（如 "19MB"） |
-| `checksum` | String | 校验和 |
-| `checksum_type` | String | 校验和类型（sha256/md5） |
-| `control` | Object | 控制参数 |
-| `control.check_interval` | Integer | 下次检查间隔（秒） |
-| `control.download_delay` | Integer | 下载延迟（秒） |
+| `release_start_date` | String | 发布开始日期（ISO 8601）             |
+| `release_note` | String | 发布说明                         |
+| `new_firmware` | String | 新固件版本号                       |
+| `download_url` | String | 签名下载 URL                     |
+| `file_size` | Long | 文件大小（字节）                     |
+| `file_size_text` | String | 文件大小文本（如 "19MB"）             |
+| `checksum` | String | 校验和                          |
+| `checksum_type` | String | 校验和类型（sha256/md5）            |
+| `control` | Object | 控制参数                         |
+| `control.check_interval` | Integer | 下次检查间隔（秒）,小于0时,继续使用上次的或默认的值  |
+| `control.download_delay` | Integer | 下载延迟（秒）,小于0时,继续使用上次的或默认的值      |
 
 > **重要**: `request_id` 字段用于链路追踪，设备需在后续的升级上报请求中携带此 ID，> 以便关联检查请求和上报事件。
+> 目前设置了限制: 一个设备在1分钟内版本检查次数超过10次, 则会被限流, control下的控制参数返回 -1, 此时设备请继续使用上次的或默认的值
 
 ### 决策码 (code)
 

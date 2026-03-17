@@ -202,7 +202,7 @@ public class UpgradeCheckService {
             ctx.setResult(CheckResult.rateLimited(
                     ctx.getRequestId(),
                     "请求过于频繁",
-                    (int) (decision.getResetAtEpochSecond() - System.currentTimeMillis() / 1000)
+                    -1
             ));
         }
     }
