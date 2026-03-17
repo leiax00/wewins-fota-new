@@ -71,7 +71,16 @@ Sprint 计划、里程碑、风险评估
 
 ---
 
-### 7️⃣ 任务执行 (`tasks/`)
+### 7️⃣ 版本发布 (`06-releases/`)
+版本历史、发布说明、变更记录
+
+- [版本发布指南](06-releases/README.md) 🆕
+- [版本发布记录 (CHANGELOG)](06-releases/CHANGELOG.md) 🆕
+- [v0.0.1 发布说明](06-releases/v0.0.1/) 🆕 **| 🌐 [在线体验](https://fota.yushe.ai)**
+
+---
+
+### 8️⃣ 任务执行 (`tasks/`)
 任务文档、进度跟踪、验收清单
 
 #### Sprint 1 (2026-02)
