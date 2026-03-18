@@ -121,7 +121,7 @@ export const getFirmwareVersionById = (id: number) => {
 }
 
 export const createFirmwareVersion = (payload: FirmwareVersionPayload) => {
-  return post<FirmwareVersionItem>('/admin/firmware-versions', payload)
+  return post<FirmwareVersionItem>('/admin/firmware-versions', payload, { timeout: 60 * 60 * 1000 })
 }
 
 export const updateFirmwareVersion = (id: number, payload: FirmwareVersionPayload) => {
