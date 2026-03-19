@@ -200,7 +200,11 @@ app:
       bucket: ${STORAGE_S3_BUCKET:fota}
       accessKey: ${STORAGE_S3_ACCESS_KEY}
       secretKey: ${STORAGE_S3_SECRET_KEY}
-      pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}
+      # URL 访问模式：path_style、like_r2、virtual_hosted
+      # - path_style: http://endpoint/bucket/key（MinIO 等）
+      # - like_r2: http://custom-domain/key（Cloudflare R2 自定义域名）
+      # - virtual_hosted: http://bucket.endpoint/key（AWS S3）
+      url-access-type: ${STORAGE_S3_URL_ACCESS_TYPE:path_style}
 
   # 缓存配置
   cache:

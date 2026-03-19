@@ -76,7 +76,7 @@ public class StorageFrameworkAutoConfiguration {
                 .region(Region.of(s3.getRegion()))
                 .credentialsProvider(resolveCredentialsProvider(s3))
                 .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(s3.isPathStyleAccessEnabled())
+                        .pathStyleAccessEnabled(s3.isPathStyle())
                         .build());
         if (StringUtils.hasText(s3.getEndpoint())) {
             builder.endpointOverride(URI.create(s3.getEndpoint()));
@@ -93,7 +93,7 @@ public class StorageFrameworkAutoConfiguration {
                 .region(Region.of(s3.getRegion()))
                 .credentialsProvider(resolveCredentialsProvider(s3))
                 .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(s3.isPathStyleAccessEnabled())
+                        .pathStyleAccessEnabled(s3.isPathStyle())
                         .build());
         if (StringUtils.hasText(s3.getEndpoint())) {
             builder.endpointOverride(URI.create(s3.getEndpoint()));

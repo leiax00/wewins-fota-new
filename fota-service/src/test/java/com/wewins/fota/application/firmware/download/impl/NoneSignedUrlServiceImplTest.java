@@ -152,11 +152,11 @@ class NoneSignedUrlServiceImplTest {
         }
 
         @Test
-        @DisplayName("生成无签名 URL - S3 path_style 模式添加 bucket 到路径")
+        @DisplayName("生成无签名 URL - S3 PATH_STYLE 模式添加 bucket 到路径")
         void generateSignedUrl_shouldAddBucketToPath_whenS3PathStyleEnabled() {
             // Given
             storageProperties.getS3().setEnabled(true);
-            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.PATH_STYLE);
             storageProperties.getS3().setBucket(TEST_S3_BUCKET);
             String firmwarePath = "fw/test.zip";
 
@@ -175,7 +175,7 @@ class NoneSignedUrlServiceImplTest {
         void generateSignedUrl_shouldNotAddBucket_whenS3Disabled() {
             // Given
             storageProperties.getS3().setEnabled(false);
-            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.PATH_STYLE);
             storageProperties.getS3().setBucket(TEST_S3_BUCKET);
             String firmwarePath = "fw/test.zip";
 
@@ -187,6 +187,70 @@ class NoneSignedUrlServiceImplTest {
 
             // Then - URL 不应该包含额外的 bucket
             assertThat(url).isEqualTo("https://cdn.example.com/fw/test.zip");
+        }
+
+        @Nested
+        @DisplayName("URL 访问模式测试（urlAccessType）")
+        class UrlAccessTypeTests {
+
+            @Test
+            @DisplayName("R2 模式 - 不添加 bucket 到 URL")
+            void generateSignedUrl_shouldNotAddBucket_whenR2Mode() {
+                // Given
+                storageProperties.getS3().setEnabled(true);
+                storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.LIKE_R2);
+                storageProperties.getS3().setBucket(TEST_S3_BUCKET);
+                properties.setBaseUrl("http://r2.yushe.ai");
+                String firmwarePath = "fw/test.zip";
+
+                // 重新创建服务实例
+                signedUrlService = new NoneSignedUrlServiceImpl(properties, storageProperties);
+
+                // When
+                String url = signedUrlService.generateSignedUrl(firmwarePath);
+
+                // Then - URL 不应该包含 bucket
+                assertThat(url).isEqualTo("http://r2.yushe.ai/fw/test.zip");
+            }
+
+            @Test
+            @DisplayName("PATH_STYLE 模式 - 添加 bucket 到 URL")
+            void generateSignedUrl_shouldAddBucket_whenPathStyleMode() {
+                // Given
+                storageProperties.getS3().setEnabled(true);
+                storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.PATH_STYLE);
+                storageProperties.getS3().setBucket(TEST_S3_BUCKET);
+                String firmwarePath = "fw/test.zip";
+
+                // 重新创建服务实例
+                signedUrlService = new NoneSignedUrlServiceImpl(properties, storageProperties);
+
+                // When
+                String url = signedUrlService.generateSignedUrl(firmwarePath);
+
+                // Then - URL 应该包含 bucket
+                assertThat(url).isEqualTo("https://cdn.example.com/" + TEST_S3_BUCKET + "/fw/test.zip");
+            }
+
+            @Test
+            @DisplayName("VIRTUAL_HOSTED 模式 - 不添加 bucket 到 URL")
+            void generateSignedUrl_shouldNotAddBucket_whenVirtualHostedMode() {
+                // Given
+                storageProperties.getS3().setEnabled(true);
+                storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.VIRTUAL_HOSTED);
+                storageProperties.getS3().setBucket(TEST_S3_BUCKET);
+                String firmwarePath = "fw/test.zip";
+
+                // 重新创建服务实例
+                signedUrlService = new NoneSignedUrlServiceImpl(properties, storageProperties);
+
+                // When
+                String url = signedUrlService.generateSignedUrl(firmwarePath);
+
+                // Then - URL 不应该包含 bucket（bucket 在域名中）
+                assertThat(url).isEqualTo("https://cdn.example.com/fw/test.zip");
+            }
+
         }
     }
 

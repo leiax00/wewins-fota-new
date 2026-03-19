@@ -44,8 +44,12 @@ public class NoneSignedUrlServiceImpl implements SignedUrlService {
     /**
      * 构建基础 URL（不包含签名参数）。
      * <p>
-     * 格式：{baseUrl}/{bucket}/{firmwarePath}
-     * 当 S3 path_style 启用时，自动添加 bucket 到路径中。
+     * 根据 {@link StorageProperties.UrlAccessType} 决定 URL 格式：
+     * <ul>
+     *   <li>PATH_STYLE: {baseUrl}/{bucket}/{firmwarePath}</li>
+     *   <li>LIKE_R2: {baseUrl}/{firmwarePath}（域名已绑定到桶）</li>
+     *   <li>VIRTUAL_HOSTED: {baseUrl}/{firmwarePath}（bucket 在域名中）</li>
+     * </ul>
      * </p>
      * <p>
      * 子类可复用此方法构建 URL 基础部分，再添加签名参数。
@@ -65,7 +69,7 @@ public class NoneSignedUrlServiceImpl implements SignedUrlService {
         String cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         urlBuilder.append(cleanBaseUrl);
 
-        // 当使用 S3 path_style 时，添加 bucket 到路径
+        // 只有 PATH_STYLE 模式需要在 URL 中添加 bucket
         if (isS3PathStyle()) {
             String bucket = storageProperties.getS3().getBucket();
             if (bucket != null && !bucket.isBlank()) {
@@ -73,18 +77,23 @@ public class NoneSignedUrlServiceImpl implements SignedUrlService {
             }
         }
 
-        String cleanPath = firmwarePath.startsWith("/") ? firmwarePath : "/" + firmwarePath;
-        urlBuilder.append(cleanPath);
+        String cleanPath = firmwarePath.startsWith("/") ? firmwarePath.substring(1) : firmwarePath;
+        urlBuilder.append("/").append(cleanPath);
 
         return urlBuilder.toString();
     }
 
     /**
-     * 检查是否使用 S3 path_style 访问模式
+     * 检查是否使用 S3 Path Style 访问模式
+     * <p>
+     * 只有 PATH_STYLE 模式需要在 URL 中包含 bucket 名称
+     * R2模式上传是加到path中, 获取不加PATH
+     * </p>
+     *
+     * @return 是否为 Path Style 模式
      */
     protected boolean isS3PathStyle() {
-        return storageProperties.getS3().isEnabled()
-                && storageProperties.getS3().isPathStyleAccessEnabled();
+        return storageProperties.getS3().getUrlAccessType() == StorageProperties.UrlAccessType.PATH_STYLE;
     }
 
     /**
