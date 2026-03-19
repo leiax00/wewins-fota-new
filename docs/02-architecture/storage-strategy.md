@@ -64,7 +64,7 @@ app:
       bucket: ${STORAGE_S3_BUCKET}
       accessKey: ${STORAGE_S3_ACCESS_KEY}
       secretKey: ${STORAGE_S3_SECRET_KEY}
-      pathStyleAccessEnabled: ${STORAGE_S3_PATH_STYLE:true}
+      url-access-type: ${STORAGE_S3_URL_ACCESS_TYPE:path_style}
 ```
 
 ### 4.2 开发配置（可选默认值）
