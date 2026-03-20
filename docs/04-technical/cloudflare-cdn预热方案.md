@@ -226,11 +226,11 @@ GET    /api/tasks/{taskId}/status      查询任务最终状态（断线重连�
 **任务阶段枚举（通用）：**
 
 ```
-PENDING    → 已创建，等待执行
-UPLOADING  → 上传文件中（含进度百分比）
-WARMING    → CDN 预热中
-DONE       → 全部完成
-FAILED     → 执行失败（含错误信息）
+INIT    → 已创建，等待执行
+PROCESSING  → 处理中
+COMPLETED    → 已完成
+FAILED       → 失败
+CANCELLED     → 取消
 ```
 
 **任务表结构：**
@@ -282,7 +282,6 @@ app:
   cdn:
     warm:
       enabled: true
-      base-url: https://fota-cdn.example.com   # CDN 自定义域名
       timeout-seconds: 300                     # 预热超时
       chunk-size-mb: 20                        # 分片大小
       chunk-concurrency: 3                     # 分片并发数

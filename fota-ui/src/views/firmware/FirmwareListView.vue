@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadProps, UploadRequestOptions } from 'element-plus'
 import type { UploadAjaxError } from 'element-plus/es/components/upload/src/ajax'
+import { CircleCheck, CircleClose, Clock, Loading } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
@@ -11,12 +12,16 @@ import { trimFormValues } from '@/utils/form'
 import {
   cancelUploadSession,
   createFirmwareVersion,
+  publishFirmwareVersion,
+  createTaskProgressStream,
   deleteFirmwareVersion,
+  getTaskStatus,
   getUploadSession,
   pageFirmwareVersions,
   uploadFirmwarePackage,
   updateFirmwareVersion,
   type FirmwareVersionItem,
+  type TaskProgressEvent,
 } from '@/api/firmware'
 import { searchProducts, type ProductItem } from '@/api/product'
 
@@ -33,9 +38,27 @@ interface UploadState {
   abortController: AbortController | null
 }
 
+/**
+ * 任务进度状态
+ */
+interface TaskProgressState {
+  visible: boolean
+  taskId: number
+  stage: 'INIT' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  percent: number
+  message: string
+  errorMsg: string
+  finished: boolean
+}
+
 const { t } = useI18n()
 const userStore = useUserStore()
 const uploadRef = ref()
+
+/**
+ * 任务进度 SSE 连接管理
+ */
+const taskProgressRef = ref<ReturnType<typeof createTaskProgressStream> | null>(null)
 
 const list = ref<FirmwareVersionItem[]>([])
 const total = ref(0)
@@ -89,6 +112,145 @@ const uploadState = reactive<UploadState>({
   error: '',
   abortController: null,
 })
+
+/**
+ * 任务进度弹窗状态
+ */
+const taskProgress = reactive<TaskProgressState>({
+  visible: false,
+  taskId: 0,
+  stage: 'INIT',
+  percent: 0,
+  message: '',
+  errorMsg: '',
+  finished: false,
+})
+
+/**
+ * 获取阶段显示文本
+ */
+const getStageLabel = (stage: string) => {
+  const stageMap: Record<string, string> = {
+    INIT: '等待中',
+    PROCESSING: '处理中',
+    COMPLETED: '完成',
+    FAILED: '失败',
+    CANCELLED: '已取消',
+  }
+  return stageMap[stage] || stage
+}
+
+/**
+ * 更新任务进度弹窗
+ */
+const updateTaskProgress = (event: TaskProgressEvent) => {
+  taskProgress.stage = event.stage
+  taskProgress.percent = event.percent
+  taskProgress.message = event.message
+
+  if (event.stage === 'COMPLETED') {
+    taskProgress.finished = true
+    taskProgress.message = '固件版本发布成功！'
+  } else if (event.stage === 'FAILED' || event.stage === 'CANCELLED') {
+    taskProgress.finished = true
+    taskProgress.errorMsg = event.message
+  }
+}
+
+/**
+ * 打开任务进度弹窗
+ */
+const openTaskProgressDialog = (taskId: number) => {
+  taskProgress.visible = true
+  taskProgress.taskId = taskId
+  taskProgress.stage = 'INIT'
+  taskProgress.percent = 0
+  taskProgress.message = '正在创建版本...'
+  taskProgress.errorMsg = ''
+  taskProgress.finished = false
+
+  // 建立 SSE 连接
+  taskProgressRef.value = createTaskProgressStream()
+  taskProgressRef.value.connect(taskId, {
+    onmessage: (event) => {
+      updateTaskProgress(event)
+    },
+    onerror: (error) => {
+      console.error('SSE 连接错误:', error)
+      // 断线后尝试自动重连
+      if (!taskProgress.finished) {
+        setTimeout(() => {
+          if (!taskProgress.finished && taskProgress.taskId) {
+            reconnectTaskProgress()
+          }
+        }, 3000)
+      }
+    },
+    onopen: () => {
+      console.log('SSE 连接已建立')
+    },
+    onclose: () => {
+      // 服务器主动断开连接，检查是否完成
+      if (!taskProgress.finished) {
+        reconnectTaskProgress()
+      }
+    },
+  })
+}
+
+/**
+ * 断线重连 - 查询任务状态
+ */
+const reconnectTaskProgress = async () => {
+  if (!taskProgress.taskId || taskProgress.finished) return
+
+  try {
+    const status = await getTaskStatus(taskProgress.taskId)
+    taskProgress.stage = status.stage
+    taskProgress.percent = status.percent
+
+    if (status.stage === 'COMPLETED') {
+      taskProgress.finished = true
+      taskProgress.message = '固件版本发布成功！'
+    } else if (status.stage === 'FAILED' || status.stage === 'CANCELLED') {
+      taskProgress.finished = true
+      taskProgress.errorMsg = status.errorMsg || status.message
+    } else {
+      // 任务仍在进行中，重新建立 SSE 连接
+      taskProgressRef.value?.disconnect()
+      taskProgressRef.value = createTaskProgressStream()
+      taskProgressRef.value.connect(taskProgress.taskId, {
+        onmessage: (event) => {
+          updateTaskProgress(event)
+        },
+        onerror: () => {
+          // 再次失败则停止重连
+        },
+      })
+    }
+  } catch {
+    // 查询失败，继续尝试重连
+  }
+}
+
+/**
+ * 关闭任务进度弹窗
+ */
+const closeTaskProgressDialog = () => {
+  taskProgressRef.value?.disconnect()
+  taskProgressRef.value = null
+  taskProgress.visible = false
+  taskProgress.taskId = 0
+  taskProgress.finished = false
+}
+
+/**
+ * 完成进度弹窗 - 关闭并刷新列表
+ */
+const finishTaskProgress = async () => {
+  closeTaskProgressDialog()
+  await fetchList()
+}
 
 /**
  * 用于重试的文件缓存
@@ -388,17 +550,30 @@ const submitForm = async () => {
     }
 
     if (dialogMode.value === 'create') {
-      await createFirmwareVersion(payload as never)
-      ElMessage.success(t('common.createSuccess'))
+      // 有包版本：使用带 taskId 的接口，启动异步任务
+      if (!form.noPackage && uploadState.status === 'SUCCESS' && uploadState.uploadSessionId) {
+        const response = await publishFirmwareVersion(payload as never)
+        // 关闭创建弹窗
+        resetUploadState()
+        dialogVisible.value = false
+        // 打开进度弹窗
+        openTaskProgressDialog(response.taskId)
+      } else {
+        // 无包版本：直接创建
+        await createFirmwareVersion(payload as never)
+        ElMessage.success(t('common.createSuccess'))
+      }
     } else if (editingId.value) {
       await updateFirmwareVersion(editingId.value, payload as never)
       ElMessage.success(t('common.updateSuccess'))
+      dialogVisible.value = false
+      await fetchList()
     }
 
-    // 保存成功后立刻清空上传状态，避免对话框关闭时重复清理会话
-    resetUploadState()
-    dialogVisible.value = false
-    await fetchList()
+    // 无包版本保存成功后刷新列表
+    if (dialogMode.value === 'create' && form.noPackage) {
+      await fetchList()
+    }
   } catch (e: unknown) {
     // 保存失败：保留上传状态，不重置，允许用户修改后重试
     const message = e instanceof Error ? e.message : '保存失败，请重试'
@@ -480,6 +655,13 @@ watch(
 onMounted(() => {
   void handleProductSearch('')
   void fetchList()
+})
+
+/**
+ * 组件卸载时清理 SSE 连接
+ */
+onUnmounted(() => {
+  taskProgressRef.value?.disconnect()
 })
 </script>
 
@@ -849,6 +1031,120 @@ onMounted(() => {
       </el-button>
     </template>
   </el-dialog>
+
+  <!-- 任务进度弹窗 -->
+  <el-dialog
+    v-model="taskProgress.visible"
+    title="发布进度"
+    width="480px"
+    :close-on-click-modal="taskProgress.finished"
+    :close-on-press-escape="taskProgress.finished"
+    :show-close="taskProgress.finished"
+  >
+    <div class="task-progress">
+      <!-- 上传固件阶段 -->
+      <div class="task-progress__item">
+        <div class="task-progress__icon">
+          <el-icon v-if="taskProgress.stage === 'PROCESSING' || taskProgress.stage === 'COMPLETED'">
+            <CircleCheck />
+          </el-icon>
+          <el-icon v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
+            <CircleClose />
+          </el-icon>
+          <el-icon v-else>
+            <Loading />
+          </el-icon>
+        </div>
+        <div class="task-progress__content">
+          <div class="task-progress__title">上传固件到存储</div>
+          <div class="task-progress__status">
+            <template v-if="taskProgress.stage === 'INIT'">
+              <span class="task-progress__pending">等待中</span>
+            </template>
+            <template v-else-if="taskProgress.stage === 'PROCESSING'">
+              <el-progress
+                :percentage="taskProgress.percent"
+                :status="taskProgress.percent === 100 ? 'success' : undefined"
+                :show-text="false"
+              />
+              <span class="task-progress__message">{{ taskProgress.message || `${taskProgress.percent}%` }}</span>
+            </template>
+            <template v-else-if="taskProgress.stage === 'COMPLETED'">
+              <span class="task-progress__done">完成</span>
+            </template>
+            <template v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
+              <span class="task-progress__error">失败</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- CDN 预热阶段 -->
+      <div class="task-progress__item">
+        <div class="task-progress__icon">
+          <template v-if="taskProgress.stage === 'COMPLETED'">
+            <el-icon><CircleCheck /></el-icon>
+          </template>
+          <template v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
+            <el-icon><CircleClose /></el-icon>
+          </template>
+          <template v-else-if="taskProgress.stage === 'PROCESSING'">
+            <el-icon class="is-loading"><Loading /></el-icon>
+          </template>
+          <template v-else>
+            <el-icon><Clock /></el-icon>
+          </template>
+        </div>
+        <div class="task-progress__content">
+          <div class="task-progress__title">CDN 预热</div>
+          <div class="task-progress__status">
+            <template v-if="taskProgress.stage === 'PROCESSING' && taskProgress.percent > 0">
+              <el-progress
+                :percentage="taskProgress.percent"
+                :status="taskProgress.percent === 100 ? 'success' : undefined"
+                :show-text="false"
+              />
+              <span class="task-progress__message">{{ taskProgress.message || '预热中...' }}</span>
+            </template>
+            <template v-else-if="taskProgress.stage === 'COMPLETED'">
+              <span class="task-progress__done">完成</span>
+            </template>
+            <template v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
+              <span class="task-progress__error">{{ taskProgress.errorMsg || '失败' }}</span>
+            </template>
+            <template v-else>
+              <span class="task-progress__pending">等待中</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- 错误信息展示 -->
+      <el-alert
+        v-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'"
+        class="mt-4"
+        type="error"
+        :closable="false"
+        :title="taskProgress.errorMsg || '发布失败'"
+      />
+    </div>
+
+    <template #footer>
+      <el-button
+        v-if="taskProgress.finished"
+        type="primary"
+        @click="finishTaskProgress"
+      >
+        关闭
+      </el-button>
+      <el-button
+        v-else
+        @click="closeTaskProgressDialog"
+      >
+        取消
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -890,5 +1186,96 @@ onMounted(() => {
   --el-button-disabled-bg-color: var(--el-fill-color-light);
   --el-button-disabled-border-color: var(--el-border-color-lighter);
   --el-button-disabled-text-color: var(--el-text-color-placeholder);
+}
+
+/* 任务进度弹窗样式 */
+.task-progress {
+  padding: 8px 0;
+}
+
+.task-progress__item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.task-progress__item:last-child {
+  border-bottom: none;
+}
+
+.task-progress__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  font-size: 20px;
+  border-radius: 50%;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-secondary);
+}
+
+.task-progress__icon .el-icon {
+  color: var(--el-color-success);
+}
+
+.task-progress__icon .is-loading {
+  animation: rotate 1s linear infinite;
+  color: var(--el-color-primary);
+}
+
+.task-progress__icon .el-icon:last-child {
+  color: var(--el-color-danger);
+}
+
+.task-progress__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-progress__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  margin-bottom: 8px;
+}
+
+.task-progress__status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.task-progress__status .el-progress {
+  flex: 1;
+}
+
+.task-progress__message {
+  color: var(--el-text-color-secondary);
+  min-width: 60px;
+}
+
+.task-progress__done {
+  color: var(--el-color-success);
+}
+
+.task-progress__error {
+  color: var(--el-color-danger);
+}
+
+.task-progress__pending {
+  color: var(--el-text-color-placeholder);
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

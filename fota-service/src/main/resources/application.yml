@@ -241,3 +241,16 @@ app:
         temp-dir: ${APP_FIRMWARE_UPLOAD_TEMP_DIR:data/storage/tmp}
         max-file-age: ${APP_FIRMWARE_UPLOAD_MAX_FILE_AGE:2h}
         cron: ${APP_FIRMWARE_UPLOAD_CLEANUP_CRON:0 */30 * * * *}
+
+  # CDN 预热配置
+  cdn:
+    warm:
+      enabled: ${APP_CDN_WARM_ENABLED:true}
+      # 请求超时时间（秒）
+      timeout-seconds: ${APP_CDN_WARM_TIMEOUT_SECONDS:300}
+      # 大文件分片大小（MB）
+      chunk-size-mb: ${APP_CDN_WARM_CHUNK_SIZE_MB:20}
+      # 分片并发数
+      chunk-concurrency: ${APP_CDN_WARM_CHUNK_CONCURRENCY:3}
+      # 失败重试次数
+      retry-count: ${APP_CDN_WARM_RETRY_COUNT:2}

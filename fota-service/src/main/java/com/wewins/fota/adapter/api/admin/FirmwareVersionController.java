@@ -3,7 +3,8 @@ package com.wewins.fota.adapter.api.admin;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.api.admin.dto.firmware.AttachPackageReqDTO;
 import com.wewins.fota.adapter.assembler.FirmwareVersionAssembler;
-import com.wewins.fota.application.firmware.FirmwareUploadAppService;
+import com.wewins.fota.application.firmware.FirmwarePackagePreparationService;
+import com.wewins.fota.application.firmware.FirmwarePublishService;
 import com.wewins.fota.application.firmware.FirmwareVersionAppService;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
@@ -17,14 +18,11 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.storage.core.FileTransferService;
-import com.wewins.fota.storage.naming.StorageObjectKeyGenerator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -48,15 +46,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FirmwareVersionController {
 
-    private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
     private static final String PACKAGE_STATUS_READY = "READY";
     private static final String PACKAGE_STATUS_NONE = "NONE";
 
     private final FirmwareVersionAppService firmwareVersionAppService;
     private final FirmwareVersionAssembler firmwareVersionAssembler;
-    private final FirmwareUploadAppService firmwareUploadAppService;
+    private final FirmwarePackagePreparationService firmwarePackagePreparationService;
+    private final FirmwarePublishService firmwarePublishService;
     private final FileTransferService fileTransferService;
-    private final StorageObjectKeyGenerator storageObjectKeyGenerator;
     private final ProductNameQueryService productNameQueryService;
 
     /**
@@ -189,7 +186,8 @@ public class FirmwareVersionController {
 
         try {
             // 处理上传会话ID（如果提供）
-            ProcessedUploadSession processedUpload = processUploadSessionId(reqDTO);
+            FirmwarePackagePreparationService.ProcessedUploadSession processedUpload =
+                    firmwarePackagePreparationService.processUploadSession(reqDTO);
             FirmwareVersionReqDTO processedReqDTO = processedUpload.requestDTO();
 
             FirmwareVersion firmwareVersion = firmwareVersionAssembler.toFirmwareVersionEntity(processedReqDTO);
@@ -208,7 +206,7 @@ public class FirmwareVersionController {
                     createdVersion.getId(), createdVersion.getProductId(), createdVersion.getVersion());
 
             // 业务成功后清理上传会话
-            cleanupUploadSession(processedUpload.uploadSessionId());
+            firmwarePackagePreparationService.cleanupUploadSession(processedUpload.uploadSessionId());
 
             return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(createdVersion));
         } catch (BizException e) {
@@ -245,7 +243,8 @@ public class FirmwareVersionController {
             FirmwareVersion existingVersion = firmwareVersionAppService.getById(id);
 
             // 处理上传会话ID（如果提供）
-            ProcessedUploadSession processedUpload = processUploadSessionId(reqDTO);
+            FirmwarePackagePreparationService.ProcessedUploadSession processedUpload =
+                    firmwarePackagePreparationService.processUploadSession(reqDTO);
             FirmwareVersionReqDTO processedReqDTO = processedUpload.requestDTO();
 
             // 保存旧的 objectKey（用于后续清理，仅在补传包场景需要）
@@ -276,7 +275,7 @@ public class FirmwareVersionController {
             log.info("固件版本更新成功: firmwareVersionId={}", updatedVersion.getId());
 
             // 业务成功后清理上传会话
-            cleanupUploadSession(processedUpload.uploadSessionId());
+            firmwarePackagePreparationService.cleanupUploadSession(processedUpload.uploadSessionId());
 
             // 如果是补传包场景，清理被替换的旧包文件
             if (oldObjectKey != null && newObjectKey != null) {
@@ -374,41 +373,6 @@ public class FirmwareVersionController {
     }
 
     /**
-     * 处理上传会话ID，如果提供则消费会话并填充文件信息。
-     * <p>
-     * 先读后删策略：这里只读取会话并转存文件，不删除会话。
-     * 会话删除在业务成功后由 cleanupUploadSession 执行。
-     * </p>
-     *
-     * @param reqDTO 原始请求DTO
-     * @return 处理后的请求DTO与会话ID
-     */
-    private ProcessedUploadSession processUploadSessionId(FirmwareVersionReqDTO reqDTO) {
-        if (reqDTO.getUploadSessionId() == null || reqDTO.getUploadSessionId().isBlank()) {
-            return new ProcessedUploadSession(reqDTO, null);
-        }
-
-        String sessionId = reqDTO.getUploadSessionId();
-        FirmwareUploadSession session = loadAndValidateUploadSession(sessionId, reqDTO.getProductId());
-        String objectKey = ensureObjectKeyReady(sessionId, reqDTO.getProductId(), session);
-
-        // 使用会话中的文件信息填充DTO
-        FirmwareVersionReqDTO processed = new FirmwareVersionReqDTO();
-        processed.setProductId(reqDTO.getProductId());
-        processed.setVersion(reqDTO.getVersion());
-        processed.setInternalVersion(reqDTO.getInternalVersion());
-        processed.setFileUrl(objectKey);
-        processed.setFileName(session.getFileName());  // 保存原始文件名
-        processed.setFileSize(session.getFileSize());
-        processed.setMd5(session.getMd5());
-        processed.setSha256(session.getSha256());
-        processed.setTags(reqDTO.getTags());
-        processed.setMeta(reqDTO.getMeta());
-
-        return new ProcessedUploadSession(processed, sessionId);
-    }
-
-    /**
      * 根据文件信息判断包状态。
      *
      * @param reqDTO 请求DTO
@@ -450,8 +414,10 @@ public class FirmwareVersionController {
             FirmwareVersion existingVersion = firmwareVersionAppService.getById(id);
 
             String sessionId = reqDTO.uploadSessionId();
-            FirmwareUploadSession session = loadAndValidateUploadSession(sessionId, existingVersion.getProductId());
-            String objectKey = ensureObjectKeyReady(sessionId, existingVersion.getProductId(), session);
+            FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(
+                    sessionId, existingVersion.getProductId());
+            String objectKey = firmwarePackagePreparationService.ensureObjectKeyReady(
+                    sessionId, existingVersion.getProductId(), session);
 
             // 保存旧的 objectKey（用于后续清理）
             String oldObjectKey = existingVersion.getFileUrl();
@@ -477,7 +443,7 @@ public class FirmwareVersionController {
             FirmwareVersion updatedVersion = firmwareVersionAppService.updateFirmwareVersion(firmwareVersion);
 
             // 业务成功后清理上传会话
-            cleanupUploadSession(sessionId);
+            firmwarePackagePreparationService.cleanupUploadSession(sessionId);
 
             // 清理被替换的旧包文件（如果存在）
             cleanupReplacedObject(oldObjectKey, objectKey, id);
@@ -495,90 +461,44 @@ public class FirmwareVersionController {
     }
 
     /**
-     * 加载并校验上传会话。
-     *
-     * @param sessionId         会话 ID
-     * @param expectedProductId 期望的产品 ID
-     * @return 上传会话
-     */
-    private FirmwareUploadSession loadAndValidateUploadSession(String sessionId, Long expectedProductId) {
-        FirmwareUploadSession session = firmwareUploadAppService.getUploadSession(sessionId);
-        if (session.getProductId() != null && !session.getProductId().equals(expectedProductId)) {
-            throw new BizException(ErrorCode.BAD_REQUEST.getCode(), "上传会话与产品不匹配");
-        }
-        return session;
-    }
-
-    /**
-     * 确保会话中的文件已可在对象存储访问。
+     * 创建并发布固件版本。
      * <p>
-     * 先读后删策略：这里只更新会话，不删除会话，删除动作在业务成功后执行。
+     * 异步执行：创建版本 → 转存文件 → CDN预热 → 激活版本
      * </p>
      *
-     * @param sessionId 会话 ID
-     * @param productId 产品 ID
-     * @param session   上传会话
-     * @return 对象存储 Key
+     * @param reqDTO 发布请求参数
+     * @return 任务ID和版本ID
      */
-    private String ensureObjectKeyReady(String sessionId, Long productId, FirmwareUploadSession session) {
-        // 如果已经有 objectKey，直接返回（已转存过）
-        if (session.getObjectKey() != null && !session.getObjectKey().isBlank()) {
-            return session.getObjectKey();
+    @PostMapping("/publish")
+    @PreAuthorize("@rbac.has('fota:firmware:create')")
+    public ApiResponse<FirmwarePublishService.PublishResult> publishFirmwareVersion(
+            @RequestBody @Valid FirmwareVersionReqDTO reqDTO) {
+        if (reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
 
-        // 检查是否有临时路径
-        if (session.getTempPath() == null || session.getTempPath().isBlank()) {
-            throw new BizException(ErrorCode.INTERNAL_ERROR.getCode(),
-                    "上传会话文件信息不完整：缺少临时路径和对象Key");
-        }
+        log.debug("创建并发布固件版本: productId={}, version={}, uploadSessionId={}",
+                reqDTO.getProductId(), reqDTO.getVersion(), reqDTO.getUploadSessionId());
 
-        Path tempPath = Path.of(session.getTempPath());
         try {
-            // 生成对象存储 Key 并转存
-            String objectKey = storageObjectKeyGenerator.generateFirmwarePackageKey(productId, session.getFileName());
-            String s3Uri = fileTransferService.transferToStorage(
-                    tempPath,
-                    objectKey,
-                    session.getMime() != null ? session.getMime() : DEFAULT_CONTENT_TYPE,
-                    true  // deleteAfterTransfer
+            FirmwareVersion publishDraft = firmwareVersionAssembler.toFirmwareVersionEntity(reqDTO);
+            FirmwarePublishService.PublishResult result = firmwarePublishService.createAndPublish(
+                    publishDraft,
+                    reqDTO.getUploadSessionId()
             );
 
-            if (log.isDebugEnabled()) {
-                log.debug("固件文件已转存到对象存储: sessionId={}, objectKey={}, s3Uri={}",
-                        sessionId, objectKey, s3Uri);
-            }
+            log.info("固件版本发布任务已创建: taskId={}, versionId={}",
+                    result.taskId(), result.versionId());
 
-            // 回写会话，保证后续失败重试可直接复用 objectKey
-            session.setObjectKey(objectKey);
-            session.setTempPath(null);
-            session.setStatus(FirmwareUploadSession.UploadStatus.READY);
-            session.setUpdatedAt(LocalDateTime.now());
-            firmwareUploadAppService.saveUploadSession(session);
-
-            return objectKey;
-        } catch (Exception e) {
-            log.error("转存固件文件到对象存储失败: sessionId={}", sessionId, e);
-            throw new BizException(ErrorCode.INTERNAL_ERROR.getCode(), "转存固件文件失败", e);
-        }
-    }
-
-    /**
-     * 清理上传会话（在业务成功后调用）。
-     *
-     * @param sessionId 会话 ID
-     */
-    private void cleanupUploadSession(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            return;
-        }
-        try {
-            boolean deleted = firmwareUploadAppService.deleteUploadSession(sessionId);
-            if (!deleted) {
-                log.warn("上传会话删除失败或已不存在: sessionId={}", sessionId);
-            }
-        } catch (Exception e) {
-            // 主流程已成功，不因会话清理失败回滚
-            log.warn("清理上传会话失败: sessionId={}", sessionId, e);
+            return ApiResponse.success(result);
+        } catch (BizException e) {
+            log.warn("创建固件版本发布任务失败: productId={}, version={}, errorCode={}, message={}",
+                    reqDTO.getProductId(), reqDTO.getVersion(), e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("创建固件版本发布任务参数错误: productId={}, version={}, message={}",
+                    reqDTO.getProductId(), reqDTO.getVersion(), e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
     }
 
@@ -618,18 +538,6 @@ public class FirmwareVersionController {
             log.error("清理旧固件包失败（将产生孤儿文件）: firmwareVersionId={}, oldObjectKey={}",
                     firmwareVersionId, oldObjectKey, e);
         }
-    }
-
-    /**
-     * 上传会话处理结果。
-     *
-     * @param requestDTO      已用会话信息填充后的请求 DTO
-     * @param uploadSessionId 关联会话 ID（成功后用于删除）
-     */
-    private record ProcessedUploadSession(
-            FirmwareVersionReqDTO requestDTO,
-            String uploadSessionId
-    ) {
     }
 
 }
