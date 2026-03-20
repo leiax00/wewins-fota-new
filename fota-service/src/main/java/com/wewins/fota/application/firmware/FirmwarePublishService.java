@@ -1,6 +1,7 @@
 package com.wewins.fota.application.firmware;
 
 import com.wewins.fota.application.firmware.download.SignedUrlService;
+import com.wewins.fota.application.firmware.FirmwareWarmMessage;
 import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.cdn.application.service.CdnWarmService;
 import com.wewins.fota.cdn.application.dto.WarmResult;
@@ -284,17 +285,17 @@ public class FirmwarePublishService {
     public ManualWarmResult warmCdnManually(Long versionId) {
         FirmwareVersion version = firmwareVersionAppService.getById(versionId);
         if (!PACKAGE_STATUS_READY.equals(version.getPackageStatus())) {
-            throw new IllegalArgumentException("该固件版本没有可用的包，无法进行预热");
+            throw new IllegalArgumentException(FirmwareWarmMessage.PACKAGE_UNAVAILABLE.message());
         }
 
         String objectKey = version.getFileUrl();
         if (!hasText(objectKey)) {
-            throw new IllegalArgumentException("固件包路径缺失");
+            throw new IllegalArgumentException(FirmwareWarmMessage.PATH_MISSING.message());
         }
 
         String downloadUrl = signedUrlService.generateSignedUrl(objectKey);
         if (!hasText(downloadUrl)) {
-            throw new IllegalArgumentException("无法生成下载地址");
+            throw new IllegalArgumentException(FirmwareWarmMessage.DOWNLOAD_URL_FAILED.message());
         }
 
         WarmResult warmResult = cdnWarmService.warmByConfiguredStrategy(downloadUrl);

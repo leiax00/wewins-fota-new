@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wewins.fota.adapter.assembler.FirmwareVersionAssembler;
 import com.wewins.fota.application.firmware.FirmwarePublishService;
 import com.wewins.fota.application.firmware.FirmwareVersionAppService;
+import com.wewins.fota.application.firmware.FirmwareWarmMessage;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionRespDTO;
@@ -186,7 +187,7 @@ public class FirmwareVersionController {
 
             String objectKey = firmwareVersion.getFileUrl();
             if (objectKey == null || objectKey.isBlank()) {
-                return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "固件包路径缺失");
+                return ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), FirmwareWarmMessage.PATH_MISSING.message());
             }
 
             // 生成带签名的下载 URL（有效期 1 小时）
@@ -288,7 +289,8 @@ public class FirmwareVersionController {
     @PreAuthorize("@rbac.has('fota:firmware:update')")
     public ApiResponse<CdnWarmResponse> warmCdn(@PathVariable Long id) {
         if (id == null || id <= 0) {
-            return ApiResponse.success(buildWarmFailureResponse(id, "firmware.warmInvalidVersionId", "版本ID无效"));
+            FirmwareWarmMessage.WarmMessage msg = FirmwareWarmMessage.INVALID_VERSION_ID;
+            return ApiResponse.success(buildWarmFailureResponse(id, msg.messageKey(), msg.message()));
         }
 
         log.debug("开始 CDN 预热: versionId={}", id);
@@ -306,10 +308,12 @@ public class FirmwareVersionController {
         } catch (BizException e) {
             log.warn("触发 CDN 预热失败: versionId={}, errorCode={}, message={}",
                     id, e.getCode(), e.getMessage());
-            return ApiResponse.success(buildWarmFailureResponse(id, mapWarmFailureMessageKey(e.getMessage()), e.getMessage()));
+            FirmwareWarmMessage.WarmMessage msg = FirmwareWarmMessage.fromMessage(e.getMessage());
+            return ApiResponse.success(buildWarmFailureResponse(id, msg.messageKey(), msg.message()));
         } catch (IllegalArgumentException e) {
             log.warn("触发 CDN 预热参数错误: versionId={}, message={}", id, e.getMessage());
-            return ApiResponse.success(buildWarmFailureResponse(id, mapWarmFailureMessageKey(e.getMessage()), e.getMessage()));
+            FirmwareWarmMessage.WarmMessage msg = FirmwareWarmMessage.fromMessage(e.getMessage());
+            return ApiResponse.success(buildWarmFailureResponse(id, msg.messageKey(), msg.message()));
         }
     }
 
@@ -320,22 +324,6 @@ public class FirmwareVersionController {
         response.setMessageKey(messageKey);
         response.setMessage(message);
         return response;
-    }
-
-    private String mapWarmFailureMessageKey(String message) {
-        if ("该固件版本没有可用的包，无法进行预热".equals(message)) {
-            return "firmware.warmUnavailable";
-        }
-        if ("固件包路径缺失".equals(message)) {
-            return "firmware.warmPathMissing";
-        }
-        if ("无法生成下载地址".equals(message)) {
-            return "firmware.warmDownloadUrlFailed";
-        }
-        if ("版本ID无效".equals(message)) {
-            return "firmware.warmInvalidVersionId";
-        }
-        return "firmware.warmFailed";
     }
 
     /**
