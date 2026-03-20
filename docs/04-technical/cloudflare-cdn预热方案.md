@@ -13,7 +13,7 @@
 | Cloudflare R2 | 固件存储，替代自建 RustFS/S3 兼容存储 | 免费 10GB / 1000万次读 |
 | Cloudflare CDN | 全球边缘分发，绑定自定义域名 | 免费（R2 回源零费用）|
 | Smart Tiered Cache | 一次预热，自动扩散到其他 PoP | 完全免费，一键开启 |
-| Cloudflare Workers | 手动触发多 PoP 预热脚本 | 免费 10万次/天 |
+| Cloudflare Workers | 手动触发 Cloudflare 网络内部预热请求 | 免费 10万次/天 |
 | Cache Rules | 固件文件长期缓存策略配置 | 免费 |
 | fota-framework-storage | 现有存储框架，已支持 R2 `LIKE_R2` 模式 | 无额外成本 |
 | fota-framework-task（新增）| 通用异步任务 + SSE 进度推送 | 无额外成本 |
@@ -331,7 +331,7 @@ CdnWarmResult warmFirmware(String firmwarePath);
 - `FirmwareVersionAppService` - 固件版本管理（已有）
 - `SignedUrlService` - 下载 URL 签名（已有，支持 SELF_SIGNED/S3_PRESIGNED/NONE 三种模式）
 
-> **说明：** 预热失败不阻断版本发布，版本仍会置为 ACTIVE。首次 Cache Miss 时设备请求会自动回源并缓存，或通过手动 Workers 脚本补充预热。
+> **说明：** 预热失败不阻断版本发布，版本仍会置为 ACTIVE。首次 Cache Miss 时设备请求会自动回源并缓存；创建、更新与手动触发均统一按字典中的 `strategy` 执行预热。
 
 ---
 
@@ -370,13 +370,24 @@ CdnWarmResult warmFirmware(String firmwarePath);
 
 **需要手动补充预热的场景：**
 - 某版本长期无请求导致缓存失效，即将进行大批量推送前
-- 新地区设备上线，需要提前预热对应 PoP
+- 需要在正式大规模下发前，提前触发一次 Cloudflare 边缘缓存建立
 
 ---
 
-## 六、Workers 手动预热脚本
+## 六、预热策略与 Worker 脚本
 
-用于在必要时手动触发多 PoP 预热。Workers 在 Cloudflare 网络内部发起请求，效果优于从外部服务器直接请求。
+系统同时支持两种预热方式，并通过字典 `cdn_warm.worker.config` 的单个配置项统一选择：
+
+- `SERVER`：由业务服务直接发起预热请求
+- `WORKER`：由 Cloudflare Worker 在 Cloudflare 网络内部发起预热请求
+
+选中的策略会同时作用于：
+
+- 新建版本带包发布
+- 更新版本带包发布
+- 管理后台手动触发预热
+
+当策略选择为 `WORKER` 时，使用下面的 Worker 脚本和部署方式。
 
 ### 6.1 Worker 代码
 
@@ -386,6 +397,8 @@ CdnWarmResult warmFirmware(String firmwarePath);
 
 export default {
   async fetch(request, env) {
+    const DEFAULT_CACHE_TTL = 86400 * 30;
+
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
@@ -395,49 +408,39 @@ export default {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const { firmware_url, pops } = await request.json();
+    const { firmware_url, ttl } = await request.json();
     if (!firmware_url) {
       return new Response("Missing firmware_url", { status: 400 });
     }
 
-    // 针对设备分布选择目标 PoP
-    const TARGET_POPS = pops || [
-      "SIN",  // 新加坡（亚太核心）
-      "NRT",  // 东京
-      "BOM",  // 孟买
-      "FRA",  // 法兰克福（欧洲核心）
-      "LHR",  // 伦敦
-      "DXB",  // 迪拜（中东）
-      "JNB",  // 约翰内斯堡（非洲）
-    ];
-
-    const results = await warmMultiplePops(firmware_url, TARGET_POPS);
-    return Response.json({ warmed: true, url: firmware_url, results });
+    const cacheTtl = normalizeCacheTtl(ttl, DEFAULT_CACHE_TTL);
+    const result = await warmUrl(firmware_url, cacheTtl);
+    return Response.json({ warmed: result.status > 0, url: firmware_url, ttl: cacheTtl, result });
   }
 };
 
-async function warmMultiplePops(url, pops) {
-  const tasks = pops.map(pop => warmSinglePop(url, pop));
-  const settled = await Promise.allSettled(tasks);
-  return settled.map((r, i) => r.value ?? { pop: pops[i], error: r.reason?.message });
+function normalizeCacheTtl(ttl, defaultTtl) {
+  const parsed = Number(ttl);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.floor(parsed);
+  }
+  return defaultTtl;
 }
 
-async function warmSinglePop(url, pop) {
+async function warmUrl(url, cacheTtl) {
   try {
     const resp = await fetch(url, {
       cf: {
         cacheEverything: true,
-        cacheTtl: 86400 * 30,
-        colo: pop,
+        cacheTtl,
       }
     });
     return {
-      pop,
       status: resp.status,
       cache: resp.headers.get("CF-Cache-Status"),
     };
   } catch (e) {
-    return { pop, status: 0, cache: "ERROR", error: e.message };
+    return { status: 0, cache: "ERROR", error: e.message };
   }
 }
 ```
@@ -464,18 +467,34 @@ npx wrangler secret put WARM_SECRET
 ### 6.3 手动触发方式
 
 ```bash
-# 预热单个固件（使用默认 PoP 列表）
+# 预热单个固件
 curl -X POST https://fota-warmer.your-subdomain.workers.dev \
   -H "Content-Type: application/json" \
   -H "X-Warm-Token: YOUR_SECRET" \
   -d '{"firmware_url": "https://fota-cdn.example.com/firmware/v2.1.0/device-a.bin"}'
 
-# 只预热指定 PoP
+# 指定 TTL
 curl -X POST https://fota-warmer.your-subdomain.workers.dev \
   -H "Content-Type: application/json" \
   -H "X-Warm-Token: YOUR_SECRET" \
-  -d '{"firmware_url": "...", "pops": ["SIN", "FRA", "DXB"]}'
+  -d '{"firmware_url": "...", "ttl": 604800}'
 ```
+
+### 6.4 说明
+
+- 字典配置示例：
+  ```json
+  {
+    "strategy": "WORKER",
+    "workerUrl": "https://fota-warmer.your-subdomain.workers.dev",
+    "warmSecret": "YOUR_SECRET",
+    "defaultTtlSeconds": 2592000
+  }
+  ```
+- 当前 Worker 支持 `firmware_url` 和可选 `ttl`
+- 当前 Worker 不支持指定远端 PoP 预热
+- Worker 发起的请求只会沿 Cloudflare 实际入口路径建立缓存
+- 如果开启 Tiered Cache，缓存可能随着上层节点传播，但这不等于“已逐个预热指定 PoP”
 
 ---
 

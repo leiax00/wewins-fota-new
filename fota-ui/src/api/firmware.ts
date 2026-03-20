@@ -1,4 +1,5 @@
 import { del, get, post, put } from '@/api/request'
+import i18n from '@/locales'
 import { getToken } from '@/utils/auth'
 
 export interface PageResult<T> {
@@ -101,12 +102,6 @@ export const cancelUploadSession = (sessionId: string) => {
   return del<void>(`/admin/firmware-uploads/${sessionId}`)
 }
 
-export const attachPackageToVersion = (versionId: number, uploadSessionId: string) => {
-  return post<FirmwareVersionItem>(`/admin/firmware-versions/${versionId}/attach-package`, {
-    uploadSessionId,
-  })
-}
-
 export const pageFirmwareVersions = (params: Record<string, unknown>) => {
   return get<PageResult<FirmwareVersionItem>>('/admin/firmware-versions', { params })
 }
@@ -119,14 +114,6 @@ export const getFirmwareVersionsByProduct = (productId: number, readyOnly = fals
 
 export const getFirmwareVersionById = (id: number) => {
   return get<FirmwareVersionItem>(`/admin/firmware-versions/${id}`)
-}
-
-export const createFirmwareVersion = (payload: FirmwareVersionPayload) => {
-  return post<FirmwareVersionItem>('/admin/firmware-versions', payload, { timeout: 60 * 60 * 1000 })
-}
-
-export const updateFirmwareVersion = (id: number, payload: FirmwareVersionPayload) => {
-  return put<FirmwareVersionItem>(`/admin/firmware-versions/${id}`, payload)
 }
 
 export const deleteFirmwareVersion = (id: number) => {
@@ -169,6 +156,10 @@ export interface PublishFirmwareVersionResponse {
  */
 export const publishFirmwareVersion = (payload: FirmwareVersionPayload) => {
   return post<PublishFirmwareVersionResponse>('/admin/firmware-versions/publish', payload, { timeout: 60 * 60 * 1000 })
+}
+
+export const updatePublishedFirmwareVersion = (id: number, payload: FirmwareVersionPayload) => {
+  return put<PublishFirmwareVersionResponse>(`/admin/firmware-versions/${id}/publish`, payload, { timeout: 60 * 60 * 1000 })
 }
 
 /**
@@ -225,14 +216,14 @@ export function createTaskProgressStream() {
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(`SSE 连接失败: ${response.status} ${response.statusText}`)
+          throw new Error(`${i18n.global.t('firmware.sseConnectFailed')}: ${response.status} ${response.statusText}`)
         }
 
         handlers.onopen?.()
 
         reader = response.body?.getReader() || null
         if (!reader) {
-          throw new Error('无法获取响应流')
+          throw new Error(i18n.global.t('firmware.sseConnectFailed'))
         }
         const activeReader = reader
 
@@ -308,4 +299,24 @@ export function createTaskProgressStream() {
     disconnect,
     isConnected,
   }
+}
+
+/**
+ * CDN 预热结果
+ */
+export interface CdnWarmResponse {
+  versionId: number
+  triggered: boolean
+  message: string
+  messageKey?: string
+  strategy?: string
+  pop?: string
+}
+
+/**
+ * 触发 CDN 预热（通过 Cloudflare Workers）
+ * @param versionId 固件版本 ID
+ */
+export const warmCdn = (versionId: number) => {
+  return get<CdnWarmResponse>(`/admin/firmware-versions/${versionId}/warm`, { timeout: 5 * 60 * 1000 })
 }

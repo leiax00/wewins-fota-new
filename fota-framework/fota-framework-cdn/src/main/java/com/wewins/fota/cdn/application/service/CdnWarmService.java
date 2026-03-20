@@ -2,8 +2,11 @@ package com.wewins.fota.cdn.application.service;
 
 import com.wewins.fota.cdn.application.dto.WarmRequest;
 import com.wewins.fota.cdn.application.dto.WarmResult;
+import com.wewins.fota.cdn.domain.cdn.model.enums.CdnWarmStrategy;
 import com.wewins.fota.cdn.domain.cdn.model.enums.WarmStatus;
 import com.wewins.fota.cdn.infra.client.CdnWarmClient;
+import com.wewins.fota.cdn.infra.client.CdnWarmWorkerClient;
+import com.wewins.fota.cdn.spi.CdnWorkerConfigProvider;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -15,9 +18,17 @@ import java.util.List;
 public class CdnWarmService {
 
     private final CdnWarmClient cdnWarmClient;
+    private final CdnWarmWorkerClient cdnWarmWorkerClient;
+    private final CdnWorkerConfigProvider configProvider;
 
-    public CdnWarmService(CdnWarmClient cdnWarmClient) {
+    public CdnWarmService(
+            CdnWarmClient cdnWarmClient,
+            CdnWarmWorkerClient cdnWarmWorkerClient,
+            CdnWorkerConfigProvider configProvider
+    ) {
         this.cdnWarmClient = cdnWarmClient;
+        this.cdnWarmWorkerClient = cdnWarmWorkerClient;
+        this.configProvider = configProvider;
     }
 
     /**
@@ -37,6 +48,7 @@ public class CdnWarmService {
 
         // Perform warm-up
         List<WarmResult> results = cdnWarmClient.warmUrls(urls);
+        results.forEach(result -> result.setStrategy(CdnWarmStrategy.SERVER));
 
         // Log summary
         long successCount = results.stream()
@@ -70,6 +82,49 @@ public class CdnWarmService {
         WarmRequest request = new WarmRequest();
         request.setUrls(urls);
         return warm(request);
+    }
+
+    public WarmResult warmViaWorker(String url) {
+        if (cdnWarmWorkerClient == null) {
+            return WarmResult.builder()
+                    .url(url)
+                    .strategy(CdnWarmStrategy.WORKER)
+                    .status(WarmStatus.FAILED)
+                    .errorMessage("Worker 预热未启用")
+                    .build();
+        }
+        return cdnWarmWorkerClient.warmViaWorker(url);
+    }
+
+    public boolean isWorkerConfigured() {
+        return cdnWarmWorkerClient != null && cdnWarmWorkerClient.isWorkerConfigured();
+    }
+
+    public WarmResult warmByConfiguredStrategy(String url) {
+        CdnWarmStrategy strategy = resolveStrategy();
+        if (strategy == CdnWarmStrategy.WORKER) {
+            return warmViaWorker(url);
+        }
+
+        WarmResult result = warm(url);
+        if (result == null) {
+            return WarmResult.builder()
+                    .url(url)
+                    .strategy(CdnWarmStrategy.SERVER)
+                    .status(WarmStatus.FAILED)
+                    .errorMessage("预热失败")
+                    .build();
+        }
+        result.setStrategy(CdnWarmStrategy.SERVER);
+        return result;
+    }
+
+    public CdnWarmStrategy resolveStrategy() {
+        if (configProvider == null) {
+            return CdnWarmStrategy.SERVER;
+        }
+        CdnWorkerConfigProvider.CdnWorkerConfig config = configProvider.getConfig();
+        return config == null || config.strategy() == null ? CdnWarmStrategy.SERVER : config.strategy();
     }
 
     /**

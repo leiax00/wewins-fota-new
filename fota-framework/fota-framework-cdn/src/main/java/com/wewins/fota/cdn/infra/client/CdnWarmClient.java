@@ -7,16 +7,15 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,6 +31,7 @@ public class CdnWarmClient {
     private static final long LARGE_FILE_THRESHOLD = 50 * 1024 * 1024L; // 50MB
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024 * 1024; // 10GB max
     private static final String CF_CACHE_STATUS_HEADER = "CF-Cache-Status";
+    private static final String CF_RAY_HEADER = "CF-RAY";
     private static final String CF_ACCEPT_RANGES_HEADER = "Accept-Ranges";
     private static final int DEFAULT_RETRY_COUNT = 2;
 
@@ -195,6 +195,7 @@ public class CdnWarmClient {
 
         HttpStatus statusCode = (HttpStatus) response.getStatusCode();
         String cacheStatus = response.getHeaders().getFirst(CF_CACHE_STATUS_HEADER);
+        String cfRay = response.getHeaders().getFirst(CF_RAY_HEADER);
 
         WarmStatus warmStatus = statusCode.is2xxSuccessful() ? WarmStatus.SUCCESS : WarmStatus.FAILED;
 
@@ -202,6 +203,8 @@ public class CdnWarmClient {
                 .url(url)
                 .status(warmStatus)
                 .cacheStatus(cacheStatus)
+                .pop(extractPopFromCfRay(cfRay))
+                .cfRay(cfRay)
                 .chunked(false)
                 .build();
     }
@@ -252,7 +255,7 @@ public class CdnWarmClient {
             ).exceptionally(ex -> {
                 log.error("Failed to request chunk {}-{} for {}", start, end, url, ex);
                 chunkSemaphore.release();
-                return new ChunkResult(false, null);
+                return new ChunkResult(false, null, null);
             });
             futures.add(future);
         }
@@ -274,10 +277,15 @@ public class CdnWarmClient {
                 .toList();
 
         // Check if all chunks succeeded
-        boolean allSuccess = chunkResults.stream().allMatch(ChunkResult::isSuccess);
+        boolean allSuccess = chunkResults.stream().allMatch(ChunkResult::success);
         String cacheStatus = chunkResults.stream()
-                .filter(c -> c.getCacheStatus() != null)
-                .map(ChunkResult::getCacheStatus)
+                .map(ChunkResult::cacheStatus)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        String cfRay = chunkResults.stream()
+                .map(ChunkResult::cfRay)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
 
@@ -285,6 +293,8 @@ public class CdnWarmClient {
                 .url(url)
                 .status(allSuccess ? WarmStatus.SUCCESS : WarmStatus.FAILED)
                 .cacheStatus(cacheStatus)
+                .pop(extractPopFromCfRay(cfRay))
+                .cfRay(cfRay)
                 .chunked(true)
                 .build();
     }
@@ -303,13 +313,25 @@ public class CdnWarmClient {
             );
 
             String cacheStatus = response.getHeaders().getFirst(CF_CACHE_STATUS_HEADER);
+            String cfRay = response.getHeaders().getFirst(CF_RAY_HEADER);
             boolean success = response.getStatusCode().is2xxSuccessful();
 
-            return new ChunkResult(success, cacheStatus);
+            return new ChunkResult(success, cacheStatus, cfRay);
         } catch (Exception e) {
             log.error("Failed to request chunk {}-{} for {}", start, end, url, e);
-            return new ChunkResult(false, null);
+            return new ChunkResult(false, null, null);
         }
+    }
+
+    private String extractPopFromCfRay(String cfRay) {
+        if (cfRay == null || cfRay.isBlank()) {
+            return null;
+        }
+        int index = cfRay.lastIndexOf('-');
+        if (index < 0 || index == cfRay.length() - 1) {
+            return null;
+        }
+        return cfRay.substring(index + 1).trim();
     }
 
     /**
@@ -380,21 +402,5 @@ public class CdnWarmClient {
     /**
      * Internal class to hold chunk request results.
      */
-    private static class ChunkResult {
-        private final boolean success;
-        private final String cacheStatus;
-
-        public ChunkResult(boolean success, String cacheStatus) {
-            this.success = success;
-            this.cacheStatus = cacheStatus;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public String getCacheStatus() {
-            return cacheStatus;
-        }
-    }
+    private record ChunkResult(boolean success, String cacheStatus, String cfRay) {}
 }

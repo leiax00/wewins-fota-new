@@ -60,3 +60,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260320_01_seed_cdn_warm_worker_config
+      author: fota-team
+      comment: "初始化 Cloudflare CDN 预热 Worker 字典配置"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260320_01__seed_cdn_warm_worker_config.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

@@ -11,15 +11,15 @@ import { formatDateTime } from '@/utils/date'
 import { trimFormValues } from '@/utils/form'
 import {
   cancelUploadSession,
-  createFirmwareVersion,
   publishFirmwareVersion,
+  updatePublishedFirmwareVersion,
   createTaskProgressStream,
   deleteFirmwareVersion,
   getTaskStatus,
   getUploadSession,
   pageFirmwareVersions,
   uploadFirmwarePackage,
-  updateFirmwareVersion,
+  warmCdn,
   type FirmwareVersionItem,
   type TaskProgressEvent,
 } from '@/api/firmware'
@@ -126,18 +126,30 @@ const taskProgress = reactive<TaskProgressState>({
   finished: false,
 })
 
-/**
- * 获取阶段显示文本
- */
-const getStageLabel = (stage: string) => {
-  const stageMap: Record<string, string> = {
-    INIT: '等待中',
-    PROCESSING: '处理中',
-    COMPLETED: '完成',
-    FAILED: '失败',
-    CANCELLED: '已取消',
+const translateTaskMessage = (message?: string) => {
+  const messageKeyMap: Record<string, string> = {
+    '开始创建无包版本': 'firmware.uploadSessionCreate',
+    '固件版本处理完成': 'firmware.taskCompleted',
+    '开始更新版本信息': 'firmware.taskStartUpdate',
+    '版本信息已更新': 'firmware.taskUpdated',
+    '开始转存文件到对象存储': 'firmware.taskStartTransfer',
+    '文件转存完成': 'firmware.taskTransferred',
+    '版本记录已更新': 'firmware.taskVersionReady',
+    '开始CDN预热': 'firmware.taskStartWarm',
+    'CDN预热完成': 'firmware.taskWarmCompleted',
+    'CDN预热失败，已记录': 'firmware.taskWarmFailedRecorded',
   }
-  return stageMap[stage] || stage
+  const key = message ? messageKeyMap[message] : undefined
+  return key ? t(key) : message || ''
+}
+
+const formatWarmResultMessage = (result: { messageKey?: string; pop?: string; triggered: boolean }) => {
+  const baseKey = result.messageKey || (result.triggered ? 'firmware.warmRequested' : 'firmware.warmFailed')
+  let message = t(baseKey)
+  if (result.pop) {
+    message += t('firmware.actualPopSuffix', { pop: result.pop })
+  }
+  return message
 }
 
 /**
@@ -146,14 +158,14 @@ const getStageLabel = (stage: string) => {
 const updateTaskProgress = (event: TaskProgressEvent) => {
   taskProgress.stage = event.stage
   taskProgress.percent = event.percent
-  taskProgress.message = event.message
+  taskProgress.message = translateTaskMessage(event.message)
 
   if (event.stage === 'COMPLETED') {
     taskProgress.finished = true
-    taskProgress.message = '固件版本发布成功！'
+    taskProgress.message = t('firmware.processSuccess')
   } else if (event.stage === 'FAILED' || event.stage === 'CANCELLED') {
     taskProgress.finished = true
-    taskProgress.errorMsg = event.message
+    taskProgress.errorMsg = translateTaskMessage(event.message)
   }
 }
 
@@ -165,7 +177,7 @@ const openTaskProgressDialog = (taskId: number) => {
   taskProgress.taskId = taskId
   taskProgress.stage = 'INIT'
   taskProgress.percent = 0
-  taskProgress.message = '正在创建版本...'
+  taskProgress.message = t('firmware.processingVersion')
   taskProgress.errorMsg = ''
   taskProgress.finished = false
 
@@ -211,10 +223,10 @@ const reconnectTaskProgress = async () => {
 
     if (status.stage === 'COMPLETED') {
       taskProgress.finished = true
-      taskProgress.message = '固件版本发布成功！'
+      taskProgress.message = t('firmware.processSuccess')
     } else if (status.stage === 'FAILED' || status.stage === 'CANCELLED') {
       taskProgress.finished = true
-      taskProgress.errorMsg = status.errorMsg || status.message
+      taskProgress.errorMsg = translateTaskMessage(status.errorMsg || status.message)
     } else {
       // 任务仍在进行中，重新建立 SSE 连接
       taskProgressRef.value?.disconnect()
@@ -284,7 +296,7 @@ const formRules = {
           return
         }
         if (dialogMode.value === 'create' && uploadState.status !== 'SUCCESS') {
-          callback(new Error('请先上传固件包'))
+          callback(new Error(t('firmware.uploadRequired')))
           return
         }
         callback()
@@ -334,7 +346,7 @@ const cancelUpload = async () => {
  */
 const beforeUpload: UploadProps['beforeUpload'] = () => {
   if (!form.productId) {
-    ElMessage.warning('请先选择产品')
+    ElMessage.warning(t('firmware.selectProductFirst'))
     return false
   }
   return true
@@ -346,7 +358,7 @@ const beforeUpload: UploadProps['beforeUpload'] = () => {
 const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOptions) => {
   const file = options.file as File
   if (!form.productId) {
-    const err = createUploadAjaxError('请先选择产品')
+    const err = createUploadAjaxError(t('firmware.selectProductFirst'))
     uploadState.status = 'FAILED'
     uploadState.error = err.message
     options.onError?.(err)
@@ -422,7 +434,7 @@ const customUpload: UploadProps['httpRequest'] = async (options: UploadRequestOp
       return
     }
 
-    const message = e instanceof Error ? e.message : '上传失败'
+    const message = e instanceof Error ? e.message : t('firmware.uploadFailed')
     uploadState.status = 'FAILED'
     uploadState.error = message
     options.onError?.(createUploadAjaxError(message))
@@ -544,39 +556,25 @@ const submitForm = async () => {
     } else if (uploadState.status === 'SUCCESS' && uploadState.uploadSessionId) {
       payload.uploadSessionId = uploadState.uploadSessionId
     } else if (dialogMode.value === 'create') {
-      ElMessage.warning('请先上传固件包，或勾选无包版本')
+      ElMessage.warning(t('firmware.uploadOrNoPackageRequired'))
       submitting.value = false
       return
     }
 
     if (dialogMode.value === 'create') {
-      // 有包版本：使用带 taskId 的接口，启动异步任务
-      if (!form.noPackage && uploadState.status === 'SUCCESS' && uploadState.uploadSessionId) {
-        const response = await publishFirmwareVersion(payload as never)
-        // 关闭创建弹窗
-        resetUploadState()
-        dialogVisible.value = false
-        // 打开进度弹窗
-        openTaskProgressDialog(response.taskId)
-      } else {
-        // 无包版本：直接创建
-        await createFirmwareVersion(payload as never)
-        ElMessage.success(t('common.createSuccess'))
-      }
-    } else if (editingId.value) {
-      await updateFirmwareVersion(editingId.value, payload as never)
-      ElMessage.success(t('common.updateSuccess'))
+      const response = await publishFirmwareVersion(payload as never)
+      resetUploadState()
       dialogVisible.value = false
-      await fetchList()
-    }
-
-    // 无包版本保存成功后刷新列表
-    if (dialogMode.value === 'create' && form.noPackage) {
-      await fetchList()
+      openTaskProgressDialog(response.taskId)
+    } else if (editingId.value) {
+      const response = await updatePublishedFirmwareVersion(editingId.value, payload as never)
+      resetUploadState()
+      dialogVisible.value = false
+      openTaskProgressDialog(response.taskId)
     }
   } catch (e: unknown) {
     // 保存失败：保留上传状态，不重置，允许用户修改后重试
-    const message = e instanceof Error ? e.message : '保存失败，请重试'
+    const message = e instanceof Error ? e.message : t('firmware.saveFailedRetry')
     ElMessage.error(message)
   } finally {
     submitting.value = false
@@ -591,6 +589,31 @@ const handleDelete = async (row: FirmwareVersionItem) => {
   await deleteFirmwareVersion(row.id)
   ElMessage.success(t('common.deleteSuccess'))
   await fetchList()
+}
+
+/**
+ * CDN 预热
+ */
+const handleWarmCdn = async (row: FirmwareVersionItem) => {
+  try {
+    await ElMessageBox.confirm(
+      t('firmware.warmConfirmMessage'),
+      t('firmware.warmConfirmTitle'),
+      { type: 'info', confirmButtonText: t('firmware.warmConfirmButton'), cancelButtonText: t('common.cancel') }
+    )
+
+    const result = await warmCdn(row.id)
+    if (result.triggered) {
+      ElMessage.success(formatWarmResultMessage(result))
+    } else {
+      ElMessage.warning(formatWarmResultMessage(result))
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      const message = e instanceof Error ? e.message : t('firmware.warmError')
+      ElMessage.error(message)
+    }
+  }
 }
 
 /**
@@ -697,7 +720,7 @@ onUnmounted(() => {
         />
         <el-input
           v-model="query.internalVersion"
-          placeholder="内部版本"
+          :placeholder="t('firmware.internalVersion')"
           clearable
           style="width: 140px"
           @keyup.enter="fetchList"
@@ -740,13 +763,13 @@ onUnmounted(() => {
       />
       <el-table-column
         prop="internalVersion"
-        label="内部版本"
+        :label="t('firmware.internalVersion')"
         min-width="200"
         show-overflow-tooltip
       />
       <el-table-column
         prop="packageStatus"
-        label="包状态"
+        :label="t('firmware.packageStatus')"
         min-width="100"
       >
         <template #default="{ row }">
@@ -754,13 +777,13 @@ onUnmounted(() => {
             v-if="row.packageStatus === 'READY'"
             type="success"
           >
-            就绪
+            {{ t('firmware.packageStatusReady') }}
           </el-tag>
           <el-tag
             v-else-if="row.packageStatus === 'NONE'"
             type="info"
           >
-            无包
+            {{ t('firmware.packageStatusNone') }}
           </el-tag>
           <el-tag
             v-else
@@ -791,7 +814,7 @@ onUnmounted(() => {
       <el-table-column
         v-if="canShowActions"
         :label="t('common.actions')"
-        width="150"
+        width="200"
         fixed="right"
       >
         <template #default="{ row }">
@@ -802,6 +825,14 @@ onUnmounted(() => {
             @click="openEditDialog(row)"
           >
             {{ t('common.edit') }}
+          </el-button>
+          <el-button
+            v-if="userStore.hasPermission('fota:firmware:update') && row.packageStatus === 'READY'"
+            link
+            type="warning"
+            @click="handleWarmCdn(row)"
+          >
+            {{ t('firmware.warm') }}
           </el-button>
           <el-button
             v-if="userStore.hasPermission('fota:firmware:delete')"
@@ -876,26 +907,26 @@ onUnmounted(() => {
 
       <el-form-item
         prop="internalVersion"
-        label="内部版本"
+        :label="t('firmware.internalVersion')"
       >
         <el-input
           v-model="form.internalVersion"
-          placeholder="如：v1.0.0-rc.1"
+          :placeholder="t('firmware.internalVersionPlaceholder')"
           :disabled="dialogMode === 'edit'"
         />
       </el-form-item>
 
-      <el-form-item label="无包版本">
+      <el-form-item :label="t('firmware.noPackageVersion')">
         <el-switch v-model="form.noPackage" />
         <span class="ml-2 text-sm text-gray-500">
-          （占位版本号，用于版本规划，暂不可用于升级策略）
+          {{ `（${t('firmware.noPackageVersionTip')}）` }}
         </span>
       </el-form-item>
 
       <el-form-item
         v-if="!form.noPackage"
         prop="uploadSessionId"
-        label="固件包上传"
+        :label="t('firmware.uploadPackage')"
       >
         <div class="firmware-upload-panel">
           <!-- 上传按钮 -->
@@ -918,10 +949,10 @@ onUnmounted(() => {
               :disabled="submitting || !form.productId"
             >
               <template v-if="uploadState.status === 'IDLE'">
-                选择并上传固件包
+                {{ t('firmware.selectAndUpload') }}
               </template>
               <template v-else>
-                上传中...
+                {{ t('firmware.uploading') }}
               </template>
             </el-button>
           </el-upload>
@@ -933,11 +964,11 @@ onUnmounted(() => {
           >
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <span class="firmware-upload-panel__meta-label">文件名：</span>
+                <span class="firmware-upload-panel__meta-label">{{ t('firmware.fileName') }}</span>
                 <span class="firmware-upload-panel__meta-value">{{ uploadState.fileName }}</span>
               </div>
               <div>
-                <span class="firmware-upload-panel__meta-label">文件大小：</span>
+                <span class="firmware-upload-panel__meta-label">{{ t('firmware.fileSizeLabel') }}</span>
                 <span class="firmware-upload-panel__meta-value">{{ formatFileSize(uploadState.fileSize) }}</span>
               </div>
             </div>
@@ -952,7 +983,7 @@ onUnmounted(() => {
           >
             <template #default="{ percentage }">
               <span class="text-sm">
-                {{ uploadState.status === 'SUCCESS' ? '✓ 上传成功' : `${percentage}%` }}
+                {{ uploadState.status === 'SUCCESS' ? `✓ ${t('firmware.uploadSuccess')}` : `${percentage}%` }}
               </span>
             </template>
           </el-progress>
@@ -963,7 +994,7 @@ onUnmounted(() => {
             class="mt-3"
             type="error"
             :closable="false"
-            :title="uploadState.error || '上传失败'"
+            :title="uploadState.error || t('firmware.uploadFailed')"
           />
 
           <!-- 操作按钮 -->
@@ -973,7 +1004,7 @@ onUnmounted(() => {
               size="small"
               @click="cancelUpload"
             >
-              取消上传
+              {{ t('firmware.cancelUpload') }}
             </el-button>
             <el-button
               v-if="uploadState.status === 'FAILED'"
@@ -981,14 +1012,14 @@ onUnmounted(() => {
               type="warning"
               @click="retryUpload"
             >
-              重试上传
+              {{ t('firmware.retryUpload') }}
             </el-button>
             <el-button
               v-if="uploadState.status === 'SUCCESS' && !submitting"
               size="small"
               @click="cancelUpload"
             >
-              替换文件
+              {{ t('firmware.replaceFile') }}
             </el-button>
           </div>
         </div>
@@ -1035,7 +1066,7 @@ onUnmounted(() => {
   <!-- 任务进度弹窗 -->
   <el-dialog
     v-model="taskProgress.visible"
-    title="发布进度"
+    :title="t('firmware.publishProgress')"
     width="480px"
     :close-on-click-modal="taskProgress.finished"
     :close-on-press-escape="taskProgress.finished"
@@ -1056,10 +1087,10 @@ onUnmounted(() => {
           </el-icon>
         </div>
         <div class="task-progress__content">
-          <div class="task-progress__title">上传固件到存储</div>
+          <div class="task-progress__title">{{ t('firmware.taskUploadToStorage') }}</div>
           <div class="task-progress__status">
             <template v-if="taskProgress.stage === 'INIT'">
-              <span class="task-progress__pending">等待中</span>
+              <span class="task-progress__pending">{{ t('firmware.taskWaiting') }}</span>
             </template>
             <template v-else-if="taskProgress.stage === 'PROCESSING'">
               <el-progress
@@ -1070,10 +1101,10 @@ onUnmounted(() => {
               <span class="task-progress__message">{{ taskProgress.message || `${taskProgress.percent}%` }}</span>
             </template>
             <template v-else-if="taskProgress.stage === 'COMPLETED'">
-              <span class="task-progress__done">完成</span>
+              <span class="task-progress__done">{{ t('firmware.taskDone') }}</span>
             </template>
             <template v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
-              <span class="task-progress__error">失败</span>
+              <span class="task-progress__error">{{ t('firmware.taskFailed') }}</span>
             </template>
           </div>
         </div>
@@ -1096,7 +1127,7 @@ onUnmounted(() => {
           </template>
         </div>
         <div class="task-progress__content">
-          <div class="task-progress__title">CDN 预热</div>
+          <div class="task-progress__title">{{ t('firmware.taskCdnWarm') }}</div>
           <div class="task-progress__status">
             <template v-if="taskProgress.stage === 'PROCESSING' && taskProgress.percent > 0">
               <el-progress
@@ -1104,16 +1135,16 @@ onUnmounted(() => {
                 :status="taskProgress.percent === 100 ? 'success' : undefined"
                 :show-text="false"
               />
-              <span class="task-progress__message">{{ taskProgress.message || '预热中...' }}</span>
+              <span class="task-progress__message">{{ taskProgress.message || t('firmware.taskWarming') }}</span>
             </template>
             <template v-else-if="taskProgress.stage === 'COMPLETED'">
-              <span class="task-progress__done">完成</span>
+              <span class="task-progress__done">{{ t('firmware.taskDone') }}</span>
             </template>
             <template v-else-if="taskProgress.stage === 'FAILED' || taskProgress.stage === 'CANCELLED'">
-              <span class="task-progress__error">{{ taskProgress.errorMsg || '失败' }}</span>
+              <span class="task-progress__error">{{ taskProgress.errorMsg || t('firmware.taskFailed') }}</span>
             </template>
             <template v-else>
-              <span class="task-progress__pending">等待中</span>
+              <span class="task-progress__pending">{{ t('firmware.taskWaiting') }}</span>
             </template>
           </div>
         </div>
@@ -1125,7 +1156,7 @@ onUnmounted(() => {
         class="mt-4"
         type="error"
         :closable="false"
-        :title="taskProgress.errorMsg || '发布失败'"
+        :title="taskProgress.errorMsg || t('firmware.taskPublishFailed')"
       />
     </div>
 
@@ -1135,13 +1166,13 @@ onUnmounted(() => {
         type="primary"
         @click="finishTaskProgress"
       >
-        关闭
+        {{ t('firmware.close') }}
       </el-button>
       <el-button
         v-else
         @click="closeTaskProgressDialog"
       >
-        取消
+        {{ t('common.cancel') }}
       </el-button>
     </template>
   </el-dialog>

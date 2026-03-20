@@ -2,8 +2,12 @@ package com.wewins.fota.application.firmware;
 
 import com.wewins.fota.application.firmware.download.SignedUrlService;
 import com.wewins.fota.cache.dto.FirmwareUploadSession;
-import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.cdn.application.service.CdnWarmService;
+import com.wewins.fota.cdn.application.dto.WarmResult;
+import com.wewins.fota.cdn.domain.cdn.model.enums.CdnWarmStrategy;
+import com.wewins.fota.cdn.domain.cdn.model.enums.WarmStatus;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
+import com.wewins.fota.storage.core.FileTransferService;
 import com.wewins.fota.task.application.dto.TaskCreateCmd;
 import com.wewins.fota.task.application.service.AsyncTaskService;
 import com.wewins.fota.task.application.task.TaskContext;
@@ -18,19 +22,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDateTime;
 
 /**
- * 固件发布应用服务。
- * <p>
- * 编排固件版本发布流程：创建版本 → 转存文件 → CDN预热 → 激活版本
- * </p>
- *
- * @author FOTA Team
- * @since 2026-03-19
+ * 固件版本异步发布服务。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FirmwarePublishService {
 
+    private static final String PACKAGE_STATUS_NONE = "NONE";
     private static final String PACKAGE_STATUS_READY = "READY";
     private static final String PACKAGE_STATUS_PENDING = "PENDING";
     private static final String PACKAGE_STATUS_FAILED = "FAILED";
@@ -41,114 +40,191 @@ public class FirmwarePublishService {
     private final AsyncTaskService asyncTaskService;
     private final CdnWarmService cdnWarmService;
     private final SignedUrlService signedUrlService;
+    private final FileTransferService fileTransferService;
 
-    /**
-     * 创建并发布固件版本。
-     *
-     * @param publishDraft    已在上层完成 DTO 转换的固件版本草稿
-     * @param uploadSessionId 上传会话 ID
-     * @return 发布任务信息
-     */
     @Transactional(rollbackFor = Exception.class)
     public PublishResult createAndPublish(FirmwareVersion publishDraft, String uploadSessionId) {
-        Long productId = publishDraft.getProductId();
-        String version = publishDraft.getVersion();
+        boolean hasPackage = hasText(uploadSessionId);
 
-        // 1. 校验上传会话并获取文件信息
-        FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(uploadSessionId, productId);
+        if (hasPackage) {
+            FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(
+                    uploadSessionId, publishDraft.getProductId());
+            publishDraft.setFileName(session.getFileName());
+            publishDraft.setFileSize(session.getFileSize());
+            publishDraft.setMd5(session.getMd5());
+            publishDraft.setSha256(session.getSha256());
+            publishDraft.setPackageStatus(PACKAGE_STATUS_PENDING);
+            publishDraft.setPackageUploadedAt(null);
+        } else {
+            publishDraft.setPackageStatus(resolveNoPackageStatus(publishDraft.getPackageStatus()));
+            publishDraft.setPackageUploadedAt(null);
+            clearPackageFields(publishDraft);
+        }
 
-        // 2. 补齐草稿中的文件元信息，交给既有应用服务创建占位记录
         publishDraft.setId(null);
-        publishDraft.setFileName(session.getFileName());
-        publishDraft.setFileSize(session.getFileSize());
-        publishDraft.setMd5(session.getMd5());
-        publishDraft.setSha256(session.getSha256());
-        publishDraft.setPackageStatus(PACKAGE_STATUS_PENDING);
-        publishDraft.setPackageUploadedAt(null);
-
         FirmwareVersion createdVersion = firmwareVersionAppService.createFirmwareVersion(publishDraft);
-        log.info("固件版本创建成功(待发布): firmwareVersionId={}, productId={}, version={}",
-                createdVersion.getId(), productId, version);
 
-        // 4. 创建异步任务
-        Long taskId = asyncTaskService.createTask(TaskCreateCmd.builder()
-                .bizType(BIZ_TYPE_FIRMWARE_PUBLISH)
-                .bizId(createdVersion.getId().toString())
-                .build());
-
-        log.info("固件发布任务创建成功: taskId={}, firmwareVersionId={}", taskId, createdVersion.getId());
-
-        // 5. 在事务提交后异步执行发布流程
-        final Long versionId = createdVersion.getId();
-        final String sessionId = uploadSessionId;
-
-        // 使用事务同步确保在事务提交后才执行异步任务
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                asyncTaskService.executeTask(taskId,
-                        context -> executePublishFlow(context, versionId, sessionId, productId));
-            }
-        });
-
+        Long taskId = createPublishTask(createdVersion.getId());
+        registerAfterCommit(taskId, context -> executeCreateFlow(
+                context,
+                createdVersion.getId(),
+                createdVersion.getProductId(),
+                uploadSessionId
+        ));
         return new PublishResult(taskId, createdVersion.getId());
     }
 
-    /**
-     * 执行发布流程。
-     *
-     * @param context          任务上下文
-     * @param versionId        版本 ID
-     * @param uploadSessionId  上传会话 ID
-     * @param productId       产品 ID
-     */
-    private void executePublishFlow(TaskContext context, Long versionId, String uploadSessionId, Long productId) {
+    @Transactional(rollbackFor = Exception.class)
+    public PublishResult updateAndPublish(Long versionId, FirmwareVersion updateDraft, String uploadSessionId) {
+        FirmwareVersion existingVersion = firmwareVersionAppService.getById(versionId);
+        if (hasText(uploadSessionId)) {
+            firmwarePackagePreparationService.loadAndValidateUploadSession(uploadSessionId, existingVersion.getProductId());
+        }
+
+        updateDraft.setId(versionId);
+        updateDraft.setProductId(existingVersion.getProductId());
+        updateDraft.setVersion(existingVersion.getVersion());
+        updateDraft.setInternalVersion(existingVersion.getInternalVersion());
+
+        Long taskId = createPublishTask(versionId);
+        registerAfterCommit(taskId, context -> executeUpdateFlow(
+                context,
+                versionId,
+                existingVersion,
+                updateDraft,
+                uploadSessionId
+        ));
+        return new PublishResult(taskId, versionId);
+    }
+
+    private Long createPublishTask(Long versionId) {
+        Long taskId = asyncTaskService.createTask(TaskCreateCmd.builder()
+                .bizType(BIZ_TYPE_FIRMWARE_PUBLISH)
+                .bizId(versionId.toString())
+                .build());
+        log.info("固件发布任务创建成功: taskId={}, firmwareVersionId={}", taskId, versionId);
+        return taskId;
+    }
+
+    private void registerAfterCommit(Long taskId, java.util.function.Consumer<TaskContext> consumer) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                asyncTaskService.executeTask(taskId, consumer);
+            }
+        });
+    }
+
+    private void executeCreateFlow(TaskContext context, Long versionId, Long productId, String uploadSessionId) {
+        if (!hasText(uploadSessionId)) {
+            context.updateProgress(TaskStage.PROCESSING, 40, "开始创建无包版本");
+            context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+            log.info("无包版本异步创建完成: versionId={}", versionId);
+            return;
+        }
+        executePackageFlow(context, versionId, productId, uploadSessionId, null, null);
+    }
+
+    private void executeUpdateFlow(
+            TaskContext context,
+            Long versionId,
+            FirmwareVersion existingVersion,
+            FirmwareVersion updateDraft,
+            String uploadSessionId
+    ) {
         try {
-            // 阶段 1: 转存文件到对象存储 (10% -> 30%)
-            context.updateProgress(TaskStage.PROCESSING, 10, "开始转存文件到对象存储");
-            FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(uploadSessionId, productId);
-            String objectKey = firmwarePackagePreparationService.ensureObjectKeyReady(uploadSessionId, productId, session);
-            context.updateProgress(TaskStage.PROCESSING, 30, "文件转存完成");
+            context.updateProgress(TaskStage.PROCESSING, 10, "开始更新版本信息");
+            FirmwareVersion versionToSave = buildUpdatedVersion(existingVersion, updateDraft, uploadSessionId);
+            firmwareVersionAppService.updateFirmwareVersion(versionToSave);
+            context.updateProgress(TaskStage.PROCESSING, 30, "版本信息已更新");
 
-            // 阶段 2: 更新版本记录 (30% -> 50%)
-            context.updateProgress(TaskStage.PROCESSING, 40, "更新版本记录");
-            updateVersionToReady(versionId, objectKey, session);
-            context.updateProgress(TaskStage.PROCESSING, 50, "版本记录已更新");
-
-            // 阶段 3: CDN预热 (50% -> 80%) - 失败不阻断主流程
-            context.updateProgress(TaskStage.PROCESSING, 60, "开始CDN预热");
-            try {
-                warmCdn(objectKey);
-                context.updateProgress(TaskStage.PROCESSING, 80, "CDN预热完成");
-            } catch (Exception e) {
-                // CDN预热失败不阻断主流程，记录日志继续
-                log.warn("CDN预热失败，不阻断主流程: versionId={}, error={}", versionId, e.getMessage());
-                context.updateProgress(TaskStage.PROCESSING, 80, "CDN预热失败，已记录");
+            if (!hasText(uploadSessionId)) {
+                context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+                log.info("固件版本异步更新完成: versionId={}", versionId);
+                return;
             }
 
-            // 阶段 4: 完成 (100%)
-            context.updateProgress(TaskStage.COMPLETED, 100, "固件发布完成");
-
-            log.info("固件发布流程完成: versionId={}", versionId);
-
-            // 5. 清理上传会话（在任务完成后删除）
-            firmwarePackagePreparationService.cleanupUploadSession(uploadSessionId);
-
+            executePackageFlow(
+                    context,
+                    versionId,
+                    existingVersion.getProductId(),
+                    uploadSessionId,
+                    existingVersion.getFileUrl(),
+                    existingVersion.getPackageStatus()
+            );
         } catch (Exception e) {
-            log.error("固件发布流程失败: versionId={}", versionId, e);
+            log.error("固件更新异步流程失败: versionId={}", versionId, e);
+            throw e;
+        }
+    }
+
+    private FirmwareVersion buildUpdatedVersion(FirmwareVersion existingVersion, FirmwareVersion updateDraft, String uploadSessionId) {
+        FirmwareVersion version = firmwareVersionAppService.getById(existingVersion.getId());
+        version.setTags(updateDraft.getTags());
+        version.setMeta(updateDraft.getMeta());
+
+        if (hasText(uploadSessionId)) {
+            version.setPackageStatus(PACKAGE_STATUS_PENDING);
+            version.setPackageUploadedAt(null);
+        } else {
+            version.setPackageStatus(resolveNoPackageStatus(existingVersion.getPackageStatus()));
+            version.setPackageUploadedAt(existingVersion.getPackageUploadedAt());
+            version.setFileUrl(existingVersion.getFileUrl());
+            version.setFileName(existingVersion.getFileName());
+            version.setFileSize(existingVersion.getFileSize());
+            version.setMd5(existingVersion.getMd5());
+            version.setSha256(existingVersion.getSha256());
+        }
+        return version;
+    }
+
+    private void executePackageFlow(
+            TaskContext context,
+            Long versionId,
+            Long productId,
+            String uploadSessionId,
+            String oldObjectKey,
+            String previousPackageStatus
+    ) {
+        try {
+            context.updateProgress(TaskStage.PROCESSING, 40, "开始转存文件到对象存储");
+            FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(uploadSessionId, productId);
+            String objectKey = firmwarePackagePreparationService.ensureObjectKeyReady(uploadSessionId, productId, session);
+            context.updateProgress(TaskStage.PROCESSING, 60, "文件转存完成");
+
+            updateVersionToReady(versionId, objectKey, session);
+            context.updateProgress(TaskStage.PROCESSING, 75, "版本记录已更新");
+
             try {
-                // 更新版本状态为 FAILED
-                updateVersionToFailed(versionId);
+                context.updateProgress(TaskStage.PROCESSING, 85, "开始CDN预热");
+                warmCdn(objectKey);
+                context.updateProgress(TaskStage.PROCESSING, 95, "CDN预热完成");
+            } catch (Exception e) {
+                log.warn("CDN预热失败，不阻断主流程: versionId={}, error={}", versionId, e.getMessage());
+                context.updateProgress(TaskStage.PROCESSING, 95, "CDN预热失败，已记录");
+            }
+
+            firmwarePackagePreparationService.cleanupUploadSession(uploadSessionId);
+            cleanupReplacedObject(oldObjectKey, objectKey, versionId);
+            context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+            log.info("固件包异步处理完成: versionId={}, objectKey={}", versionId, objectKey);
+        } catch (Exception e) {
+            log.error("固件包异步流程失败: versionId={}", versionId, e);
+            try {
+                if (PACKAGE_STATUS_READY.equalsIgnoreCase(previousPackageStatus)) {
+                    FirmwareVersion version = firmwareVersionAppService.getById(versionId);
+                    version.setPackageStatus(PACKAGE_STATUS_READY);
+                    firmwareVersionAppService.updateFirmwareVersion(version);
+                } else {
+                    updateVersionToFailed(versionId);
+                }
             } catch (Exception updateEx) {
-                log.error("更新版本状态失败: versionId={}", versionId, updateEx);
+                log.error("回滚固件包状态失败: versionId={}", versionId, updateEx);
             }
             throw e;
         }
     }
 
-    /**
-     * 更新版本状态为 READY。
-     */
     private void updateVersionToReady(Long versionId, String objectKey, FirmwareUploadSession session) {
         FirmwareVersion version = firmwareVersionAppService.getById(versionId);
         version.setFileUrl(objectKey);
@@ -158,43 +234,124 @@ public class FirmwarePublishService {
         version.setSha256(session.getSha256());
         version.setPackageStatus(PACKAGE_STATUS_READY);
         version.setPackageUploadedAt(LocalDateTime.now());
-
         firmwareVersionAppService.updateFirmwareVersion(version);
-        log.info("固件版本状态已更新为READY: versionId={}, objectKey={}", versionId, objectKey);
     }
 
-    /**
-     * 更新版本状态为 FAILED。
-     */
     private void updateVersionToFailed(Long versionId) {
         FirmwareVersion version = firmwareVersionAppService.getById(versionId);
         version.setPackageStatus(PACKAGE_STATUS_FAILED);
         firmwareVersionAppService.updateFirmwareVersion(version);
     }
 
-    /**
-     * CDN预热。
-     */
     private void warmCdn(String objectKey) {
-        try {
-            String downloadUrl = signedUrlService.generateSignedUrl(objectKey);
-
-            if (downloadUrl != null && !downloadUrl.isBlank()) {
-                cdnWarmService.warm(downloadUrl);
-                // 只记录 objectKey，避免泄漏签名 URL
-                log.info("CDN预热请求已发送: objectKey={}", objectKey);
-            }
-        } catch (Exception e) {
-            log.warn("CDN预热失败: objectKey={}, error={}", objectKey, e.getMessage());
+        String downloadUrl = signedUrlService.generateSignedUrl(objectKey);
+        if (downloadUrl != null && !downloadUrl.isBlank()) {
+            WarmResult result = cdnWarmService.warmByConfiguredStrategy(downloadUrl);
+            log.info("CDN预热请求已发送: objectKey={}, strategy={}, success={}, pop={}, cfRay={}, message={}",
+                    objectKey, result.getStrategy(), isSuccess(result), result.getPop(), result.getCfRay(), resolveWarmMessage(result));
         }
     }
 
-    /**
-     * 发布结果。
-     *
-     * @param taskId    任务 ID
-     * @param versionId 版本 ID
-     */
+    private void cleanupReplacedObject(String oldObjectKey, String newObjectKey, Long firmwareVersionId) {
+        if (!hasText(oldObjectKey) || oldObjectKey.equals(newObjectKey)) {
+            return;
+        }
+        try {
+            fileTransferService.deleteStorageObject(oldObjectKey);
+            log.info("清理旧固件包成功: firmwareVersionId={}, oldObjectKey={}", firmwareVersionId, oldObjectKey);
+        } catch (RuntimeException e) {
+            log.error("清理旧固件包失败（将产生孤儿文件）: firmwareVersionId={}, oldObjectKey={}",
+                    firmwareVersionId, oldObjectKey, e);
+        }
+    }
+
+    private void clearPackageFields(FirmwareVersion version) {
+        version.setFileUrl(null);
+        version.setFileName(null);
+        version.setFileSize(null);
+        version.setMd5(null);
+        version.setSha256(null);
+    }
+
+    private String resolveNoPackageStatus(String packageStatus) {
+        return PACKAGE_STATUS_NONE.equalsIgnoreCase(packageStatus) ? PACKAGE_STATUS_NONE : packageStatus;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    public ManualWarmResult warmCdnManually(Long versionId) {
+        FirmwareVersion version = firmwareVersionAppService.getById(versionId);
+        if (!PACKAGE_STATUS_READY.equals(version.getPackageStatus())) {
+            throw new IllegalArgumentException("该固件版本没有可用的包，无法进行预热");
+        }
+
+        String objectKey = version.getFileUrl();
+        if (!hasText(objectKey)) {
+            throw new IllegalArgumentException("固件包路径缺失");
+        }
+
+        String downloadUrl = signedUrlService.generateSignedUrl(objectKey);
+        if (!hasText(downloadUrl)) {
+            throw new IllegalArgumentException("无法生成下载地址");
+        }
+
+        WarmResult warmResult = cdnWarmService.warmByConfiguredStrategy(downloadUrl);
+        return new ManualWarmResult(
+                versionId,
+                isSuccess(warmResult),
+                resolveManualWarmMessageKey(warmResult),
+                warmResult.getStrategy() == null ? null : warmResult.getStrategy().name(),
+                warmResult.getPop(),
+                buildManualWarmMessage(warmResult)
+        );
+    }
+
+    private String buildManualWarmMessage(WarmResult result) {
+        String message = resolveWarmMessage(result);
+        if (hasText(result.getPop())) {
+            message = message + "，实际PoP=" + result.getPop();
+        }
+        if (result.getStrategy() == CdnWarmStrategy.WORKER) {
+            return message;
+        }
+        return "已按服务器预热方式执行: " + message;
+    }
+
+    private boolean isSuccess(WarmResult result) {
+        return result != null && result.getStatus() == WarmStatus.SUCCESS;
+    }
+
+    private String resolveWarmMessage(WarmResult result) {
+        if (result == null) {
+            return "预热失败";
+        }
+        if (isSuccess(result)) {
+            return "预热成功";
+        }
+        return hasText(result.getErrorMessage()) ? result.getErrorMessage() : "预热失败";
+    }
+
+    private String resolveManualWarmMessageKey(WarmResult result) {
+        if (isSuccess(result)) {
+            return result.getStrategy() == CdnWarmStrategy.WORKER
+                    ? "firmware.warm.successWorker"
+                    : "firmware.warm.successServer";
+        }
+        return "firmware.warm.failed";
+    }
+
     public record PublishResult(Long taskId, Long versionId) {
+    }
+
+    public record ManualWarmResult(
+            Long versionId,
+            boolean triggered,
+            String messageKey,
+            String strategy,
+            String pop,
+            String message
+    ) {
     }
 }

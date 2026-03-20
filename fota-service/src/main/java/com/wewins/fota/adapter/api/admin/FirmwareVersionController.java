@@ -1,16 +1,13 @@
 package com.wewins.fota.adapter.api.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.wewins.fota.adapter.api.admin.dto.firmware.AttachPackageReqDTO;
 import com.wewins.fota.adapter.assembler.FirmwareVersionAssembler;
-import com.wewins.fota.application.firmware.FirmwarePackagePreparationService;
 import com.wewins.fota.application.firmware.FirmwarePublishService;
 import com.wewins.fota.application.firmware.FirmwareVersionAppService;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionPageReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionReqDTO;
 import com.wewins.fota.application.firmware.dto.FirmwareVersionRespDTO;
 import com.wewins.fota.application.product.query.ProductNameQueryService;
-import com.wewins.fota.cache.dto.FirmwareUploadSession;
 import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.api.PageResponse;
 import com.wewins.fota.common.condition.ConditionalOnAppMode;
@@ -23,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,11 +43,8 @@ import java.util.stream.Collectors;
 public class FirmwareVersionController {
 
     private static final String PACKAGE_STATUS_READY = "READY";
-    private static final String PACKAGE_STATUS_NONE = "NONE";
-
     private final FirmwareVersionAppService firmwareVersionAppService;
     private final FirmwareVersionAssembler firmwareVersionAssembler;
-    private final FirmwarePackagePreparationService firmwarePackagePreparationService;
     private final FirmwarePublishService firmwarePublishService;
     private final FileTransferService fileTransferService;
     private final ProductNameQueryService productNameQueryService;
@@ -167,133 +160,6 @@ public class FirmwareVersionController {
     }
 
     /**
-     * 创建固件版本
-     *
-     * @param reqDTO 固件版本信息
-     * @return 创建的固件版本
-     */
-    @PostMapping
-    @PreAuthorize("@rbac.has('fota:firmware:create')")
-    public ApiResponse<FirmwareVersionRespDTO> createFirmwareVersion(@RequestBody FirmwareVersionReqDTO reqDTO) {
-        if (reqDTO == null) {
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("创建固件版本: productId={}, version={}",
-                    reqDTO.getProductId(), reqDTO.getVersion());
-        }
-
-        try {
-            // 处理上传会话ID（如果提供）
-            FirmwarePackagePreparationService.ProcessedUploadSession processedUpload =
-                    firmwarePackagePreparationService.processUploadSession(reqDTO);
-            FirmwareVersionReqDTO processedReqDTO = processedUpload.requestDTO();
-
-            FirmwareVersion firmwareVersion = firmwareVersionAssembler.toFirmwareVersionEntity(processedReqDTO);
-            firmwareVersion.setId(null);
-
-            // 设置包状态：有上传会话则为 READY，否则根据文件信息判断
-            if (processedUpload.uploadSessionId() != null && !processedUpload.uploadSessionId().isBlank()) {
-                firmwareVersion.setPackageStatus(PACKAGE_STATUS_READY);
-                firmwareVersion.setPackageUploadedAt(LocalDateTime.now());
-            } else {
-                firmwareVersion.setPackageStatus(determinePackageStatus(processedReqDTO));
-            }
-
-            FirmwareVersion createdVersion = firmwareVersionAppService.createFirmwareVersion(firmwareVersion);
-            log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}",
-                    createdVersion.getId(), createdVersion.getProductId(), createdVersion.getVersion());
-
-            // 业务成功后清理上传会话
-            firmwarePackagePreparationService.cleanupUploadSession(processedUpload.uploadSessionId());
-
-            return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(createdVersion));
-        } catch (BizException e) {
-            log.warn("创建固件版本失败: productId={}, version={}, errorCode={}, message={}",
-                    reqDTO.getProductId(), reqDTO.getVersion(), e.getCode(), e.getMessage());
-            return ApiResponse.error(e.getCode(), e.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.warn("创建固件版本参数错误: productId={}, version={}, message={}",
-                    reqDTO.getProductId(), reqDTO.getVersion(), e.getMessage());
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
-        }
-    }
-
-    /**
-     * 更新固件版本
-     *
-     * @param id     固件版本 ID
-     * @param reqDTO 固件版本信息
-     * @return 更新后的固件版本
-     */
-    @PutMapping("/{id}")
-    @PreAuthorize("@rbac.has('fota:firmware:update')")
-    public ApiResponse<FirmwareVersionRespDTO> updateFirmwareVersion(@PathVariable Long id, @RequestBody FirmwareVersionReqDTO reqDTO) {
-        if (id == null || id <= 0 || reqDTO == null) {
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("更新固件版本: firmwareVersionId={}", id);
-        }
-
-        try {
-            // 查询现有版本（用于保留包状态）
-            FirmwareVersion existingVersion = firmwareVersionAppService.getById(id);
-
-            // 处理上传会话ID（如果提供）
-            FirmwarePackagePreparationService.ProcessedUploadSession processedUpload =
-                    firmwarePackagePreparationService.processUploadSession(reqDTO);
-            FirmwareVersionReqDTO processedReqDTO = processedUpload.requestDTO();
-
-            // 保存旧的 objectKey（用于后续清理，仅在补传包场景需要）
-            String oldObjectKey = null;
-            String newObjectKey = null;
-
-            FirmwareVersion firmwareVersion = firmwareVersionAssembler.toFirmwareVersionEntity(processedReqDTO);
-            firmwareVersion.setId(id);
-
-            // 处理包状态：如果有uploadSessionId说明是补传包，设置READY；否则保留原有状态
-            if (processedUpload.uploadSessionId() != null && !processedUpload.uploadSessionId().isBlank()) {
-                // 补传包场景，processUploadSessionId已填充文件字段
-                oldObjectKey = existingVersion.getFileUrl();
-                newObjectKey = processedReqDTO.getFileUrl();
-                firmwareVersion.setPackageStatus(PACKAGE_STATUS_READY);
-                firmwareVersion.setPackageUploadedAt(LocalDateTime.now());
-            } else {
-                // 普通编辑场景，保留原有的包状态和文件字段
-                firmwareVersion.setPackageStatus(existingVersion.getPackageStatus());
-                firmwareVersion.setFileUrl(existingVersion.getFileUrl());
-                firmwareVersion.setFileSize(existingVersion.getFileSize());
-                firmwareVersion.setMd5(existingVersion.getMd5());
-                firmwareVersion.setSha256(existingVersion.getSha256());
-                firmwareVersion.setPackageUploadedAt(existingVersion.getPackageUploadedAt());
-            }
-
-            FirmwareVersion updatedVersion = firmwareVersionAppService.updateFirmwareVersion(firmwareVersion);
-            log.info("固件版本更新成功: firmwareVersionId={}", updatedVersion.getId());
-
-            // 业务成功后清理上传会话
-            firmwarePackagePreparationService.cleanupUploadSession(processedUpload.uploadSessionId());
-
-            // 如果是补传包场景，清理被替换的旧包文件
-            if (oldObjectKey != null && newObjectKey != null) {
-                cleanupReplacedObject(oldObjectKey, newObjectKey, id);
-            }
-
-            return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(updatedVersion));
-        } catch (BizException e) {
-            log.warn("更新固件版本失败: firmwareVersionId={}, errorCode={}, message={}",
-                    id, e.getCode(), e.getMessage());
-            return ApiResponse.error(e.getCode(), e.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.warn("更新固件版本参数错误: firmwareVersionId={}, message={}", id, e.getMessage());
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
-        }
-    }
-
-    /**
      * 获取固件版本下载地址。
      * <p>
      * 根据数据库中存储的 objectKey 生成带签名的下载 URL。
@@ -372,92 +238,104 @@ public class FirmwareVersionController {
         }
     }
 
-    /**
-     * 根据文件信息判断包状态。
-     *
-     * @param reqDTO 请求DTO
-     * @return 包状态（READY/NONE）
-     */
-    private String determinePackageStatus(FirmwareVersionReqDTO reqDTO) {
-        String packageStatus = reqDTO.getPackageStatus();
-        // 用户提供了 packageStatus，直接使用
-        if (packageStatus != null && !packageStatus.isBlank()) {
-            return packageStatus;
-        }
-        // 用户未提供，自动判断
-        boolean hasPackageInfo = reqDTO.getFileUrl() != null && !reqDTO.getFileUrl().isBlank()
-                && reqDTO.getFileSize() != null && reqDTO.getFileSize() > 0
-                && reqDTO.getMd5() != null && !reqDTO.getMd5().isBlank()
-                && reqDTO.getSha256() != null && !reqDTO.getSha256().isBlank();
+    // ==================== CDN 预热相关接口 ====================
 
-        return hasPackageInfo ? PACKAGE_STATUS_READY : PACKAGE_STATUS_NONE;
+    /**
+     * CDN 预热结果 DTO
+     */
+    @lombok.Data
+    public static class CdnWarmResponse {
+        /**
+         * 任务 ID（用于跟踪预热进度）
+         */
+        private Long taskId;
+        /**
+         * 版本 ID
+         */
+        private Long versionId;
+        /**
+         * 是否已触发预热
+         */
+        private Boolean triggered;
+        /**
+         * 消息
+         */
+        private String message;
+        /**
+         * 国际化消息 key
+         */
+        private String messageKey;
+        /**
+         * 预热策略
+         */
+        private String strategy;
+        /**
+         * 实际命中的 PoP
+         */
+        private String pop;
     }
 
     /**
-     * 为已有版本补传固件包。
+     * 触发 CDN 预热
+     * <p>
+     * 通过 Cloudflare Workers 对固件进行 CDN 预热，
+     * </p>
      *
-     * @param id     固件版本ID
-     * @param reqDTO 请求参数（包含uploadSessionId）
-     * @return 更新后的固件版本
+     * @param id      版本 ID
+     * @return 预热结果
      */
-    @PostMapping("/{id}/attach-package")
+    @GetMapping("/{id}/warm")
     @PreAuthorize("@rbac.has('fota:firmware:update')")
-    public ApiResponse<FirmwareVersionRespDTO> attachPackage(
-            @PathVariable Long id,
-            @RequestBody @Valid AttachPackageReqDTO reqDTO) {
-        if (id == null || id <= 0 || reqDTO == null) {
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
+    public ApiResponse<CdnWarmResponse> warmCdn(@PathVariable Long id) {
+        if (id == null || id <= 0) {
+            return ApiResponse.success(buildWarmFailureResponse(id, "firmware.warmInvalidVersionId", "版本ID无效"));
         }
+
+        log.debug("开始 CDN 预热: versionId={}", id);
 
         try {
-            // 查询现有版本
-            FirmwareVersion existingVersion = firmwareVersionAppService.getById(id);
-
-            String sessionId = reqDTO.uploadSessionId();
-            FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(
-                    sessionId, existingVersion.getProductId());
-            String objectKey = firmwarePackagePreparationService.ensureObjectKeyReady(
-                    sessionId, existingVersion.getProductId(), session);
-
-            // 保存旧的 objectKey（用于后续清理）
-            String oldObjectKey = existingVersion.getFileUrl();
-
-            // 更新版本（仅更新包相关字段）
-            FirmwareVersionReqDTO updateDTO = new FirmwareVersionReqDTO();
-            updateDTO.setProductId(existingVersion.getProductId());
-            updateDTO.setVersion(existingVersion.getVersion());
-            updateDTO.setFileUrl(objectKey);
-            updateDTO.setFileName(session.getFileName());  // 保存原始文件名
-            updateDTO.setFileSize(session.getFileSize());
-            updateDTO.setMd5(session.getMd5());
-            updateDTO.setSha256(session.getSha256());
-            FirmwareVersionRespDTO existingDto = firmwareVersionAssembler.toFirmwareVersionResp(existingVersion);
-            updateDTO.setTags(existingDto.getTags());
-            updateDTO.setMeta(existingDto.getMeta());
-
-            FirmwareVersion firmwareVersion = firmwareVersionAssembler.toFirmwareVersionEntity(updateDTO);
-            firmwareVersion.setId(id);
-            firmwareVersion.setPackageStatus(PACKAGE_STATUS_READY);
-            firmwareVersion.setPackageUploadedAt(LocalDateTime.now());
-
-            FirmwareVersion updatedVersion = firmwareVersionAppService.updateFirmwareVersion(firmwareVersion);
-
-            // 业务成功后清理上传会话
-            firmwarePackagePreparationService.cleanupUploadSession(sessionId);
-
-            // 清理被替换的旧包文件（如果存在）
-            cleanupReplacedObject(oldObjectKey, objectKey, id);
-
-            log.info("固件版本补传包成功: firmwareVersionId={}", id);
-            return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(updatedVersion));
+            var result = firmwarePublishService.warmCdnManually(id);
+            CdnWarmResponse response = new CdnWarmResponse();
+            response.setVersionId(result.versionId());
+            response.setTriggered(result.triggered());
+            response.setMessage(result.message());
+            response.setMessageKey(result.messageKey());
+            response.setStrategy(result.strategy());
+            response.setPop(result.pop());
+            return ApiResponse.success(response);
         } catch (BizException e) {
-            log.warn("补传固件包失败: firmwareVersionId={}, errorCode={}, message={}",
+            log.warn("触发 CDN 预热失败: versionId={}, errorCode={}, message={}",
                     id, e.getCode(), e.getMessage());
-            return ApiResponse.error(e.getCode(), e.getMessage());
+            return ApiResponse.success(buildWarmFailureResponse(id, mapWarmFailureMessageKey(e.getMessage()), e.getMessage()));
         } catch (IllegalArgumentException e) {
-            log.warn("补传固件包参数错误: firmwareVersionId={}, message={}", id, e.getMessage());
-            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+            log.warn("触发 CDN 预热参数错误: versionId={}, message={}", id, e.getMessage());
+            return ApiResponse.success(buildWarmFailureResponse(id, mapWarmFailureMessageKey(e.getMessage()), e.getMessage()));
         }
+    }
+
+    private CdnWarmResponse buildWarmFailureResponse(Long versionId, String messageKey, String message) {
+        CdnWarmResponse response = new CdnWarmResponse();
+        response.setVersionId(versionId);
+        response.setTriggered(Boolean.FALSE);
+        response.setMessageKey(messageKey);
+        response.setMessage(message);
+        return response;
+    }
+
+    private String mapWarmFailureMessageKey(String message) {
+        if ("该固件版本没有可用的包，无法进行预热".equals(message)) {
+            return "firmware.warmUnavailable";
+        }
+        if ("固件包路径缺失".equals(message)) {
+            return "firmware.warmPathMissing";
+        }
+        if ("无法生成下载地址".equals(message)) {
+            return "firmware.warmDownloadUrlFailed";
+        }
+        if ("版本ID无效".equals(message)) {
+            return "firmware.warmInvalidVersionId";
+        }
+        return "firmware.warmFailed";
     }
 
     /**
@@ -503,40 +381,34 @@ public class FirmwareVersionController {
     }
 
     /**
-     * 清理被替换的旧包文件。
-     * <p>
-     * 采用"先上传后删除"策略：
-     * 1. 先将新文件上传到对象存储
-     * 2. 更新数据库记录
-     * 3. 数据库更新成功后，删除旧的对象存储文件
-     * </p>
-     * <p>
-     * 如果删除失败，仅记录日志，不影响主流程（可能导致孤儿文件，但可通过后续清理任务处理）
-     * </p>
-     *
-     * @param oldObjectKey      旧的对象存储键（可能为 null）
-     * @param newObjectKey      新的对象存储键
-     * @param firmwareVersionId 固件版本 ID（用于日志）
+     * 更新并异步发布固件版本。
      */
-    private void cleanupReplacedObject(String oldObjectKey, String newObjectKey, Long firmwareVersionId) {
-        if (oldObjectKey == null || oldObjectKey.isBlank()) {
-            // 无旧包，无需清理
-            return;
+    @PutMapping("/{id}/publish")
+    @PreAuthorize("@rbac.has('fota:firmware:update')")
+    public ApiResponse<FirmwarePublishService.PublishResult> updatePublishedFirmwareVersion(
+            @PathVariable Long id,
+            @RequestBody @Valid FirmwareVersionReqDTO reqDTO) {
+        if (id == null || id <= 0 || reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
         }
-        if (oldObjectKey.equals(newObjectKey)) {
-            // 新旧包相同，无需清理（理论上不应发生）
-            log.warn("新旧对象存储键相同，跳过清理: firmwareVersionId={}, objectKey={}",
-                    firmwareVersionId, oldObjectKey);
-            return;
-        }
+
+        log.debug("更新并发布固件版本: versionId={}, uploadSessionId={}", id, reqDTO.getUploadSessionId());
+
         try {
-            fileTransferService.deleteStorageObject(oldObjectKey);
-            log.info("清理旧固件包成功: firmwareVersionId={}, oldObjectKey={}", firmwareVersionId, oldObjectKey);
-        } catch (RuntimeException e) {
-            // 只捕获预期的运行时异常，让 Error 级别异常向上传播
-            // 删除失败不影响主流程，记录日志供后续清理
-            log.error("清理旧固件包失败（将产生孤儿文件）: firmwareVersionId={}, oldObjectKey={}",
-                    firmwareVersionId, oldObjectKey, e);
+            FirmwareVersion publishDraft = firmwareVersionAssembler.toFirmwareVersionEntity(reqDTO);
+            FirmwarePublishService.PublishResult result = firmwarePublishService.updateAndPublish(
+                    id,
+                    publishDraft,
+                    reqDTO.getUploadSessionId()
+            );
+            return ApiResponse.success(result);
+        } catch (BizException e) {
+            log.warn("更新固件版本发布任务失败: versionId={}, errorCode={}, message={}",
+                    id, e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("更新固件版本发布任务参数错误: versionId={}, message={}", id, e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
         }
     }
 
