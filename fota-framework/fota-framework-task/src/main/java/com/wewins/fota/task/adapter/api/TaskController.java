@@ -45,47 +45,14 @@ public class TaskController {
     @PreAuthorize("@rbac.has('fota:firmware:read')")
     public SseEmitter subscribeTaskProgress(@PathVariable Long taskId) {
         if (taskId == null || taskId <= 0) {
-            // 返回一个立即关闭并携带错误事件的 SseEmitter
-            SseEmitter emitter = new SseEmitter(0L);
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("error")
-                        .data(Map.of("error", "任务ID无效"), MediaType.APPLICATION_JSON));
-            } catch (Exception ignored) {
-            }
-            emitter.complete();
-            return emitter;
+            throw new IllegalArgumentException("任务ID无效");
         }
 
         if (log.isDebugEnabled()) {
             log.debug("订阅任务进度: taskId={}", taskId);
         }
 
-        try {
-            return asyncTaskService.subscribe(taskId);
-        } catch (IllegalArgumentException e) {
-            // 任务不存在，返回一个立即关闭并携带错误事件的 SseEmitter
-            SseEmitter emitter = new SseEmitter(0L);
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("error")
-                        .data(Map.of("error", "任务不存在"), MediaType.APPLICATION_JSON));
-            } catch (Exception ignored) {
-            }
-            emitter.complete();
-            return emitter;
-        } catch (IllegalStateException e) {
-            // 连接数超限
-            SseEmitter emitter = new SseEmitter(0L);
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("error")
-                        .data(Map.of("error", "SSE连接数超限，请稍后重试"), MediaType.APPLICATION_JSON));
-            } catch (Exception ignored) {
-            }
-            emitter.complete();
-            return emitter;
-        }
+        return asyncTaskService.subscribe(taskId);
     }
 
     /**

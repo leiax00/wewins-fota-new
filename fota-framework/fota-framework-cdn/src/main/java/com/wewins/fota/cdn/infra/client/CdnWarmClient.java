@@ -110,27 +110,19 @@ public class CdnWarmClient {
 
         List<CompletableFuture<WarmResult>> futures = urls.stream()
                 .map(url -> CompletableFuture.supplyAsync(() -> warmUrl(url), executorService)
-                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
-                        .exceptionally(ex -> {
-                            log.error("Failed to warm URL: {}", url, ex);
-                            return WarmResult.builder()
-                                    .url(url)
-                                    .status(WarmStatus.FAILED)
-                                    .errorMessage(ex.getMessage())
-                                    .build();
-                        }))
+                        .completeOnTimeout(
+                                WarmResult.builder()
+                                        .url(url)
+                                        .status(WarmStatus.FAILED)
+                                        .errorMessage("Request timeout after " + timeoutSeconds + " seconds")
+                                        .build(),
+                                timeoutSeconds,
+                                TimeUnit.SECONDS
+                        ))
                 .toList();
 
-        // Wait for all futures to complete
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0])
-        );
-
-        try {
-            allFutures.get(timeoutSeconds * 2, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.error("Error waiting for warm-up results", e);
-        }
+        // Wait for all futures to complete (no extra timeout needed, each future handles its own)
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         return futures.stream()
                 .map(CompletableFuture::join)
