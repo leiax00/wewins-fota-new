@@ -89,18 +89,18 @@ public class FirmwareVersionAppService {
             throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
         }
 
-        firmwareVersionRepository.create(firmwareVersion);
+        FirmwareVersion createdVersion = firmwareVersionRepository.create(firmwareVersion);
         eventPublisher.publishEvent(new FirmwareChangedEvent(
                 this,
-                firmwareVersion.getProductId(),
-                firmwareVersion.getId(),
-                firmwareVersion.getVersion(),
-                firmwareVersion.getInternalVersion(),
+                createdVersion.getProductId(),
+                createdVersion.getId(),
+                createdVersion.getVersion(),
+                createdVersion.getInternalVersion(),
                 ChangeType.CREATED));
 
         log.info("固件版本创建成功: firmwareVersionId={}, productId={}, version={}, internalVersion={}",
-                firmwareVersion.getId(), firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
-        return firmwareVersion;
+                createdVersion.getId(), createdVersion.getProductId(), createdVersion.getVersion(), createdVersion.getInternalVersion());
+        return createdVersion;
     }
 
     @Transactional(rollbackFor = Exception.class)

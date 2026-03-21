@@ -84,6 +84,16 @@
             </dependency>
             <dependency>
                 <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-task</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-cdn</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
                 <artifactId>fota-framework-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>

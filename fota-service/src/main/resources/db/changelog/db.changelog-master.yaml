@@ -49,3 +49,25 @@ databaseChangeLog:
             relativeToChangelogFile: true
             encoding: UTF-8
             stripComments: true
+
+  - changeSet:
+      id: 20260319_01_create_async_task_table
+      author: fota-team
+      comment: "新增异步任务表，支撑固件发布任务状态持久化"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260319_01__create_async_task_table.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true
+
+  - changeSet:
+      id: 20260320_01_seed_cdn_warm_worker_config
+      author: fota-team
+      comment: "初始化 Cloudflare CDN 预热 Worker 字典配置"
+      changes:
+        - sqlFile:
+            path: changes/incremental/20260320_01__seed_cdn_warm_worker_config.sql
+            relativeToChangelogFile: true
+            encoding: UTF-8
+            stripComments: true

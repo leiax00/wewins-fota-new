@@ -38,7 +38,7 @@ const emit = defineEmits<{
 
 const { t, te } = useI18n()
 
-const CUSTOM_LOCALE_KEY = '__custom__'
+const DRAFT_LOCALE_PREFIX = '__draft_locale__:'
 
 // 基础 BCP-47 校验（再结合 Intl.Locale 做二次校验）
 const BCP47_REGEX =
@@ -47,10 +47,7 @@ const BCP47_REGEX =
 const localValue = ref<I18nFieldValue>({})
 const localeOptions = ref<LanguageOption[]>([])
 const loadingLocales = ref(false)
-
-const selectedLocale = ref('')
-const customLocale = ref('')
-const addLocaleError = ref('')
+const localeErrors = ref<Record<string, string>>({})
 
 const tr = (key: string, fallback: string, params?: Record<string, unknown>) => {
   return te(key) ? t(key, params || {}) : fallback
@@ -75,6 +72,8 @@ const minLocales = computed(
   () => Math.max(0, props.field.config.schema.i18nConfig?.minLocales ?? 0)
 )
 
+const isDraftLocaleKey = (locale: string) => locale.startsWith(DRAFT_LOCALE_PREFIX)
+
 const localeEntries = computed(() => Object.entries(localValue.value))
 
 const localeCountText = computed(() =>
@@ -97,7 +96,6 @@ const isValidLocaleCode = (locale: string): boolean => {
   const normalized = normalizeLocaleCode(locale)
   if (!normalized || !BCP47_REGEX.test(normalized)) return false
   try {
-    // 二次校验：确保是合法 locale tag
     // eslint-disable-next-line no-new
     new Intl.Locale(normalized)
     return true
@@ -109,6 +107,7 @@ const isValidLocaleCode = (locale: string): boolean => {
 const canonicalLocaleSet = computed(() => {
   const set = new Set<string>()
   for (const code of Object.keys(localValue.value)) {
+    if (isDraftLocaleKey(code)) continue
     set.add(normalizeLocaleCode(code).toLowerCase())
   }
   return set
@@ -124,23 +123,30 @@ const languageLabelMap = computed(() => {
   return map
 })
 
-const availableLocaleOptions = computed(() => {
-  return localeOptions.value.filter(
-    (opt) => !canonicalLocaleSet.value.has(normalizeLocaleCode(opt.value).toLowerCase())
-  )
-})
+const getDraftLocaleKey = () =>
+  `${DRAFT_LOCALE_PREFIX}${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
-const syncFromProps = () => {
+const getValidValueSnapshot = (value: I18nFieldValue): I18nFieldValue => {
   const next: I18nFieldValue = {}
-  const source = props.modelValue || {}
-  Object.entries(source).forEach(([k, v]) => {
+  Object.entries(value || {}).forEach(([k, v]) => {
+    if (isDraftLocaleKey(k)) return
     if (typeof v === 'string') {
       next[k] = v
     } else if (v != null) {
       next[k] = String(v)
     }
   })
+  return next
+}
+
+const syncFromProps = () => {
+  const next = getValidValueSnapshot(props.modelValue || {})
+  const current = getValidValueSnapshot(localValue.value)
+  if (JSON.stringify(next) === JSON.stringify(current)) {
+    return
+  }
   localValue.value = next
+  localeErrors.value = {}
 }
 
 watch(
@@ -152,7 +158,7 @@ watch(
 )
 
 const emitChange = () => {
-  emit('update:modelValue', { ...localValue.value })
+  emit('update:modelValue', { ...getValidValueSnapshot(localValue.value) })
 }
 
 const loadSupportedLanguages = async () => {
@@ -186,69 +192,101 @@ onMounted(() => {
 })
 
 const resolveDisplayLocale = (localeCode: string): string => {
+  if (isDraftLocaleKey(localeCode)) {
+    return tr('jsonField.i18nField.localePlaceholder', 'Select language')
+  }
   const key = normalizeLocaleCode(localeCode).toLowerCase()
   return languageLabelMap.value.get(key) || localeCode
 }
 
-const clearAddState = () => {
-  selectedLocale.value = ''
-  customLocale.value = ''
-  addLocaleError.value = ''
+const clearLocaleError = (localeCode: string) => {
+  if (!localeErrors.value[localeCode]) return
+  const next = { ...localeErrors.value }
+  delete next[localeCode]
+  localeErrors.value = next
 }
 
-const addLocaleByCode = (rawCode: string) => {
-  addLocaleError.value = ''
-
-  const normalized = normalizeLocaleCode(rawCode)
-  if (!normalized || !isValidLocaleCode(normalized)) {
-    addLocaleError.value = tr(
-      'jsonField.i18nField.errorInvalidLocale',
-      'Invalid locale code. Please use BCP-47 format (e.g. zh-CN, en-US).'
-    )
-    return
+const setLocaleError = (localeCode: string, message: string) => {
+  localeErrors.value = {
+    ...localeErrors.value,
+    [localeCode]: message,
   }
+}
 
-  const key = normalized.toLowerCase()
-  if (canonicalLocaleSet.value.has(key)) {
-    addLocaleError.value = tr(
-      'jsonField.i18nField.errorDuplicateLocale',
-      'This language has already been added.'
-    )
-    return
-  }
+const localeSelectOptions = (currentLocale: string) => {
+  const currentKey = normalizeLocaleCode(currentLocale).toLowerCase()
+  return localeOptions.value.filter((opt) => {
+    const optionKey = normalizeLocaleCode(opt.value).toLowerCase()
+    return optionKey === currentKey || !canonicalLocaleSet.value.has(optionKey)
+  })
+}
 
+const addLocaleItem = () => {
+  if (props.disabled) return
   localValue.value = {
     ...localValue.value,
-    [normalized]: '',
+    [getDraftLocaleKey()]: '',
   }
-  emitChange()
-  clearAddState()
 }
 
-const onAddLocale = () => {
+const onLocaleChange = (previousLocaleCode: string, rawLocaleCode: string) => {
   if (props.disabled) return
 
-  if (selectedLocale.value === CUSTOM_LOCALE_KEY) {
-    if (!allowCustomLocale.value) {
-      addLocaleError.value = tr(
-        'jsonField.i18nField.customLocaleDisabled',
-        'Custom locale is disabled for this field.'
+  clearLocaleError(previousLocaleCode)
+
+  const text = localValue.value[previousLocaleCode] ?? ''
+  const nextLocaleCode = String(rawLocaleCode || '').trim()
+  if (!nextLocaleCode) return
+
+  const normalized = normalizeLocaleCode(nextLocaleCode)
+  if (!normalized || !isValidLocaleCode(normalized)) {
+    setLocaleError(
+      previousLocaleCode,
+      tr(
+        'jsonField.i18nField.errorInvalidLocale',
+        'Invalid locale code. Please use BCP-47 format (e.g. zh-CN, en-US).'
+      )
+    )
+    return
+  }
+
+  const normalizedKey = normalized.toLowerCase()
+  const previousKey = isDraftLocaleKey(previousLocaleCode)
+    ? ''
+    : normalizeLocaleCode(previousLocaleCode).toLowerCase()
+
+  if (normalizedKey !== previousKey && canonicalLocaleSet.value.has(normalizedKey)) {
+    setLocaleError(
+      previousLocaleCode,
+      tr(
+        'jsonField.i18nField.errorDuplicateLocale',
+        'This language has already been added.'
+      )
+    )
+    return
+  }
+
+  if (!allowCustomLocale.value) {
+    const exists = localeOptions.value.some(
+      (opt) => normalizeLocaleCode(opt.value).toLowerCase() === normalizedKey
+    )
+    if (!exists) {
+      setLocaleError(
+        previousLocaleCode,
+        tr(
+          'jsonField.i18nField.customLocaleDisabled',
+          'Custom locale is disabled for this field.'
+        )
       )
       return
     }
-    addLocaleByCode(customLocale.value)
-    return
   }
 
-  if (!selectedLocale.value) {
-    addLocaleError.value = tr(
-      'jsonField.i18nField.selectLocaleFirst',
-      'Please select a language first.'
-    )
-    return
-  }
-
-  addLocaleByCode(selectedLocale.value)
+  const next = { ...localValue.value }
+  delete next[previousLocaleCode]
+  next[normalized] = text
+  localValue.value = next
+  emitChange()
 }
 
 const onUpdateText = (localeCode: string, value: string) => {
@@ -265,10 +303,13 @@ const onRemoveLocale = (localeCode: string) => {
   if (props.disabled) return
 
   if (!canRemoveLocale.value) {
-    addLocaleError.value = tr(
-      'jsonField.i18nField.errorMinLocales',
-      'At least {min} language entries are required.',
-      { min: minLocales.value }
+    setLocaleError(
+      localeCode,
+      tr(
+        'jsonField.i18nField.errorMinLocales',
+        'At least {min} language entries are required.',
+        { min: minLocales.value }
+      )
     )
     return
   }
@@ -276,6 +317,7 @@ const onRemoveLocale = (localeCode: string) => {
   const next = { ...localValue.value }
   delete next[localeCode]
   localValue.value = next
+  clearLocaleError(localeCode)
   emitChange()
 }
 </script>
@@ -311,8 +353,31 @@ const onRemoveLocale = (localeCode: string) => {
         >
           <div class="i18n-locale-card__head">
             <div class="i18n-locale-card__meta">
-              <span class="i18n-locale-card__label">{{ resolveDisplayLocale(localeCode) }}</span>
-              <span class="i18n-locale-card__code">{{ localeCode }}</span>
+              <el-select
+                :model-value="isDraftLocaleKey(localeCode) ? '' : localeCode"
+                class="i18n-locale-card__select"
+                filterable
+                :allow-create="allowCustomLocale"
+                :default-first-option="allowCustomLocale"
+                :reserve-keyword="false"
+                :loading="loadingLocales"
+                :disabled="disabled"
+                :placeholder="tr('jsonField.i18nField.localePlaceholder', 'Select language')"
+                @update:model-value="(value: string) => onLocaleChange(localeCode, value)"
+              >
+                <el-option
+                  v-for="opt in localeSelectOptions(localeCode)"
+                  :key="opt.value"
+                  :label="opt.i18nKey && te(opt.i18nKey) ? t(opt.i18nKey) : opt.label"
+                  :value="opt.value"
+                />
+              </el-select>
+              <span
+                v-if="!isDraftLocaleKey(localeCode)"
+                class="i18n-locale-card__code"
+              >
+                {{ resolveDisplayLocale(localeCode) }}
+              </span>
             </div>
 
             <el-button
@@ -335,48 +400,28 @@ const onRemoveLocale = (localeCode: string) => {
             :disabled="disabled"
             @update:model-value="(value: string) => onUpdateText(localeCode, value)"
           />
+
+          <p
+            v-if="localeErrors[localeCode]"
+            class="i18n-locale-card__error"
+          >
+            {{ localeErrors[localeCode] }}
+          </p>
         </div>
       </div>
 
       <div class="i18n-add-panel">
         <div class="i18n-add-panel__body">
-          <el-select
-            v-model="selectedLocale"
-            class="i18n-add-panel__locale-select"
-            filterable
-            clearable
-            :loading="loadingLocales"
-            :disabled="disabled"
-            :placeholder="tr('jsonField.i18nField.localePlaceholder', 'Select language')"
-          >
-            <el-option
-              v-for="opt in availableLocaleOptions"
-              :key="opt.value"
-              :label="opt.i18nKey && te(opt.i18nKey) ? t(opt.i18nKey) : opt.label"
-              :value="opt.value"
-            />
-            <el-option
-              v-if="allowCustomLocale"
-              :label="tr('jsonField.i18nField.customLocaleOption', 'Custom locale...')"
-              :value="CUSTOM_LOCALE_KEY"
-            />
-          </el-select>
-
-          <el-input
-            v-if="allowCustomLocale && selectedLocale === CUSTOM_LOCALE_KEY"
-            v-model="customLocale"
-            class="i18n-add-panel__custom-input"
-            :disabled="disabled"
-            :placeholder="tr('jsonField.i18nField.customLocalePlaceholder', 'e.g. es-MX')"
-          />
-
+          <span class="i18n-add-panel__text">
+            {{ tr('jsonField.i18nField.addLocaleInline', 'Add a new item, then choose language and input text inside the item.') }}
+          </span>
           <div class="i18n-add-panel__actions">
             <el-button
               class="i18n-add-panel__button"
               type="primary"
               plain
-              :disabled="disabled"
-              @click="onAddLocale"
+              :disabled="disabled || (!allowCustomLocale && localeSelectOptions('').length === 0)"
+              @click="addLocaleItem"
             >
               {{ tr('jsonField.i18nField.addLocale', 'Add') }}
             </el-button>
@@ -384,12 +429,6 @@ const onRemoveLocale = (localeCode: string) => {
         </div>
       </div>
 
-      <p
-        v-if="addLocaleError"
-        class="i18n-field__error"
-      >
-        {{ addLocaleError }}
-      </p>
       <p class="i18n-field__hint">
         {{ tr('jsonField.i18nField.localeFormatHint', 'Locale format: BCP-47 (e.g. zh-CN, en-US).') }}
       </p>
@@ -471,10 +510,8 @@ const onRemoveLocale = (localeCode: string) => {
   flex-wrap: wrap;
 }
 
-.i18n-locale-card__label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.1;
+.i18n-locale-card__select {
+  width: min(100%, 240px);
 }
 
 .i18n-locale-card__code {
@@ -494,6 +531,13 @@ const onRemoveLocale = (localeCode: string) => {
   width: 100%;
 }
 
+.i18n-locale-card__error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-color-danger);
+}
+
 .i18n-add-panel {
   padding: 8px 10px;
   background: var(--el-fill-color-lighter);
@@ -508,14 +552,9 @@ const onRemoveLocale = (localeCode: string) => {
   flex-wrap: wrap;
 }
 
-.i18n-add-panel__locale-select {
-  flex: 1 1 200px;
-  min-width: 160px;
-}
-
-.i18n-add-panel__custom-input {
-  flex: 0 1 150px;
-  min-width: 120px;
+.i18n-add-panel__text {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .i18n-add-panel__actions {
@@ -557,20 +596,11 @@ const onRemoveLocale = (localeCode: string) => {
 }
 
 .i18n-field__hint,
-.i18n-field__help,
-.i18n-field__error {
+.i18n-field__help {
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
-}
-
-.i18n-field__hint,
-.i18n-field__help {
   color: var(--el-text-color-secondary);
-}
-
-.i18n-field__error {
-  color: var(--el-color-danger);
 }
 
 @media (max-width: 900px) {

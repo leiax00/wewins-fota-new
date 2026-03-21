@@ -4,6 +4,8 @@ import com.wewins.fota.common.exception.BizException;
 import com.wewins.fota.common.exception.ErrorCode;
 import com.wewins.fota.common.api.ApiResponse;
 import com.wewins.fota.common.exception.TokenExpiredException;
+import com.wewins.fota.common.util.ClientDisconnectUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
@@ -145,6 +148,23 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理 IO 异常。
+     * SSE 客户端主动断开时，不再尝试写入标准 JSON 响应。
+     */
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<?> handleIOException(IOException e, HttpServletRequest request) {
+        if (ClientDisconnectUtils.isClientDisconnect(e) || isSseRequest(request)) {
+            log.debug("检测到 SSE/客户端连接已断开: uri={}, message={}", request == null ? "" : request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }
+
+        log.error("IO异常: {}", e.getMessage(), e);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), ErrorCode.INTERNAL_ERROR.getMessage()));
+    }
+
+    /**
      * 处理未知异常
      */
     @ExceptionHandler(Exception.class)
@@ -154,5 +174,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), ErrorCode.INTERNAL_ERROR.getMessage()));
+    }
+
+    private boolean isSseRequest(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        String accept = request.getHeader("Accept");
+        return (accept != null && accept.contains("text/event-stream"))
+                || request.getRequestURI().contains("/subscribe");
     }
 }

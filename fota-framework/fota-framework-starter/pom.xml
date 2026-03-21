@@ -45,5 +45,13 @@
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-cdn</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-task</artifactId>
+        </dependency>
     </dependencies>
 </project>

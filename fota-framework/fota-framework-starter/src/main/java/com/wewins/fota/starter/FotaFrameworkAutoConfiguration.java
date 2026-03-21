@@ -1,11 +1,14 @@
 package com.wewins.fota.starter;
 
+import com.wewins.fota.cdn.CdnWarmMarker;
 import com.wewins.fota.cache.FotaCacheMarker;
 import com.wewins.fota.common.FotaCommonMarker;
 import com.wewins.fota.database.FotaDatabaseMarker;
 import com.wewins.fota.mq.FotaMqMarker;
 import com.wewins.fota.security.FotaSecurityMarker;
 import com.wewins.fota.storage.FotaStorageMarker;
+import com.wewins.fota.task.FotaTaskMarker;
+import com.wewins.fota.task.config.TaskAutoConfiguration;
 import com.wewins.fota.web.config.RestTemplateConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
@@ -24,7 +27,10 @@ import org.springframework.context.annotation.ComponentScan;
         FotaMqMarker.class,
         FotaStorageMarker.class,
         FotaSecurityMarker.class,
-        RestTemplateConfiguration.class
+        CdnWarmMarker.class,
+        FotaTaskMarker.class,
+        RestTemplateConfiguration.class,
+        TaskAutoConfiguration.class
 })
 public class FotaFrameworkAutoConfiguration {
 }
