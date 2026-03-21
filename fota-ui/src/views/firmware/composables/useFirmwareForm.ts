@@ -6,8 +6,11 @@ import { loadJsonFieldSchema } from '@/components/json-field/utils/schema-loader
 import type { JsonFieldDefinition } from '@/components/json-field/types/json-field'
 import { trimFormValues } from '@/utils/form'
 import {
+  createFirmwareVersion,
   publishFirmwareVersion,
+  updateFirmwareVersion,
   updatePublishedFirmwareVersion,
+  type FirmwareVersionPayload,
   type FirmwareVersionItem,
 } from '@/api/firmware'
 import type { UploadState, FirmwareFormData } from '../types'
@@ -16,6 +19,7 @@ export interface UseFirmwareFormOptions {
   form: FirmwareFormData
   uploadState: UploadState
   onSubmitSuccess?: (taskId: number) => void
+  onDirectSubmitSuccess?: () => void
   resetUploadState: () => void
 }
 
@@ -101,20 +105,25 @@ export function useFirmwareForm(options: UseFirmwareFormOptions) {
 
     submitting.value = true
     try {
-      const payload: Record<string, unknown> = trimFormValues({
+      const payload = trimFormValues({
         productId: form.productId,
         version: form.version,
         internalVersion: form.internalVersion || undefined,
+        packageStatus: form.noPackage ? 'NONE' : undefined,
         tags: form.tags && Object.keys(form.tags).length > 0 ? JSON.stringify(form.tags) : undefined,
         meta: form.meta && Object.keys(form.meta).length > 0 ? JSON.stringify(form.meta) : undefined,
-      })
+      }) as FirmwareVersionPayload
 
-      // 处理包状态
-      if (form.noPackage) {
-        payload.packageStatus = 'NONE'
-      } else if (options.uploadState.status === 'SUCCESS' && options.uploadState.uploadSessionId) {
+      const hasNewUpload = options.uploadState.status === 'SUCCESS' && !!options.uploadState.uploadSessionId
+      const shouldUseAsyncPublish = dialogMode.value === 'create'
+        ? !form.noPackage
+        : hasNewUpload
+
+      if (hasNewUpload) {
         payload.uploadSessionId = options.uploadState.uploadSessionId
-      } else if (dialogMode.value === 'create') {
+      }
+
+      if (dialogMode.value === 'create' && !form.noPackage && !hasNewUpload) {
         ElMessage.warning(t('firmware.uploadOrNoPackageRequired'))
         submitting.value = false
         return
@@ -122,10 +131,16 @@ export function useFirmwareForm(options: UseFirmwareFormOptions) {
 
       let response: { taskId: number; versionId: number } | undefined
 
-      if (dialogMode.value === 'create') {
-        response = await publishFirmwareVersion(payload as never)
+      if (shouldUseAsyncPublish) {
+        if (dialogMode.value === 'create') {
+          response = await publishFirmwareVersion(payload)
+        } else if (editingId.value) {
+          response = await updatePublishedFirmwareVersion(editingId.value, payload)
+        }
+      } else if (dialogMode.value === 'create') {
+        await createFirmwareVersion(payload)
       } else if (editingId.value) {
-        response = await updatePublishedFirmwareVersion(editingId.value, payload as never)
+        await updateFirmwareVersion(editingId.value, payload)
       }
 
       options.resetUploadState()
@@ -133,6 +148,9 @@ export function useFirmwareForm(options: UseFirmwareFormOptions) {
 
       if (response?.taskId) {
         options.onSubmitSuccess?.(response.taskId)
+      } else {
+        ElMessage.success(dialogMode.value === 'create' ? t('common.createSuccess') : t('common.updateSuccess'))
+        options.onDirectSubmitSuccess?.()
       }
     } catch (e: unknown) {
       // 保存失败：保留上传状态，允许用户修改后重试

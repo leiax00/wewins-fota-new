@@ -209,6 +209,57 @@ public class FirmwareVersionController {
     }
 
     /**
+     * 直接创建无包固件版本。
+     */
+    @PostMapping
+    @PreAuthorize("@rbac.has('fota:firmware:create')")
+    public ApiResponse<FirmwareVersionRespDTO> createFirmwareVersion(@RequestBody @Valid FirmwareVersionReqDTO reqDTO) {
+        if (reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
+        }
+
+        try {
+            FirmwareVersion draft = firmwareVersionAssembler.toFirmwareVersionEntity(reqDTO);
+            FirmwareVersion created = firmwarePublishService.createDirect(draft);
+            return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(created));
+        } catch (BizException e) {
+            log.warn("直接创建固件版本失败: productId={}, version={}, errorCode={}, message={}",
+                    reqDTO.getProductId(), reqDTO.getVersion(), e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("直接创建固件版本参数错误: productId={}, version={}, message={}",
+                    reqDTO.getProductId(), reqDTO.getVersion(), e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
+     * 直接更新固件版本元数据或切换为无包版本。
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("@rbac.has('fota:firmware:update')")
+    public ApiResponse<FirmwareVersionRespDTO> updateFirmwareVersion(
+            @PathVariable Long id,
+            @RequestBody @Valid FirmwareVersionReqDTO reqDTO) {
+        if (id == null || id <= 0 || reqDTO == null) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), ErrorCode.BAD_REQUEST.getMessage());
+        }
+
+        try {
+            FirmwareVersion draft = firmwareVersionAssembler.toFirmwareVersionEntity(reqDTO);
+            FirmwareVersion updated = firmwarePublishService.updateDirect(id, draft);
+            return ApiResponse.success(firmwareVersionAssembler.toFirmwareVersionResp(updated));
+        } catch (BizException e) {
+            log.warn("直接更新固件版本失败: versionId={}, errorCode={}, message={}",
+                    id, e.getCode(), e.getMessage());
+            return ApiResponse.error(e.getCode(), e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("直接更新固件版本参数错误: versionId={}, message={}", id, e.getMessage());
+            return ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(), e.getMessage());
+        }
+    }
+
+    /**
      * 删除固件版本
      *
      * @param id 版本 ID
@@ -246,10 +297,6 @@ public class FirmwareVersionController {
      */
     @lombok.Data
     public static class CdnWarmResponse {
-        /**
-         * 任务 ID（用于跟踪预热进度）
-         */
-        private Long taskId;
         /**
          * 版本 ID
          */

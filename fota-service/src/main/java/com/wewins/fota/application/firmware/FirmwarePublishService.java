@@ -44,6 +44,52 @@ public class FirmwarePublishService {
     private final FileTransferService fileTransferService;
 
     @Transactional(rollbackFor = Exception.class)
+    public FirmwareVersion createDirect(FirmwareVersion draft) {
+        draft.setId(null);
+        draft.setPackageStatus(PACKAGE_STATUS_NONE);
+        draft.setPackageUploadedAt(null);
+        clearPackageFields(draft);
+        return firmwareVersionAppService.createFirmwareVersion(draft);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public FirmwareVersion updateDirect(Long versionId, FirmwareVersion updateDraft) {
+        FirmwareVersion existingVersion = firmwareVersionAppService.getById(versionId);
+        FirmwareVersion versionToSave = existingVersion;
+
+        versionToSave.setProductId(existingVersion.getProductId());
+        versionToSave.setVersion(existingVersion.getVersion());
+        versionToSave.setInternalVersion(existingVersion.getInternalVersion());
+        versionToSave.setTags(updateDraft.getTags());
+        versionToSave.setMeta(updateDraft.getMeta());
+
+        boolean switchToNoPackage = PACKAGE_STATUS_NONE.equalsIgnoreCase(updateDraft.getPackageStatus());
+        String oldObjectKey = existingVersion.getFileUrl();
+
+        if (switchToNoPackage) {
+            versionToSave.setPackageStatus(PACKAGE_STATUS_NONE);
+            versionToSave.setPackageUploadedAt(null);
+            clearPackageFields(versionToSave);
+        } else {
+            versionToSave.setPackageStatus(resolveNoPackageStatus(existingVersion.getPackageStatus()));
+            versionToSave.setPackageUploadedAt(existingVersion.getPackageUploadedAt());
+            versionToSave.setFileUrl(existingVersion.getFileUrl());
+            versionToSave.setFileName(existingVersion.getFileName());
+            versionToSave.setFileSize(existingVersion.getFileSize());
+            versionToSave.setMd5(existingVersion.getMd5());
+            versionToSave.setSha256(existingVersion.getSha256());
+        }
+
+        FirmwareVersion updatedVersion = firmwareVersionAppService.updateFirmwareVersion(versionToSave);
+
+        if (switchToNoPackage) {
+            registerAfterCommit(() -> cleanupRemovedObject(oldObjectKey, versionId));
+        }
+
+        return updatedVersion;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public PublishResult createAndPublish(FirmwareVersion publishDraft, String uploadSessionId) {
         boolean hasPackage = hasText(uploadSessionId);
 
@@ -116,10 +162,19 @@ public class FirmwarePublishService {
         });
     }
 
+    private void registerAfterCommit(Runnable runnable) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                runnable.run();
+            }
+        });
+    }
+
     private void executeCreateFlow(TaskContext context, Long versionId, Long productId, String uploadSessionId) {
         if (!hasText(uploadSessionId)) {
-            context.updateProgress(TaskStage.PROCESSING, 40, "开始创建无包版本");
-            context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+            context.updateProgress(TaskStage.PROCESSING, 40, "firmware.uploadSessionCreate");
+            context.updateProgress(TaskStage.COMPLETED, 100, "firmware.taskCompleted");
             log.info("无包版本异步创建完成: versionId={}", versionId);
             return;
         }
@@ -134,13 +189,13 @@ public class FirmwarePublishService {
             String uploadSessionId
     ) {
         try {
-            context.updateProgress(TaskStage.PROCESSING, 10, "开始更新版本信息");
+            context.updateProgress(TaskStage.PROCESSING, 10, "firmware.taskStartUpdate");
             FirmwareVersion versionToSave = buildUpdatedVersion(existingVersion, updateDraft, uploadSessionId);
             firmwareVersionAppService.updateFirmwareVersion(versionToSave);
-            context.updateProgress(TaskStage.PROCESSING, 30, "版本信息已更新");
+            context.updateProgress(TaskStage.PROCESSING, 30, "firmware.taskUpdated");
 
             if (!hasText(uploadSessionId)) {
-                context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+                context.updateProgress(TaskStage.COMPLETED, 100, "firmware.taskCompleted");
                 log.info("固件版本异步更新完成: versionId={}", versionId);
                 return;
             }
@@ -188,26 +243,26 @@ public class FirmwarePublishService {
             String previousPackageStatus
     ) {
         try {
-            context.updateProgress(TaskStage.PROCESSING, 40, "开始转存文件到对象存储");
+            context.updateProgress(TaskStage.PROCESSING, 40, "firmware.taskStartTransfer");
             FirmwareUploadSession session = firmwarePackagePreparationService.loadAndValidateUploadSession(uploadSessionId, productId);
             String objectKey = firmwarePackagePreparationService.ensureObjectKeyReady(uploadSessionId, productId, session);
-            context.updateProgress(TaskStage.PROCESSING, 60, "文件转存完成");
+            context.updateProgress(TaskStage.PROCESSING, 60, "firmware.taskTransferred");
 
             updateVersionToReady(versionId, objectKey, session);
-            context.updateProgress(TaskStage.PROCESSING, 75, "版本记录已更新");
+            context.updateProgress(TaskStage.PROCESSING, 75, "firmware.taskVersionReady");
 
             try {
-                context.updateProgress(TaskStage.PROCESSING, 85, "开始CDN预热");
+                context.updateProgress(TaskStage.PROCESSING, 85, "firmware.taskStartWarm");
                 warmCdn(objectKey);
-                context.updateProgress(TaskStage.PROCESSING, 95, "CDN预热完成");
+                context.updateProgress(TaskStage.PROCESSING, 95, "firmware.taskWarmCompleted");
             } catch (Exception e) {
                 log.warn("CDN预热失败，不阻断主流程: versionId={}, error={}", versionId, e.getMessage());
-                context.updateProgress(TaskStage.PROCESSING, 95, "CDN预热失败，已记录");
+                context.updateProgress(TaskStage.PROCESSING, 95, "firmware.taskWarmFailedRecorded");
             }
 
             firmwarePackagePreparationService.cleanupUploadSession(uploadSessionId);
             cleanupReplacedObject(oldObjectKey, objectKey, versionId);
-            context.updateProgress(TaskStage.COMPLETED, 100, "固件版本处理完成");
+            context.updateProgress(TaskStage.COMPLETED, 100, "firmware.taskCompleted");
             log.info("固件包异步处理完成: versionId={}, objectKey={}", versionId, objectKey);
         } catch (Exception e) {
             log.error("固件包异步流程失败: versionId={}", versionId, e);
@@ -263,6 +318,19 @@ public class FirmwarePublishService {
         } catch (RuntimeException e) {
             log.error("清理旧固件包失败（将产生孤儿文件）: firmwareVersionId={}, oldObjectKey={}",
                     firmwareVersionId, oldObjectKey, e);
+        }
+    }
+
+    private void cleanupRemovedObject(String objectKey, Long firmwareVersionId) {
+        if (!hasText(objectKey)) {
+            return;
+        }
+        try {
+            fileTransferService.deleteStorageObject(objectKey);
+            log.info("清理已移除的固件包成功: firmwareVersionId={}, objectKey={}", firmwareVersionId, objectKey);
+        } catch (RuntimeException e) {
+            log.error("清理已移除的固件包失败（将产生孤儿文件）: firmwareVersionId={}, objectKey={}",
+                    firmwareVersionId, objectKey, e);
         }
     }
 

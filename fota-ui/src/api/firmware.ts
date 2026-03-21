@@ -116,6 +116,14 @@ export const getFirmwareVersionById = (id: number) => {
   return get<FirmwareVersionItem>(`/admin/firmware-versions/${id}`)
 }
 
+export const createFirmwareVersion = (payload: FirmwareVersionPayload) => {
+  return post<FirmwareVersionItem>('/admin/firmware-versions', payload)
+}
+
+export const updateFirmwareVersion = (id: number, payload: FirmwareVersionPayload) => {
+  return put<FirmwareVersionItem>(`/admin/firmware-versions/${id}`, payload)
+}
+
 export const deleteFirmwareVersion = (id: number) => {
   return del<void>(`/admin/firmware-versions/${id}`)
 }

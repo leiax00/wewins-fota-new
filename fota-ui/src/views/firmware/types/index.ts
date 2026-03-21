@@ -18,6 +18,7 @@ export interface TaskProgressState {
   visible: boolean
   taskId: number
   stage: 'INIT' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  phase: 'UPLOAD' | 'CDN_WARM' // 当前阶段
   percent: number
   message: string
   errorMsg: string

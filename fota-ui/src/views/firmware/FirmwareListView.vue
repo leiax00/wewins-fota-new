@@ -96,6 +96,9 @@ const {
   onSubmitSuccess: (taskId) => {
     openTaskProgressDialog(taskId)
   },
+  onDirectSubmitSuccess: () => {
+    void fetchList()
+  },
   resetUploadState,
 })
 

@@ -1,5 +1,6 @@
 package com.wewins.fota.task.application.service;
 
+import com.wewins.fota.common.util.ClientDisconnectUtils;
 import com.wewins.fota.task.config.TaskProperties;
 import com.wewins.fota.task.domain.task.model.enums.TaskStage;
 import lombok.AllArgsConstructor;
@@ -88,7 +89,11 @@ public class SseEmitterManager {
 
             emitter.onError(e -> {
                 releaseConnection(taskId, emitter);
-                log.error("SSE connection error for task: {}", taskId, e);
+                if (ClientDisconnectUtils.isClientDisconnect(e)) {
+                    log.debug("SSE connection closed by client for task: {}, message={}", taskId, e.getMessage());
+                } else {
+                    log.error("SSE connection error for task: {}", taskId, e);
+                }
             });
 
             log.info("SSE subscribed for task: {}, total connections: {}", taskId, emitters.size());
@@ -123,11 +128,19 @@ public class SseEmitterManager {
 
                 emitter.send(event);
             } catch (Exception e) {
-                log.error("Failed to push progress for task: {}", taskId, e);
+                if (ClientDisconnectUtils.isClientDisconnect(e)) {
+                    log.debug("SSE client disconnected while pushing task progress: taskId={}, message={}", taskId, e.getMessage());
+                } else {
+                    log.error("Failed to push progress for task: {}", taskId, e);
+                }
                 try {
                     emitter.completeWithError(e);
                 } catch (Exception ex) {
-                    log.error("Failed to complete emitter for task: {}", taskId, ex);
+                    if (ClientDisconnectUtils.isClientDisconnect(ex)) {
+                        log.debug("SSE emitter already disconnected while completing task: taskId={}, message={}", taskId, ex.getMessage());
+                    } else {
+                        log.error("Failed to complete emitter for task: {}", taskId, ex);
+                    }
                 }
             }
         });

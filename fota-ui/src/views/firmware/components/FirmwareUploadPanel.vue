@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { UploadProps } from 'element-plus'
+import type { UploadInstance, UploadProps } from 'element-plus'
 import type { UploadState } from '../types'
 import { formatFileSize } from '../utils/formatters'
 
@@ -21,6 +21,8 @@ const emit = defineEmits<{
   (e: 'cancel'): void
   (e: 'retry'): void
 }>()
+
+const uploadRef = ref<UploadInstance>()
 
 const isUploading = computed(() => props.uploadState.status === 'UPLOADING')
 const isUploadSuccess = computed(() => props.uploadState.status === 'SUCCESS')
@@ -48,6 +50,16 @@ const handleCancel = () => {
 const handleRetry = () => {
   emit('retry')
 }
+
+watch(
+  () => props.uploadState.status,
+  async (status) => {
+    if (status !== 'UPLOADING') {
+      await nextTick()
+      uploadRef.value?.clearFiles()
+    }
+  }
+)
 </script>
 
 <template>

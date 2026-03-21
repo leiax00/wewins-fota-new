@@ -17,6 +17,7 @@ export function useTaskProgress(options: UseTaskProgressOptions = {}) {
     visible: false,
     taskId: 0,
     stage: 'INIT',
+    phase: 'UPLOAD',
     percent: 0,
     message: '',
     errorMsg: '',
@@ -27,20 +28,18 @@ export function useTaskProgress(options: UseTaskProgressOptions = {}) {
    * 翻译任务消息
    */
   const translateTaskMessage = (message?: string): string => {
-    const messageKeyMap: Record<string, string> = {
-      '开始创建无包版本': 'firmware.uploadSessionCreate',
-      '固件版本处理完成': 'firmware.taskCompleted',
-      '开始更新版本信息': 'firmware.taskStartUpdate',
-      '版本信息已更新': 'firmware.taskUpdated',
-      '开始转存文件到对象存储': 'firmware.taskStartTransfer',
-      '文件转存完成': 'firmware.taskTransferred',
-      '版本记录已更新': 'firmware.taskVersionReady',
-      '开始CDN预热': 'firmware.taskStartWarm',
-      'CDN预热完成': 'firmware.taskWarmCompleted',
-      'CDN预热失败，已记录': 'firmware.taskWarmFailedRecorded',
-    }
-    const key = message ? messageKeyMap[message] : undefined
-    return key ? t(key) : message || ''
+    if (!message) return ''
+    const translated = t(message)
+    return translated !== message ? translated : message
+  }
+
+  /**
+   * 判断当前阶段
+   */
+  const determinePhase = (message?: string): 'UPLOAD' | 'CDN_WARM' => {
+    if (!message) return 'UPLOAD'
+    const warmKeywords = ['预热', 'warm', 'Warm', 'CDN']
+    return warmKeywords.some(keyword => message.includes(keyword)) ? 'CDN_WARM' : 'UPLOAD'
   }
 
   /**
@@ -50,9 +49,11 @@ export function useTaskProgress(options: UseTaskProgressOptions = {}) {
     taskProgress.stage = event.stage
     taskProgress.percent = event.percent
     taskProgress.message = translateTaskMessage(event.message)
+    taskProgress.phase = determinePhase(event.message)
 
     if (event.stage === 'COMPLETED') {
       taskProgress.finished = true
+      taskProgress.phase = 'CDN_WARM'
       taskProgress.message = t('firmware.processSuccess')
       options.onTaskComplete?.()
     } else if (event.stage === 'FAILED' || event.stage === 'CANCELLED') {
@@ -69,6 +70,7 @@ export function useTaskProgress(options: UseTaskProgressOptions = {}) {
     taskProgress.visible = true
     taskProgress.taskId = taskId
     taskProgress.stage = 'INIT'
+    taskProgress.phase = 'UPLOAD'
     taskProgress.percent = 0
     taskProgress.message = t('firmware.processingVersion')
     taskProgress.errorMsg = ''
@@ -113,6 +115,8 @@ export function useTaskProgress(options: UseTaskProgressOptions = {}) {
       const status = await getTaskStatus(taskProgress.taskId)
       taskProgress.stage = status.stage
       taskProgress.percent = status.percent
+      taskProgress.message = translateTaskMessage(status.message)
+      taskProgress.phase = determinePhase(status.message)
 
       if (status.stage === 'COMPLETED') {
         taskProgress.finished = true
