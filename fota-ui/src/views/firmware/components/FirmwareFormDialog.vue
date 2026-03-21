@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import JsonFieldEditor from '@/components/json-field/JsonFieldEditor.vue'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import type { UploadState, FirmwareFormData } from '../types'
 import type { JsonFieldDefinition } from '@/components/json-field/types/json-field'
 import FirmwareUploadPanel from './FirmwareUploadPanel.vue'
@@ -21,6 +21,8 @@ const props = defineProps<{
   tagsSchema: JsonFieldDefinition[]
   metaSchema: JsonFieldDefinition[]
   submitting: boolean
+  httpRequest?: UploadProps['httpRequest']
+  beforeUpload?: UploadProps['beforeUpload']
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +33,7 @@ const emit = defineEmits<{
   (e: 'product-search', keyword: string): void
   (e: 'upload-file', file: File): void
   (e: 'update:form', value: FirmwareFormData): void
+  (e: 'closed'): void
 }>()
 
 const formRef = ref<FormInstance>()
@@ -75,11 +78,14 @@ const handleUploadFile = (file: File) => {
 // 监听 noPackage 变化
 watch(
   () => props.form.noPackage,
-  (val) => {
+  async (val) => {
     if (val) {
       handleCancelUpload()
+      formRef.value?.clearValidate(['uploadSessionId'])
+      return
     }
-    formRef.value?.validateField('uploadSessionId')
+    await nextTick()
+    formRef.value?.clearValidate(['uploadSessionId'])
   }
 )
 </script>
@@ -90,7 +96,7 @@ watch(
     :title="dialogTitle"
     width="680px"
     @update:model-value="emit('update:modelValue', $event)"
-    @closed="formRef?.resetFields()"
+    @closed="() => { formRef?.resetFields(); emit('closed') }"
   >
     <el-form
       ref="formRef"
@@ -160,6 +166,8 @@ watch(
           :product-id="form.productId"
           :disabled="submitting"
           :submitting="submitting"
+          :http-request="httpRequest"
+          :before-upload="beforeUpload"
           @upload="handleUploadFile"
           @cancel="handleCancelUpload"
           @retry="handleRetryUpload"

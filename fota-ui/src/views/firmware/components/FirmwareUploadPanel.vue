@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { UploadProps } from 'element-plus'
 import type { UploadState } from '../types'
 import { formatFileSize } from '../utils/formatters'
 
@@ -11,6 +12,8 @@ const props = defineProps<{
   productId?: number
   disabled?: boolean
   submitting?: boolean
+  httpRequest?: UploadProps['httpRequest']
+  beforeUpload?: UploadProps['beforeUpload']
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +59,8 @@ const handleRetry = () => {
       :show-file-list="false"
       :limit="1"
       :auto-upload="true"
+      :http-request="httpRequest"
+      :before-upload="beforeUpload"
       :disabled="isDisabled"
       accept=".bin,.zip,.tar,.tar.gz,.rar"
     >

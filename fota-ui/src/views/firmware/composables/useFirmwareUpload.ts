@@ -7,7 +7,7 @@ import { cancelUploadSession, uploadFirmwarePackage, getUploadSession } from '@/
 import type { UploadState } from '../types'
 
 export interface UseFirmwareUploadOptions {
-  productId: number
+  getProductId: () => number | undefined
   uploadState: UploadState
   form: { uploadSessionId?: string }
   onUploadSuccess?: (sessionId: string) => void
@@ -65,7 +65,7 @@ export function useFirmwareUpload(options: UseFirmwareUploadOptions) {
    * 上传前校验
    */
   const beforeUpload: UploadProps['beforeUpload'] = () => {
-    if (!options.productId) {
+    if (!options.getProductId()) {
       ElMessage.warning(t('firmware.selectProductFirst'))
       return false
     }
@@ -77,7 +77,8 @@ export function useFirmwareUpload(options: UseFirmwareUploadOptions) {
    */
   const customUpload: UploadProps['httpRequest'] = async (uploadOptions: UploadRequestOptions) => {
     const file = uploadOptions.file as File
-    if (!options.productId) {
+    const productId = options.getProductId()
+    if (!productId) {
       const err = createUploadAjaxError(t('firmware.selectProductFirst'))
       options.uploadState.status = 'FAILED'
       options.uploadState.error = err.message
@@ -113,7 +114,7 @@ export function useFirmwareUpload(options: UseFirmwareUploadOptions) {
       // 调用上传API
       const response = await uploadFirmwarePackage(
         file,
-        options.productId,
+        productId,
         (percent) => {
           if (uploadTicket.value !== currentTicket) return
           options.uploadState.percent = percent
@@ -169,7 +170,7 @@ export function useFirmwareUpload(options: UseFirmwareUploadOptions) {
    * 重试上传
    */
   const retryUpload = async () => {
-    if (!retryFile.value || !options.productId) return
+    if (!retryFile.value || !options.getProductId()) return
 
     const retryOptions: UploadRequestOptions = {
       action: '',

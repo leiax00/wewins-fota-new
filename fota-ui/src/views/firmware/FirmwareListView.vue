@@ -67,8 +67,9 @@ const {
   cancelUpload,
   retryUpload,
   customUpload,
+  beforeUpload,
 } = useFirmwareUpload({
-  productId: form.productId || 0,
+  getProductId: () => form.productId,
   uploadState,
   form,
   onUploadSuccess: (sessionId) => {
@@ -90,6 +91,7 @@ const {
   submitForm,
   handleDialogClosed,
 } = useFirmwareForm({
+  form,
   uploadState,
   onSubmitSuccess: (taskId) => {
     openTaskProgressDialog(taskId)
@@ -284,6 +286,8 @@ onUnmounted(() => {
     :tags-schema="tagsSchema"
     :meta-schema="metaSchema"
     :submitting="submitting"
+    :http-request="customUpload"
+    :before-upload="beforeUpload"
     @submit="handleSubmit"
     @cancel-upload="cancelUpload"
     @retry-upload="retryUpload"

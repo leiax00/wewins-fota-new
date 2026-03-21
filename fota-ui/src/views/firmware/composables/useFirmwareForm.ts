@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -13,6 +13,7 @@ import {
 import type { UploadState, FirmwareFormData } from '../types'
 
 export interface UseFirmwareFormOptions {
+  form: FirmwareFormData
   uploadState: UploadState
   onSubmitSuccess?: (taskId: number) => void
   resetUploadState: () => void
@@ -25,15 +26,7 @@ export function useFirmwareForm(options: UseFirmwareFormOptions) {
   const tagsSchema = ref<JsonFieldDefinition[]>([])
   const metaSchema = ref<JsonFieldDefinition[]>([])
 
-  const form = reactive<FirmwareFormData>({
-    productId: undefined,
-    version: '',
-    internalVersion: '',
-    noPackage: false,
-    uploadSessionId: '',
-    tags: {},
-    meta: {},
-  })
+  const form = options.form
 
   const dialogVisible = ref(false)
   const dialogMode = ref<'create' | 'edit'>('create')
