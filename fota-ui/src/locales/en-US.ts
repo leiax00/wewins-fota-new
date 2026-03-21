@@ -697,6 +697,7 @@ export default {
       customLocaleOption: 'Custom locale...',
       customLocalePlaceholder: 'e.g. es-MX',
       addLocale: 'Add',
+      addLocaleInline: 'Add a new item, then choose language and input text inside the item.',
       loadLocaleFailed: 'Failed to load supported languages, custom input is still available',
       errorInvalidLocale: 'Invalid locale code. Please use BCP-47 format (e.g. zh-CN, en-US).',
       errorDuplicateLocale: 'This language has already been added.',

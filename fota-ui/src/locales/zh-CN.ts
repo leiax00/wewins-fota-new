@@ -717,6 +717,7 @@ export default {
       customLocaleOption: '自定义语言...',
       customLocalePlaceholder: '例如：es-MX',
       addLocale: '添加',
+      addLocaleInline: '先添加一条记录，再在记录内选择语言并输入文本',
       loadLocaleFailed: '加载支持的语言失败，仍可使用自定义输入',
       errorInvalidLocale: '语言代码无效，请使用 BCP-47 格式（例如：zh-CN, en-US）',
       errorDuplicateLocale: '该语言已添加',
