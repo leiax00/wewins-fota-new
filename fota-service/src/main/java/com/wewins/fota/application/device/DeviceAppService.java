@@ -108,10 +108,10 @@ public class DeviceAppService {
         }
 
         normalizeAndValidate(device, true);
-        deviceRepository.create(device);
-        eventPublisher.publishEvent(new DeviceChangedEvent(this, device.getImei(), ChangeType.CREATED));
-        log.info("设备创建成功: deviceId={}, imei={}", device.getId(), device.getImei());
-        return device;
+        Device createdDevice = deviceRepository.create(device);
+        eventPublisher.publishEvent(new DeviceChangedEvent(this, createdDevice.getImei(), ChangeType.CREATED));
+        log.info("设备创建成功: deviceId={}, imei={}", createdDevice.getId(), createdDevice.getImei());
+        return createdDevice;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -127,10 +127,10 @@ public class DeviceAppService {
 
         getById(device.getId());
         normalizeAndValidate(device, false);
-        deviceRepository.updateById(device);
-        eventPublisher.publishEvent(new DeviceChangedEvent(this, device.getImei(), ChangeType.UPDATED));
-        log.info("设备更新成功: deviceId={}", device.getId());
-        return device;
+        Device updatedDevice = deviceRepository.updateById(device);
+        eventPublisher.publishEvent(new DeviceChangedEvent(this, updatedDevice.getImei(), ChangeType.UPDATED));
+        log.info("设备更新成功: deviceId={}", updatedDevice.getId());
+        return updatedDevice;
     }
 
     @Transactional(rollbackFor = Exception.class)

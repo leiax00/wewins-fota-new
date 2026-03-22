@@ -79,12 +79,7 @@ public class FirmwareVersionAppService {
                     firmwareVersion.getProductId(), firmwareVersion.getVersion(), firmwareVersion.getInternalVersion());
         }
 
-        // 检查 product + version + internalVersion 组合是否已存在
-        boolean exists = firmwareVersionRepository.existsByUnique(
-                firmwareVersion.getProductId(),
-                firmwareVersion.getVersion(),
-                firmwareVersion.getInternalVersion()
-        );
+        boolean exists = firmwareVersionRepository.existsByUnique(firmwareVersion);
         if (exists) {
             throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
         }
@@ -120,28 +115,21 @@ public class FirmwareVersionAppService {
             throw new BizException(ErrorCode.FIRMWARE_VERSION_NOT_FOUND);
         }
 
-        Long productId = firmwareVersion.getProductId();
-        String version = firmwareVersion.getVersion();
-        String internalVersion = firmwareVersion.getInternalVersion();
-
-        if (!Objects.equals(productId, existingVersion.getProductId()) ||
-                !Objects.equals(version, existingVersion.getVersion()) ||
-                !Objects.equals(internalVersion, existingVersion.getInternalVersion())
-        ) {
-            throw new BizException(ErrorCode.FIRMWARE_VERSION_UPDATE_CHANGE_UNIQUE);
+        if (firmwareVersionRepository.existsByUnique(firmwareVersion)) {
+            throw new BizException(ErrorCode.FIRMWARE_VERSION_EXISTS);
         }
 
-        firmwareVersionRepository.updateById(firmwareVersion);
+        FirmwareVersion updated = firmwareVersionRepository.updateById(firmwareVersion);
         eventPublisher.publishEvent(new FirmwareChangedEvent(
                 this,
-                firmwareVersion.getProductId(),
-                firmwareVersion.getId(),
-                firmwareVersion.getVersion(),
-                firmwareVersion.getInternalVersion(),
+                updated.getProductId(),
+                updated.getId(),
+                updated.getVersion(),
+                updated.getInternalVersion(),
                 ChangeType.UPDATED));
 
-        log.info("固件版本更新成功: firmwareVersionId={}", firmwareVersion.getId());
-        return firmwareVersion;
+        log.info("固件版本更新成功: firmwareVersionId={}", updated.getId());
+        return updated;
     }
 
     @Transactional(rollbackFor = Exception.class)

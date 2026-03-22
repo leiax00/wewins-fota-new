@@ -6,9 +6,11 @@ import org.apache.ibatis.type.MappedJdbcTypes;
 import org.apache.ibatis.type.MappedTypes;
 
 import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 
 /**
  * JSON 字符串类型处理器
@@ -24,7 +26,16 @@ public class JsonbStringTypeHandler extends BaseTypeHandler<String> {
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType)
             throws SQLException {
-        // 使用 setString，兼容 PostgreSQL JSONB 和 MySQL JSON
+        Connection connection = ps.getConnection();
+        String databaseProductName = connection == null || connection.getMetaData() == null
+                ? ""
+                : connection.getMetaData().getDatabaseProductName();
+
+        if ("PostgreSQL".equalsIgnoreCase(databaseProductName)) {
+            ps.setObject(i, parameter, Types.OTHER);
+            return;
+        }
+
         ps.setString(i, parameter);
     }
 

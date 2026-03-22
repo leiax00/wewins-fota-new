@@ -19,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Collections;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Repository
@@ -179,42 +181,48 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     public FirmwareVersion create(FirmwareVersion firmwareVersion) {
         FirmwareVersionPO po = firmwareVersionConverter.toPo(firmwareVersion);
         firmwareVersionMapper.insert(po);
-        FirmwareVersion created = firmwareVersionConverter.toDomain(po);
-        syncTags(created);
-        return enrichFirmware(created);
+        firmwareVersion.setId(po.getId());
+        firmwareVersion.setCreatedAt(po.getCreatedAt());
+        firmwareVersion.setCreatedBy(po.getCreatedBy());
+        firmwareVersion.setUpdatedAt(po.getUpdatedAt());
+        firmwareVersion.setUpdatedBy(po.getUpdatedBy());
+        syncTags(firmwareVersion);
+        firmwareCacheRepository.evict(firmwareVersion.getId());
+        return enrichFirmware(firmwareVersion);
     }
 
     @Override
     public FirmwareVersion updateById(FirmwareVersion firmwareVersion) {
         FirmwareVersionPO po = firmwareVersionConverter.toPo(firmwareVersion);
         firmwareVersionMapper.updateById(po);
-        FirmwareVersion updated = firmwareVersionConverter.toDomain(po);
-        syncTags(updated);
-        return enrichFirmware(updated);
+        firmwareVersion.setUpdatedAt(po.getUpdatedAt());
+        firmwareVersion.setUpdatedBy(po.getUpdatedBy());
+        syncTags(firmwareVersion);
+        firmwareCacheRepository.evict(firmwareVersion.getId());
+        return enrichFirmware(firmwareVersion);
     }
 
     @Override
     public boolean deleteById(Long id) {
-        return firmwareVersionMapper.deleteById(id) > 0;
+        boolean deleted = firmwareVersionMapper.deleteById(id) > 0;
+        if (deleted) {
+            firmwareCacheRepository.evict(id);
+        }
+        return deleted;
     }
 
     @Override
-    public boolean existsByUnique(Long productId, String version, String internalVersion) {
-        if (productId == null || version == null || version.isBlank()) {
+    public boolean existsByUnique(FirmwareVersion firmwareVersion) {
+        if (firmwareVersion == null
+                || firmwareVersion.getProductId() == null
+                || !StringUtils.hasText(firmwareVersion.getVersion())) {
             return false;
         }
 
-        LambdaQueryWrapper<FirmwareVersionPO> wrapper = new LambdaQueryWrapper<FirmwareVersionPO>()
-                .eq(FirmwareVersionPO::getProductId, productId)
-                .eq(FirmwareVersionPO::getVersion, version)
-                .eq(FirmwareVersionPO::getDeleted, 0);
-
-        if (StringUtils.hasText(internalVersion)) {
-            wrapper.eq(FirmwareVersionPO::getInternalVersion, internalVersion);
-        }
-
-        Long count = firmwareVersionMapper.selectCount(wrapper);
-        return count != null && count > 0;
+        return findByProductIdAndVersion(firmwareVersion.getProductId(), firmwareVersion.getVersion()).stream()
+                .filter(existing -> !Objects.equals(existing.getId(), firmwareVersion.getId()))
+                .anyMatch(existing -> Objects.equals(existing.getInternalVersion(), firmwareVersion.getInternalVersion())
+                        && Objects.equals(normalizeTags(existing.getTags()), normalizeTags(firmwareVersion.getTags())));
     }
 
     private List<FirmwareVersion> enrichFirmwareVersions(List<FirmwareVersion> versions) {
@@ -244,7 +252,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         if (version == null || version.getId() == null) {
             return version;
         }
-        return enrichFirmwareVersions(new java.util.ArrayList<>(List.of(version))).getFirst();
+        return enrichFirmwareVersions(List.of(version)).getFirst();
     }
 
     private void syncTags(FirmwareVersion firmwareVersion) {
@@ -265,5 +273,12 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
                 })
                 .toList();
         firmwareVersionTagMapper.batchInsert(rows);
+    }
+
+    private Map<String, String> normalizeTags(Map<String, String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return tags;
     }
 }

@@ -78,17 +78,16 @@ public interface FirmwareVersionRepository {
     );
 
     /**
-     * 检查固件版本组合是否已存在
+     * 检查固件版本唯一组合是否已存在。
      * <p>
-     * 用于创建/更新时检查唯一性约束
+     * 唯一性由 productId + version + internalVersion + tags 完全一致决定。
+     * 更新场景下如果实体带有 id，则自动排除自身。
      * </p>
      *
-     * @param productId 产品 ID
-     * @param version 版本号
-     * @param internalVersion 内部版本号（可选）
+     * @param firmwareVersion 固件版本实体
      * @return 是否存在冲突
      */
-    boolean existsByUnique(Long productId, String version, String internalVersion);
+    boolean existsByUnique(FirmwareVersion firmwareVersion);
 
     /**
      * 分页查询固件版本

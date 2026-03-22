@@ -75,7 +75,6 @@ spring:
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: ${FLYWAY_BASELINE_VERSION:5}
     validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
-    default-schema: ${FLYWAY_DEFAULT_SCHEMA:}
     table: ${FLYWAY_HISTORY_TABLE:flyway_schema_history}
 
   # Redis 配置

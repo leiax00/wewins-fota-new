@@ -98,18 +98,23 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     public Device create(Device device) {
         DevicePO po = deviceConverter.toPo(device);
         deviceMapper.insert(po);
-        Device created = deviceConverter.toDomain(po);
-        syncRelations(created);
-        return enrichDevice(created);
+        device.setId(po.getId());
+        device.setCreatedAt(po.getCreatedAt());
+        device.setCreatedBy(po.getCreatedBy());
+        device.setUpdatedAt(po.getUpdatedAt());
+        device.setUpdatedBy(po.getUpdatedBy());
+        syncRelations(device);
+        return enrichDevice(device);
     }
 
     @Override
     public Device updateById(Device device) {
         DevicePO po = deviceConverter.toPo(device);
         deviceMapper.updateById(po);
-        Device updated = deviceConverter.toDomain(po);
-        syncRelations(updated);
-        return enrichDevice(updated);
+        device.setUpdatedAt(po.getUpdatedAt());
+        device.setUpdatedBy(po.getUpdatedBy());
+        syncRelations(device);
+        return enrichDevice(device);
     }
 
     @Override
@@ -141,7 +146,12 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             for (Device device : batch) {
                 DevicePO po = deviceConverter.toPo(device);
                 deviceMapper.insert(po);
-                syncRelations(deviceConverter.toDomain(po));
+                device.setId(po.getId());
+                device.setCreatedAt(po.getCreatedAt());
+                device.setCreatedBy(po.getCreatedBy());
+                device.setUpdatedAt(po.getUpdatedAt());
+                device.setUpdatedBy(po.getUpdatedBy());
+                syncRelations(device);
             }
         }
     }

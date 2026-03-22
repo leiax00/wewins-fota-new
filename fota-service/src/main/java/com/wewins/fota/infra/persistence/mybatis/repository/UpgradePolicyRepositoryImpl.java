@@ -77,18 +77,23 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     public UpgradePolicy create(UpgradePolicy policy) {
         UpgradePolicyPO po = upgradePolicyConverter.toPo(policy);
         upgradePolicyMapper.insert(po);
-        UpgradePolicy created = upgradePolicyConverter.toDomain(po);
-        syncRelations(created);
-        return enrichPolicy(created);
+        policy.setId(po.getId());
+        policy.setCreatedAt(po.getCreatedAt());
+        policy.setCreatedBy(po.getCreatedBy());
+        policy.setUpdatedAt(po.getUpdatedAt());
+        policy.setUpdatedBy(po.getUpdatedBy());
+        syncRelations(policy);
+        return enrichPolicy(policy);
     }
 
     @Override
     public UpgradePolicy updateById(UpgradePolicy policy) {
         UpgradePolicyPO po = upgradePolicyConverter.toPo(policy);
         upgradePolicyMapper.updateById(po);
-        UpgradePolicy updated = upgradePolicyConverter.toDomain(po);
-        syncRelations(updated);
-        return enrichPolicy(updated);
+        policy.setUpdatedAt(po.getUpdatedAt());
+        policy.setUpdatedBy(po.getUpdatedBy());
+        syncRelations(policy);
+        return enrichPolicy(policy);
     }
 
     @Override
@@ -105,9 +110,10 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
             return null;
         }
 
-        UpgradePolicy updatedPolicy = upgradePolicyConverter.toDomain(po);
-        syncRelations(updatedPolicy);
-        return enrichPolicy(updatedPolicy);
+        policy.setUpdatedAt(po.getUpdatedAt());
+        policy.setUpdatedBy(po.getUpdatedBy());
+        syncRelations(policy);
+        return enrichPolicy(policy);
     }
 
     @Override

@@ -30,12 +30,15 @@ public interface PermissionMapper extends BaseMapperX<Permission> {
      * @return 菜单权限列表（MODULE/MENU 类型，已排序）
      */
     @Select("""
-            SELECT DISTINCT p.*
-            FROM sys_user_role ur
-            JOIN sys_role_permission rp ON rp.role_id = ur.role_id
-            JOIN sys_permissions p ON p.id = rp.permission_id
-            WHERE ur.user_id = #{userId}
-              AND p.deleted = 0
+            SELECT p.*
+            FROM sys_permissions p
+            JOIN (
+                SELECT DISTINCT rp.permission_id
+                FROM sys_user_role ur
+                JOIN sys_role_permission rp ON rp.role_id = ur.role_id
+                WHERE ur.user_id = #{userId}
+            ) granted ON granted.permission_id = p.id
+            WHERE p.deleted = 0
               AND p.status = 'active'
               AND p.type IN ('MODULE', 'MENU')
             ORDER BY
