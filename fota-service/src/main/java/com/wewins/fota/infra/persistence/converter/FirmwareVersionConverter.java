@@ -23,7 +23,7 @@ public interface FirmwareVersionConverter {
 
     List<FirmwareVersion> toDomainList(List<FirmwareVersionPO> poList);
 
-    @Mapping(target = "tags", source = "tags", qualifiedByName = "toStringMapString")
+    @Mapping(target = "tags", ignore = true)
     @Mapping(target = "meta", source = "meta", qualifiedByName = "toTagMapString")
     FirmwareVersionPO toPo(FirmwareVersion domain);
 }

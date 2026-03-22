@@ -214,7 +214,10 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             int end = Math.min(i + batchSize, deviceIds.size());
             List<Long> batchIds = deviceIds.subList(i, end);
 
-            deviceMapper.batchUpdateTags(batchIds, tagsJson);
+            LambdaUpdateWrapper<DevicePO> updateWrapper = new LambdaUpdateWrapper<DevicePO>()
+                    .set(DevicePO::getUpdatedAt, java.time.LocalDateTime.now())
+                    .in(DevicePO::getId, batchIds);
+            deviceMapper.update(null, updateWrapper);
             replaceDeviceTags(batchIds, tags);
         }
     }
@@ -276,8 +279,6 @@ public class DeviceRepositoryImpl implements DeviceRepository {
                     .id(device.getId())
                     .firstSeenAt(device.getFirstSeenAt())
                     .lastSeenAt(device.getLastSeenAt())
-                    .versionPartsJson(toJsonString(device.getVersionParts()))
-                    .initialVersionPartsJson(toJsonString(device.getInitialVersionParts()))
                     .build();
 
             batchList.add(dto);
@@ -505,18 +506,6 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             return objectMapper.readValue(json, objectMapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, String.class));
         } catch (Exception e) {
             log.warn("解析设备标签 JSON 失败: {}", json, e);
-            return null;
-        }
-    }
-
-    private String toJsonString(Object obj) {
-        if (obj == null) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(obj);
-        } catch (Exception e) {
-            log.warn("JSON 序列化失败: {}", obj, e);
             return null;
         }
     }

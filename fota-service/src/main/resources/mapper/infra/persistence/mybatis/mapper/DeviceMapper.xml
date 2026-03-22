@@ -18,35 +18,10 @@
                 WHEN #{item.id} THEN #{item.lastSeenAt}
             </foreach>
             ELSE last_seen_at END,
-            version_parts = CASE id
-            <foreach collection="list" item="item">
-                <if test="item.versionPartsJson != null">
-                    WHEN #{item.id} THEN #{item.versionPartsJson}
-                </if>
-            </foreach>
-            ELSE version_parts END,
-            initial_version_parts = CASE id
-            <foreach collection="list" item="item">
-                <if test="item.initialVersionPartsJson != null">
-                    WHEN #{item.id} THEN #{item.initialVersionPartsJson}
-                </if>
-            </foreach>
-            ELSE initial_version_parts END,
             updated_at = CURRENT_TIMESTAMP
         WHERE id IN
         <foreach collection="list" item="item" open="(" separator="," close=")">
             #{item.id}
-        </foreach>
-    </update>
-
-    <!-- 批量更新设备标签（兼容 PostgreSQL 和 MySQL） -->
-    <update id="batchUpdateTags">
-        UPDATE devices
-        SET tags = #{tagsJson},
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id IN
-        <foreach collection="ids" item="id" open="(" separator="," close=")">
-            #{id}
         </foreach>
     </update>
 

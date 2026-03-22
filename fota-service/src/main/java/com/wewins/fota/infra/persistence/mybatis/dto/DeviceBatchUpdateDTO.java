@@ -14,8 +14,4 @@ public class DeviceBatchUpdateDTO {
     private LocalDateTime firstSeenAt;
 
     private LocalDateTime lastSeenAt;
-
-    private String versionPartsJson;
-
-    private String initialVersionPartsJson;
 }

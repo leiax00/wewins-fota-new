@@ -24,8 +24,8 @@ public interface DeviceConverter {
 
     List<Device> toDomainList(List<DevicePO> poList);
 
-    @Mapping(target = "tags", source = "tags", qualifiedByName = "toStringMapString")
-    @Mapping(target = "versionParts", source = "versionParts", qualifiedByName = "toDeviceVersionPartsString")
-    @Mapping(target = "initialVersionParts", source = "initialVersionParts", qualifiedByName = "toDeviceVersionPartsString")
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "versionParts", ignore = true)
+    @Mapping(target = "initialVersionParts", ignore = true)
     DevicePO toPo(Device domain);
 }

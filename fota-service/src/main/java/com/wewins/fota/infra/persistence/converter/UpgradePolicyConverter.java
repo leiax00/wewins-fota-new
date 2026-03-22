@@ -26,10 +26,10 @@ public interface UpgradePolicyConverter {
 
     List<UpgradePolicy> toDomainList(List<UpgradePolicyPO> poList);
 
-    @Mapping(target = "sourceVersions", source = "sourceVersions", qualifiedByName = "toLongSetString")
-    @Mapping(target = "targetImeis", source = "targetImeis", qualifiedByName = "toStringSetString")
-    @Mapping(target = "targetDeviceBatchIds", source = "targetDeviceBatchIds", qualifiedByName = "toLongSetString")
-    @Mapping(target = "targetDeviceTags", source = "targetDeviceTags", qualifiedByName = "toTagMapString")
+    @Mapping(target = "sourceVersions", ignore = true)
+    @Mapping(target = "targetImeis", ignore = true)
+    @Mapping(target = "targetDeviceBatchIds", ignore = true)
+    @Mapping(target = "targetDeviceTags", ignore = true)
     @Mapping(target = "timeWindow", source = "timeWindow", qualifiedByName = "toPolicyTimeWindowString")
     UpgradePolicyPO toPo(UpgradePolicy domain);
 }
