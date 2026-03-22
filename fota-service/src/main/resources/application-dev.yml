@@ -7,9 +7,15 @@
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
-    username: ${DB_USER:postgres}
+#    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
+#    username: ${DB_USER:postgres}
+#    password: ${DB_PASSWORD:wewins@123}
+#    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fota?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USER:root}
     password: ${DB_PASSWORD:wewins@123}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+
     clickhouse:
       url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/fota}
       username: ${CLICKHOUSE_USER:wewins}

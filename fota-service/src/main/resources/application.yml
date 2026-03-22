@@ -49,6 +49,8 @@ spring:
     url: ${DB_URL:jdbc:postgresql://pgsql.wewins.wolaie.com:15432/fota?TimeZone=UTC}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD}
+    ## pgsql: org.postgresql.Driver
+    ## mysql: com.mysql.cj.jdbc.Driver
     driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 20
