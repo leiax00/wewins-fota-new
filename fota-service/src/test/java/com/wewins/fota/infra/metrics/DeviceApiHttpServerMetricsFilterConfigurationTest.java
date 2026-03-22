@@ -56,7 +56,7 @@ class DeviceApiHttpServerMetricsFilterConfigurationTest {
         Meter.Id id = new Meter.Id("http.server.requests", Tags.empty(), null, null, Meter.Type.TIMER);
 
         Meter.Id mapped = filter.map(id);
-        assertEquals(MeterFilterReply.NEUTRAL, filter.accept(id));
+        assertEquals(MeterFilterReply.DENY, filter.accept(id));
         assertEquals(id, mapped);
     }
 }

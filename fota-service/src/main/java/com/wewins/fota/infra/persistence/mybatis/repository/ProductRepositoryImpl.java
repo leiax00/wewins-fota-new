@@ -57,7 +57,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public List<Product> findAllActiveOrderByUpdatedAtDesc() {
         List<ProductPO> productPos = productMapper.selectList(
                 new LambdaQueryWrapper<ProductPO>()
-                        .isNull(ProductPO::getDeletedAt)
+                        .eq(ProductPO::getDeleted, 0)
                         .orderByDesc(ProductPO::getUpdatedAt)
         );
         return productConverter.toDomainList(productPos);
@@ -67,7 +67,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public LocalDateTime findLatestUpdatedAt() {
         ProductPO latest = productMapper.selectOne(
                 new LambdaQueryWrapper<ProductPO>()
-                        .isNull(ProductPO::getDeletedAt)
+                        .eq(ProductPO::getDeleted, 0)
                         .orderByDesc(ProductPO::getUpdatedAt)
                         .last("LIMIT 1")
         );
@@ -77,7 +77,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     @Override
     public Page<Product> pageProducts(Page<Product> page, String keyword) {
         LambdaQueryWrapper<ProductPO> queryWrapper = new LambdaQueryWrapper<ProductPO>()
-                .isNull(ProductPO::getDeletedAt);
+                .eq(ProductPO::getDeleted, 0);
 
         if (StringUtils.hasText(keyword)) {
             // 关键词同时匹配产品名称、制造商、型号
@@ -106,7 +106,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         List<ProductPO> products = productMapper.selectList(
                 new LambdaQueryWrapper<ProductPO>()
                         .in(ProductPO::getId, ids)
-                        .isNull(ProductPO::getDeletedAt)
+                        .eq(ProductPO::getDeleted, 0)
         );
 
         // 保持入参顺序
@@ -142,7 +142,7 @@ public class ProductRepositoryImpl implements ProductRepository {
     public long countByNameExcludingId(String name, Long excludeId) {
         LambdaQueryWrapper<ProductPO> queryWrapper = new LambdaQueryWrapper<ProductPO>()
                 .eq(ProductPO::getName, name)
-                .isNull(ProductPO::getDeletedAt);
+                .eq(ProductPO::getDeleted, 0);
 
         if (excludeId != null) {
             queryWrapper.ne(ProductPO::getId, excludeId);
@@ -177,7 +177,7 @@ public class ProductRepositoryImpl implements ProductRepository {
         ProductPO productPo = productMapper.selectOne(
                 new LambdaQueryWrapper<ProductPO>()
                         .eq(ProductPO::getModel, model)
-                        .isNull(ProductPO::getDeletedAt)
+                        .eq(ProductPO::getDeleted, 0)
         );
         Product product = productConverter.toDomain(productPo);
 

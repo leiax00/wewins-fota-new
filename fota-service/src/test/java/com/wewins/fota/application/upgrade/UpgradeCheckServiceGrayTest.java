@@ -1,8 +1,6 @@
 package com.wewins.fota.application.upgrade;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
@@ -11,11 +9,13 @@ import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
+import com.wewins.fota.domain.base.vo.CacheLookupResult;
 import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
+import com.wewins.fota.domain.device.service.DeviceInfoUpdateGateway;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
@@ -23,6 +23,7 @@ import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.service.CheckLogGateway;
+import com.wewins.fota.infra.metrics.FotaMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,9 +32,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -83,6 +86,12 @@ class UpgradeCheckServiceGrayTest {
     private CheckLogGateway checkLogGateway;
     @Mock
     private DeviceCheckLogBuilder checkLogBuilder;
+    @Mock
+    private DeviceInfoUpdateGateway deviceInfoUpdateGateway;
+    @Mock
+    private FotaMetrics fotaMetrics;
+    @Mock
+    private com.wewins.fota.application.load.DynamicIntervalService dynamicIntervalService;
 
     private UpgradeCheckService upgradeCheckService;
     private ObjectMapper objectMapper;
@@ -102,9 +111,14 @@ class UpgradeCheckServiceGrayTest {
                 upgradeResponseBuilder,
                 requestValidator,
                 checkLogGateway,
-                checkLogBuilder
+                checkLogBuilder,
+                deviceInfoUpdateGateway,
+                firmwareVersionRepository,
+                dynamicIntervalService,
+                fotaMetrics
         );
         objectMapper = new ObjectMapper();
+        when(deviceCacheRepository.get(anyString())).thenReturn(CacheLookupResult.miss());
     }
 
     @Nested
@@ -121,7 +135,7 @@ class UpgradeCheckServiceGrayTest {
             UpgradePolicy policy = createPolicy(1L, 50); // 50% 灰度
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
@@ -137,7 +151,7 @@ class UpgradeCheckServiceGrayTest {
                     .decision(UpgradeDecision.UPDATE)
                     .requestId("test-request-id")
                     .build();
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
                     .thenReturn(expectedResult);
 
             // Act
@@ -148,8 +162,8 @@ class UpgradeCheckServiceGrayTest {
             assertTrue(result.getHasUpdate(), "应该有更新");
             assertEquals(UpgradeDecision.UPDATE, result.getDecision());
 
-            // 验证灰度检查被调用
-            verify(grayReleaseService).hitsGrayBucket(imei, 50);
+            // 业务流程和指标上报都会读取灰度命中情况
+            verify(grayReleaseService, atLeastOnce()).hitsGrayBucket(imei, 50);
         }
 
         @Test
@@ -162,7 +176,7 @@ class UpgradeCheckServiceGrayTest {
             UpgradePolicy policy = createPolicy(1L, 10); // 10% 灰度
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
@@ -181,8 +195,7 @@ class UpgradeCheckServiceGrayTest {
             assertFalse(result.getHasUpdate(), "不应该有更新");
             assertEquals(UpgradeDecision.NO_UPDATE, result.getDecision());
 
-            // 验证灰度检查被调用
-            verify(grayReleaseService).hitsGrayBucket(imei, 10);
+            verify(grayReleaseService, atLeastOnce()).hitsGrayBucket(imei, 10);
         }
 
         @Test
@@ -195,7 +208,7 @@ class UpgradeCheckServiceGrayTest {
             UpgradePolicy policy = createPolicy(1L, null); // null 灰度比例
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
@@ -210,7 +223,7 @@ class UpgradeCheckServiceGrayTest {
                     .decision(UpgradeDecision.UPDATE)
                     .requestId("test-request-id")
                     .build();
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
                     .thenReturn(expectedResult);
 
             // Act
@@ -220,7 +233,7 @@ class UpgradeCheckServiceGrayTest {
             // Assert
             assertTrue(result.getHasUpdate(), "应该有更新");
 
-            // 验证灰度检查未被调用（null 比例直接返回 true）
+            // null 比例不会触发灰度命中计算
             verify(grayReleaseService, never()).hitsGrayBucket(anyString(), anyInt());
         }
 
@@ -234,7 +247,7 @@ class UpgradeCheckServiceGrayTest {
             UpgradePolicy policy = createPolicy(1L, 100); // 100% 灰度
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
@@ -249,7 +262,7 @@ class UpgradeCheckServiceGrayTest {
                     .decision(UpgradeDecision.UPDATE)
                     .requestId("test-request-id")
                     .build();
-            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any(), anyBoolean()))
+            when(upgradeResponseBuilder.buildResponse(any(), any(), anyString(), any()))
                     .thenReturn(expectedResult);
 
             // Act
@@ -258,8 +271,8 @@ class UpgradeCheckServiceGrayTest {
 
             // Assert
             assertTrue(result.getHasUpdate(), "应该有更新");
-            // 100% 灰度直接返回 true，不调用 grayReleaseService
-            verify(grayReleaseService, never()).hitsGrayBucket(anyString(), anyInt());
+            // 100% 灰度在匹配阶段跳过，但指标上报仍会读取一次
+            verify(grayReleaseService, atLeastOnce()).hitsGrayBucket(imei, 100);
         }
 
         @Test
@@ -272,7 +285,7 @@ class UpgradeCheckServiceGrayTest {
             UpgradePolicy policy = createPolicy(1L, 0); // 0% 灰度
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
@@ -296,7 +309,7 @@ class UpgradeCheckServiceGrayTest {
     /**
      * 创建设备实体
      */
-    private Device createDevice(String imei, Long productId, Long versionId, JsonNode tags) {
+    private Device createDevice(String imei, Long productId, Long versionId, Map<String, String> tags) {
         DeviceVersionParts versionParts = DeviceVersionParts.builder().parts(
                 Map.of(
                         "main", DeviceVersionPart.builder()
@@ -332,12 +345,11 @@ class UpgradeCheckServiceGrayTest {
      * 创建升级策略
      */
     private UpgradePolicy createPolicy(Long productId, Integer grayRate) {
-        ObjectNode sourceVersions = objectMapper.createObjectNode().put("dummy", "value");
         UpgradePolicy policy = UpgradePolicy.builder()
                 .productId(productId)
                 .name("测试策略")
                 .targetVersionId(2L)
-                .sourceVersions(sourceVersions)
+                .sourceVersions(Set.of(1L))
                 .priority(10)
                 .grayRate(grayRate)
                 .status(PolicyStatus.ACTIVE)

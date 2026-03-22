@@ -35,10 +35,15 @@ public interface PermissionMapper extends BaseMapperX<Permission> {
             JOIN sys_role_permission rp ON rp.role_id = ur.role_id
             JOIN sys_permissions p ON p.id = rp.permission_id
             WHERE ur.user_id = #{userId}
-              AND p.deleted_at IS NULL
+              AND p.deleted = 0
               AND p.status = 'active'
               AND p.type IN ('MODULE', 'MENU')
-            ORDER BY p.parent_id NULLS FIRST, p.menu_sort NULLS LAST, p.id
+            ORDER BY
+              CASE WHEN p.parent_id IS NULL THEN 0 ELSE 1 END,
+              p.parent_id,
+              CASE WHEN p.menu_sort IS NULL THEN 1 ELSE 0 END,
+              p.menu_sort,
+              p.id
             """)
     List<Permission> findMenuPermissionsByUserId(@Param("userId") Long userId);
 }

@@ -63,7 +63,7 @@ class FirmwareVersionRepositoryImplTest {
                 .md5("abc123")
                 .sha256("def456")
                 .packageStatus("READY")
-                .deletedAt(null)
+                .deleted(0)
                 .build();
         testFirmwareVersion.setId(1L);
         testFirmwareVersion.setCreatedAt(LocalDateTime.now());
@@ -80,7 +80,7 @@ class FirmwareVersionRepositoryImplTest {
         testFirmwareVersionPO.setMd5(testFirmwareVersion.getMd5());
         testFirmwareVersionPO.setSha256(testFirmwareVersion.getSha256());
         testFirmwareVersionPO.setPackageStatus(testFirmwareVersion.getPackageStatus());
-        testFirmwareVersionPO.setDeletedAt(testFirmwareVersion.getDeletedAt());
+        testFirmwareVersionPO.setDeleted(testFirmwareVersion.getDeleted());
         testFirmwareVersionPO.setCreatedAt(testFirmwareVersion.getCreatedAt());
         testFirmwareVersionPO.setUpdatedAt(testFirmwareVersion.getUpdatedAt());
 
@@ -103,7 +103,7 @@ class FirmwareVersionRepositoryImplTest {
                 .md5(po.getMd5())
                 .sha256(po.getSha256())
                 .packageStatus(po.getPackageStatus())
-                .deletedAt(po.getDeletedAt())
+                .deleted(po.getDeleted())
                 .build();
         firmware.setId(po.getId());
         firmware.setCreatedAt(po.getCreatedAt());

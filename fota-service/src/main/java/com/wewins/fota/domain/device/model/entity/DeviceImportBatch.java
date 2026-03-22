@@ -92,7 +92,7 @@ public class DeviceImportBatch extends DomainEntity implements Serializable {
     private LocalDateTime finishedAt;
 
     /**
-     * 软删除时间（逻辑删除）
+     * 逻辑删除标记 (0=未删除, 1=已删除)
      */
-    private LocalDateTime deletedAt;
+    private Integer deleted;
 }

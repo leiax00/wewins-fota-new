@@ -40,7 +40,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     @Override
     public Page<UpgradePolicy> pagePolicies(Page<UpgradePolicy> page, Long productId, String name, String status) {
         LambdaQueryWrapper<UpgradePolicyPO> queryWrapper = new LambdaQueryWrapper<UpgradePolicyPO>()
-                .isNull(UpgradePolicyPO::getDeletedAt);
+                .eq(UpgradePolicyPO::getDeleted, 0);
 
         if (productId != null) {
             queryWrapper.eq(UpgradePolicyPO::getProductId, productId);
@@ -82,7 +82,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         LambdaQueryWrapper<UpgradePolicyPO> queryWrapper = new LambdaQueryWrapper<UpgradePolicyPO>()
                 .eq(UpgradePolicyPO::getId, id)
                 .eq(UpgradePolicyPO::getStatus, expectedStatus)
-                .isNull(UpgradePolicyPO::getDeletedAt);
+                .eq(UpgradePolicyPO::getDeleted, 0);
 
         UpgradePolicyPO po = upgradePolicyConverter.toPo(policy);
         int updated = upgradePolicyMapper.update(po, queryWrapper);
@@ -105,7 +105,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         LambdaQueryWrapper<UpgradePolicyPO> queryWrapper = new LambdaQueryWrapper<UpgradePolicyPO>()
                 .eq(UpgradePolicyPO::getProductId, productId)
                 .eq(UpgradePolicyPO::getName, name)
-                .isNull(UpgradePolicyPO::getDeletedAt);
+                .eq(UpgradePolicyPO::getDeleted, 0);
 
         if (excludeId != null) {
             queryWrapper.ne(UpgradePolicyPO::getId, excludeId);
@@ -121,7 +121,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
         }
         List<UpgradePolicyPO> policies = upgradePolicyMapper.selectList(new LambdaQueryWrapper<UpgradePolicyPO>()
                 .eq(UpgradePolicyPO::getProductId, productId)
-                .isNull(UpgradePolicyPO::getDeletedAt)
+                .eq(UpgradePolicyPO::getDeleted, 0)
                 .orderByDesc(UpgradePolicyPO::getPriority)
                 .orderByDesc(UpgradePolicyPO::getId));
         return upgradePolicyConverter.toDomainList(policies);
@@ -141,7 +141,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
 
         LambdaQueryWrapper<UpgradePolicyPO> query = new LambdaQueryWrapper<>();
         query.eq(UpgradePolicyPO::getProductId, productId)
-                .isNull(UpgradePolicyPO::getDeletedAt);
+                .eq(UpgradePolicyPO::getDeleted, 0);
 
         if (includeTestPolicies) {
             query.in(UpgradePolicyPO::getStatus, PolicyStatus.ACTIVE, PolicyStatus.VERIFIED, PolicyStatus.TESTING);
@@ -164,7 +164,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     @Override
     public List<UpgradePolicy> findAllActiveOrderByPriorityAndUpdatedAt() {
         LambdaQueryWrapper<UpgradePolicyPO> query = new LambdaQueryWrapper<>();
-        query.isNull(UpgradePolicyPO::getDeletedAt)
+        query.eq(UpgradePolicyPO::getDeleted, 0)
                 .eq(UpgradePolicyPO::getStatus, PolicyStatus.ACTIVE)
                 .orderByDesc(UpgradePolicyPO::getPriority)
                 .orderByDesc(UpgradePolicyPO::getUpdatedAt);
@@ -175,7 +175,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
     public LocalDateTime findLatestUpdatedAt() {
         UpgradePolicyPO latest = upgradePolicyMapper.selectOne(
                 new LambdaQueryWrapper<UpgradePolicyPO>()
-                        .isNull(UpgradePolicyPO::getDeletedAt)
+                        .eq(UpgradePolicyPO::getDeleted, 0)
                         .orderByDesc(UpgradePolicyPO::getUpdatedAt)
                         .last("LIMIT 1")
         );

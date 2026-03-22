@@ -388,8 +388,8 @@ public class UpgradeCheckService {
         UpgradePolicy policy = ctx.getMatchedPolicy();
         if (policy != null) {
             // 判断是否命中灰度
-            int grayRate = policy.getGrayRate();
-            boolean grayHit = grayRate > 0 && grayReleaseService.hitsGrayBucket(imei, grayRate);
+            Integer grayRate = policy.getGrayRate();
+            boolean grayHit = grayRate != null && grayRate > 0 && grayReleaseService.hitsGrayBucket(imei, grayRate);
             fotaMetrics.recordPolicyMatch(productModel, true, grayHit);
         } else {
             fotaMetrics.recordPolicyMatch(productModel, false, false);

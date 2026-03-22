@@ -102,7 +102,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         List<FirmwareVersionPO> pos = firmwareVersionMapper.selectList(
                 new LambdaQueryWrapper<FirmwareVersionPO>()
                         .eq(FirmwareVersionPO::getProductId, productId)
-                        .isNull(FirmwareVersionPO::getDeletedAt)
+                        .eq(FirmwareVersionPO::getDeleted, 0)
                         .orderByDesc(FirmwareVersionPO::getVersion)
         );
         return firmwareVersionConverter.toDomainList(pos);
@@ -114,7 +114,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
                 new LambdaQueryWrapper<FirmwareVersionPO>()
                         .eq(FirmwareVersionPO::getProductId, productId)
                         .eq(FirmwareVersionPO::getVersion, version)
-                        .isNull(FirmwareVersionPO::getDeletedAt)
+                        .eq(FirmwareVersionPO::getDeleted, 0)
         );
         return firmwareVersionConverter.toDomainList(pos);
     }
@@ -129,7 +129,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
                 new LambdaQueryWrapper<FirmwareVersionPO>()
                         .eq(FirmwareVersionPO::getProductId, productId)
                         .eq(FirmwareVersionPO::getVersion, versionNumber)
-                        .isNull(FirmwareVersionPO::getDeletedAt)
+                        .eq(FirmwareVersionPO::getDeleted, 0)
                         .last("LIMIT 1")
         );
         return Optional.ofNullable(firmwareVersionConverter.toDomain(po));
@@ -147,7 +147,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         LambdaQueryWrapper<FirmwareVersionPO> wrapper = new LambdaQueryWrapper<FirmwareVersionPO>()
                 .eq(FirmwareVersionPO::getProductId, productId)
                 .eq(FirmwareVersionPO::getVersion, versionNumber)
-                .isNull(FirmwareVersionPO::getDeletedAt)
+                .eq(FirmwareVersionPO::getDeleted, 0)
                 .last("LIMIT 1");
 
         // 如果提供了 internalVersion，则作为查询条件
@@ -161,7 +161,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     @Override
     public Page<FirmwareVersion> pageFirmwareVersions(Page<FirmwareVersion> page, Long productId, String version) {
         LambdaQueryWrapper<FirmwareVersionPO> queryWrapper = new LambdaQueryWrapper<FirmwareVersionPO>()
-                .isNull(FirmwareVersionPO::getDeletedAt);
+                .eq(FirmwareVersionPO::getDeleted, 0);
 
         if (productId != null) {
             queryWrapper.eq(FirmwareVersionPO::getProductId, productId);
@@ -209,7 +209,7 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
         LambdaQueryWrapper<FirmwareVersionPO> wrapper = new LambdaQueryWrapper<FirmwareVersionPO>()
                 .eq(FirmwareVersionPO::getProductId, productId)
                 .eq(FirmwareVersionPO::getVersion, version)
-                .isNull(FirmwareVersionPO::getDeletedAt);
+                .eq(FirmwareVersionPO::getDeleted, 0);
 
         // 如果提供了 internalVersion，检查 product + version + internalVersion 组合
         if (StringUtils.hasText(internalVersion)) {

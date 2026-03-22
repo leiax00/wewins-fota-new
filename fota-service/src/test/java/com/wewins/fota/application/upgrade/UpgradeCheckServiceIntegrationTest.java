@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.wewins.fota.adapter.api.device.dto.UpgradeDecision;
 import com.wewins.fota.application.firmware.download.SignedUrlService;
+import com.wewins.fota.application.load.DynamicIntervalService;
 import com.wewins.fota.application.reporting.DeviceCheckLogBuilder;
 import com.wewins.fota.application.upgrade.dto.CheckResult;
 import com.wewins.fota.application.upgrade.dto.UpgradeCheckReqDTO;
@@ -11,9 +12,11 @@ import com.wewins.fota.application.validation.DataIntegrityService;
 import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
+import com.wewins.fota.domain.base.vo.CacheLookupResult;
 import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
+import com.wewins.fota.domain.device.service.DeviceInfoUpdateGateway;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
@@ -22,21 +25,24 @@ import com.wewins.fota.domain.policy.repository.UpgradePolicyRepository;
 import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductRepository;
 import com.wewins.fota.domain.reporting.service.CheckLogGateway;
+import com.wewins.fota.infra.metrics.FotaMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
@@ -84,8 +90,13 @@ class UpgradeCheckServiceIntegrationTest {
     private CheckLogGateway checkLogGateway;
     @Mock
     private DeviceCheckLogBuilder checkLogBuilder;
+    @Mock
+    private DeviceInfoUpdateGateway deviceInfoUpdateGateway;
+    @Mock
+    private DynamicIntervalService dynamicIntervalService;
+    @Mock
+    private FotaMetrics fotaMetrics;
 
-    @InjectMocks
     private UpgradeCheckService upgradeCheckService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -99,6 +110,27 @@ class UpgradeCheckServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        upgradeCheckService = new UpgradeCheckService(
+                deviceRepository,
+                deviceCacheService,
+                upgradePolicyRepository,
+                deviceRateLimiter,
+                bitmapRepository,
+                policyMatcher,
+                productRepository,
+                firmwareVersionLookupService,
+                grayReleaseService,
+                upgradeResponseBuilder,
+                requestValidator,
+                checkLogGateway,
+                checkLogBuilder,
+                deviceInfoUpdateGateway,
+                firmwareVersionRepository,
+                dynamicIntervalService,
+                fotaMetrics
+        );
+        lenient().when(deviceCacheService.get(anyString())).thenReturn(CacheLookupResult.miss());
+
         // 创建测试产品
         testProduct = Product.builder()
                 .name("测试产品")
@@ -168,7 +200,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldReturnUpdateResult_whenPolicyMatched() {
             // Given - 模拟所有依赖
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -182,13 +214,10 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(true);
             when(policyMatcher.matchesTimeWindow(any()))
                     .thenReturn(true);
-            when(grayReleaseService.hitsGrayBucket(anyString(), any()))
+            when(grayReleaseService.hitsGrayBucket(anyString(), anyInt()))
                     .thenReturn(true);
-            when(firmwareVersionRepository.findById(20L))
+            lenient().when(firmwareVersionRepository.findById(20L))
                     .thenReturn(Optional.of(targetFirmware));
-            when(signedUrlService.generateSignedUrl(anyString()))
-                    .thenReturn("https://cdn.example.com/fota/fw/1/test-firmware.zip?expire=1709222400&sig=abc123");
-
             CheckResult expectedResult = CheckResult.builder()
                     .hasUpdate(true)
                     .decision(UpgradeDecision.UPDATE)
@@ -227,7 +256,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldReturnNoUpdate_whenNoPolicyMatched() {
             // Given
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -252,7 +281,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldReturnNotFound_whenDeviceNotFound() {
             // Given
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -273,7 +302,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldReturnError_whenProductNotFound() {
             // Given
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.empty());
@@ -301,7 +330,7 @@ class UpgradeCheckServiceIntegrationTest {
                     + "&sig=3a7b8f9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8";
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -315,7 +344,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(true);
             when(policyMatcher.matchesTimeWindow(any()))
                     .thenReturn(true);
-            when(grayReleaseService.hitsGrayBucket(anyString(), any()))
+            when(grayReleaseService.hitsGrayBucket(anyString(), anyInt()))
                     .thenReturn(true);
 
             CheckResult expectedResult = CheckResult.builder()
@@ -345,7 +374,7 @@ class UpgradeCheckServiceIntegrationTest {
         @DisplayName("请求被限流时返回限流结果")
         void checkUpgrade_shouldReturnRateLimited_whenRateLimited() {
             // Given
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.denied("请求过于频繁"));
 
             // When
@@ -373,7 +402,7 @@ class UpgradeCheckServiceIntegrationTest {
             targetFirmware.setMeta(meta);
 
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -387,7 +416,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(true);
             when(policyMatcher.matchesTimeWindow(any()))
                     .thenReturn(true);
-            when(grayReleaseService.hitsGrayBucket(anyString(), any()))
+            when(grayReleaseService.hitsGrayBucket(anyString(), anyInt()))
                     .thenReturn(true);
 
             testRequest.setLang("zh");
@@ -420,7 +449,7 @@ class UpgradeCheckServiceIntegrationTest {
         void checkUpgrade_shouldUseSameIntervalForDifferentModes() {
             // Given
             long resetAt = System.currentTimeMillis() / 1000 + 60;
-            when(deviceRateLimiter.allow(anyString(), any(), any()))
+            when(deviceRateLimiter.allow(anyString(), anyInt(), any(Duration.class)))
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString()))
                     .thenReturn(Optional.of(testProduct));
@@ -434,7 +463,7 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(true);
             when(policyMatcher.matchesTimeWindow(any()))
                     .thenReturn(true);
-            when(grayReleaseService.hitsGrayBucket(anyString(), any()))
+            when(grayReleaseService.hitsGrayBucket(anyString(), anyInt()))
                     .thenReturn(true);
 
             // When - 自动模式

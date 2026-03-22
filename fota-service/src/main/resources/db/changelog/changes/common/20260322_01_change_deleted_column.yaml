@@ -1,0 +1,293 @@
+databaseChangeLog:
+  # =============================================
+  # 逻辑删除字段变更：deleted_at -> deleted
+  # 将时间戳类型改为 0/1 标志，兼容多数据库
+  # =============================================
+
+  - changeSet:
+      id: 20260322_01_add_deleted_column_to_products
+      author: fota-team
+      comment: "products 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: products
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_02_migrate_products_deleted
+      author: fota-team
+      comment: "迁移 products 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE products SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_03_drop_deleted_at_from_products
+      author: fota-team
+      comment: "删除 products 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: products
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_04_add_deleted_column_to_device_import_batches
+      author: fota-team
+      comment: "device_import_batches 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: device_import_batches
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_05_migrate_device_import_batches_deleted
+      author: fota-team
+      comment: "迁移 device_import_batches 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE device_import_batches SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_06_drop_deleted_at_from_device_import_batches
+      author: fota-team
+      comment: "删除 device_import_batches 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: device_import_batches
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_07_add_deleted_column_to_firmware_versions
+      author: fota-team
+      comment: "firmware_versions 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: firmware_versions
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_08_migrate_firmware_versions_deleted
+      author: fota-team
+      comment: "迁移 firmware_versions 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE firmware_versions SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_09_drop_deleted_at_from_firmware_versions
+      author: fota-team
+      comment: "删除 firmware_versions 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: firmware_versions
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_10_add_deleted_column_to_upgrade_policies
+      author: fota-team
+      comment: "upgrade_policies 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: upgrade_policies
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_11_migrate_upgrade_policies_deleted
+      author: fota-team
+      comment: "迁移 upgrade_policies 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE upgrade_policies SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_12_drop_deleted_at_from_upgrade_policies
+      author: fota-team
+      comment: "删除 upgrade_policies 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: upgrade_policies
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_13_add_deleted_column_to_sys_users
+      author: fota-team
+      comment: "sys_users 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: sys_users
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_14_migrate_sys_users_deleted
+      author: fota-team
+      comment: "迁移 sys_users 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE sys_users SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_15_drop_deleted_at_from_sys_users
+      author: fota-team
+      comment: "删除 sys_users 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: sys_users
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_16_add_deleted_column_to_sys_roles
+      author: fota-team
+      comment: "sys_roles 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: sys_roles
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_17_migrate_sys_roles_deleted
+      author: fota-team
+      comment: "迁移 sys_roles 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE sys_roles SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_18_drop_deleted_at_from_sys_roles
+      author: fota-team
+      comment: "删除 sys_roles 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: sys_roles
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_19_add_deleted_column_to_sys_permissions
+      author: fota-team
+      comment: "sys_permissions 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: sys_permissions
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_20_migrate_sys_permissions_deleted
+      author: fota-team
+      comment: "迁移 sys_permissions 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE sys_permissions SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_21_drop_deleted_at_from_sys_permissions
+      author: fota-team
+      comment: "删除 sys_permissions 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: sys_permissions
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_22_add_deleted_column_to_sys_dict_type
+      author: fota-team
+      comment: "sys_dict_type 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: sys_dict_type
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_23_migrate_sys_dict_type_deleted
+      author: fota-team
+      comment: "迁移 sys_dict_type 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE sys_dict_type SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_24_drop_deleted_at_from_sys_dict_type
+      author: fota-team
+      comment: "删除 sys_dict_type 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: sys_dict_type
+            columnName: deleted_at
+
+  - changeSet:
+      id: 20260322_25_add_deleted_column_to_sys_dict_item
+      author: fota-team
+      comment: "sys_dict_item 表添加 deleted 字段"
+      changes:
+        - addColumn:
+            tableName: sys_dict_item
+            columns:
+              - column:
+                  name: deleted
+                  type: SMALLINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260322_26_migrate_sys_dict_item_deleted
+      author: fota-team
+      comment: "迁移 sys_dict_item 表的 deleted_at 数据到 deleted"
+      changes:
+        - sql:
+            sql: UPDATE sys_dict_item SET deleted = 1 WHERE deleted_at IS NOT NULL;
+
+  - changeSet:
+      id: 20260322_27_drop_deleted_at_from_sys_dict_item
+      author: fota-team
+      comment: "删除 sys_dict_item 表的 deleted_at 字段"
+      changes:
+        - dropColumn:
+            tableName: sys_dict_item
+            columnName: deleted_at

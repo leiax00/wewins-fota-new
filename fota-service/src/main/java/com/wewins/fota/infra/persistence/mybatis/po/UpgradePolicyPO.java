@@ -54,6 +54,9 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
     @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
     private String timeWindow;
 
-    @TableLogic(value = "NULL", delval = "now()")
-    private LocalDateTime deletedAt;
+    /**
+     * 逻辑删除标记 (0=未删除, 1=已删除)
+     */
+    @TableLogic
+    private Integer deleted;
 }

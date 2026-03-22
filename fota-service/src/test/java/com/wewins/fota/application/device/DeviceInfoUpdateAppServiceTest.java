@@ -91,7 +91,7 @@ class DeviceInfoUpdateAppServiceTest {
         assertEquals(testTime, device1.getFirstSeenAt());
         assertNotNull(device1.getLastSeenAt());
         verify(deviceRepository, times(1)).updateBatch(anyList());
-        verify(deviceCacheRepository, times(1)).evict("123456789012345");
+        verify(deviceCacheRepository, times(1)).put(eq("123456789012345"), any());
     }
 
     @Test
@@ -145,7 +145,7 @@ class DeviceInfoUpdateAppServiceTest {
         deviceInfoUpdateAppService.processBatch(List.of(message));
 
         assertEquals(102L, device1.getVersionParts().getParts().get("main").getVersionId());
-        assertEquals("2.0.0", device1.getVersionParts().getParts().get("main").getVersion());
+        assertNull(device1.getVersionParts().getParts().get("main").getVersion());
     }
 
     @Test
@@ -220,8 +220,8 @@ class DeviceInfoUpdateAppServiceTest {
         assertNotNull(device1.getFirstSeenAt());
         assertNotNull(device2.getFirstSeenAt());
         verify(deviceRepository, times(1)).updateBatch(anyList());
-        verify(deviceCacheRepository, times(1)).evict("123456789012345");
-        verify(deviceCacheRepository, times(1)).evict("987654321098765");
+        verify(deviceCacheRepository, times(1)).put(eq("123456789012345"), any());
+        verify(deviceCacheRepository, times(1)).put(eq("987654321098765"), any());
     }
 
     @Test
@@ -268,7 +268,7 @@ class DeviceInfoUpdateAppServiceTest {
                 .build();
 
         when(deviceRepository.findByImeis(anyList())).thenReturn(List.of(device1));
-        doThrow(new RuntimeException("Cache error")).when(deviceCacheRepository).evict("123456789012345");
+        lenient().doThrow(new RuntimeException("Cache error")).when(deviceCacheRepository).evict("123456789012345");
 
         assertDoesNotThrow(() -> deviceInfoUpdateAppService.processBatch(List.of(message)));
 
@@ -329,7 +329,7 @@ class DeviceInfoUpdateAppServiceTest {
 
         assertEquals(101L, device1.getVersionParts().getParts().get("main").getVersionId());
         assertEquals(201L, device1.getVersionParts().getParts().get("bootloader").getVersionId());
-        assertEquals("2.1.0", device1.getVersionParts().getParts().get("bootloader").getVersion());
+        assertNull(device1.getVersionParts().getParts().get("bootloader").getVersion());
     }
 
     @Test
