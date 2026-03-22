@@ -17,7 +17,7 @@ import java.util.List;
 )
 public interface FirmwareVersionConverter {
 
-    @Mapping(target = "tags", source = "tags", qualifiedByName = "toStringMap")
+    @Mapping(target = "tags", ignore = true)
     @Mapping(target = "meta", source = "meta", qualifiedByName = "toTagMap")
     FirmwareVersion toDomain(FirmwareVersionPO po);
 

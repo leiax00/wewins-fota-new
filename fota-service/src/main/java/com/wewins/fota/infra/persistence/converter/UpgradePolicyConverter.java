@@ -17,10 +17,10 @@ import java.util.List;
 )
 public interface UpgradePolicyConverter {
 
-    @Mapping(target = "sourceVersions", source = "sourceVersions", qualifiedByName = "toLongSet")
-    @Mapping(target = "targetImeis", source = "targetImeis", qualifiedByName = "toStringSet")
-    @Mapping(target = "targetDeviceBatchIds", source = "targetDeviceBatchIds", qualifiedByName = "toLongSet")
-    @Mapping(target = "targetDeviceTags", source = "targetDeviceTags", qualifiedByName = "toTagMap")
+    @Mapping(target = "sourceVersions", ignore = true)
+    @Mapping(target = "targetImeis", ignore = true)
+    @Mapping(target = "targetDeviceBatchIds", ignore = true)
+    @Mapping(target = "targetDeviceTags", ignore = true)
     @Mapping(target = "timeWindow", source = "timeWindow", qualifiedByName = "toPolicyTimeWindow")
     UpgradePolicy toDomain(UpgradePolicyPO po);
 
