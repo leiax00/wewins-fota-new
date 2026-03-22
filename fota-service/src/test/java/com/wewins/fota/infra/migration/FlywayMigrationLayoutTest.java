@@ -21,7 +21,7 @@ class FlywayMigrationLayoutTest {
 
     @Test
     void shouldContainExpectedMysqlMigrations() throws IOException {
-        assertVersions("classpath*:db/migration/mysql/V*.sql", Set.of(1, 2, 4, 5, 6));
+        assertVersions("classpath*:db/migration/mysql/V*.sql", Set.of(1, 2, 3, 4, 5, 6));
     }
 
     @Test
