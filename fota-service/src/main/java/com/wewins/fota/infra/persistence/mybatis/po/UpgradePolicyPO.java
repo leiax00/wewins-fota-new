@@ -29,9 +29,6 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
 
     private Long targetVersionId;
 
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String sourceVersions;
-
     private Integer priority;
 
     private Integer grayRate;
@@ -41,15 +38,6 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
     private TriggerMode triggerMode;
 
     private String targetMode;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetImeis;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetDeviceBatchIds;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetDeviceTags;
 
     @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
     private String timeWindow;

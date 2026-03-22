@@ -17,13 +17,11 @@ import java.util.List;
 )
 public interface FirmwareVersionConverter {
 
-    @Mapping(target = "tags", ignore = true)
     @Mapping(target = "meta", source = "meta", qualifiedByName = "toTagMap")
     FirmwareVersion toDomain(FirmwareVersionPO po);
 
     List<FirmwareVersion> toDomainList(List<FirmwareVersionPO> poList);
 
-    @Mapping(target = "tags", ignore = true)
     @Mapping(target = "meta", source = "meta", qualifiedByName = "toTagMapString")
     FirmwareVersionPO toPo(FirmwareVersion domain);
 }

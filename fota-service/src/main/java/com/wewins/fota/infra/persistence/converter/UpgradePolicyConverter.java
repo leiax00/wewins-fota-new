@@ -17,19 +17,11 @@ import java.util.List;
 )
 public interface UpgradePolicyConverter {
 
-    @Mapping(target = "sourceVersions", ignore = true)
-    @Mapping(target = "targetImeis", ignore = true)
-    @Mapping(target = "targetDeviceBatchIds", ignore = true)
-    @Mapping(target = "targetDeviceTags", ignore = true)
     @Mapping(target = "timeWindow", source = "timeWindow", qualifiedByName = "toPolicyTimeWindow")
     UpgradePolicy toDomain(UpgradePolicyPO po);
 
     List<UpgradePolicy> toDomainList(List<UpgradePolicyPO> poList);
 
-    @Mapping(target = "sourceVersions", ignore = true)
-    @Mapping(target = "targetImeis", ignore = true)
-    @Mapping(target = "targetDeviceBatchIds", ignore = true)
-    @Mapping(target = "targetDeviceTags", ignore = true)
     @Mapping(target = "timeWindow", source = "timeWindow", qualifiedByName = "toPolicyTimeWindowString")
     UpgradePolicyPO toPo(UpgradePolicy domain);
 }

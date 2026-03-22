@@ -17,15 +17,9 @@ import java.util.List;
 )
 public interface DeviceConverter {
 
-    @Mapping(target = "tags", ignore = true)
-    @Mapping(target = "versionParts", ignore = true)
-    @Mapping(target = "initialVersionParts", ignore = true)
     Device toDomain(DevicePO po);
 
     List<Device> toDomainList(List<DevicePO> poList);
 
-    @Mapping(target = "tags", ignore = true)
-    @Mapping(target = "versionParts", ignore = true)
-    @Mapping(target = "initialVersionParts", ignore = true)
     DevicePO toPo(Device domain);
 }

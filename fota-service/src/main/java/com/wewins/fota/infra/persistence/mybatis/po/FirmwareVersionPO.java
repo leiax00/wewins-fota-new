@@ -75,34 +75,6 @@ public class FirmwareVersionPO extends BaseEntity implements Serializable {
     private String sha256;
 
     /**
-     * 版本标签（JSONB 对象，KV 结构）
-     * <p>
-     * 支持灵活的键值对标签，可存储丰富的元数据
-     * </p>
-     * <p>
-     * 示例：
-     * <pre>
-     * {
-     *   "stability": "stable",
-     *   "priority": "high",
-     *   "category": "security-fix",
-     *   "verified_by": "security-team",
-     *   "verified_at": "2025-02-05T10:30:00",
-     *   "rollback_available": true
-     * }
-     * </pre>
-     * </p>
-     * <p>
-     * 用于升级策略过滤和版本分类
-     * </p>
-     * <p>
-     * 通过 JsonNodeTypeHandler 自动处理 JsonNode 与 JSONB 之间的转换
-     * </p>
-     */
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String tags;
-
-    /**
      * 扩展元数据（JSONB）
      * <p>
      * 包含多语言描述、changelog、扩展字段等
