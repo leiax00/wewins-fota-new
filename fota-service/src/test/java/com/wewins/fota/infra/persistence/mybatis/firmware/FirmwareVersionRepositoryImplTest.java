@@ -4,6 +4,7 @@ import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.infra.persistence.converter.FirmwareVersionConverter;
 import com.wewins.fota.infra.persistence.mybatis.mapper.FirmwareVersionMapper;
+import com.wewins.fota.infra.persistence.mybatis.mapper.FirmwareVersionTagMapper;
 import com.wewins.fota.infra.persistence.mybatis.po.FirmwareVersionPO;
 import com.wewins.fota.infra.persistence.mybatis.repository.FirmwareVersionRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,8 @@ class FirmwareVersionRepositoryImplTest {
 
     @Mock
     private FirmwareVersionConverter firmwareVersionConverter;
+    @Mock
+    private FirmwareVersionTagMapper firmwareVersionTagMapper;
 
     private FirmwareVersionRepositoryImpl firmwareVersionRepository;
 
@@ -50,7 +53,8 @@ class FirmwareVersionRepositoryImplTest {
         firmwareVersionRepository = new FirmwareVersionRepositoryImpl(
                 firmwareVersionMapper,
                 firmwareCacheRepository,
-                firmwareVersionConverter
+                firmwareVersionConverter,
+                firmwareVersionTagMapper
         );
 
         testFirmwareVersion = FirmwareVersion.builder()
@@ -87,6 +91,7 @@ class FirmwareVersionRepositoryImplTest {
         lenient().when(firmwareVersionConverter.toDomain(any(FirmwareVersionPO.class)))
                 .thenAnswer(invocation -> toDomain(invocation.getArgument(0)));
         lenient().when(firmwareVersionConverter.toDomain(null)).thenReturn(null);
+        lenient().when(firmwareVersionTagMapper.selectByVersionIds(any())).thenReturn(java.util.List.of());
     }
 
     private FirmwareVersion toDomain(FirmwareVersionPO po) {
