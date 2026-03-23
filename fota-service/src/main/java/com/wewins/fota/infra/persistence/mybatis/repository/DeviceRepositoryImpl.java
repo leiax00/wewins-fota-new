@@ -25,12 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -308,7 +303,7 @@ public class DeviceRepositoryImpl implements DeviceRepository {
             return devices;
         }
 
-        List<Long> deviceIds = devices.stream().map(Device::getId).filter(id -> id != null).toList();
+        List<Long> deviceIds = devices.stream().map(Device::getId).filter(Objects::nonNull).toList();
         if (deviceIds.isEmpty()) {
             return devices;
         }

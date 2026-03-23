@@ -57,7 +57,7 @@ public interface FirmwareVersionRepository {
      * @param productId 产品 ID
      * @return 固件版本（如果存在）
      */
-    Optional<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId);
+    List<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId);
 
     /**
      * 根据版本号、内部版本号和产品 ID 查询固件版本
@@ -71,7 +71,7 @@ public interface FirmwareVersionRepository {
      * @param productId 产品 ID
      * @return 固件版本（如果存在）
      */
-    Optional<FirmwareVersion> findByUniqueKey(
+    List<FirmwareVersion> findByVersionAndInternalVersionAndProductId(
             String versionNumber,
             String internalVersion,
             Long productId

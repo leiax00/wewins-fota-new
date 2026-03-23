@@ -147,7 +147,6 @@ public class DeviceInfoUpdateAppService {
                         .versionParts(device.getVersionParts())
                         .tags(device.getTags())
                         .importBatchId(device.getImportBatchId())
-                        .firstSeenAt(device.getFirstSeenAt())
                         .build();
                 deviceCacheRepository.put(device.getImei(), cache);
                 successCount++;

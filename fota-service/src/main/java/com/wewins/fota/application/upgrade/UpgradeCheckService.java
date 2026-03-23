@@ -235,10 +235,11 @@ public class UpgradeCheckService {
     }
 
     private void findVersionId(CheckContext ctx) {
-        Long versionId = firmwareVersionLookupService.findVersionId(
-                ctx.version(), 
+        Long versionId = firmwareVersionLookupService.findMatchedVersionId(
+                ctx.version(),
                 ctx.internalVersion(),
-                ctx.productId()
+                ctx.productId(),
+                ctx.getDevice() != null ? ctx.getDevice().getTags() : null
         );
         ctx.setVersionId(versionId);
         log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",

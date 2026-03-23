@@ -120,38 +120,40 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     }
 
     @Override
-    public Optional<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId) {
+    public List<FirmwareVersion> findByVersionNumberAndProductId(String versionNumber, Long productId) {
         if (versionNumber == null || productId == null) {
-            return Optional.empty();
+            return List.of();
         }
 
-        FirmwareVersionPO po = firmwareVersionMapper.selectOne(
+        List<FirmwareVersionPO> pos = firmwareVersionMapper.selectList(
                 new LambdaQueryWrapper<FirmwareVersionPO>()
                         .eq(FirmwareVersionPO::getProductId, productId)
                         .eq(FirmwareVersionPO::getVersion, versionNumber)
                         .eq(FirmwareVersionPO::getDeleted, 0)
-                        .last("LIMIT 1")
         );
-        return Optional.ofNullable(enrichFirmware(firmwareVersionConverter.toDomain(po)));
+        return enrichFirmwareVersions(firmwareVersionConverter.toDomainList(pos));
     }
 
     @Override
-    public Optional<FirmwareVersion> findByUniqueKey(String versionNumber, String internalVersion, Long productId) {
+    public List<FirmwareVersion> findByVersionAndInternalVersionAndProductId(
+            String versionNumber,
+            String internalVersion,
+            Long productId
+    ) {
         if (versionNumber == null || productId == null) {
-            return Optional.empty();
+            return List.of();
         }
 
         LambdaQueryWrapper<FirmwareVersionPO> wrapper = new LambdaQueryWrapper<FirmwareVersionPO>()
                 .eq(FirmwareVersionPO::getProductId, productId)
                 .eq(FirmwareVersionPO::getVersion, versionNumber)
-                .eq(FirmwareVersionPO::getDeleted, 0)
-                .last("LIMIT 1");
+                .eq(FirmwareVersionPO::getDeleted, 0);
 
         if (StringUtils.hasText(internalVersion)) {
             wrapper.eq(FirmwareVersionPO::getInternalVersion, internalVersion);
         }
 
-        return Optional.ofNullable(enrichFirmware(firmwareVersionConverter.toDomain(firmwareVersionMapper.selectOne(wrapper))));
+        return enrichFirmwareVersions(firmwareVersionConverter.toDomainList(firmwareVersionMapper.selectList(wrapper)));
     }
 
     @Override
