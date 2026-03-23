@@ -206,8 +206,8 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(Optional.of(testProduct));
             when(deviceRepository.findByImei(anyString()))
                     .thenReturn(Optional.of(testDevice));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any()))
-                    .thenReturn(10L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(currentFirmware));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(anyLong(), anyBoolean()))
                     .thenReturn(List.of(testPolicy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any()))
@@ -262,8 +262,8 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(Optional.of(testProduct));
             when(deviceRepository.findByImei(anyString()))
                     .thenReturn(Optional.of(testDevice));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any()))
-                    .thenReturn(10L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(currentFirmware));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(anyLong(), anyBoolean()))
                     .thenReturn(List.of());  // 无匹配策略
 
@@ -336,8 +336,8 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(Optional.of(testProduct));
             when(deviceRepository.findByImei(anyString()))
                     .thenReturn(Optional.of(testDevice));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any()))
-                    .thenReturn(10L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(currentFirmware));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(anyLong(), anyBoolean()))
                     .thenReturn(List.of(testPolicy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any()))
@@ -408,8 +408,8 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(Optional.of(testProduct));
             when(deviceRepository.findByImei(anyString()))
                     .thenReturn(Optional.of(testDevice));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any()))
-                    .thenReturn(10L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(currentFirmware));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(anyLong(), anyBoolean()))
                     .thenReturn(List.of(testPolicy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any()))
@@ -455,8 +455,8 @@ class UpgradeCheckServiceIntegrationTest {
                     .thenReturn(Optional.of(testProduct));
             when(deviceRepository.findByImei(anyString()))
                     .thenReturn(Optional.of(testDevice));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any()))
-                    .thenReturn(10L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(currentFirmware));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(anyLong(), anyBoolean()))
                     .thenReturn(List.of(testPolicy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any()))

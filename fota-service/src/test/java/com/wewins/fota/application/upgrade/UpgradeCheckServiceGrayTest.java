@@ -16,6 +16,7 @@ import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.device.service.DeviceInfoUpdateGateway;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import com.wewins.fota.domain.policy.model.enums.PolicyStatus;
@@ -139,7 +140,8 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any())).thenReturn(1L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(createFirmware(1L)));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
             when(grayReleaseService.hitsGrayBucket(imei, 50)).thenReturn(true); // 命中灰度
@@ -180,7 +182,8 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any())).thenReturn(1L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(createFirmware(1L)));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
             when(grayReleaseService.hitsGrayBucket(imei, 10)).thenReturn(false); // 未命中灰度
@@ -212,7 +215,8 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any())).thenReturn(1L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(createFirmware(1L)));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
@@ -251,7 +255,8 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any())).thenReturn(1L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(createFirmware(1L)));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
@@ -289,7 +294,8 @@ class UpgradeCheckServiceGrayTest {
                     .thenReturn(RateLimitDecision.allowed(9, resetAt));
             when(productRepository.findByModel(anyString())).thenReturn(Optional.of(product));
             when(deviceRepository.findByImei(imei)).thenReturn(Optional.of(device));
-            when(firmwareVersionLookupService.findMatchedVersionId(anyString(), any(), anyLong(), any())).thenReturn(1L);
+            when(firmwareVersionLookupService.findMatchedFirmwareVersion(anyString(), any(), anyLong(), any()))
+                    .thenReturn(Optional.of(createFirmware(1L)));
             when(upgradePolicyRepository.findEffectiveByProductIdOrderByPriorityDesc(1L, false))
                     .thenReturn(List.of(policy));
             when(policyMatcher.matchesTargetMode(any(), anyString(), any(), any())).thenReturn(true);
@@ -339,6 +345,17 @@ class UpgradeCheckServiceGrayTest {
                 .build();
         product.setId(id);
         return product;
+    }
+
+    private FirmwareVersion createFirmware(Long id) {
+        FirmwareVersion firmware = FirmwareVersion.builder()
+                .productId(1L)
+                .version("v1.0.0")
+                .internalVersion("BUILD_01")
+                .meta(Map.of("part", "main"))
+                .build();
+        firmware.setId(id);
+        return firmware;
     }
 
     /**

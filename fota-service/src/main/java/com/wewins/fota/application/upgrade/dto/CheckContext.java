@@ -3,6 +3,7 @@ package com.wewins.fota.application.upgrade.dto;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import com.wewins.fota.domain.product.model.entity.Product;
 import lombok.Builder;
@@ -18,7 +19,7 @@ public class CheckContext {
     private String requestId;
     private Product product;
     private Device device;
-    private Long versionId;
+    private FirmwareVersion currentFirmware;
     private UpgradePolicy matchedPolicy;
     private RateLimitDecision rateLimitDecision;
 
@@ -54,6 +55,10 @@ public class CheckContext {
 
     public Long deviceId() {
         return device != null ? device.getId() : null;
+    }
+
+    public Long currentVersionId() {
+        return currentFirmware != null ? currentFirmware.getId() : null;
     }
 
     public boolean hasDevice() {

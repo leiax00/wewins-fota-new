@@ -167,7 +167,7 @@ public class UpgradeCheckService {
 
             markDeviceActive(ctx);
 
-            findVersionId(ctx);
+            findDeviceCurrentFirmware(ctx);
 
             findApplicablePolicies(ctx);
             if (ctx.hasResult()) {
@@ -234,28 +234,31 @@ public class UpgradeCheckService {
         }
     }
 
-    private void findVersionId(CheckContext ctx) {
-        Long versionId = firmwareVersionLookupService.findMatchedVersionId(
+    private void findDeviceCurrentFirmware(CheckContext ctx) {
+        FirmwareVersion currentFirmware = firmwareVersionLookupService.findMatchedFirmwareVersion(
                 ctx.version(),
                 ctx.internalVersion(),
                 ctx.productId(),
                 ctx.getDevice() != null ? ctx.getDevice().getTags() : null
-        );
-        ctx.setVersionId(versionId);
-        log.debug("查找固件版本 ID: version={}, tag={}, productId={}, versionId={}",
-                ctx.version(), ctx.getRequest().getTag(), ctx.productId(), versionId);
+        ).orElse(null);
+        ctx.setCurrentFirmware(currentFirmware);
+        log.debug("查找当前固件: version={}, tag={}, productId={}, versionId={}",
+                ctx.version(),
+                ctx.getRequest().getTag(),
+                ctx.productId(),
+                currentFirmware != null ? currentFirmware.getId() : null);
     }
 
     private void findApplicablePolicies(CheckContext ctx) {
         List<UpgradePolicy> policies = findApplicablePolicies(
                 ctx.getDevice(), 
-                ctx.getVersionId(), 
+                ctx.currentVersionId(),
                 ctx.getRequest().getDev(), 
                 ctx.getRequest().getCheckMode()
         );
         
         if (policies.isEmpty()) {
-            log.debug("未找到适用的升级策略: deviceId={}, versionId={}", ctx.deviceId(), ctx.getVersionId());
+            log.debug("未找到适用的升级策略: deviceId={}, versionId={}", ctx.deviceId(), ctx.currentVersionId());
             CheckResult result = CheckResult.noUpdate(ctx.getRequestId());
             result.setCheckInterval(dynamicIntervalService.calculateCheckInterval(ctx.productId()));
             ctx.setResult(result);
@@ -282,7 +285,8 @@ public class UpgradeCheckService {
 
         try {
             Device device = ctx.getDevice();
-            Long versionId = ctx.getVersionId();
+            FirmwareVersion currentFirmware = ctx.getCurrentFirmware();
+            Long versionId = ctx.currentVersionId();
             String requestId = ctx.getRequestId();
             UpgradeCheckReqDTO request = ctx.getRequest();
 
@@ -299,17 +303,13 @@ public class UpgradeCheckService {
                     .productId(device.getProductId())
                     .accessTime(now);
 
-            if (versionId != null) {
-                FirmwareVersion firmwareVersion = firmwareVersionRepository.findById(versionId).orElse(null);
-
+            if (currentFirmware != null) {
                 String partName = "main";
-                if (firmwareVersion != null) {
-                    Map<String, Object> meta = firmwareVersion.getMeta();
-                    if (meta != null) {
-                        Object partObj = meta.get("part");
-                        if (partObj instanceof String part && !part.isBlank()) {
-                            partName = part;
-                        }
+                Map<String, Object> meta = currentFirmware.getMeta();
+                if (meta != null) {
+                    Object partObj = meta.get("part");
+                    if (partObj instanceof String part && !part.isBlank()) {
+                        partName = part;
                     }
                 }
 
