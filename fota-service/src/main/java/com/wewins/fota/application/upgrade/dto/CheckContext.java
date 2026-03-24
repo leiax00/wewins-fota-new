@@ -69,6 +69,10 @@ public class CheckContext {
         return result != null;
     }
 
+    public boolean isNormalResult() {
+        return hasResult() && result.isNormalResult();
+    }
+
     public boolean isFirstOnline() {
         return device != null && device.getFirstSeenAt() == null;
     }

@@ -1,5 +1,6 @@
 package com.wewins.fota.domain.device.model.aggregate;
 
+import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-
+import java.util.Map;
 /**
  * 设备信息更新消息
  * <p>
@@ -25,16 +26,6 @@ import java.time.LocalDateTime;
 public class DeviceInfoUpdateMessage implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 消息唯一标识（用于幂等性）
-     */
-    private String messageId;
-
-    /**
-     * 消息时间戳
-     */
-    private LocalDateTime timestamp;
 
     /**
      * 关联的请求 ID（来自 check API）
@@ -57,62 +48,23 @@ public class DeviceInfoUpdateMessage implements Serializable {
     private Long productId;
 
     /**
-     * 更新原因
-     */
-    private UpdateReason updateReason;
-
-    /**
      * 是否第一次上线
      */
-    private Boolean isFirstOnline;
-
-    /**
-     * 新版本（请求中的版本）
-     */
-    private String newVersion;
-
-    /**
-     * 新版本 ID
-     */
-    private Long newVersionId;
-
-    /**
-     * 版本部分名称（main, bootloader 等）
-     */
-    private String partName;
-
-    /**
-     * 旧版本（缓存/数据库中的版本，可能为 null）
-     */
-    private String oldVersion;
-
-    /**
-     * 旧版本 ID（可能为 null）
-     */
-    private Long oldVersionId;
-
+     private Boolean isFirstOnline;
+    
     /**
      * 访问时间（check API 调用时间）
      */
     private LocalDateTime accessTime;
 
     /**
-     * 更新原因枚举
+     * 当前版本 parts 的增量更新
      */
-    public enum UpdateReason {
-        /**
-         * 第一次上线
-         */
-        FIRST_ONLINE,
+    private Map<String, DeviceVersionPart> currentVersionParts;
 
-        /**
-         * 版本变化
-         */
-        VERSION_CHANGED,
+    /**
+     * 初始版本 parts 的增量更新
+     */
+    private Map<String, DeviceVersionPart> initialVersionParts;
 
-        /**
-         * 仅更新访问时间
-         */
-        ACCESS_TIME_UPDATE
-    }
 }

@@ -10,10 +10,10 @@ import com.wewins.fota.cache.bitmap.DeviceActivityBitmapRepository;
 import com.wewins.fota.cache.ratelimit.DeviceRateLimiter;
 import com.wewins.fota.cache.ratelimit.RateLimitDecision;
 import com.wewins.fota.common.enums.CheckMode;
-import com.wewins.fota.common.util.IdGenerator;
 import com.wewins.fota.domain.base.vo.CacheLookupResult;
 import com.wewins.fota.domain.device.model.aggregate.DeviceInfoUpdateMessage;
 import com.wewins.fota.domain.device.model.vo.DeviceCache;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.device.repository.DeviceCacheRepository;
 import com.wewins.fota.domain.device.model.entity.Device;
@@ -222,6 +222,8 @@ public class UpgradeCheckService {
 
         if (device == null) {
             ctx.setResult(CheckResult.notFound(ctx.getRequestId(), "设备未注册，请联系管理员"));
+        } else if (!device.getProductId().equals(ctx.productId())) {
+            ctx.setResult(CheckResult.error(ctx.getRequestId(), "设备归属错误"));
         }
     }
 
@@ -279,7 +281,7 @@ public class UpgradeCheckService {
     }
 
     private void checkAndSendDeviceInfoUpdate(CheckContext ctx) {
-        if (!ctx.hasDevice() || !ctx.hasResult()) {
+        if (!ctx.isNormalResult()) {
             return;
         }
 
@@ -288,57 +290,48 @@ public class UpgradeCheckService {
             FirmwareVersion currentFirmware = ctx.getCurrentFirmware();
             Long versionId = ctx.currentVersionId();
             String requestId = ctx.getRequestId();
-            UpgradeCheckReqDTO request = ctx.getRequest();
-
             LocalDateTime now = LocalDateTime.now();
             boolean isFirstOnline = ctx.isFirstOnline();
 
             DeviceInfoUpdateMessage.DeviceInfoUpdateMessageBuilder messageBuilder =
                     DeviceInfoUpdateMessage.builder()
-                    .messageId(IdGenerator.simpleUUID())
-                    .timestamp(now)
-                    .correlationId(requestId)
-                    .deviceId(device.getId())
-                    .imei(device.getImei())
-                    .productId(device.getProductId())
-                    .accessTime(now);
+                            .correlationId(requestId)
+                            .deviceId(device.getId())
+                            .imei(device.getImei())
+                            .productId(device.getProductId())
+                            .accessTime(now);
 
             if (currentFirmware != null) {
-                String partName = "main";
-                Map<String, Object> meta = currentFirmware.getMeta();
-                if (meta != null) {
-                    Object partObj = meta.get("part");
-                    if (partObj instanceof String part && !part.isBlank()) {
-                        partName = part;
-                    }
+                String partName = resolvePartName(currentFirmware);
+                DeviceVersionPart oldPart = findPart(device.getVersionParts(), partName);
+                if (isDiffPart(versionId, oldPart)) {
+                    messageBuilder.currentVersionParts(Map.of(
+                            partName,
+                            DeviceVersionPart.builder()
+                                    .versionId(versionId)
+                                    .version(currentFirmware.getVersion())
+                                    .internalVersion(currentFirmware.getInternalVersion())
+                                    .updatedAt(now)
+                                    .build()
+                    ));
                 }
 
-                String oldVersion = null;
-                Long oldVersionId = null;
-                DeviceVersionParts versionParts = device.getVersionParts();
-                if (versionParts != null) {
-                    var partVersion = versionParts.getParts().get(partName);
-                    if (partVersion != null) {
-                        oldVersion = partVersion.getVersion();
-                        oldVersionId = partVersion.getVersionId();
-                    }
+                DeviceVersionPart oldInitialPart = findPart(device.getInitialVersionParts(), partName);
+                if (isFirstOnline || isDiffPart(versionId, oldInitialPart)) {
+                    messageBuilder.initialVersionParts(Map.of(
+                            partName,
+                            DeviceVersionPart.builder()
+                                    .versionId(versionId)
+                                    .version(currentFirmware.getVersion())
+                                    .internalVersion(currentFirmware.getInternalVersion())
+                                    .updatedAt(now)
+                                    .build()
+                    ));
                 }
-
-                DeviceInfoUpdateMessage.UpdateReason reason = DeviceInfoUpdateMessage.UpdateReason.VERSION_CHANGED;
-                if (versionId.equals(oldVersionId)) {
-                    reason = DeviceInfoUpdateMessage.UpdateReason.ACCESS_TIME_UPDATE;
-                }
-
-                messageBuilder.newVersion(request.getVersion())
-                        .newVersionId(versionId)
-                        .partName(partName)
-                        .oldVersion(oldVersion)
-                        .oldVersionId(oldVersionId)
-                        .updateReason(reason);
             }
 
             if (isFirstOnline) {
-                messageBuilder.isFirstOnline(true).updateReason(DeviceInfoUpdateMessage.UpdateReason.FIRST_ONLINE);
+                messageBuilder.isFirstOnline(true);
             }
 
             DeviceInfoUpdateMessage message = messageBuilder.build();
@@ -347,6 +340,28 @@ public class UpgradeCheckService {
         } catch (Exception e) {
             log.error("设备信息更新消息发送失败: imei={}, requestId={}", ctx.imei(), ctx.getRequestId(), e);
         }
+    }
+
+    private boolean isDiffPart(Long versionId, DeviceVersionPart part) {
+        return part == null || part.getVersionId() == null || !part.getVersionId().equals(versionId);
+    }
+
+    private String resolvePartName(FirmwareVersion firmwareVersion) {
+        if (firmwareVersion == null || firmwareVersion.getMeta() == null) {
+            return "main";
+        }
+        Object partObj = firmwareVersion.getMeta().get("part");
+        if (partObj instanceof String part && !part.isBlank()) {
+            return part;
+        }
+        return "main";
+    }
+
+    private DeviceVersionPart findPart(DeviceVersionParts versionParts, String partName) {
+        if (versionParts == null || versionParts.getParts() == null) {
+            return null;
+        }
+        return versionParts.getParts().get(partName);
     }
 
     private boolean isVersionMatch(Device device, Long versionId) {

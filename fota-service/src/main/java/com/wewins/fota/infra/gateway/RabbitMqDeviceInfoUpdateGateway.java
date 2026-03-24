@@ -29,11 +29,9 @@ public class RabbitMqDeviceInfoUpdateGateway implements DeviceInfoUpdateGateway 
 
         try {
             mqMessagePublisher.publishJson(deviceInfoUpdateQueue, message);
-            log.debug("设备信息更新消息已投递到 MQ: messageId={}, imei={}", 
-                    message.getMessageId(), message.getImei());
+            log.debug("设备信息更新消息已投递到 MQ: imei={}", message.getImei());
         } catch (Exception e) {
-            log.error("设备信息更新消息发送失败: messageId={}, imei={}", 
-                    message.getMessageId(), message.getImei(), e);
+            log.error("设备信息更新消息发送失败: imei={}", message.getImei(), e);
             throw new IllegalStateException("设备信息更新消息发送失败", e);
         }
     }

@@ -4,17 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wewins.fota.domain.device.model.aggregate.DeviceInfoUpdateMessage;
 import com.wewins.fota.domain.device.model.entity.Device;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
 import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.device.repository.DeviceRepository;
 import com.wewins.fota.infra.persistence.converter.DeviceConverter;
-import com.wewins.fota.infra.persistence.mybatis.dto.DeviceBatchUpdateDTO;
 import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceInitialVersionPartMapper;
 import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceMapper;
 import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceTagMapper;
 import com.wewins.fota.infra.persistence.mybatis.mapper.DeviceVersionPartMapper;
 import com.wewins.fota.infra.persistence.mybatis.mapper.FirmwareVersionMapper;
+import com.wewins.fota.infra.persistence.mybatis.writer.DeviceVersionPartBatchWriter;
 import com.wewins.fota.infra.persistence.mybatis.po.DeviceInitialVersionPartPO;
 import com.wewins.fota.infra.persistence.mybatis.po.DevicePO;
 import com.wewins.fota.infra.persistence.mybatis.po.DeviceTagPO;
@@ -41,6 +42,8 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     private final DeviceVersionPartMapper deviceVersionPartMapper;
     private final DeviceInitialVersionPartMapper deviceInitialVersionPartMapper;
     private final FirmwareVersionMapper firmwareVersionMapper;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    private final DeviceVersionPartBatchWriter deviceVersionPartBatchWriter;
 
     @Override
     public List<Device> findByConditions(Long productId, String imei) {
@@ -186,28 +189,6 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     }
 
     @Override
-    public List<Device> findByConditions(Long productId, String imeiKeyword, String status, Long importBatchId) {
-        LambdaQueryWrapper<DevicePO> queryWrapper = new LambdaQueryWrapper<>();
-
-        if (productId != null) {
-            queryWrapper.eq(DevicePO::getProductId, productId);
-        }
-        if (StringUtils.hasText(imeiKeyword)) {
-            queryWrapper.like(DevicePO::getImei, imeiKeyword.trim());
-        }
-        if (StringUtils.hasText(status)) {
-            queryWrapper.eq(DevicePO::getStatus, status.trim().toUpperCase());
-        }
-        if (importBatchId != null) {
-            queryWrapper.eq(DevicePO::getImportBatchId, importBatchId);
-        }
-
-        queryWrapper.orderByDesc(DevicePO::getUpdatedAt);
-
-        return enrichDevices(deviceConverter.toDomainList(deviceMapper.selectList(queryWrapper)));
-    }
-
-    @Override
     public void batchUpdateTags(List<Long> deviceIds, String tagsJson) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             return;
@@ -269,33 +250,82 @@ public class DeviceRepositoryImpl implements DeviceRepository {
     }
 
     @Override
-    public void updateBatch(List<Device> devices) {
-        if (devices == null || devices.isEmpty()) {
+    public void applyCheckUpdates(List<DeviceInfoUpdateMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
             return;
         }
 
-        List<DeviceBatchUpdateDTO> batchList = new ArrayList<>(devices.size());
-        for (Device device : devices) {
-            if (device.getId() == null) {
-                continue;
-            }
-
-            DeviceBatchUpdateDTO dto = DeviceBatchUpdateDTO.builder()
-                    .id(device.getId())
-                    .firstSeenAt(device.getFirstSeenAt())
-                    .lastSeenAt(device.getLastSeenAt())
-                    .build();
-
-            batchList.add(dto);
-        }
-
-        if (batchList.isEmpty()) {
+        List<DeviceInfoUpdateMessage> validMessages = messages.stream()
+                .filter(Objects::nonNull)
+                .filter(message -> message.getDeviceId() != null)
+                .filter(message -> StringUtils.hasText(message.getImei()))
+                .toList();
+        if (validMessages.isEmpty()) {
             return;
         }
 
-        deviceMapper.batchUpdateDeviceInfo(batchList);
-        replaceDeviceVersionParts(devices);
-        replaceDeviceInitialVersionParts(devices);
+        batchUpdateDeviceBaseInfo(validMessages);
+        batchUpsertCurrentVersionParts(validMessages);
+        batchInsertInitialVersionParts(validMessages);
+    }
+
+    private void batchUpdateDeviceBaseInfo(List<DeviceInfoUpdateMessage> messages) {
+        List<DeviceInfoUpdateMessage> validMessages = messages.stream()
+                .filter(message -> message.getDeviceId() != null && message.getAccessTime() != null)
+                .toList();
+        if (validMessages.isEmpty()) {
+            return;
+        }
+        executeBaseInfoBatchUpdate(validMessages);
+    }
+
+    private void executeBaseInfoBatchUpdate(List<DeviceInfoUpdateMessage> messages) {
+        List<DeviceInfoUpdateMessage> firstOnline = messages.stream()
+                .filter(message -> Boolean.TRUE.equals(message.getIsFirstOnline()))
+                .toList();
+        List<DeviceInfoUpdateMessage> regular = messages.stream()
+                .filter(message -> !Boolean.TRUE.equals(message.getIsFirstOnline()))
+                .toList();
+
+        if (!regular.isEmpty()) {
+            String sql = """
+                UPDATE devices
+                SET last_seen_at = ?,
+                    status = 'ACTIVE',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+            jdbcTemplate.batchUpdate(sql, regular, 500, (ps, message) -> {
+                ps.setObject(1, message.getAccessTime());
+                ps.setLong(2, message.getDeviceId());
+            });
+        }
+
+        if (firstOnline.isEmpty()) {
+            return;
+        }
+
+        String sql = """
+                UPDATE devices
+                SET first_seen_at = ?,
+                    last_seen_at = ?,
+                    status = 'ACTIVE',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        jdbcTemplate.batchUpdate(sql, firstOnline, 500, (ps, message) -> {
+            ps.setObject(1, message.getAccessTime());
+            ps.setObject(2, message.getAccessTime());
+            ps.setLong(3, message.getDeviceId());
+        });
+    }
+
+    private void batchUpsertCurrentVersionParts(List<DeviceInfoUpdateMessage> messages) {
+        deviceVersionPartBatchWriter.upsertCurrentVersionParts(messages);
+    }
+
+    private void batchInsertInitialVersionParts(List<DeviceInfoUpdateMessage> messages) {
+        deviceVersionPartBatchWriter.insertInitialVersionParts(messages);
     }
 
     private List<Device> enrichDevices(List<Device> devices) {
@@ -524,4 +554,5 @@ public class DeviceRepositoryImpl implements DeviceRepository {
         }
         return fallback;
     }
+
 }
