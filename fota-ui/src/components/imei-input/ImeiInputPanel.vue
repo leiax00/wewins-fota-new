@@ -104,6 +104,8 @@ const currentMode = computed({
     activeMode.value = val
     textInput.value = ''
     currentFileName.value = null
+    // 切换模式时清空上传组件的文件列表
+    uploadRef.value?.clearFiles()
   },
 })
 
@@ -117,20 +119,40 @@ const readExcelFile = async (file: File): Promise<string[]> => {
 
         const firstSheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[firstSheetName]
-        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 })
+        const jsonData = XLSX.utils.sheet_to_json<(string | number | null)[]>(worksheet, { header: 1 })
 
+        if (jsonData.length === 0) {
+          resolve([])
+          return
+        }
+
+        // 获取第一行作为表头，查找 "imei" 列（忽略大小写）
+        const header = jsonData[0]
+        if (!Array.isArray(header)) {
+          resolve([])
+          return
+        }
+
+        const imeiColumnIndex = header.findIndex(
+          (cell) => cell && typeof cell === 'string' && cell.trim().toLowerCase() === 'imei'
+        )
+
+        if (imeiColumnIndex === -1) {
+          resolve([])
+          return
+        }
+
+        // 只解析 imei 列的数据（从第二行开始）
         const imeis: string[] = []
-        for (const row of jsonData) {
-          if (Array.isArray(row)) {
-            for (const cell of row) {
-              if (cell && typeof cell === 'string') {
-                const cleaned = cell.trim().replace(/\D/g, '')
-                if (cleaned.length > 0) {
-                  imeis.push(cleaned)
-                }
-              } else if (cell && typeof cell === 'number') {
-                imeis.push(String(cell))
-              }
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i]
+          if (!Array.isArray(row)) continue
+
+          const cell = row[imeiColumnIndex]
+          if (cell != null) {
+            const value = typeof cell === 'number' ? String(cell) : String(cell).trim()
+            if (value.length > 0) {
+              imeis.push(value)
             }
           }
         }
@@ -212,6 +234,8 @@ const clearUploadFiles = () => {
 const clearInput = () => {
   textInput.value = ''
   currentFileName.value = null
+  // 清空上传组件的文件列表
+  uploadRef.value?.clearFiles()
 }
 
 defineExpose({
