@@ -13,6 +13,7 @@ import com.wewins.fota.common.util.HttpUtils;
 import com.wewins.fota.infra.metrics.NodeIdentity;
 import com.wewins.fota.infra.sentinel.UpgradeCheckBlockHandler;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,7 @@ public class UpgradeCheckController {
     private final UpgradeCheckService upgradeCheckService;
     private final UpgradeCheckBlockHandler blockHandler;
     private final NodeIdentity nodeIdentity;
+    private final UpgradeCheckRequestNormalizer requestNormalizer;
 
     /**
      * 检查设备升级（GET 方法）
@@ -52,8 +54,9 @@ public class UpgradeCheckController {
     @GetMapping("/v1/upgrade/check")
     @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgrade(
-            @ModelAttribute UpgradeCheckReqDTO request,
+            @Valid @ModelAttribute UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
+        request = requestNormalizer.normalizeQueryRequest(request, httpRequest);
         log.debug("收到设备检查 GET 请求: {}", request);
         CheckLogContext logContext = buildLogContext(httpRequest);
         CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);
@@ -98,8 +101,9 @@ public class UpgradeCheckController {
     @GetMapping("/fota/version/query")
     @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgradeOld(
-            @ModelAttribute UpgradeCheckReqDTO request,
+            @Valid @ModelAttribute UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
+        request = requestNormalizer.normalizeQueryRequest(request, httpRequest);
         log.debug("[Legacy API] 收到设备检查 GET 请求: {}", request);
         CheckLogContext logContext = buildLogContext(httpRequest);
         CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);
@@ -113,8 +117,9 @@ public class UpgradeCheckController {
     @PostMapping("/v1/upgrade/check")
     @SentinelResource(value = "upgrade:check", blockHandler = "handleBlock", fallback = "handleFallback")
     public ResponseEntity<UpgradeCheckRespDTO> checkUpgradePost(
-            @RequestBody UpgradeCheckReqDTO request,
+            @Valid @RequestBody UpgradeCheckReqDTO request,
             HttpServletRequest httpRequest) {
+        request = requestNormalizer.normalizeBodyRequest(request);
         log.debug("收到设备检查 POST 请求: {}", request);
         CheckLogContext logContext = buildLogContext(httpRequest);
         CheckResult result = upgradeCheckService.checkUpgrade(request, logContext);

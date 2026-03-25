@@ -39,6 +39,56 @@
 | `auto` | Integer | 1 | 触发模式：0=手动, 1=自动 |
 | `lang` | String | en | 语言代码（en/zh 等） |
 | `dev` | Integer | 0 | 临时测试设备标识：1=测试设备 |
+| `extTags` | Object | - | 扩展条件集合，承载可演进的设备侧额外属性 |
+
+### 扩展参数约定
+
+为避免设备端每次增加筛选条件都升级接口 DTO，推荐采用“固定字段 + `extTags`”模型：
+
+- `product`、`imei`、`version`、`tag`、`auto`、`lang`、`dev` 继续作为固定字段
+- 未来新增条件统一进入 `extTags`
+- 示例：硬件版本使用 `extTags.hw`
+
+POST JSON 推荐写法：
+
+```json
+{
+  "product": "asr_yemen_m476_vsim",
+  "imei": "354972069009027",
+  "version": "Mobile.Router.B03",
+  "extTags": {
+    "hw": "rev-a",
+    "region": "CN"
+  }
+}
+```
+
+POST JSON 兼容写法：
+
+```json
+{
+  "product": "asr_yemen_m476_vsim",
+  "imei": "354972069009027",
+  "version": "Mobile.Router.B03",
+  "hw": "rev-a"
+}
+```
+
+> 说明：服务端会将未知顶层 JSON 字段自动归入 `extTags`，因此 `hw` 会被标准化为 `extTags.hw`。
+
+GET 推荐写法：
+
+```bash
+GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=Mobile.Router.B03&ext.hw=rev-a&ext.region=CN
+```
+
+GET 兼容写法：
+
+```bash
+GET /v1/upgrade/check?product=asr_yemen_m476_vsim&imei=354972069009027&version=Mobile.Router.B03&hw=rev-a
+```
+
+> 说明：GET 请求中的 `ext.xxx` 参数和非核心参数都会自动归入 `extTags`。
 
 ### 请求示例
 

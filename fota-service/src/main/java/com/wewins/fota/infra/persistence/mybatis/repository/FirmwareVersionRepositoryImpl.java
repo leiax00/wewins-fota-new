@@ -2,6 +2,7 @@ package com.wewins.fota.infra.persistence.mybatis.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.common.util.TagMapUtils;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
@@ -15,12 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Collections;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
@@ -77,24 +73,28 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
             return Map.of();
         }
 
-        List<FirmwareVersionPO> versions = firmwareVersionMapper.selectList(
-                new LambdaQueryWrapper<FirmwareVersionPO>()
-                        .in(FirmwareVersionPO::getId, ids)
-                        .select(FirmwareVersionPO::getId, FirmwareVersionPO::getVersion, FirmwareVersionPO::getInternalVersion)
-        );
+        List<FirmwareVersion> versions = listByIds(ids);
 
         return versions.stream()
                 .collect(Collectors.toMap(
-                        FirmwareVersionPO::getId,
-                        v -> formatVersionLabel(v.getVersion(), v.getInternalVersion())
+                        FirmwareVersion::getId,
+                        this::formatVersionLabel
                 ));
     }
 
-    private String formatVersionLabel(String version, String internalVersion) {
+    private String formatVersionLabel(FirmwareVersion firmware) {
+        String version = firmware.getVersion();
+        String internalVersion = firmware.getInternalVersion();
+        Map<String, String> tags = firmware.getTags();
+        ArrayList<String> items = new ArrayList<>();
         if (internalVersion != null && !internalVersion.isBlank()) {
-            return String.format("%s (%s)", version, internalVersion);
+            items.add(internalVersion);
         }
-        return version;
+        if (tags != null) {
+            items.addAll(tags.values());
+        }
+
+        return String.format("%s [%s]", version, String.join(",", items));
     }
 
     @Override
@@ -278,9 +278,6 @@ public class FirmwareVersionRepositoryImpl implements FirmwareVersionRepository 
     }
 
     private Map<String, String> normalizeTags(Map<String, String> tags) {
-        if (tags == null || tags.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return tags;
+        return TagMapUtils.normalize(tags);
     }
 }

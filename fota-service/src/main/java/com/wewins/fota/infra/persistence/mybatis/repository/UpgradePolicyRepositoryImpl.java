@@ -234,7 +234,7 @@ public class UpgradePolicyRepositoryImpl implements UpgradePolicyRepository {
                 .collect(Collectors.groupingBy(
                         UpgradePolicyTargetTagPO::getPolicyId,
                         LinkedHashMap::new,
-                        Collectors.toMap(UpgradePolicyTargetTagPO::getTagKey, row -> row.getTagValue(), (a, b) -> b, LinkedHashMap::new)
+                        Collectors.toMap(UpgradePolicyTargetTagPO::getTagKey, UpgradePolicyTargetTagPO::getTagValue, (a, b) -> b, LinkedHashMap::new)
                 ));
 
         policies.forEach(policy -> {

@@ -16,6 +16,7 @@ import {
 import { searchProducts, type ProductItem } from '@/api/product'
 import {formatDateTime as utilsFormatDateTime, formatLocalDateTime} from '@/utils/date'
 import { trimFormValues } from '@/utils/form'
+import { formatVersionLabel } from '@/utils/field_formator'
 
 const { t } = useI18n()
 const router = useRouter()

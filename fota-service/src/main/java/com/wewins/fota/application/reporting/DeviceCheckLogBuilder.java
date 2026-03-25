@@ -75,6 +75,7 @@ public class DeviceCheckLogBuilder {
                 .checkRst(result.getDecision())
                 .checkMode(request.getCheckMode() != null ? request.getCheckMode() : CheckMode.AUTO)
                 .language(request.getLang())
+                .extTags(request.getExtTags() != null ? request.getExtTags().toString() : null)
                 .isDev(request.getDev())
                 .grayBucket(grayBucket)
                 .isGrayHit(isGrayHit ? 1 : 0)

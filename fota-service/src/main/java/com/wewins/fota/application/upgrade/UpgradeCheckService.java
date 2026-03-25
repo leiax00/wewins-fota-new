@@ -237,12 +237,8 @@ public class UpgradeCheckService {
     }
 
     private void findDeviceCurrentFirmware(CheckContext ctx) {
-        FirmwareVersion currentFirmware = firmwareVersionLookupService.findMatchedFirmwareVersion(
-                ctx.version(),
-                ctx.internalVersion(),
-                ctx.productId(),
-                ctx.getDevice() != null ? ctx.getDevice().getTags() : null
-        ).orElse(null);
+        FirmwareVersion currentFirmware = firmwareVersionLookupService.findMatchedFirmwareVersion(ctx)
+                .orElse(null);
         ctx.setCurrentFirmware(currentFirmware);
         log.debug("查找当前固件: version={}, tag={}, productId={}, versionId={}",
                 ctx.version(),

@@ -1,8 +1,10 @@
 package com.wewins.fota.application.upgrade;
 
+import com.wewins.fota.application.upgrade.dto.CheckContext;
+import com.wewins.fota.common.util.TagMapUtils;
 import com.wewins.fota.domain.base.vo.CacheLookupResult;
-import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
+import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionLookupCacheRepository;
 import com.wewins.fota.domain.firmware.repository.FirmwareVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,10 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * 固件版本查找服务
@@ -33,6 +32,7 @@ public class FirmwareVersionLookupService {
     private final FirmwareVersionRepository firmwareVersionRepository;
     private final FirmwareCacheRepository firmwareCacheRepository;
     private final FirmwareVersionLookupCacheRepository firmwareVersionLookupCacheRepository;
+    private final FirmwareTagSchemaProvider firmwareTagSchemaProvider;
 
     public List<Long> findCandidateVersionIds(String version, String internalVersion, Long productId) {
         if (!StringUtils.hasText(version) || !StringUtils.hasText(internalVersion) || productId == null) {
@@ -52,23 +52,24 @@ public class FirmwareVersionLookupService {
         return versionIds;
     }
 
-    public Long findMatchedVersionId(String version, String internalVersion, Long productId, Map<String, String> deviceTags) {
-        return findMatchedFirmwareVersion(version, internalVersion, productId, deviceTags)
-                .map(FirmwareVersion::getId)
-                .orElse(null);
-    }
+    public Optional<FirmwareVersion> findMatchedFirmwareVersion(CheckContext ctx) {
+        Long productId = ctx.productId();
+        String version = ctx.version();
+        String internalVersion = ctx.internalVersion();
 
-    public Optional<FirmwareVersion> findMatchedFirmwareVersion(
-            String version,
-            String internalVersion,
-            Long productId,
-            Map<String, String> deviceTags
-    ) {
         List<FirmwareVersion> candidateFirmwares = loadCandidateFirmwares(version, internalVersion, productId);
         if (candidateFirmwares.isEmpty()) {
             return Optional.empty();
         }
 
+        Map<String, String> deviceTags = new HashMap<>();
+        if (ctx.getDevice().getTags() != null) {
+            deviceTags.putAll(ctx.getDevice().getTags());
+        }
+        String hardwareVersion = ctx.getRequest().getHardwareVersion();
+        if (StringUtils.hasText(hardwareVersion)) {
+            deviceTags.put("hwVersion", hardwareVersion);
+        }
         return candidateFirmwares.stream()
                 .filter(firmware -> firmware != null && matchesFirmwareTags(firmware.getTags(), deviceTags))
                 .min(Comparator.comparingInt(
@@ -153,18 +154,13 @@ public class FirmwareVersionLookupService {
     }
 
     private boolean matchesFirmwareTags(Map<String, String> firmwareTags, Map<String, String> deviceTags) {
-        if (firmwareTags == null || firmwareTags.isEmpty()) {
+        Set<String> schemaKeys = firmwareTagSchemaProvider.getTagKeys();
+        // 表示不启用标签匹配
+        if (schemaKeys.isEmpty()) {
             return true;
         }
-        if (deviceTags == null || deviceTags.isEmpty()) {
-            return false;
-        }
-        for (Map.Entry<String, String> entry : firmwareTags.entrySet()) {
-            if (!entry.getValue().equals(deviceTags.get(entry.getKey()))) {
-                return false;
-            }
-        }
-        return true;
+
+        return TagMapUtils.equalsOnKeys(firmwareTags, deviceTags, schemaKeys);
     }
 
     /**

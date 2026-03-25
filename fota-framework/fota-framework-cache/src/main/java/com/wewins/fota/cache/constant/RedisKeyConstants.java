@@ -179,6 +179,11 @@ public final class RedisKeyConstants {
     public static final String CDN_WARM_WORKER_CONFIG_CACHE_KEY = "fota:config:cdn:warm:worker";
 
     /**
+     * 固件标签 schema 缓存 Key
+     */
+    public static final String FIRMWARE_TAG_SCHEMA_CACHE_KEY = "fota:config:firmware:tag-schema";
+
+    /**
      * 分布式锁 TTL（30 秒）
      */
     public static final long LOCK_TTL_SECONDS = 30;
