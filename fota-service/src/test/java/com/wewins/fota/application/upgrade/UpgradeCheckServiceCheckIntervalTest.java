@@ -42,7 +42,7 @@ class UpgradeCheckServiceCheckIntervalTest {
      */
     private void invokeAdjustCheckInterval(CheckResult result, Integer auto) throws Exception {
         adjustCheckIntervalMethod.invoke(new UpgradeCheckService(null, null, null, null, null, null, null,
-                null, null, null, null, null, null), result, auto);
+                null, null, null, null, null, null, null, null, null, null), result, auto);
     }
 
     @Nested

@@ -47,75 +47,69 @@ scripts/update-version.sh
 
 ## 发布流程
 
-### 1. 准备发布
+> 详细规范请参考 [Git Flow 工作流规范](../03-standards/git-workflow.md#发布新版本)
+
+### 1. 从 develop 创建 release 分支
 
 ```bash
-# 确保在 develop 分支
 git checkout develop
 git pull origin develop
-
-# 确保工作区干净
-git status
-```
-
-### 2. 更新版本号
-
-```bash
-# 例如：发布 0.2.0 版本
-./scripts/update-version.sh 0.2.0
-```
-
-### 3. 检查修改
-
-```bash
-git diff
-```
-
-### 4. 提交版本更新
-
-```bash
-git add .
-git commit -m "chore: bump version to 0.2.0"
-```
-
-### 5. 创建发布分支
-
-```bash
 git checkout -b release/v0.2.0
 ```
 
-### 6. 更新 CHANGELOG
+### 2. 更新版本号（在 release 分支上）
+
+```bash
+./scripts/update-version.sh 0.2.0
+git add .
+git commit -m "chore: 准备发布 v0.2.0"
+```
+
+### 3. 更新 CHANGELOG
+
+在 release 分支上完成以下更新：
 
 1. 创建版本目录：`docs/06-releases/v0.2.0/`
 2. 编写 `release-notes.md`
 3. 更新 `docs/06-releases/CHANGELOG.md`
 4. 更新 `docs/00-index.md`
 
-### 7. 合并到 main
+```bash
+git add docs/
+git commit -m "docs: 更新 v0.2.0 发布说明"
+```
+
+### 4. 合并到 main
 
 ```bash
 git checkout main
-git merge release/v0.2.0
+git merge --no-ff release/v0.2.0 -m "Release v0.2.0"
 ```
 
-### 8. 打标签
+### 5. 打标签
 
 ```bash
-git tag -a v0.2.0 -m "Release v0.2.0"
+git tag -a v0.2.0 -m "Release v0.2.0: 功能描述"
 ```
 
-### 9. 推送
-
-```bash
-git push origin main --tags
-```
-
-### 10. 合并回 develop
+### 6. 合并回 develop
 
 ```bash
 git checkout develop
-git merge main
+git merge --no-ff release/v0.2.0 -m "Merge release/v0.2.0 back to develop"
+```
+
+### 7. 推送
+
+```bash
+git push origin main --tags
 git push origin develop
+```
+
+### 8. 删除 release 分支
+
+```bash
+git branch -d release/v0.2.0
 ```
 
 ---

@@ -4,13 +4,20 @@
 # 1. 生产环境不要依赖这里的默认值
 # 2. 支持使用环境变量覆盖全部敏感参数
 
+
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
-    username: ${DB_USER:postgres}
+#    url: ${DB_URL:jdbc:postgresql://localhost:5432/fota?TimeZone=UTC}
+#    username: ${DB_USER:postgres}
+#    password: ${DB_PASSWORD:wewins@123}
+#    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/fota?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USER:root}
     password: ${DB_PASSWORD:wewins@123}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+
     clickhouse:
-      url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/ww-fota}
+      url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:18123/fota}
       username: ${CLICKHOUSE_USER:wewins}
       password: ${CLICKHOUSE_PASSWORD:wewins@123}
 
@@ -33,7 +40,7 @@ app:
 
   # 节点配置（main 和 region 共用）
   node:
-    code: main-lax-svc
+    code: main-local-svc-1
     name: 主区域
     baseUrl: https://main.api.xxx.com
     timeZone: Asia/Shanghai
@@ -47,8 +54,16 @@ app:
       endpoint: ${STORAGE_S3_ENDPOINT:http://localhost:9000}
       region: ${STORAGE_S3_REGION:us-east-1}
       bucket: ${STORAGE_S3_BUCKET:fota}
-      accessKey: ${STORAGE_S3_ACCESS_KEY:uzFXvQ4GgMsyZ2YhU50q}
-      secretKey: ${STORAGE_S3_SECRET_KEY:AGzlSY175qMCBwxdbjct6e0I8isOyQfKpmDa3n4L}
+      accessKey: ${STORAGE_S3_ACCESS_KEY:UhTG5ZfeiqrFPNyMbEpV}
+      secretKey: ${STORAGE_S3_SECRET_KEY:2j0lI98JkfTWhyBL1baFgKq6UCY7McipsXHwQOv3}
+      url-access-type: ${STORAGE_S3_URL_ACCESS_TYPE:path_style}
+#      endpoint: ${STORAGE_S3_ENDPOINT:https://ee04c5fd481d9a4de21d56f96ab98546.r2.cloudflarestorage.com}
+#      region: ${STORAGE_S3_REGION:us-east-1}
+#      bucket: ${STORAGE_S3_BUCKET:fota}
+#      accessKey: ${STORAGE_S3_ACCESS_KEY:11fce1c23e20c7d7809ab078c3e86a18}
+#      secretKey: ${STORAGE_S3_SECRET_KEY:9addff36d5fdfc74568a3275881fd27b63a2d5f8c8957d24c2ede8c6cadc1eaf}
+#      url-access-type: ${STORAGE_S3_URL_ACCESS_TYPE:like_r2}
   firmware:
     download:
       sign-mode: none
+#      base-url: "http://fota-r2.yushe.ai"

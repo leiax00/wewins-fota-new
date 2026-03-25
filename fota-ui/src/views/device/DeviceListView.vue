@@ -84,6 +84,7 @@ const dialogMode = ref<'create' | 'edit'>('create')
 const submitting = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref()
+const tableRef = ref()
 const tagsValidationErrors = ref<string[]>([])
 
 const form = reactive({
@@ -430,6 +431,13 @@ const isTestDevice = (row: DeviceItem) => {
   return env === 'test' || env === 'dev'
 }
 
+/**
+ * 点击行展开/收起详情
+ */
+const handleRowClick = (row: DeviceItem) => {
+  tableRef.value?.toggleRowExpansion(row)
+}
+
 onMounted(() => {
   void fetchList()
 })
@@ -622,10 +630,12 @@ onMounted(() => {
     </template>
 
     <el-table
+      ref="tableRef"
       v-loading="loading"
       :data="list"
       stripe
       row-key="id"
+      @row-click="handleRowClick"
     >
       <el-table-column type="expand" width="56">
         <template #default="{ row }">
@@ -1156,6 +1166,11 @@ onMounted(() => {
 
 :deep(.el-table__expanded-cell) {
   padding: 0 !important;
+}
+
+/* 行可点击样式 */
+:deep(.el-table__row) {
+  cursor: pointer;
 }
 
 @media (max-width: 768px) {

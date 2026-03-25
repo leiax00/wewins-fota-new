@@ -73,7 +73,7 @@ public class FirmwareUploadCleanupTask {
 
             long scannedCount = files
                     .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().matches("fw-upload-[a-f0-9-]+\\.tmp"))
+                    .filter(path -> path.getFileName().toString().matches("fw-[0-9]+-[a-f0-9-]+\\.upload"))
                     .filter(path -> {
                         try {
                             Instant fileLastModified = Files.getLastModifiedTime(path).toInstant();

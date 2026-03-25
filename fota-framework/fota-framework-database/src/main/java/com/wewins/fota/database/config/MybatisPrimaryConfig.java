@@ -23,10 +23,13 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import javax.sql.DataSource;
 
 /**
- * MyBatis 主数据源配置（PostgreSQL）
+ * MyBatis 主数据源配置
  * <p>
  * 负责配置主数据库的 MyBatis-Plus 会话工厂、Mapper 扫描和事务管理器
  * 从 application.yml 读取 MyBatis-Plus 配置并应用
+ * </p>
+ * <p>
+ * 支持多数据库：PostgreSQL、MySQL（自动识别数据库类型）
  * </p>
  *
  * @author FOTA Team
@@ -41,10 +44,17 @@ import javax.sql.DataSource;
 @Slf4j
 public class MybatisPrimaryConfig {
 
+    /**
+     * 分页插件（自动识别数据库类型）
+     * <p>
+     * 不指定 DbType，MyBatis-Plus 会通过 JDBC DatabaseMetaData 自动识别
+     * </p>
+     */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        PaginationInnerInterceptor paginationInnerInterceptor = new PaginationInnerInterceptor(DbType.POSTGRE_SQL);
+        // 不指定 DbType，自动识别数据库类型
+        PaginationInnerInterceptor paginationInnerInterceptor = new PaginationInnerInterceptor();
         paginationInnerInterceptor.setOverflow(false);
         interceptor.addInnerInterceptor(paginationInnerInterceptor);
         return interceptor;

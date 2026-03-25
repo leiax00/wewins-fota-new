@@ -202,4 +202,8 @@ public class CheckResult {
                 .checkInterval(ERROR_RETRY_INTERVAL)
                 .build();
     }
+
+    public boolean isNormalResult() {
+        return UpgradeDecision.UPDATE.equals(decision) || UpgradeDecision.NO_UPDATE.equals(decision);
+    }
 }

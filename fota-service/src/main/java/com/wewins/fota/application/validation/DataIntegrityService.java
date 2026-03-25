@@ -47,7 +47,7 @@ public class DataIntegrityService {
         }
 
         Product product = productRepository.findById(productId).orElse(null);
-        boolean isActive = product != null && product.getDeletedAt() == null;
+        boolean isActive = product != null && (product.getDeleted() == null || product.getDeleted() == 0);
 
         if (!isActive) {
             log.warn("产品不存在或已软删除: productId={}", productId);
@@ -68,7 +68,7 @@ public class DataIntegrityService {
         }
 
         var version = firmwareVersionRepository.findById(versionId).orElse(null);
-        boolean isActive = version != null && version.getDeletedAt() == null;
+        boolean isActive = version != null && (version.getDeleted() == null || version.getDeleted() == 0);
 
         if (!isActive) {
             log.warn("固件版本不存在或已软删除: versionId={}", versionId);
@@ -89,7 +89,7 @@ public class DataIntegrityService {
         }
 
         var policy = upgradePolicyRepository.findById(policyId).orElse(null);
-        boolean isActive = policy != null && policy.getDeletedAt() == null;
+        boolean isActive = policy != null && (policy.getDeleted() == null || policy.getDeleted() == 0);
 
         if (!isActive) {
             log.warn("升级策略不存在或已软删除: policyId={}", policyId);
@@ -115,7 +115,7 @@ public class DataIntegrityService {
             return false;
         }
 
-        if (policy.getDeletedAt() != null) {
+        if (policy.getDeleted() != null && policy.getDeleted() == 1) {
             log.warn("升级策略已软删除: policyId={}", policyId);
             return false;
         }

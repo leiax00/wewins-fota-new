@@ -70,10 +70,14 @@ public class DeviceVersionParts {
      * 更新某个部分的版本
      */
     public void updatePart(String partName, Long versionId, LocalDateTime updatedAt) {
-        parts.put(partName, DeviceVersionPart.builder()
+        addPart(partName, DeviceVersionPart.builder()
                 .versionId(versionId)
                 .updatedAt(updatedAt)
                 .build());
+    }
+
+    public void addPart(String partName, DeviceVersionPart part) {
+        parts.put(partName, part);
     }
 
     /**

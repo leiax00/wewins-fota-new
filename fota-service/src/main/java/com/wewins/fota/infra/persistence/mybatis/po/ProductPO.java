@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -26,6 +25,9 @@ public class ProductPO extends BaseEntity implements Serializable {
 
     private Integer checkPeriodSeconds;
 
-    @TableLogic(value = "NULL", delval = "now()")
-    private LocalDateTime deletedAt;
+    /**
+     * 逻辑删除标记 (0=未删除, 1=已删除)
+     */
+    @TableLogic
+    private Integer deleted;
 }

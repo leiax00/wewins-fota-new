@@ -1,0 +1,11 @@
+[
+  {
+    "targets": ["host.docker.internal:8080"],
+    "labels": {
+      "region": "local",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "local"
+    }
+  }
+]

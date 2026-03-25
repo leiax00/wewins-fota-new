@@ -2,6 +2,8 @@ package com.wewins.fota.application.upgrade;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.wewins.fota.domain.device.model.entity.Device;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionPart;
+import com.wewins.fota.domain.device.model.vo.DeviceVersionParts;
 import com.wewins.fota.domain.policy.model.entity.UpgradePolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -244,7 +247,10 @@ class LegacyAndNewApiUnifiedTest {
             Device device = Device.builder()
                     .imei("354972069009027")
                     .productId(100L)
-                    .currentVersionId(101L)
+                    .versionParts(DeviceVersionParts.builder()
+                            .parts(Map.of("main", DeviceVersionPart.builder().versionId(101L).build()))
+                            .primaryPart("main")
+                            .build())
                     .build();
             device.setId(1L);
 

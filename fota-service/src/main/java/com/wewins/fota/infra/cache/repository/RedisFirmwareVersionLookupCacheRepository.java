@@ -14,6 +14,9 @@ import org.springframework.util.StringUtils;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -27,7 +30,7 @@ public class RedisFirmwareVersionLookupCacheRepository implements FirmwareVersio
     private final CacheMetricsService cacheMetricsService;
 
     @Override
-    public CacheLookupResult<Long> get(Long productId, String version, String internalVersion) {
+    public CacheLookupResult<List<Long>> get(Long productId, String version, String internalVersion) {
         if (productId == null || !StringUtils.hasText(version)) {
             cacheMetricsService.recordFirmwareLookupCacheMiss();
             return CacheLookupResult.miss();
@@ -44,10 +47,13 @@ public class RedisFirmwareVersionLookupCacheRepository implements FirmwareVersio
                 cacheMetricsService.recordFirmwareLookupCacheMiss();
                 return CacheLookupResult.hitNotFound();
             }
-            Long versionId = Long.valueOf(value);
+            List<Long> versionIds = Arrays.stream(value.split(","))
+                    .filter(StringUtils::hasText)
+                    .map(Long::valueOf)
+                    .toList();
             renewTtl(key);
             cacheMetricsService.recordFirmwareLookupCacheHit();
-            return CacheLookupResult.hit(versionId);
+            return CacheLookupResult.hit(versionIds);
         } catch (Exception e) {
             log.warn("读取固件版本映射缓存失败: productId={}, version={}, internalVersion={}",
                     productId, version, internalVersion, e);
@@ -57,17 +63,20 @@ public class RedisFirmwareVersionLookupCacheRepository implements FirmwareVersio
     }
 
     @Override
-    public void put(Long productId, String version, String internalVersion, Long versionId) {
-        if (productId == null || !StringUtils.hasText(version) || versionId == null) {
+    public void put(Long productId, String version, String internalVersion, List<Long> versionIds) {
+        if (productId == null || !StringUtils.hasText(version) || versionIds == null || versionIds.isEmpty()) {
             return;
         }
         try {
             String key = buildKey(productId, version, internalVersion);
             long ttl = RandomizedTtlUtil.getRandomizedTtl(RedisKeyConstants.FIRMWARE_LOOKUP_CACHE_TTL_SECONDS);
-            redisTemplate.opsForValue().set(key, versionId.toString(), Duration.ofSeconds(ttl));
+            String value = versionIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+            redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttl));
         } catch (Exception e) {
-            log.warn("写入固件版本映射缓存失败: productId={}, version={}, internalVersion={}, versionId={}",
-                    productId, version, internalVersion, versionId, e);
+            log.warn("写入固件版本映射缓存失败: productId={}, version={}, internalVersion={}, versionIds={}",
+                    productId, version, internalVersion, versionIds, e);
         }
     }
 

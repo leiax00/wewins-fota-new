@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.wewins</groupId>
         <artifactId>fota-framework</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>fota-framework-starter</artifactId>
@@ -44,6 +44,14 @@
         <dependency>
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-cdn</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-task</artifactId>
         </dependency>
     </dependencies>
 </project>

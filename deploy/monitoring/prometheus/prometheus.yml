@@ -1,5 +1,5 @@
 # Prometheus 配置文件
-# 用于采集 FOTA 服务实例的监控指标
+# 使用 File-based Service Discovery 进行灵活的 target 管理
 
 global:
   # 抓取间隔（默认 15 秒）
@@ -23,77 +23,31 @@ rule_files:
 
 # 抓取配置
 scrape_configs:
-  # FOTA 服务实例
+  # FOTA 服务实例 - 使用文件服务发现
   - job_name: 'fota-service'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     honor_labels: true
-    static_configs:
-      # 生产环境实例列表（根据实际部署修改）
-      - targets:
-          - 'backend:8080'
-        labels:
-          cluster: 'fota-prod'
-          env: 'production'
-    # 开发环境（可选）
-    # - targets:
-    #     - 'localhost:8080'
-    #   labels:
-    #     cluster: 'fota-dev'
-    #     env: 'development'
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/fota-services.json
+        refresh_interval: 30s
 
-  # 宿主机指标采集 (node_exporter)
+  # Node Exporter - 使用文件服务发现
   - job_name: 'node-exporter'
     scrape_interval: 15s
-    static_configs:
-      # 宿主机列表（根据实际部署修改）
-      - targets:
-          - 'node-exporter:9100'
-        labels:
-          cluster: 'fota-prod'
-          env: 'production'
-          region: 'main'
-          host: 'lax'
-          node: 'main-lax-node-exporter'
-    relabel_configs:
-      - source_labels: [node]
-        target_label: instance
-      # 多主机示例：
-      # - targets:
-      #     - '10.0.1.1:9100'
-      #   labels:
-      #     region: 'main'
-      #     host: 'host-1'
-      #     node: 'main-host-1-node-exporter'
-      # - targets:
-      #     - '10.0.1.2:9100'
-      #   labels:
-      #     region: 'main'
-      #     host: 'host-2'
-      #     node: 'main-host-2-node-exporter'
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/node-exporters.json
+        refresh_interval: 30s
 
-  # Docker 容器指标采集 (cAdvisor)
+  # cAdvisor - 使用文件服务发现
   - job_name: 'cadvisor'
     scrape_interval: 15s
-    static_configs:
-      - targets:
-          - 'cadvisor:8080'
-        labels:
-          cluster: 'fota-prod'
-          env: 'production'
-          region: 'main'
-          host: 'lax'
-          node: 'main-lax-cadvisor'
-      # 多主机示例：
-      # - targets:
-      #     - '10.0.1.1:8080'
-      #   labels:
-      #     region: 'main'
-      #     host: 'host-1'
-      #     node: 'main-host-1-cadvisor'
-    relabel_configs:
-      - source_labels: [node]
-        target_label: instance
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/file_sd/cadvisors.json
+        refresh_interval: 30s
 
   # Prometheus 自监控
   - job_name: 'prometheus'

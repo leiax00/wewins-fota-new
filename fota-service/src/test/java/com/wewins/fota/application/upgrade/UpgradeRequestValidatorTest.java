@@ -301,13 +301,15 @@ class UpgradeRequestValidatorTest {
     class ValidateCheckModeTests {
 
         @Test
-        @DisplayName("auto 为 null - 应该通过")
-        void shouldPass_whenAutoIsNull() {
+        @DisplayName("checkMode 为 null - 应该抛出异常")
+        void shouldThrow_whenCheckModeIsNull() {
             // Given
             CheckMode auto = null;
 
             // When & Then
-            validator.validateCheckMode(auto);
+            assertThatThrownBy(() -> validator.validateCheckMode(auto))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("checkMode 参数无效");
         }
 
         @Test
@@ -428,8 +430,8 @@ class UpgradeRequestValidatorTest {
         }
 
         @Test
-        @DisplayName("必填参数有效，auto 为 null - 应该通过")
-        void shouldPass_whenRequiredParamsValidAndAutoIsNull() {
+        @DisplayName("必填参数有效，checkMode 为 null - 应该抛出异常")
+        void shouldThrow_whenRequiredParamsValidAndCheckModeIsNull() {
             // Given
             String productModel = "asr_yemen_m476_vsim";
             String imei = "354972069009027";
@@ -437,7 +439,9 @@ class UpgradeRequestValidatorTest {
             CheckMode auto = null;
 
             // When & Then
-            validator.validateAllParams(productModel, imei, version, auto);
+            assertThatThrownBy(() -> validator.validateAllParams(productModel, imei, version, auto))
+                    .isInstanceOf(BizException.class)
+                    .hasMessageContaining("checkMode 参数无效");
         }
 
         @Test
@@ -452,7 +456,7 @@ class UpgradeRequestValidatorTest {
             // When & Then
             assertThatThrownBy(() -> validator.validateAllParams(productModel, imei, version, auto))
                     .isInstanceOf(BizException.class)
-                    .hasMessageContaining("auto 参数只能是0, 1");
+                    .hasMessageContaining("checkMode 参数无效");
         }
     }
 

@@ -19,6 +19,7 @@ import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch
 import { searchProducts, type ProductItem } from '@/api/product'
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
 import { trimFormValues } from '@/utils/form'
+import { formatVersionLabel } from '@/utils/field_formator'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -211,16 +212,6 @@ const targetImeisComputed = computed({
       .filter((s) => s.length > 0)
   },
 })
-
-/**
- * 格式化版本显示：版本号 (内部版本: xxx) 或仅版本号
- */
-const formatVersionLabel = (version: FirmwareVersionItem): string => {
-  if (version.internalVersion) {
-    return `${version.version} (${version.internalVersion})`
-  }
-  return version.version
-}
 
 const formRules = {
   productId: [{ required: true, message: t('policy.productIdRequired'), trigger: 'change' }],

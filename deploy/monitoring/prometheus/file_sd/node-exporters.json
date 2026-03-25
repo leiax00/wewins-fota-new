@@ -1,0 +1,22 @@
+[
+  {
+    "targets": ["fota-query:19100"],
+    "labels": {
+      "region": "main",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "idquery",
+      "node": "main-idquery-node-exporter"
+    }
+  },
+  {
+    "targets": ["fota-dl:19100"],
+    "labels": {
+      "region": "main",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "iddl",
+      "node": "main-iddl-node-exporter"
+    }
+  }
+]

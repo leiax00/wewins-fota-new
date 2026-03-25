@@ -2,12 +2,13 @@ package com.wewins.fota.infra.cache.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.wewins.fota.cache.constant.RedisKeyConstants;
 import com.wewins.fota.cache.util.RandomizedTtlUtil;
 import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.infra.cache.service.CacheMetricsService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,12 +18,21 @@ import java.util.Optional;
 
 @Slf4j
 @Repository
-@RequiredArgsConstructor
 public class RedisFirmwareCacheRepository implements FirmwareCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper cacheObjectMapper;
     private final CacheMetricsService cacheMetricsService;
+
+    public RedisFirmwareCacheRepository(
+            RedisTemplate<String, Object> redisTemplate,
+            CacheMetricsService cacheMetricsService) {
+        this.redisTemplate = redisTemplate;
+        this.cacheObjectMapper = new ObjectMapper();
+        this.cacheObjectMapper.registerModule(new JavaTimeModule());
+        this.cacheObjectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.cacheMetricsService = cacheMetricsService;
+    }
 
     @Override
     public Optional<FirmwareVersion> findById(Long versionId) {
@@ -87,12 +97,12 @@ public class RedisFirmwareCacheRepository implements FirmwareCacheRepository {
     }
 
     private String serializeFirmware(FirmwareVersion firmware) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(firmware);
+        return cacheObjectMapper.writeValueAsString(firmware);
     }
 
     private FirmwareVersion deserializeFirmware(String json) {
         try {
-            return objectMapper.readValue(json, FirmwareVersion.class);
+            return cacheObjectMapper.readValue(json, FirmwareVersion.class);
         } catch (JsonProcessingException e) {
             log.error("反序列化固件缓存失败", e);
             return null;

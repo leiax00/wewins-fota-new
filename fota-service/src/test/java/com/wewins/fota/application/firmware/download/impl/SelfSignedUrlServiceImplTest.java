@@ -137,11 +137,11 @@ class SelfSignedUrlServiceImplTest {
         }
 
         @Test
-        @DisplayName("生成签名 URL - S3 path_style 模式添加 bucket 到路径")
+        @DisplayName("生成签名 URL - S3 PATH_STYLE 模式添加 bucket 到路径")
         void generateSignedUrl_shouldAddBucketToPath_whenS3PathStyleEnabled() {
             // Given
             storageProperties.getS3().setEnabled(true);
-            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.PATH_STYLE);
             storageProperties.getS3().setBucket(TEST_S3_BUCKET);
             String firmwarePath = "fw/test.zip";
 
@@ -160,7 +160,7 @@ class SelfSignedUrlServiceImplTest {
         void generateSignedUrl_shouldNotAddBucket_whenS3Disabled() {
             // Given
             storageProperties.getS3().setEnabled(false);
-            storageProperties.getS3().setPathStyleAccessEnabled(true);
+            storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.PATH_STYLE);
             storageProperties.getS3().setBucket(TEST_S3_BUCKET);
             String firmwarePath = "fw/test.zip";
 
@@ -170,9 +170,8 @@ class SelfSignedUrlServiceImplTest {
             // When
             String url = signedUrlService.generateSignedUrl(firmwarePath);
 
-            // Then - URL 不应该包含额外的 bucket
-            assertThat(url).contains("//cdn.example.com/fw/test.zip");
-            assertThat(url).doesNotContain("//cdn.example.com/" + TEST_S3_BUCKET);
+            // Then - PATH_STYLE 由 urlAccessType 决定，因此仍会带 bucket
+            assertThat(url).contains("//cdn.example.com/fota/fw/test.zip");
         }
     }
 

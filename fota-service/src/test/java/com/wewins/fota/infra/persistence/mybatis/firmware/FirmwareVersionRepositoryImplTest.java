@@ -4,6 +4,7 @@ import com.wewins.fota.domain.firmware.repository.FirmwareCacheRepository;
 import com.wewins.fota.domain.firmware.model.entity.FirmwareVersion;
 import com.wewins.fota.infra.persistence.converter.FirmwareVersionConverter;
 import com.wewins.fota.infra.persistence.mybatis.mapper.FirmwareVersionMapper;
+import com.wewins.fota.infra.persistence.mybatis.mapper.FirmwareVersionTagMapper;
 import com.wewins.fota.infra.persistence.mybatis.po.FirmwareVersionPO;
 import com.wewins.fota.infra.persistence.mybatis.repository.FirmwareVersionRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +40,8 @@ class FirmwareVersionRepositoryImplTest {
 
     @Mock
     private FirmwareVersionConverter firmwareVersionConverter;
+    @Mock
+    private FirmwareVersionTagMapper firmwareVersionTagMapper;
 
     private FirmwareVersionRepositoryImpl firmwareVersionRepository;
 
@@ -50,7 +53,8 @@ class FirmwareVersionRepositoryImplTest {
         firmwareVersionRepository = new FirmwareVersionRepositoryImpl(
                 firmwareVersionMapper,
                 firmwareCacheRepository,
-                firmwareVersionConverter
+                firmwareVersionConverter,
+                firmwareVersionTagMapper
         );
 
         testFirmwareVersion = FirmwareVersion.builder()
@@ -63,7 +67,7 @@ class FirmwareVersionRepositoryImplTest {
                 .md5("abc123")
                 .sha256("def456")
                 .packageStatus("READY")
-                .deletedAt(null)
+                .deleted(0)
                 .build();
         testFirmwareVersion.setId(1L);
         testFirmwareVersion.setCreatedAt(LocalDateTime.now());
@@ -80,13 +84,18 @@ class FirmwareVersionRepositoryImplTest {
         testFirmwareVersionPO.setMd5(testFirmwareVersion.getMd5());
         testFirmwareVersionPO.setSha256(testFirmwareVersion.getSha256());
         testFirmwareVersionPO.setPackageStatus(testFirmwareVersion.getPackageStatus());
-        testFirmwareVersionPO.setDeletedAt(testFirmwareVersion.getDeletedAt());
+        testFirmwareVersionPO.setDeleted(testFirmwareVersion.getDeleted());
         testFirmwareVersionPO.setCreatedAt(testFirmwareVersion.getCreatedAt());
         testFirmwareVersionPO.setUpdatedAt(testFirmwareVersion.getUpdatedAt());
 
         lenient().when(firmwareVersionConverter.toDomain(any(FirmwareVersionPO.class)))
                 .thenAnswer(invocation -> toDomain(invocation.getArgument(0)));
         lenient().when(firmwareVersionConverter.toDomain(null)).thenReturn(null);
+        lenient().when(firmwareVersionConverter.toDomainList(any()))
+                .thenAnswer(invocation -> ((List<FirmwareVersionPO>) invocation.getArgument(0)).stream()
+                        .map(this::toDomain)
+                        .toList());
+        lenient().when(firmwareVersionTagMapper.selectByVersionIds(any())).thenReturn(java.util.List.of());
     }
 
     private FirmwareVersion toDomain(FirmwareVersionPO po) {
@@ -103,7 +112,7 @@ class FirmwareVersionRepositoryImplTest {
                 .md5(po.getMd5())
                 .sha256(po.getSha256())
                 .packageStatus(po.getPackageStatus())
-                .deletedAt(po.getDeletedAt())
+                .deleted(po.getDeleted())
                 .build();
         firmware.setId(po.getId());
         firmware.setCreatedAt(po.getCreatedAt());
@@ -123,18 +132,18 @@ class FirmwareVersionRepositoryImplTest {
             // Given
             String versionNumber = "Mobile.Router.B03";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(versionNumber, productId);
 
             // Then
-            assertThat(result).isPresent();
-            assertThat(result.get().getVersion()).isEqualTo(versionNumber);
-            assertThat(result.get().getProductId()).isEqualTo(productId);
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result).hasSize(1);
+            assertThat(result.getFirst().getVersion()).isEqualTo(versionNumber);
+            assertThat(result.getFirst().getProductId()).isEqualTo(productId);
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -143,16 +152,16 @@ class FirmwareVersionRepositoryImplTest {
             // Given
             String versionNumber = "Non.Existent.Version";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(null);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of());
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(versionNumber, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper).selectOne(any());
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -163,12 +172,12 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = 100L;
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(versionNumber, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper, never()).selectOne(any());
+            verify(firmwareVersionMapper, never()).selectList(any());
         }
 
         @Test
@@ -179,12 +188,12 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = null;
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(versionNumber, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper, never()).selectOne(any());
+            verify(firmwareVersionMapper, never()).selectList(any());
         }
 
         @Test
@@ -195,12 +204,12 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = null;
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(versionNumber, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper, never()).selectOne(any());
+            verify(firmwareVersionMapper, never()).selectList(any());
         }
     }
 
@@ -215,20 +224,20 @@ class FirmwareVersionRepositoryImplTest {
             String versionNumber = "Mobile.Router.B03";
             String internalVersion = "ASR_YEMEN_M476_V11_B03_Build02";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
-            assertThat(result).isPresent();
-            assertThat(result.get().getVersion()).isEqualTo(versionNumber);
-            assertThat(result.get().getInternalVersion()).isEqualTo(internalVersion);
-            assertThat(result.get().getProductId()).isEqualTo(productId);
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result).hasSize(1);
+            assertThat(result.getFirst().getVersion()).isEqualTo(versionNumber);
+            assertThat(result.getFirst().getInternalVersion()).isEqualTo(internalVersion);
+            assertThat(result.getFirst().getProductId()).isEqualTo(productId);
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -238,17 +247,17 @@ class FirmwareVersionRepositoryImplTest {
             String versionNumber = "Non.Existent.Version";
             String internalVersion = "Non.Existent.Build";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(null);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of());
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper).selectOne(any());
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -258,17 +267,17 @@ class FirmwareVersionRepositoryImplTest {
             String versionNumber = "Mobile.Router.B03";
             String internalVersion = null;
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
-            assertThat(result).isPresent();
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result).hasSize(1);
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -278,17 +287,17 @@ class FirmwareVersionRepositoryImplTest {
             String versionNumber = "Mobile.Router.B03";
             String internalVersion = "";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
-            assertThat(result).isPresent();
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result).hasSize(1);
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -298,17 +307,17 @@ class FirmwareVersionRepositoryImplTest {
             String versionNumber = "Mobile.Router.B03";
             String internalVersion = "   ";
             Long productId = 100L;
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
-            assertThat(result).isPresent();
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result).hasSize(1);
+            verify(firmwareVersionMapper).selectList(any());
         }
 
         @Test
@@ -320,13 +329,13 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = 100L;
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper, never()).selectOne(any());
+            verify(firmwareVersionMapper, never()).selectList(any());
         }
 
         @Test
@@ -338,13 +347,13 @@ class FirmwareVersionRepositoryImplTest {
             Long productId = null;
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion, productId);
 
             // Then
             assertThat(result).isEmpty();
-            verify(firmwareVersionMapper, never()).selectOne(any());
+            verify(firmwareVersionMapper, never()).selectList(any());
         }
 
         @Test
@@ -369,19 +378,19 @@ class FirmwareVersionRepositoryImplTest {
             version2.setInternalVersion(internalVersion2);
 
             // 第一次查询返回 version1
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(version1);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(version1));
 
             // When
-            Optional<FirmwareVersion> result1 = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result1 = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             versionNumber, internalVersion1, productId);
 
             // Then
-            assertThat(result1).isPresent();
-            assertThat(result1.get().getId()).isEqualTo(1L);
-            assertThat(result1.get().getInternalVersion()).isEqualTo(internalVersion1);
-            verify(firmwareVersionMapper).selectOne(any());
+            assertThat(result1).hasSize(1);
+            assertThat(result1.getFirst().getId()).isEqualTo(1L);
+            assertThat(result1.getFirst().getInternalVersion()).isEqualTo(internalVersion1);
+            verify(firmwareVersionMapper).selectList(any());
         }
     }
 
@@ -398,18 +407,18 @@ class FirmwareVersionRepositoryImplTest {
             String tag = "ASR_YEMEN_M476_M483_V11_B03_Build02";
             Long productId = 100L;
 
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When - 使用 version + tag 组合查询
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             version, tag, productId);
 
             // Then
-            assertThat(result).isPresent();
-            assertThat(result.get().getVersion()).isEqualTo(version);
-            assertThat(result.get().getInternalVersion()).isEqualTo("ASR_YEMEN_M476_V11_B03_Build02");
+            assertThat(result).hasSize(1);
+            assertThat(result.getFirst().getVersion()).isEqualTo(version);
+            assertThat(result.getFirst().getInternalVersion()).isEqualTo("ASR_YEMEN_M476_V11_B03_Build02");
         }
 
         @Test
@@ -420,16 +429,16 @@ class FirmwareVersionRepositoryImplTest {
             String version = "Mobile.Router.B03";
             Long productId = 100L;
 
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When - 只使用 version 查询（向后兼容）
-            Optional<FirmwareVersion> result = firmwareVersionRepository
+            List<FirmwareVersion> result = firmwareVersionRepository
                     .findByVersionNumberAndProductId(version, productId);
 
             // Then
-            assertThat(result).isPresent();
-            assertThat(result.get().getVersion()).isEqualTo(version);
+            assertThat(result).hasSize(1);
+            assertThat(result.getFirst().getVersion()).isEqualTo(version);
         }
 
         @Test
@@ -440,17 +449,17 @@ class FirmwareVersionRepositoryImplTest {
             String internalVersion = "ASR_YEMEN_M476_V11_B03_Build02";
             Long productId = 100L;
 
-            when(firmwareVersionMapper.selectOne(any()))
-                    .thenReturn(testFirmwareVersionPO);
+            when(firmwareVersionMapper.selectList(any()))
+                    .thenReturn(List.of(testFirmwareVersionPO));
 
             // When
-            Optional<FirmwareVersion> result = firmwareVersionRepository
-                    .findByUniqueKey(
+            List<FirmwareVersion> result = firmwareVersionRepository
+                    .findByVersionAndInternalVersionAndProductId(
                             version, internalVersion, productId);
 
             // Then
-            assertThat(result).isPresent();
-            assertThat(result.get().getId()).isEqualTo(1L);
+            assertThat(result).hasSize(1);
+            assertThat(result.getFirst().getId()).isEqualTo(1L);
         }
     }
 }

@@ -1,0 +1,6 @@
+name = "fota-warmer"
+main = "warm-worker.js"
+compatibility_date = "2026-03-20"
+
+[observability]
+enabled = true

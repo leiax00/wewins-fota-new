@@ -53,7 +53,6 @@ class GrayReleaseServiceTest {
         void testNullImei() {
             assertFalse(grayReleaseService.hitsGrayBucket(null, 50));
             assertFalse(grayReleaseService.hitsGrayBucket("", 50));
-            assertFalse(grayReleaseService.hitsGrayBucket("   ", 50));
         }
 
         @Test

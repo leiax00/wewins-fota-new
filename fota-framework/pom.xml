@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.wewins</groupId>
         <artifactId>wewins-fota-new</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>fota-framework</artifactId>
@@ -23,6 +23,8 @@
         <module>fota-framework-storage</module>
         <module>fota-framework-security</module>
         <module>fota-framework-web</module>
+        <module>fota-framework-task</module>
+        <module>fota-framework-cdn</module>
         <module>fota-framework-starter</module>
     </modules>
 

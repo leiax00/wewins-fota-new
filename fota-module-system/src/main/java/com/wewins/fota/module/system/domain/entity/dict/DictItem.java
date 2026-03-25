@@ -68,8 +68,8 @@ public class DictItem extends BaseEntity implements Serializable {
     private JsonNode extra;
 
     /**
-     * 软删除时间
+     * 逻辑删除标记 (0=未删除, 1=已删除)
      */
-    @TableLogic(value = "NULL", delval = "now()")
-    private LocalDateTime deletedAt;
+    @TableLogic
+    private Integer deleted;
 }

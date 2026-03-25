@@ -1,8 +1,10 @@
 <script setup lang="ts">
+defineOptions({ name: 'Dashboard' })
+
 import { InfoFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { monitorApi, type MonitorTrends, type RealtimeMetrics, type TrendPoint } from '@/api/monitor'
 import { useUserStore } from '@/stores/user'
@@ -16,6 +18,7 @@ const trendLoading = ref(false)
 const trendRange = ref<'15m' | '1h' | '6h' | '24h'>('15m')
 const refreshTimer = ref<number | null>(null)
 const trendRefreshTimer = ref<number | null>(null)
+const isActive = ref(true)
 
 const checkTrendRef = ref<HTMLDivElement | null>(null)
 const reportTrendRef = ref<HTMLDivElement | null>(null)
@@ -62,6 +65,8 @@ const fetchTrends = async () => {
 }
 
 const startRefresh = () => {
+  if (!isActive.value) return
+  stopRefresh() // 防止重复启动
   refreshTimer.value = window.setInterval(fetchMetrics, 5000)
   trendRefreshTimer.value = window.setInterval(fetchTrends, 30000)
 }
@@ -79,6 +84,8 @@ const stopRefresh = () => {
 
 // 页面可见性变化处理
 const handleVisibilityChange = () => {
+  if (!isActive.value) return // 页面不激活时不处理
+
   if (document.hidden) {
     // 页面隐藏时停止刷新
     stopRefresh()
@@ -280,17 +287,43 @@ watch(trendRange, () => {
   fetchTrends()
 })
 
-onMounted(async () => {
-  await Promise.all([fetchMetrics(), fetchTrends()])
-  startRefresh()
+// 初始化事件监听器
+const setupEventListeners = () => {
   window.addEventListener('resize', resizeCharts)
   window.addEventListener('visibilitychange', handleVisibilityChange)
+}
+
+// 清理事件监听器
+const cleanupEventListeners = () => {
+  window.removeEventListener('resize', resizeCharts)
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
+}
+
+onMounted(async () => {
+  await Promise.all([fetchMetrics(), fetchTrends()])
+  isActive.value = true
+  setupEventListeners()
+  startRefresh()
+})
+
+// keep-alive 激活时重新启动定时器
+onActivated(() => {
+  isActive.value = true
+  fetchMetrics()
+  fetchTrends()
+  startRefresh()
+})
+
+// keep-alive 停用时停止定时器
+onDeactivated(() => {
+  isActive.value = false
+  stopRefresh()
 })
 
 onUnmounted(() => {
+  isActive.value = false
   stopRefresh()
-  window.removeEventListener('resize', resizeCharts)
-  window.removeEventListener('visibilitychange', handleVisibilityChange)
+  cleanupEventListeners()
   checkTrendChart?.dispose()
   reportTrendChart?.dispose()
   latencyTrendChart?.dispose()

@@ -1,0 +1,12 @@
+[
+  {
+    "targets": ["host.docker.internal:18081"],
+    "labels": {
+      "region": "main",
+      "env": "production",
+      "cluster": "fota-prod",
+      "host": "local",
+      "node": "main-local-cadvisor"
+    }
+  }
+]
