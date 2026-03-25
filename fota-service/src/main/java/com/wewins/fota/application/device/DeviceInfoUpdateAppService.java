@@ -119,11 +119,16 @@ public class DeviceInfoUpdateAppService {
             return merged;
         }
 
+        if (merged == null) {
+            merged = DeviceVersionParts.builder().build();
+        }
+
+        DeviceVersionParts finalMerged = merged;
         currentParts.forEach((partName, snapshot) -> {
             if (snapshot == null) {
                 return;
             }
-            merged.addPart(partName, snapshot);
+            finalMerged.addPart(partName, snapshot);
         });
 
         return merged;
