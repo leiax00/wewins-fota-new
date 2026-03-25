@@ -66,6 +66,7 @@ public class CdnWarmClient {
         // Retry logic
         int retryCount = properties.getRetryCount() > 0 ? properties.getRetryCount() : DEFAULT_RETRY_COUNT;
         Exception lastException = null;
+        String lastFailureMessage = null;
 
         for (int attempt = 1; attempt <= retryCount; attempt++) {
             try {
@@ -73,9 +74,19 @@ public class CdnWarmClient {
                 if (result.getStatus() == WarmStatus.SUCCESS) {
                     return result;
                 }
-                // If failed but not an exception, return immediately
-                if (result.getErrorMessage() != null) {
-                    return result;
+                lastFailureMessage = result.getErrorMessage();
+                if (lastFailureMessage == null || lastFailureMessage.isBlank()) {
+                    lastFailureMessage = "Warm-up failed without explicit error detail";
+                }
+                if (attempt < retryCount) {
+                    log.warn("Attempt {}/{} returned failed result for URL {}: {}",
+                            attempt, retryCount, url, lastFailureMessage);
+                    try {
+                        Thread.sleep(500L * attempt); // Exponential backoff
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             } catch (Exception e) {
                 lastException = e;
@@ -95,7 +106,7 @@ public class CdnWarmClient {
         return WarmResult.builder()
                 .url(url)
                 .status(WarmStatus.FAILED)
-                .errorMessage(lastException != null ? lastException.getMessage() : "Unknown error")
+                .errorMessage(resolveErrorMessage(lastException, lastFailureMessage))
                 .build();
     }
 
@@ -198,10 +209,14 @@ public class CdnWarmClient {
         String cfRay = response.getHeaders().getFirst(CF_RAY_HEADER);
 
         WarmStatus warmStatus = statusCode.is2xxSuccessful() ? WarmStatus.SUCCESS : WarmStatus.FAILED;
+        String errorMessage = warmStatus == WarmStatus.SUCCESS
+                ? null
+                : "HTTP status " + statusCode.value() + " during warm-up";
 
         return WarmResult.builder()
                 .url(url)
                 .status(warmStatus)
+                .errorMessage(errorMessage)
                 .cacheStatus(cacheStatus)
                 .pop(extractPopFromCfRay(cfRay))
                 .cfRay(cfRay)
@@ -254,8 +269,7 @@ public class CdnWarmClient {
                     executorService
             ).exceptionally(ex -> {
                 log.error("Failed to request chunk {}-{} for {}", start, end, url, ex);
-                chunkSemaphore.release();
-                return new ChunkResult(false, null, null);
+                return new ChunkResult(false, null, null, ex.getMessage());
             });
             futures.add(future);
         }
@@ -288,10 +302,17 @@ public class CdnWarmClient {
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
+        String chunkErrorMessage = chunkResults.stream()
+                .map(ChunkResult::errorMessage)
+                .filter(Objects::nonNull)
+                .filter(msg -> !msg.isBlank())
+                .findFirst()
+                .orElse(null);
 
         return WarmResult.builder()
                 .url(url)
                 .status(allSuccess ? WarmStatus.SUCCESS : WarmStatus.FAILED)
+                .errorMessage(allSuccess ? null : firstNonBlank(chunkErrorMessage, "One or more chunk requests failed"))
                 .cacheStatus(cacheStatus)
                 .pop(extractPopFromCfRay(cfRay))
                 .cfRay(cfRay)
@@ -315,12 +336,33 @@ public class CdnWarmClient {
             String cacheStatus = response.getHeaders().getFirst(CF_CACHE_STATUS_HEADER);
             String cfRay = response.getHeaders().getFirst(CF_RAY_HEADER);
             boolean success = response.getStatusCode().is2xxSuccessful();
+            String errorMessage = success
+                    ? null
+                    : "Chunk request returned HTTP status " + response.getStatusCode().value();
 
-            return new ChunkResult(success, cacheStatus, cfRay);
+            return new ChunkResult(success, cacheStatus, cfRay, errorMessage);
         } catch (Exception e) {
             log.error("Failed to request chunk {}-{} for {}", start, end, url, e);
-            return new ChunkResult(false, null, null);
+            return new ChunkResult(false, null, null, resolveExceptionMessage(e));
         }
+    }
+
+    private String resolveErrorMessage(Exception lastException, String lastFailureMessage) {
+        if (lastException != null) {
+            return resolveExceptionMessage(lastException);
+        }
+        return firstNonBlank(lastFailureMessage, "Unknown error");
+    }
+
+    private String resolveExceptionMessage(Exception exception) {
+        return firstNonBlank(exception.getMessage(), exception.getClass().getSimpleName());
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+        return fallback;
     }
 
     private String extractPopFromCfRay(String cfRay) {
@@ -402,5 +444,5 @@ public class CdnWarmClient {
     /**
      * Internal class to hold chunk request results.
      */
-    private record ChunkResult(boolean success, String cacheStatus, String cfRay) {}
+    private record ChunkResult(boolean success, String cacheStatus, String cfRay, String errorMessage) {}
 }
