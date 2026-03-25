@@ -76,7 +76,7 @@ Sprint 计划、里程碑、风险评估
 
 - [版本发布指南](06-releases/README.md) 🆕
 - [版本发布记录 (CHANGELOG)](06-releases/CHANGELOG.md) 🆕
-- [v0.0.1 发布说明](06-releases/v0.0.1/) 🆕 **| 🌐 [在线体验](https://fota.yushe.ai)**
+- [v0.2.0 发布说明](06-releases/v0.2.0/) 🆕 **| 🌐 [在线体验](https://fota.yushe.ai)**
 
 ---
 
