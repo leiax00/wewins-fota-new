@@ -56,7 +56,7 @@ public class Product extends DomainEntity {
     private Integer checkPeriodSeconds = DEFAULT_CHECK_PERIOD_SECONDS;
 
     /**
-     * 软删除时间（逻辑删除）
+     * 逻辑删除标记 (0=未删除, 1=已删除)
      */
-    private LocalDateTime deletedAt;
+    private Integer deleted;
 }

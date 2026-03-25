@@ -24,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -92,8 +93,8 @@ class UpgradeResponseBuilderTest {
         testFirmware.setId(20L);
         testFirmware.setCreatedAt(LocalDateTime.of(2026, 2, 1, 10, 0, 0));
 
-        when(dynamicIntervalService.calculateCheckInterval(1L)).thenReturn(6 * 60 * 60);
-        when(dynamicIntervalService.calculateDownloadDelay(1L)).thenReturn(5 * 60);
+        lenient().when(dynamicIntervalService.calculateCheckInterval(1L)).thenReturn(6 * 60 * 60);
+        lenient().when(dynamicIntervalService.calculateDownloadDelay(1L)).thenReturn(5 * 60);
     }
 
     @Nested

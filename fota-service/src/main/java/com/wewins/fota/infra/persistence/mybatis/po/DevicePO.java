@@ -2,11 +2,9 @@ package com.wewins.fota.infra.persistence.mybatis.po;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.wewins.fota.database.handler.JsonbStringTypeHandler;
 import com.wewins.fota.database.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.apache.ibatis.type.JdbcType;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -27,15 +25,6 @@ public class DevicePO extends BaseEntity implements Serializable {
     private LocalDateTime lastSeenAt;
 
     private LocalDateTime firstSeenAt;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String tags;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String versionParts;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String initialVersionParts;
 
     private Long importBatchId;
 }

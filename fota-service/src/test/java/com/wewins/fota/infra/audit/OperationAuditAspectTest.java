@@ -56,12 +56,12 @@ class OperationAuditAspectTest {
 
     @Test
     void shouldMaskSensitiveFieldsInRequestBody() {
-        JsonNode sanitizedNode = payloadSanitizer.toLimitedJsonNode(Map.of(
+        JsonNode sanitizedNode = payloadSanitizer.sanitizeRequestBody(new Object[]{Map.of(
                 "username", "alice",
                 "passwordHash", "secret",
                 "profile", Map.of("token", "abc", "phone", "13800000000"),
                 "roleIds", List.of(1L, 2L)
-        ));
+        )});
 
         Map<String, Object> sanitized = new ObjectMapper().convertValue(sanitizedNode, Map.class);
 

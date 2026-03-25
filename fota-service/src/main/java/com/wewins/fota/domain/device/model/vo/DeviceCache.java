@@ -27,9 +27,5 @@ public class DeviceCache implements Serializable {
 
     private DeviceVersionParts versionParts;
 
-    private DeviceVersionParts initialVersionParts;
-
-    private LocalDateTime firstSeenAt;
-
     private LocalDateTime cachedAt;
 }

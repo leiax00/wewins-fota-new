@@ -118,10 +118,10 @@ public class UpgradePolicyAppService {
         }
 
         normalizeAndValidate(policy, true);
-        upgradePolicyRepository.create(policy);
-        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), policy.getId(), ChangeType.CREATED));
-        log.info("升级策略创建成功: policyId={}, name={}, status={}", policy.getId(), policy.getName(), policy.getStatus());
-        return policy;
+        UpgradePolicy createdPolicy = upgradePolicyRepository.create(policy);
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, createdPolicy.getProductId(), createdPolicy.getId(), ChangeType.CREATED));
+        log.info("升级策略创建成功: policyId={}, name={}, status={}", createdPolicy.getId(), createdPolicy.getName(), createdPolicy.getStatus());
+        return createdPolicy;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -189,10 +189,10 @@ public class UpgradePolicyAppService {
         policy.setStatus(currentStatus);
 
         normalizeAndValidate(policy, false);
-        upgradePolicyRepository.updateById(policy);
-        eventPublisher.publishEvent(new PolicyChangedEvent(this, policy.getProductId(), policy.getId(), ChangeType.UPDATED));
-        log.info("升级策略更新成功: policyId={}, statusChanged=false", policy.getId());
-        return policy;
+        UpgradePolicy updatedPolicy = upgradePolicyRepository.updateById(policy);
+        eventPublisher.publishEvent(new PolicyChangedEvent(this, updatedPolicy.getProductId(), updatedPolicy.getId(), ChangeType.UPDATED));
+        log.info("升级策略更新成功: policyId={}, statusChanged=false", updatedPolicy.getId());
+        return updatedPolicy;
     }
 
     @Transactional(rollbackFor = Exception.class)

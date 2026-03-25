@@ -29,9 +29,6 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
 
     private Long targetVersionId;
 
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String sourceVersions;
-
     private Integer priority;
 
     private Integer grayRate;
@@ -43,17 +40,11 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
     private String targetMode;
 
     @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetImeis;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetDeviceBatchIds;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
-    private String targetDeviceTags;
-
-    @TableField(typeHandler = JsonbStringTypeHandler.class, jdbcType = JdbcType.OTHER)
     private String timeWindow;
 
-    @TableLogic(value = "NULL", delval = "now()")
-    private LocalDateTime deletedAt;
+    /**
+     * 逻辑删除标记 (0=未删除, 1=已删除)
+     */
+    @TableLogic
+    private Integer deleted;
 }

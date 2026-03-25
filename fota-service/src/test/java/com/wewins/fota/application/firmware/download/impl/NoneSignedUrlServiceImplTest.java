@@ -185,8 +185,8 @@ class NoneSignedUrlServiceImplTest {
             // When
             String url = signedUrlService.generateSignedUrl(firmwarePath);
 
-            // Then - URL 不应该包含额外的 bucket
-            assertThat(url).isEqualTo("https://cdn.example.com/fw/test.zip");
+            // Then - PATH_STYLE 由 urlAccessType 决定，因此仍会带 bucket
+            assertThat(url).isEqualTo("https://cdn.example.com/fota/fw/test.zip");
         }
 
         @Nested
@@ -194,11 +194,11 @@ class NoneSignedUrlServiceImplTest {
         class UrlAccessTypeTests {
 
             @Test
-            @DisplayName("R2 模式 - 不添加 bucket 到 URL")
-            void generateSignedUrl_shouldNotAddBucket_whenR2Mode() {
+            @DisplayName("非 PATH_STYLE 模式 - 不添加 bucket 到 URL")
+            void generateSignedUrl_shouldNotAddBucket_whenNonPathStyleMode() {
                 // Given
                 storageProperties.getS3().setEnabled(true);
-                storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.LIKE_R2);
+                storageProperties.getS3().setUrlAccessType(StorageProperties.UrlAccessType.VIRTUAL_HOSTED);
                 storageProperties.getS3().setBucket(TEST_S3_BUCKET);
                 properties.setBaseUrl("http://r2.yushe.ai");
                 String firmwarePath = "fw/test.zip";
@@ -247,7 +247,7 @@ class NoneSignedUrlServiceImplTest {
                 // When
                 String url = signedUrlService.generateSignedUrl(firmwarePath);
 
-                // Then - URL 不应该包含 bucket（bucket 在域名中）
+                // Then - VIRTUAL_HOSTED 模式下 URL 不额外插入 bucket
                 assertThat(url).isEqualTo("https://cdn.example.com/fw/test.zip");
             }
 

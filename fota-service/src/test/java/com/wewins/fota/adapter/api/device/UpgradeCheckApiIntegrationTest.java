@@ -2,6 +2,7 @@ package com.wewins.fota.adapter.api.device;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
@@ -40,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@Disabled("Requires dedicated PostgreSQL/ClickHouse test environment and Flyway-managed test database")
 @DisplayName("升级检查 API 集成测试")
 class UpgradeCheckApiIntegrationTest {
 

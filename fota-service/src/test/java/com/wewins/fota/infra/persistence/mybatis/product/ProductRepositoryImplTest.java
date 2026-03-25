@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.wewins.fota.domain.product.model.entity.Product;
 import com.wewins.fota.domain.product.repository.ProductCacheRepository;
 import com.wewins.fota.infra.persistence.mybatis.mapper.ProductMapper;
+import com.wewins.fota.infra.persistence.mybatis.po.ProductPO;
 import com.wewins.fota.infra.persistence.mybatis.repository.ProductRepositoryImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -43,6 +44,7 @@ class ProductRepositoryImplTest {
     private ProductRepositoryImpl productRepository;
 
     private Product testProduct;
+    private ProductPO testProductPo;
 
     @BeforeEach
     void setUp() {
@@ -51,11 +53,21 @@ class ProductRepositoryImplTest {
                 .manufacturer("测试制造商")
                 .model("TEST-MODEL-001")
                 .remark("测试备注")
-                .deletedAt(null)
+                .deleted(0)
                 .build();
         testProduct.setId(1L);
         testProduct.setCreatedAt(LocalDateTime.now());
         testProduct.setUpdatedAt(LocalDateTime.now());
+
+        testProductPo = new ProductPO();
+        testProductPo.setId(1L);
+        testProductPo.setName("测试产品");
+        testProductPo.setManufacturer("测试制造商");
+        testProductPo.setModel("TEST-MODEL-001");
+        testProductPo.setRemark("测试备注");
+        testProductPo.setDeleted(0);
+        testProductPo.setCreatedAt(testProduct.getCreatedAt());
+        testProductPo.setUpdatedAt(testProduct.getUpdatedAt());
     }
 
     @Nested
@@ -68,7 +80,7 @@ class ProductRepositoryImplTest {
             // Given
             String model = "TEST-MODEL-001";
             when(productMapper.selectOne(any(LambdaQueryWrapper.class)))
-                    .thenReturn(testProduct);
+                    .thenReturn(testProductPo);
 
             // When
             Optional<Product> result = productRepository.findByModel(model);
@@ -146,7 +158,7 @@ class ProductRepositoryImplTest {
             Product deletedProduct = Product.builder()
                     .name("已删除产品")
                     .model(model)
-                    .deletedAt(LocalDateTime.now())
+                    .deleted(1)
                     .build();
             deletedProduct.setId(2L);
 

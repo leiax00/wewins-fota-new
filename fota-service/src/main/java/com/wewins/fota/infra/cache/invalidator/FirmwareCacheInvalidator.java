@@ -17,6 +17,7 @@ public class FirmwareCacheInvalidator {
     public void invalidateOnFirmwarePublish(Long productId, Long versionId, String version, String internalVersion) {
         firmwareCacheRepository.evict(versionId);
         firmwareVersionLookupCacheRepository.evict(productId, version, internalVersion);
+        firmwareVersionLookupCacheRepository.evict(productId, version, null);
         log.info("固件缓存已失效: productId={}, versionId={}", productId, versionId);
     }
 }

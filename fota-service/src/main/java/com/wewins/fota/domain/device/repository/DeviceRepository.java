@@ -1,6 +1,7 @@
 package com.wewins.fota.domain.device.repository;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.wewins.fota.domain.device.model.aggregate.DeviceInfoUpdateMessage;
 import com.wewins.fota.domain.device.model.entity.Device;
 
 import java.util.List;
@@ -26,8 +27,6 @@ public interface DeviceRepository {
 
     int batchDelete(List<Long> deviceIds);
 
-    void updateBatch(List<Device> devices);
-
     void batchCreate(List<Device> devices);
 
     Page<Device> pageByImportBatchId(Page<Device> page, Long importBatchId);
@@ -36,9 +35,9 @@ public interface DeviceRepository {
 
     List<Device> findByImeis(List<String> imeis);
 
-    List<Device> findByConditions(Long productId, String imeiKeyword, String status, Long importBatchId);
-
     void batchUpdateTags(List<Long> deviceIds, String tagsJson);
 
     void batchUpdateImportBatchId(List<Long> deviceIds, Long batchId);
+
+    void applyCheckUpdates(List<DeviceInfoUpdateMessage> messages);
 }

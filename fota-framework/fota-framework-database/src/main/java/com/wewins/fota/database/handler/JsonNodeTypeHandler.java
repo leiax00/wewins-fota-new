@@ -10,14 +10,15 @@ import org.apache.ibatis.type.MappedJdbcTypes;
 import org.apache.ibatis.type.MappedTypes;
 
 import java.sql.CallableStatement;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * PostgreSQL JSONB 类型处理器（JsonNode）
+ * 多数据库 JSON 类型处理器（JsonNode）
  * <p>
- * 用于在 PostgreSQL JSONB 字段与 Java JsonNode 之间进行序列化/反序列化。
+ * 支持 PostgreSQL JSONB 和 MySQL JSON 字段与 Java JsonNode 之间的序列化/反序列化。
  * 通过 Jackson ObjectMapper 处理 JSON 数据。
  * </p>
  *
@@ -27,6 +28,14 @@ import java.sql.SQLException;
  * &#64;TableField(typeHandler = JsonNodeTypeHandler.class, jdbcType = JdbcType.OTHER)
  * private JsonNode meta;
  * </pre>
+ * </p>
+ *
+ * <p>
+ * 数据库兼容性：
+ * <ul>
+ *   <li>PostgreSQL：使用 Types.OTHER 传递 JSONB</li>
+ *   <li>MySQL：使用 setString 传递 JSON（MySQL 会自动转换）</li>
+ * </ul>
  * </p>
  *
  * <p>
@@ -55,12 +64,34 @@ public class JsonNodeTypeHandler extends BaseTypeHandler<JsonNode> {
             throws SQLException {
         try {
             String jsonString = OBJECT_MAPPER.writeValueAsString(parameter);
-            // 使用 setObject 配合 PGobject 来处理 jsonb 类型
-            // 这样 PostgreSQL 驱动会自动将字符串转换为 jsonb 类型
-            ps.setObject(i, jsonString, java.sql.Types.OTHER);
+            // 根据数据库类型选择不同的参数设置方式
+            if (isPostgreSQL(ps)) {
+                // PostgreSQL: 使用 Types.OTHER 传递 JSONB 类型
+                ps.setObject(i, jsonString, java.sql.Types.OTHER);
+            } else {
+                // MySQL 及其他数据库: 使用 setString，数据库会自动转换
+                ps.setString(i, jsonString);
+            }
         } catch (JsonProcessingException e) {
             log.error("JsonNode 序列化失败: message={}", e.getMessage(), e);
             throw new SQLException("Failed to serialize JsonNode to JSON string: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 判断当前数据库是否为 PostgreSQL
+     *
+     * @param ps PreparedStatement
+     * @return 是否为 PostgreSQL
+     */
+    private boolean isPostgreSQL(PreparedStatement ps) {
+        try {
+            DatabaseMetaData metaData = ps.getConnection().getMetaData();
+            String databaseProductName = metaData.getDatabaseProductName();
+            return "PostgreSQL".equalsIgnoreCase(databaseProductName);
+        } catch (SQLException e) {
+            log.warn("无法获取数据库类型信息，默认使用 MySQL 兼容模式: {}", e.getMessage());
+            return false;
         }
     }
 

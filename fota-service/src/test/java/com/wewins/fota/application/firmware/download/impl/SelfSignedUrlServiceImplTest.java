@@ -170,9 +170,8 @@ class SelfSignedUrlServiceImplTest {
             // When
             String url = signedUrlService.generateSignedUrl(firmwarePath);
 
-            // Then - URL 不应该包含额外的 bucket
-            assertThat(url).contains("//cdn.example.com/fw/test.zip");
-            assertThat(url).doesNotContain("//cdn.example.com/" + TEST_S3_BUCKET);
+            // Then - PATH_STYLE 由 urlAccessType 决定，因此仍会带 bucket
+            assertThat(url).contains("//cdn.example.com/fota/fw/test.zip");
         }
     }
 
