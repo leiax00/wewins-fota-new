@@ -47,9 +47,9 @@ logs/
 *~
 
 # Environment files
-.env
-.env.local
-.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
 
 # Docker
 .docker/
@@ -69,5 +69,8 @@ fota-ui/.eslintrc-auto-import.json
 *.local.*
 
 .claude/plans
+.claude/settings.*.json
 
 data/
+
+deploy/monitoring/prometheus/file_sd_local/
