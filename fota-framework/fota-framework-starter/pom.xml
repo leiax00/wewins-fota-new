@@ -53,5 +53,9 @@
             <groupId>com.wewins</groupId>
             <artifactId>fota-framework-task</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.wewins</groupId>
+            <artifactId>fota-framework-scheduler</artifactId>
+        </dependency>
     </dependencies>
 </project>

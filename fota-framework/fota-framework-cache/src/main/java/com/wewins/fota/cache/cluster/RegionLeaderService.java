@@ -15,13 +15,16 @@ import java.time.Duration;
 import java.util.UUID;
 
 /**
- * Region leader election service.
+ * Region Leader 选举服务。
+ * <p>
+ * 基于 Redis 的分布式 Leader 选举，在所有部署模式下可用。
+ * 由配置 {@code app.leader.enabled} 决定是否启用。
+ * </p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.leader", name = "enabled", havingValue = "true", matchIfMissing = true)
-@ConditionalOnProperty(name = "app.mode", havingValue = "region")
 public class RegionLeaderService {
 
     private final RedisTemplate<String, Object> redisTemplate;

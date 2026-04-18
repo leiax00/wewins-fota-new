@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -56,12 +55,11 @@ public class FallbackEventReplayService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
-     * 定时重放任务
+     * 重放今天的降级事件。
      * <p>
-     * 每 5 分钟执行一次，重放今天的事件文件
+     * 由 {@link com.wewins.fota.infra.scheduler.job.ClickHouseFallbackJob} 定时调用。
      * </p>
      */
-    @Scheduled(fixedDelayString = "${app.clickhouse.fallback.replay.interval-ms:300000}")
     public void replayTodayEvents() {
         try {
             Path todayFile = getTodayFilePath();

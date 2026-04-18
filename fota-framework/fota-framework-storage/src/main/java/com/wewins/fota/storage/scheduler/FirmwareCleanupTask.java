@@ -1,4 +1,4 @@
-package com.wewins.fota.infra.task;
+package com.wewins.fota.storage.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +7,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -18,6 +19,7 @@ import java.util.stream.Stream;
  * 固件上传临时文件清理任务。
  * <p>
  * 定期扫描临时文件目录，清理超过一定时间的孤儿文件。
+ * 每个实例独立执行，不需要 Leader 选举。
  * </p>
  *
  * @author FOTA Team
@@ -27,26 +29,19 @@ import java.util.stream.Stream;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.firmware.upload.cleanup", name = "enabled", havingValue = "true", matchIfMissing = true)
-public class FirmwareUploadCleanupTask {
+public class FirmwareCleanupTask {
 
-    private final FirmwareUploadCleanupProperties properties;
+    private final FirmwareCleanupProperties properties;
 
     /**
      * 清理过期的临时文件。
      * <p>
      * 执行逻辑：
      * <ol>
-     *   <li>扫描临时文件目录（data/storage/tmp）</li>
-     *   <li>查找匹配 fw-upload-*.tmp 的文件</li>
+     *   <li>扫描临时文件目录</li>
+     *   <li>查找匹配 fw-{id}-{uuid}.upload 的文件</li>
      *   <li>删除超过 {@code maxFileAge} 的文件</li>
      * </ol>
-     * </p>
-     * <p>
-     * 清理条件：
-     * <ul>
-     *   <li>文件名匹配：fw-upload-{uuid}.tmp</li>
-     *   <li>文件年龄超过 {@code maxFileAge}（默认 2 小时）</li>
-     * </ul>
      * </p>
      */
     @Scheduled(cron = "${app.firmware.upload.cleanup.cron:0 */30 * * * *}")
@@ -117,9 +112,6 @@ public class FirmwareUploadCleanupTask {
         }
     }
 
-    /**
-     * 格式化文件大小。
-     */
     private String formatSize(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";

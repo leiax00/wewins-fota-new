@@ -5,6 +5,8 @@ import com.wewins.fota.cache.FotaCacheMarker;
 import com.wewins.fota.common.FotaCommonMarker;
 import com.wewins.fota.database.FotaDatabaseMarker;
 import com.wewins.fota.mq.FotaMqMarker;
+import com.wewins.fota.scheduler.FotaSchedulerMarker;
+import com.wewins.fota.scheduler.config.SchedulerAutoConfiguration;
 import com.wewins.fota.security.FotaSecurityMarker;
 import com.wewins.fota.storage.FotaStorageMarker;
 import com.wewins.fota.task.FotaTaskMarker;
@@ -29,8 +31,10 @@ import org.springframework.context.annotation.ComponentScan;
         FotaSecurityMarker.class,
         CdnWarmMarker.class,
         FotaTaskMarker.class,
+        FotaSchedulerMarker.class,
         RestTemplateConfiguration.class,
-        TaskAutoConfiguration.class
+        TaskAutoConfiguration.class,
+        SchedulerAutoConfiguration.class
 })
 public class FotaFrameworkAutoConfiguration {
 }

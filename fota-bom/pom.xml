@@ -19,7 +19,7 @@
         <!-- Third-party dependency versions -->
         <lombok.version>1.18.36</lombok.version>
         <jjwt.version>0.12.6</jjwt.version>
-        <clickhouse.version>0.7.2</clickhouse.version>
+        <clickhouse.version>0.9.4</clickhouse.version>
         <mybatis.plus.version>3.5.15</mybatis.plus.version>
         <awssdk.version>2.25.43</awssdk.version>
         <archunit.version>1.3.0</archunit.version>
@@ -85,6 +85,11 @@
             <dependency>
                 <groupId>com.wewins</groupId>
                 <artifactId>fota-framework-task</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.wewins</groupId>
+                <artifactId>fota-framework-scheduler</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

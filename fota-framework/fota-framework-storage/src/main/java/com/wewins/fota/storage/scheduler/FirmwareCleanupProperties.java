@@ -1,4 +1,4 @@
-package com.wewins.fota.infra.task;
+package com.wewins.fota.storage.scheduler;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 /**
- * 固件上传清理任务配置属性。
+ * 固件临时文件清理任务配置属性。
  *
  * @author FOTA Team
  * @since 2026-02-26
@@ -16,7 +16,7 @@ import java.time.Duration;
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.firmware.upload.cleanup")
-public class FirmwareUploadCleanupProperties {
+public class FirmwareCleanupProperties {
 
     /**
      * 是否启用清理任务。
