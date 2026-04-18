@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { warmCdn, deleteFirmwareVersion, cancelUploadSession } from '@/api/firmware'
@@ -15,6 +15,7 @@ import FirmwareSearchForm from './components/FirmwareSearchForm.vue'
 import FirmwareTable from './components/FirmwareTable.vue'
 import FirmwareExpandRow from './components/FirmwareExpandRow.vue'
 import FirmwareFormDialog from './components/FirmwareFormDialog.vue'
+import FirmwareDeviceDrawer from './components/FirmwareDeviceDrawer.vue'
 import TaskProgressDialog from './components/TaskProgressDialog.vue'
 
 // 导入类型
@@ -49,6 +50,17 @@ const uploadState = reactive<UploadState>({
   error: '',
   abortController: null,
 })
+
+// 设备列表抽屉
+const deviceDrawerVisible = ref(false)
+const deviceDrawerVersionId = ref(0)
+const deviceDrawerVersion = ref('')
+
+const openDeviceDrawer = (row: FirmwareVersionItem) => {
+  deviceDrawerVersionId.value = row.id
+  deviceDrawerVersion.value = row.version
+  deviceDrawerVisible.value = true
+}
 
 // 表单数据
 const form = reactive<FirmwareFormData>({
@@ -253,6 +265,7 @@ onUnmounted(() => {
       @edit="handleEdit"
       @delete="handleDelete"
       @toggle-expand="toggleExpand"
+      @show-devices="openDeviceDrawer"
     >
       <template #expand="{ row }">
         <FirmwareExpandRow
@@ -304,5 +317,11 @@ onUnmounted(() => {
     :task-progress="taskProgress"
     @finish="finishTaskProgress"
     @close="closeTaskProgressDialog"
+  />
+
+  <FirmwareDeviceDrawer
+    v-model:visible="deviceDrawerVisible"
+    :version-id="deviceDrawerVersionId"
+    :version="deviceDrawerVersion"
   />
 </template>

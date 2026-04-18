@@ -33,6 +33,7 @@ import { pageBatches, type DeviceImportBatchItem } from '@/api/deviceImportBatch
 import { getFirmwareVersionsByProduct, type FirmwareVersionItem } from '@/api/firmware'
 import DeviceImportDialog from './DeviceImportDialog.vue'
 import DeviceBatchOperationDialog from './DeviceBatchOperationDialog.vue'
+import DeviceTimeline from './components/DeviceTimeline.vue'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -75,9 +76,20 @@ const firmwareOptions = ref<FirmwareVersionItem[]>([])
 const firmwareLoading = ref(false)
 
 const canCreate = computed(() => userStore.hasPermission('fota:device:import'))
+const canViewStatistics = computed(() => userStore.hasPermission('fota:statistics:read'))
 const canShowActions = computed(() =>
-  userStore.hasPermission('fota:device:update')
+  userStore.hasPermission('fota:device:update') ||
+  userStore.hasPermission('fota:device:delete') ||
+  canViewStatistics.value
 )
+
+const statisticsDrawerVisible = ref(false)
+const statisticsDrawerRow = ref<DeviceItem | null>(null)
+
+const openStatisticsDrawer = (row: DeviceItem) => {
+  statisticsDrawerRow.value = row
+  statisticsDrawerVisible.value = true
+}
 
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
@@ -839,10 +851,18 @@ onMounted(() => {
       <el-table-column
         v-if="canShowActions"
         :label="t('common.actions')"
-        width="150"
+        width="190"
         fixed="right"
       >
         <template #default="{ row }">
+          <el-button
+            v-if="canViewStatistics"
+            link
+            class="ui-action-primary"
+            @click.stop="openStatisticsDrawer(row)"
+          >
+            {{ t('common.statistics') }}
+          </el-button>
           <el-button
             v-if="userStore.hasPermission('fota:device:update')"
             link
@@ -995,6 +1015,18 @@ onMounted(() => {
     :default-operation-type="batchOperationDefaultType"
     @success="handleBatchOperationSuccess"
   />
+
+  <el-drawer
+    v-model="statisticsDrawerVisible"
+    :title="statisticsDrawerRow?.imei ?? t('common.showStatistics')"
+    size="60%"
+    class="device-statistics-drawer"
+  >
+    <DeviceTimeline
+      v-if="statisticsDrawerRow"
+      :imei="statisticsDrawerRow.imei"
+    />
+  </el-drawer>
 </template>
 
 <style scoped>
@@ -1182,5 +1214,15 @@ onMounted(() => {
     flex-direction: column;
     gap: 8px;
   }
+}
+</style>
+
+<style>
+.device-statistics-drawer .el-drawer__header {
+  padding: 12px 16px 8px 16px !important;
+  margin-bottom: 0 !important;
+}
+.device-statistics-drawer .el-drawer__body {
+  padding: 8px 16px 16px 16px !important;
 }
 </style>

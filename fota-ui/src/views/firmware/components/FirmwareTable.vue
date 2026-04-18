@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/date'
@@ -25,7 +26,12 @@ const emit = defineEmits<{
   (e: 'toggle-expand', row: FirmwareVersionItem): void
   (e: 'page-change', page: number): void
   (e: 'size-change', size: number): void
+  (e: 'show-devices', row: FirmwareVersionItem): void
 }>()
+
+const handleShowDevices = (row: FirmwareVersionItem) => {
+  emit('show-devices', row)
+}
 
 const handleRowClick = (row: FirmwareVersionItem) => {
   emit('toggle-expand', row)
@@ -46,6 +52,8 @@ const canEdit = () => {
 const canDelete = () => {
   return userStore.hasPermission('fota:firmware:delete')
 }
+
+const canViewStatistics = computed(() => userStore.hasPermission('fota:statistics:read'))
 </script>
 
 <template>
@@ -137,10 +145,18 @@ const canDelete = () => {
     <el-table-column
       v-if="canShowActions"
       :label="t('common.actions')"
-      width="120"
+      width="180"
       fixed="right"
     >
       <template #default="{ row }">
+        <el-button
+          v-if="canViewStatistics"
+          link
+          class="ui-action-primary"
+          @click.stop="handleShowDevices(row)"
+        >
+          {{ t('common.statistics') }}
+        </el-button>
         <el-button
           v-if="canEdit()"
           link

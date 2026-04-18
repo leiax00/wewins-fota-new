@@ -3,6 +3,7 @@ import { computed, onMounted, onActivated, reactive, ref } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Lock, Clock, Download, Aim, User, Grid, Box } from '@element-plus/icons-vue'
+import PolicyStatisticsPanel from './components/PolicyStatisticsPanel.vue'
 import { useI18n } from 'vue-i18n'
 import { resolveStatusLabelKey } from '@/constants/status'
 import { useUserStore } from '@/stores/user'
@@ -42,10 +43,20 @@ const productSearchLoading = ref(false)
 
 let productSearchTimer: number | null = null
 
+const canViewStatistics = computed(() => userStore.hasPermission('fota:statistics:read'))
 const canShowActions = computed(() =>
   userStore.hasPermission('fota:policy:update') ||
-  userStore.hasPermission('fota:policy:delete')
+  userStore.hasPermission('fota:policy:delete') ||
+  canViewStatistics.value
 )
+
+const statisticsDrawerVisible = ref(false)
+const statisticsDrawerRow = ref<UpgradePolicyItem | null>(null)
+
+const openStatisticsDrawer = (row: UpgradePolicyItem) => {
+  statisticsDrawerRow.value = row
+  statisticsDrawerVisible.value = true
+}
 
 const statusOptions: PolicyStatus[] = ['DRAFT', 'TESTING', 'VERIFIED', 'ACTIVE', 'PAUSED', 'EXPIRED']
 
@@ -776,10 +787,18 @@ onActivated(() => {
       <el-table-column
         v-if="canShowActions"
         :label="t('common.actions')"
-        width="120"
+        width="160"
         fixed="right"
       >
         <template #default="{ row }">
+          <el-button
+            v-if="canViewStatistics"
+            link
+            class="ui-action-primary"
+            @click.stop="openStatisticsDrawer(row)"
+          >
+            {{ t('common.statistics') }}
+          </el-button>
           <el-button
             v-if="canEditPolicy(row)"
             link
@@ -811,6 +830,18 @@ onActivated(() => {
       />
     </div>
   </PageCardTableShell>
+
+  <el-drawer
+    v-model="statisticsDrawerVisible"
+    :title="statisticsDrawerRow?.name ?? t('common.showStatistics')"
+    size="70%"
+    class="policy-statistics-drawer"
+  >
+    <PolicyStatisticsPanel
+      v-if="statisticsDrawerRow"
+      :policy-id="statisticsDrawerRow.id"
+    />
+  </el-drawer>
 </template>
 
 <style scoped>
@@ -1354,5 +1385,20 @@ onActivated(() => {
 .audit-time {
   color: var(--text-secondary);
   font-family: 'Courier New', monospace;
+}
+
+.stats-btn-active {
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+</style>
+
+<style>
+.policy-statistics-drawer .el-drawer__header {
+  padding: 12px 16px 8px 16px !important;
+  margin-bottom: 0 !important;
+}
+.policy-statistics-drawer .el-drawer__body {
+  padding: 8px 16px 16px 16px !important;
 }
 </style>

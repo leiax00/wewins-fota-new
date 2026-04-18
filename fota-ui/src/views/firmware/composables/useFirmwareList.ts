@@ -18,8 +18,12 @@ export function useFirmwareList() {
   const productSearchLoading = ref(false)
   let productSearchTimer: number | null = null
 
+  const canViewStatistics = computed(() => userStore.hasPermission('fota:statistics:read'))
+
   const canShowActions = computed(() =>
-    userStore.hasPermission('fota:firmware:update') || userStore.hasPermission('fota:firmware:delete')
+    userStore.hasPermission('fota:firmware:update') ||
+    userStore.hasPermission('fota:firmware:delete') ||
+    canViewStatistics.value
   )
 
   const expandRowKeys = ref<string[]>([])
