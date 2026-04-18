@@ -12,6 +12,7 @@ import {
   type ProductItem,
 } from '@/api/product'
 import { trimFormValues } from '@/utils/form'
+import ProductStatisticsPanel from './components/ProductStatisticsPanel.vue'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -25,10 +26,20 @@ const query = reactive({
   keyword: '',
 })
 
+const canViewStatistics = computed(() => userStore.hasPermission('fota:statistics:read'))
 const canShowActions = computed(() =>
   userStore.hasPermission('fota:product:update') ||
-  userStore.hasPermission('fota:product:delete')
+  userStore.hasPermission('fota:product:delete') ||
+  canViewStatistics.value
 )
+
+const statisticsDrawerVisible = ref(false)
+const statisticsDrawerRow = ref<ProductItem | null>(null)
+
+const openStatisticsDrawer = (row: ProductItem) => {
+  statisticsDrawerRow.value = row
+  statisticsDrawerVisible.value = true
+}
 
 const dialogVisible = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
@@ -166,6 +177,7 @@ const formatPeriod = (seconds?: number) => {
 onMounted(() => {
   void fetchList()
 })
+
 </script>
 
 <template>
@@ -241,10 +253,18 @@ onMounted(() => {
       <el-table-column
         v-if="canShowActions"
         :label="t('common.actions')"
-        width="150"
+        width="190"
         fixed="right"
       >
         <template #default="{ row }">
+          <el-button
+            v-if="canViewStatistics"
+            link
+            class="ui-action-primary"
+            @click.stop="openStatisticsDrawer(row)"
+          >
+            {{ t('common.statistics') }}
+          </el-button>
           <el-button
             v-if="userStore.hasPermission('fota:product:update')"
             link
@@ -360,4 +380,26 @@ onMounted(() => {
       </el-button>
     </template>
   </el-dialog>
+
+  <el-drawer
+    v-model="statisticsDrawerVisible"
+    :title="statisticsDrawerRow?.name ?? t('common.showStatistics')"
+    size="70%"
+    class="product-statistics-drawer"
+  >
+    <ProductStatisticsPanel
+      v-if="statisticsDrawerRow"
+      :product-id="statisticsDrawerRow.id"
+    />
+  </el-drawer>
 </template>
+
+<style>
+.product-statistics-drawer .el-drawer__header {
+  padding: 12px 16px 8px 16px !important;
+  margin-bottom: 0 !important;
+}
+.product-statistics-drawer .el-drawer__body {
+  padding: 8px 16px 16px 16px !important;
+}
+</style>
