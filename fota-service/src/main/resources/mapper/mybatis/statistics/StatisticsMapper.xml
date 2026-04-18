@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wewins.fota.infra.persistence.mybatis.mapper.statistics.StatisticsMapper">
+
+    <select id="getProductVersionDistribution" resultType="map">
+        SELECT
+            dvp.version_id AS versionId,
+            COALESCE(dvp.version, fv.version, 'UNKNOWN') AS version,
+            COALESCE(dvp.internal_version, fv.internal_version) AS internalVersion,
+            COUNT(DISTINCT d.id) AS deviceCount
+        FROM devices d
+        LEFT JOIN device_version_parts dvp
+            ON dvp.device_id = d.id
+        LEFT JOIN firmware_versions fv
+            ON fv.id = dvp.version_id
+           AND fv.deleted = 0
+        WHERE d.product_id = #{productId}
+        GROUP BY dvp.version_id,
+                 COALESCE(dvp.version, fv.version, 'UNKNOWN'),
+                 COALESCE(dvp.internal_version, fv.internal_version)
+        ORDER BY deviceCount DESC, (versionId IS NULL) ASC, versionId ASC
+    </select>
+
+    <select id="getPolicyAffectedAndUpgraded" resultType="map">
+        WITH policy AS (
+            SELECT
+                id,
+                product_id,
+                target_mode,
+                target_version_id,
+                affected_total
+            FROM upgrade_policies
+            WHERE id = #{policyId}
+              AND deleted = 0
+        ),
+        matched_devices AS (
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.product_id = d.product_id
+            WHERE p.target_mode = 'ALL'
+
+            UNION
+
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.id = #{policyId}
+            JOIN upgrade_policy_target_devices uptd
+              ON uptd.policy_id = p.id
+             AND uptd.imei = d.imei
+            WHERE p.target_mode = 'DEVICE_IDS'
+
+            UNION
+
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.id = #{policyId}
+            JOIN upgrade_policy_target_batches uptb
+              ON uptb.policy_id = p.id
+             AND uptb.batch_id = d.import_batch_id
+            WHERE p.target_mode = 'DEVICE_BATCHES'
+
+            UNION
+
+            SELECT dt.device_id AS id
+            FROM policy p
+            JOIN upgrade_policy_target_tags uptt
+              ON uptt.policy_id = p.id
+            JOIN device_tags dt
+              ON dt.tag_key = uptt.tag_key
+             AND dt.tag_value = uptt.tag_value
+            WHERE p.target_mode = 'DEVICE_TAGS'
+            GROUP BY dt.device_id
+            HAVING COUNT(DISTINCT CONCAT(uptt.tag_key, ':', uptt.tag_value)) = (
+                SELECT COUNT(*)
+                FROM upgrade_policy_target_tags
+                WHERE policy_id = #{policyId}
+            )
+        )
+        SELECT
+            p.affected_total AS affectedTotal,
+            COUNT(DISTINCT CASE WHEN dvp.version_id = p.target_version_id THEN md.id END) AS upgradedTotal
+        FROM policy p
+        LEFT JOIN matched_devices md ON 1 = 1
+        LEFT JOIN device_version_parts dvp
+            ON dvp.device_id = md.id
+           AND dvp.is_primary = 1
+        GROUP BY p.affected_total
+    </select>
+
+    <select id="getPolicyUpgradedTotal" resultType="java.lang.Long">
+        WITH policy AS (
+            SELECT
+                id,
+                product_id,
+                target_mode,
+                target_version_id
+            FROM upgrade_policies
+            WHERE id = #{policyId}
+              AND deleted = 0
+        ),
+        matched_devices AS (
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.product_id = d.product_id
+            WHERE p.target_mode = 'ALL'
+
+            UNION
+
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.id = #{policyId}
+            JOIN upgrade_policy_target_devices uptd
+              ON uptd.policy_id = p.id
+             AND uptd.imei = d.imei
+            WHERE p.target_mode = 'DEVICE_IDS'
+
+            UNION
+
+            SELECT d.id
+            FROM devices d
+            JOIN policy p ON p.id = #{policyId}
+            JOIN upgrade_policy_target_batches uptb
+              ON uptb.policy_id = p.id
+             AND uptb.batch_id = d.import_batch_id
+            WHERE p.target_mode = 'DEVICE_BATCHES'
+
+            UNION
+
+            SELECT dt.device_id AS id
+            FROM policy p
+            JOIN upgrade_policy_target_tags uptt
+              ON uptt.policy_id = p.id
+            JOIN device_tags dt
+              ON dt.tag_key = uptt.tag_key
+             AND dt.tag_value = uptt.tag_value
+            WHERE p.target_mode = 'DEVICE_TAGS'
+            GROUP BY dt.device_id
+            HAVING COUNT(DISTINCT CONCAT(uptt.tag_key, ':', uptt.tag_value)) = (
+                SELECT COUNT(*)
+                FROM upgrade_policy_target_tags
+                WHERE policy_id = #{policyId}
+            )
+        )
+        SELECT COUNT(DISTINCT md.id)
+        FROM policy p
+        JOIN matched_devices md ON 1 = 1
+        JOIN device_version_parts dvp
+          ON dvp.device_id = md.id
+         AND dvp.is_primary = 1
+         AND dvp.version_id = p.target_version_id
+    </select>
+
+    <select id="getFirmwareDevices" resultType="map">
+        SELECT
+            d.id               AS id,
+            d.imei             AS imei,
+            d.status           AS status,
+            d.product_id       AS productId,
+            d.first_seen_at    AS firstSeenAt,
+            d.last_seen_at     AS lastSeenAt,
+            dvp.version        AS version,
+            dvp.internal_version AS internalVersion
+        FROM devices d
+        JOIN device_version_parts dvp
+          ON dvp.device_id = d.id
+         AND dvp.is_primary = 1
+         AND dvp.version_id = #{versionId}
+        <where>
+            <if test="cursor != null">
+                d.id &gt; #{cursor}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND d.imei LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        ORDER BY d.id ASC
+        LIMIT #{size}
+    </select>
+
+    <select id="getFirmwareDeviceCount" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT dvp.device_id)
+        FROM device_version_parts dvp
+        WHERE dvp.is_primary = 1
+          AND dvp.version_id = #{versionId}
+    </select>
+
+    <select id="getProductDeviceList" resultType="map">
+        SELECT
+            d.id               AS id,
+            d.imei             AS imei,
+            d.status           AS status,
+            d.product_id       AS productId,
+            d.first_seen_at    AS firstSeenAt,
+            d.last_seen_at     AS lastSeenAt,
+            dvp.version_id     AS versionId,
+            COALESCE(dvp.version, fv.version, 'UNKNOWN') AS version,
+            COALESCE(dvp.internal_version, fv.internal_version) AS internalVersion
+        FROM devices d
+        LEFT JOIN device_version_parts dvp
+            ON dvp.device_id = d.id
+           AND dvp.is_primary = 1
+        LEFT JOIN firmware_versions fv
+            ON fv.id = dvp.version_id
+           AND fv.deleted = 0
+        WHERE d.product_id = #{productId}
+        <if test="cursor != null">
+            AND d.id &gt; #{cursor}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND d.imei LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY d.id ASC
+        LIMIT #{size}
+    </select>
+
+</mapper>

@@ -70,6 +70,7 @@ fota-ui/.eslintrc-auto-import.json
 
 .claude/plans
 .claude/settings.*.json
+.codex
 
 data/
 

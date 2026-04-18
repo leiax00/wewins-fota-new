@@ -27,16 +27,15 @@
 
 - `V1__baseline.sql`
 - `V2__initdata.sql`
-- `V4__change_deleted_column.sql`
-- `V5__add_relation_tables.sql`
+- `V3__statistics_snapshot.sql`
+  当前仅维护 `upgrade_policies.affected_total` 字段，不再创建统计快照表
 
 ### PostgreSQL
 
 - `V1__baseline.sql`
 - `V2__initdata.sql`
-- `V3__reset_sequences_after_initdata.sql`
-- `V4__change_deleted_column.sql`
-- `V5__add_relation_tables.sql`
+- `V3__statistics_snapshot.sql`
+  当前仅维护 `upgrade_policies.affected_total` 字段，不再创建统计快照表
 
 ## 基线策略
 

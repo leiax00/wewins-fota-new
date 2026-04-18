@@ -29,6 +29,8 @@ public class UpgradePolicyPO extends BaseEntity implements Serializable {
 
     private Long targetVersionId;
 
+    private Long affectedTotal;
+
     private Integer priority;
 
     private Integer grayRate;

@@ -1,7 +1,6 @@
 package com.wewins.fota.infra.scheduler;
 
 import com.wewins.fota.infra.scheduler.job.ClickHouseFallbackJob;
-import com.wewins.fota.infra.scheduler.job.PolicyStatisticsSnapshotJob;
 import com.wewins.fota.infra.scheduler.job.ProductVersionStatisticsJob;
 import com.wewins.fota.scheduler.job.FotaScheduledJob;
 import com.wewins.fota.scheduler.leader.LeaderElectionService;
@@ -31,7 +30,6 @@ import org.springframework.stereotype.Component;
 public class ScheduledJobRunner {
 
     private final ClickHouseFallbackJob clickHouseFallbackJob;
-    private final PolicyStatisticsSnapshotJob policyStatisticsSnapshotJob;
     private final ProductVersionStatisticsJob productVersionStatisticsJob;
     private final ObjectProvider<LeaderElectionService> leaderElectionServiceProvider;
 
@@ -44,17 +42,6 @@ public class ScheduledJobRunner {
     @Scheduled(fixedDelayString = "${app.scheduler.clickhouse-fallback.interval-ms:300000}")
     public void runClickHouseFallback() {
         runIfLeader(clickHouseFallbackJob);
-    }
-
-    /**
-     * 执行统计快照任务。
-     * <p>
-     * 默认每 5 分钟执行一次。
-     * </p>
-     */
-    @Scheduled(fixedDelayString = "${app.scheduler.statistics-policy-snapshot.interval-ms:300000}")
-    public void runPolicyStatisticsSnapshot() {
-        runIfLeader(policyStatisticsSnapshotJob);
     }
 
     /**

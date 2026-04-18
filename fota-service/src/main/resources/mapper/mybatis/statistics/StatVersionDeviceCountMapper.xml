@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wewins.fota.infra.persistence.mybatis.mapper.statistics.StatVersionDeviceCountMapper">
+
+    <insert id="upsert" parameterType="com.wewins.fota.infra.persistence.mybatis.po.StatVersionDeviceCountPO">
+        INSERT INTO stat_version_device_count (product_id, version_id, device_count, stat_time)
+        VALUES (#{productId}, #{versionId}, #{deviceCount}, #{statTime})
+        ON DUPLICATE KEY UPDATE
+            product_id   = VALUES(product_id),
+            device_count = VALUES(device_count)
+    </insert>
+
+    <select id="getProductVersionTrend" resultType="map">
+        SELECT
+            svdc.version_id   AS versionId,
+            fv.version        AS version,
+            svdc.stat_time    AS statTime,
+            svdc.device_count AS deviceCount
+        FROM stat_version_device_count svdc
+        JOIN firmware_versions fv ON fv.id = svdc.version_id AND fv.deleted = 0
+        WHERE svdc.product_id = #{productId}
+          AND svdc.stat_time >= DATE_SUB(NOW(), INTERVAL #{hours} HOUR)
+        ORDER BY svdc.stat_time ASC, svdc.version_id ASC
+    </select>
+
+    <!-- 统计每个版本 part 下的设备数，不限主分区，每个 part 均计入 -->
+    <select id="getAllVersionDeviceCounts" resultType="map">
+        SELECT
+            fv.product_id                AS productId,
+            dvp.version_id               AS versionId,
+            COUNT(DISTINCT dvp.device_id) AS deviceCount
+        FROM device_version_parts dvp
+        JOIN firmware_versions fv ON fv.id = dvp.version_id AND fv.deleted = 0
+        WHERE dvp.version_id IS NOT NULL
+        GROUP BY fv.product_id, dvp.version_id
+    </select>
+
+</mapper>

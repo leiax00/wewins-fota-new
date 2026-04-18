@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wewins.fota.infra.persistence.clickhouse.reporting.mapper.TimelineMapper">
+
+    <select id="getDeviceTimeline" resultType="map">
+        SELECT
+            timeline.cursor AS "cursor",
+            timeline.event_time AS "eventTime",
+            timeline.event_type AS "eventType",
+            timeline.request_id AS "requestId",
+            timeline.policy_id AS "policyId",
+            timeline.check_result AS "checkResult",
+            timeline.target_version_id AS "targetVersionId",
+            timeline.target_version AS "targetVersion",
+            timeline.target_internal_version AS "targetInternalVersion",
+            timeline.details AS "details"
+        FROM (
+            SELECT
+                ((toUnixTimestamp64Milli(c.event_time) * 10) + 1) AS cursor,
+                c.event_time,
+                'CHECK' AS event_type,
+                c.request_id,
+                c.policy_id,
+                toString(c.check_rst) AS check_result,
+                c.target_version_id,
+                c.target_version,
+                c.target_internal_version,
+                CAST(NULL AS Nullable(String)) AS details
+            FROM device_check_logs c
+            WHERE c.imei = #{imei}
+              AND c.event_time &gt;= now64(3) - toIntervalDay(#{days})
+
+            UNION ALL
+
+            SELECT
+                ((toUnixTimestamp64Milli(e.event_time) * 10) + 2) AS cursor,
+                e.event_time,
+                toString(e.event_type) AS event_type,
+                e.request_id,
+                c.policy_id,
+                CAST(NULL AS Nullable(String)) AS check_result,
+                c.target_version_id,
+                c.target_version,
+                c.target_internal_version,
+                e.details AS details
+            FROM device_upgrade_events e
+            LEFT JOIN (
+                SELECT
+                    request_id,
+                    any(policy_id) AS policy_id,
+                    any(target_version_id) AS target_version_id,
+                    any(target_version) AS target_version,
+                    any(target_internal_version) AS target_internal_version
+                FROM device_check_logs
+                WHERE imei = #{imei}
+                  AND event_time &gt;= now64(3) - toIntervalDay(#{days})
+                GROUP BY request_id
+            ) c
+                ON c.request_id = e.request_id
+            WHERE e.imei = #{imei}
+              AND e.event_time &gt;= now64(3) - toIntervalDay(#{days})
+        ) timeline
+        <if test="cursor != null">
+            WHERE timeline.cursor &lt; #{cursor}
+        </if>
+        ORDER BY timeline.cursor DESC
+        LIMIT #{size}
+    </select>
+
+</mapper>

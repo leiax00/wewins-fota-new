@@ -13,6 +13,8 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * MyBatis ClickHouse 数据源配置（分析库）
@@ -55,7 +57,11 @@ public class MybatisClickHouseConfig {
         factory.setConfiguration(configuration);
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] infraResources = resolver.getResources("classpath*:mapper/infra/reporting/**/*.xml");
-        factory.setMapperLocations(infraResources);
+        Resource[] clickhouseResources = resolver.getResources("classpath*:mapper/clickhouse/reporting/**/*.xml");
+        List<Resource> mapperResources = new ArrayList<>(infraResources.length + clickhouseResources.length);
+        mapperResources.addAll(List.of(infraResources));
+        mapperResources.addAll(List.of(clickhouseResources));
+        factory.setMapperLocations(mapperResources.toArray(Resource[]::new));
         return factory.getObject();
     }
 

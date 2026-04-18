@@ -21,12 +21,12 @@ class FlywayMigrationLayoutTest {
 
     @Test
     void shouldContainExpectedMysqlMigrations() throws IOException {
-        assertVersions("classpath*:db/migration/mysql/V*.sql", Set.of(1, 2, 3, 4, 5, 6));
+        assertVersions("classpath*:db/migration/mysql/V*.sql", Set.of(1, 2, 3));
     }
 
     @Test
     void shouldContainExpectedPostgresqlMigrations() throws IOException {
-        assertVersions("classpath*:db/migration/postgresql/V*.sql", Set.of(1, 2, 3, 4, 5, 6));
+        assertVersions("classpath*:db/migration/postgresql/V*.sql", Set.of(1, 2, 3));
     }
 
     private void assertVersions(String locationPattern, Set<Integer> expectedVersions) throws IOException {

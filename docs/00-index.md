@@ -2,8 +2,8 @@
 
 > 本项目文档采用分类管理，便于查找、维护和归档。
 
-**最后更新**: 2026-03-08
-**文档版本**: v1.6
+**最后更新**: 2026-04-15
+**文档版本**: v1.7
 
 ---
 
@@ -44,8 +44,9 @@
 负载控制、设备 API、专题技术设计
 
 - [动态周期与负载控制设计说明](04-technical/dynamic-interval-and-load-control.md)
-- [多实例负载评估与动态周期优化方案](04-technical/multi-instance-monitoring-improvement.md) 🆕
-- [负载控制运行期配置设计](04-technical/load-control-runtime-configuration.md) 🆕
+- [多实例负载评估与动态周期优化方案](04-technical/multi-instance-monitoring-improvement.md)
+- [负载控制运行期配置设计](04-technical/load-control-runtime-configuration.md)
+- [定时任务架构设计](04-technical/scheduled-task-architecture.md) 🆕
 - [升级检查 API 设计](04-technical/upgrade-check-api.md)
 - [升级上报 API 设计](04-technical/upgrade-report-api.md)
 - [固件下载签名设计](04-technical/signed-url-spec.md)
@@ -156,6 +157,12 @@ Day 5: ✅ 集成测试与验收 (2026-02-18)
 ---
 
 ## 📝 文档更新日志
+
+### 2026-04-16
+- ✅ 更新定时任务架构设计文档（v2.0）：独立框架模块、三层分离、固件清理下沉到 storage 模块
+
+### 2026-04-15
+- ✅ 新增定时任务架构设计文档（两层分离、XXL-Job 切换路径、统计快照表方案）
 
 ### 2026-03-14
 - ✅ 新增负载控制运行期配置设计文档
